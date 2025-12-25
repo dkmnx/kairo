@@ -5,9 +5,11 @@
 *.so
 *.dylib
 kairo
+dist/
 
 # Test binary
 *.test
+*.html
 
 # Output of go coverage
 *.out

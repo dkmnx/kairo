@@ -48,9 +48,7 @@ var switchCmd = &cobra.Command{
 		providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_DEFAULT_OPUS_MODEL=%s", provider.Model))
 		providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_SMALL_FAST_MODEL=%s", provider.Model))
 
-		for _, envVar := range provider.EnvVars {
-			providerEnv = append(providerEnv, envVar)
-		}
+		providerEnv = append(providerEnv, provider.EnvVars...)
 
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")

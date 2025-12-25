@@ -65,7 +65,7 @@ func Prompt(prompt string) string {
 	fmt.Print(prompt)
 	fmt.Print(": ")
 	var input string
-	fmt.Scanln(&input)
+	_, _ = fmt.Scanln(&input)
 	return input
 }
 
@@ -76,7 +76,7 @@ func PromptWithDefault(prompt, defaultVal string) string {
 	fmt.Print(prompt)
 	fmt.Print(": ")
 	var input string
-	fmt.Scanln(&input)
+	_, _ = fmt.Scanln(&input)
 	if input == "" {
 		return defaultVal
 	}

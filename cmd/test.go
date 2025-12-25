@@ -78,30 +78,3 @@ var testCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(testCmd)
 }
-
-func testProvider(provider config.Provider) (bool, string) {
-	if provider.BaseURL == "" {
-		return false, "no base URL"
-	}
-
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	req, err := http.NewRequest("GET", provider.BaseURL+"/models", nil)
-	if err != nil {
-		return false, err.Error()
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, err.Error()
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
-		return true, fmt.Sprintf("HTTP %d", resp.StatusCode)
-	}
-
-	return false, fmt.Sprintf("HTTP %d", resp.StatusCode)
-}

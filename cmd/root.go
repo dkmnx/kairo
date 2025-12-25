@@ -24,7 +24,7 @@ encrypted secrets management using age encryption.`,
 		dir := getConfigDir()
 		if dir == "" {
 			cmd.Println("Error: config directory not found")
-			cmd.Help()
+			_ = cmd.Help()
 			return
 		}
 
