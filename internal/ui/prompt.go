@@ -8,12 +8,19 @@ import (
 )
 
 const (
-	green  = "\033[0;32m"
-	yellow = "\033[0;33m"
-	red    = "\033[0;31m"
-	blue   = "\033[0;34m"
-	bold   = "\033[1m"
-	reset  = "\033[0m"
+	Green  = "\033[0;32m"
+	Yellow = "\033[0;33m"
+	Red    = "\033[0;31m"
+	Blue   = "\033[0;34m"
+	Bold   = "\033[1m"
+	Reset  = "\033[0m"
+
+	green  = Green
+	yellow = Yellow
+	red    = Red
+	blue   = Blue
+	bold   = Bold
+	reset  = Reset
 )
 
 func PrintSuccess(msg string) {

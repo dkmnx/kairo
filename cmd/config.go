@@ -22,24 +22,24 @@ var configCmd = &cobra.Command{
 		providerName := args[0]
 
 		if !providers.IsBuiltInProvider(providerName) {
-			cmd.Printf("Error: unknown provider '%s'\n", providerName)
-			cmd.Println("Available providers: anthropic, zai, minimax, kimi, deepseek, custom")
+			ui.PrintError(fmt.Sprintf("Unknown provider: '%s'", providerName))
+			ui.PrintInfo("Available: anthropic, zai, minimax, kimi, deepseek, custom")
 			return
 		}
 
 		dir := getConfigDir()
 		if dir == "" {
-			cmd.Println("Error: config directory not found")
+			ui.PrintError("Config directory not found")
 			return
 		}
 
 		if err := os.MkdirAll(dir, 0700); err != nil {
-			cmd.Printf("Error creating config directory: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error creating config directory: %v", err))
 			return
 		}
 
 		if err := crypto.EnsureKeyExists(dir); err != nil {
-			cmd.Printf("Error creating encryption key: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error creating encryption key: %v", err))
 			return
 		}
 
@@ -47,7 +47,7 @@ var configCmd = &cobra.Command{
 
 		cfg, err := config.LoadConfig(dir)
 		if err != nil && !os.IsNotExist(err) {
-			cmd.Printf("Error loading config: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
 		}
 		if err != nil {
@@ -67,31 +67,31 @@ var configCmd = &cobra.Command{
 
 		apiKey, err := ui.PromptSecret("API Key")
 		if err != nil {
-			cmd.Printf("Error reading API key: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error reading API key: %v", err))
 			return
 		}
 		if err := validate.ValidateAPIKey(apiKey); err != nil {
-			cmd.Printf("Error: %v\n", err)
+			ui.PrintError(err.Error())
 			return
 		}
 
 		if builtinDef.BaseURL == "" {
 			baseURL := ui.PromptWithDefault("Base URL", provider.BaseURL)
 			if err := validate.ValidateURL(baseURL); err != nil {
-				cmd.Printf("Error: %v\n", err)
+				ui.PrintError(err.Error())
 				return
 			}
 			provider.BaseURL = baseURL
 		} else {
 			provider.BaseURL = builtinDef.BaseURL
-			cmd.Printf("Base URL: %s\n", provider.BaseURL)
+			fmt.Printf("Base URL: %s\n", provider.BaseURL)
 		}
 
 		if builtinDef.Model == "" {
 			provider.Model = ui.PromptWithDefault("Model", provider.Model)
 		} else {
 			provider.Model = builtinDef.Model
-			cmd.Printf("Model: %s\n", provider.Model)
+			fmt.Printf("Model: %s\n", provider.Model)
 		}
 
 		if len(builtinDef.EnvVars) > 0 && len(provider.EnvVars) == 0 {
@@ -104,14 +104,14 @@ var configCmd = &cobra.Command{
 		}
 
 		if err := config.SaveConfig(dir, cfg); err != nil {
-			cmd.Printf("Error saving config: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 			return
 		}
 
 		secretsPath := filepath.Join(dir, "secrets.age")
 		secrets := fmt.Sprintf("%s_API_KEY=%s\n", providerName, apiKey)
 		if err := crypto.EncryptSecrets(secretsPath, filepath.Join(dir, "age.key"), secrets); err != nil {
-			cmd.Printf("Error saving API key: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error saving API key: %v", err))
 			return
 		}
 

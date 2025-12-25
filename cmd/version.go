@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +14,7 @@ var versionCmd = &cobra.Command{
 	Short: "Show version information",
 	Long:  "Display the version number of Kairo",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Kairo version: %s\n", version)
+		ui.PrintSuccess(fmt.Sprintf("Kairo version: %s", version))
 	},
 }
 

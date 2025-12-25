@@ -42,15 +42,11 @@ var listCmd = &cobra.Command{
 		fmt.Println()
 
 		for name, p := range cfg.Providers {
-			marker := " "
 			if name == cfg.DefaultProvider {
-				marker = "*"
+				fmt.Printf("  %s%s%s %s %s\n", ui.Green, "✓", ui.Reset, name, p.BaseURL)
+			} else {
+				fmt.Printf("  %s %s %s\n", " ", name, p.BaseURL)
 			}
-			status := " "
-			if p.BaseURL != "" {
-				status = "✓"
-			}
-			fmt.Printf("  %s %s %s %s\n", marker, status, name, p.BaseURL)
 		}
 
 		if cfg.DefaultProvider != "" {

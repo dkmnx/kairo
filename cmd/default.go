@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +17,7 @@ var defaultCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := getConfigDir()
 		if dir == "" {
-			cmd.Println("Error: config directory not found")
+			ui.PrintError("Config directory not found")
 			return
 		}
 
@@ -23,38 +25,40 @@ var defaultCmd = &cobra.Command{
 		if err != nil {
 			if os.IsNotExist(err) {
 				if len(args) == 0 {
-					cmd.Println("No default provider configured")
+					ui.PrintWarn("No default provider configured")
 				} else {
-					cmd.Printf("Error: provider '%s' not found in config\n", args[0])
+					ui.PrintError(fmt.Sprintf("Provider '%s' not found in config", args[0]))
 				}
 				return
 			}
-			cmd.Printf("Error loading config: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
 		}
 
 		if len(args) == 0 {
 			if cfg.DefaultProvider == "" {
-				cmd.Println("No default provider configured")
+				ui.PrintWarn("No default provider configured")
+				ui.PrintInfo("Run 'kairo default <provider>' to set one")
 			} else {
-				cmd.Printf("Default provider: %s\n", cfg.DefaultProvider)
+				ui.PrintSuccess(fmt.Sprintf("Default provider: %s", cfg.DefaultProvider))
 			}
 			return
 		}
 
 		providerName := args[0]
 		if _, ok := cfg.Providers[providerName]; !ok {
-			cmd.Printf("Error: provider '%s' not configured\n", providerName)
+			ui.PrintError(fmt.Sprintf("Provider '%s' not configured", providerName))
+			ui.PrintInfo("Run 'kairo config " + providerName + "' to configure")
 			return
 		}
 
 		cfg.DefaultProvider = providerName
 		if err := config.SaveConfig(dir, cfg); err != nil {
-			cmd.Printf("Error saving config: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 			return
 		}
 
-		cmd.Printf("Default provider set to: %s\n", providerName)
+		ui.PrintSuccess(fmt.Sprintf("Default provider set to: %s", providerName))
 	},
 }
 
