@@ -3,7 +3,9 @@ package ui
 import (
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/dkmnx/kairo/internal/config"
 	"golang.org/x/term"
 )
 
@@ -79,4 +81,28 @@ func PromptWithDefault(prompt, defaultVal string) string {
 		return defaultVal
 	}
 	return input
+}
+
+func PrintProviderOption(number int, name string, cfg *config.Config, secrets map[string]string, provider string) {
+	configured := isProviderConfigured(cfg, secrets, provider)
+	if configured {
+		fmt.Printf("  %d. %s✓%s %s\n", number, Green, Reset, name)
+	} else {
+		fmt.Printf("  %d.   %s\n", number, name)
+	}
+}
+
+func isProviderConfigured(cfg *config.Config, secrets map[string]string, provider string) bool {
+	if provider == "anthropic" {
+		_, exists := cfg.Providers["anthropic"]
+		return exists
+	}
+
+	apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(provider))
+	for k := range secrets {
+		if strings.EqualFold(k, apiKeyKey) {
+			return true
+		}
+	}
+	return false
 }

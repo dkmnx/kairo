@@ -14,6 +14,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider string) string {
+	if provider == "anthropic" {
+		if _, exists := cfg.Providers["anthropic"]; exists {
+			return ui.Green + "[x]" + ui.Reset
+		}
+		return "  "
+	}
+
+	apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(provider))
+	for k := range secrets {
+		if k == apiKeyKey {
+			return ui.Green + "[x]" + ui.Reset
+		}
+	}
+	return "  "
+}
+
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Interactive setup wizard",
@@ -50,28 +67,44 @@ var setupCmd = &cobra.Command{
 			}
 		}
 
+		secretsPath := filepath.Join(dir, "secrets.age")
+		keyPath := filepath.Join(dir, "age.key")
+
+		secrets := make(map[string]string)
+		existingSecrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
+		for _, line := range strings.Split(existingSecrets, "\n") {
+			if line == "" {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				secrets[parts[0]] = parts[1]
+			}
+		}
+
 		ui.PrintHeader("Kairo Setup Wizard")
 		fmt.Println()
 
 		fmt.Println("Available providers:")
-		fmt.Println("  1. Native Anthropic (no API key required)")
-		fmt.Println("  2. Z.AI")
-		fmt.Println("  3. MiniMax")
-		fmt.Println("  4. Kimi")
-		fmt.Println("  5. DeepSeek")
-		fmt.Println("  6. Custom Provider")
+		ui.PrintProviderOption(1, "Native Anthropic (no API key required)", cfg, secrets, "anthropic")
+		ui.PrintProviderOption(2, "Z.AI", cfg, secrets, "zai")
+		ui.PrintProviderOption(3, "MiniMax", cfg, secrets, "minimax")
+		ui.PrintProviderOption(4, "Kimi", cfg, secrets, "kimi")
+		ui.PrintProviderOption(5, "DeepSeek", cfg, secrets, "deepseek")
+		fmt.Println("  6.   Custom Provider")
+		fmt.Println("  q.   Exit")
 		fmt.Println()
 
 		selection := ui.PromptWithDefault("Select provider to configure", "")
 		selection = strings.TrimSpace(selection)
 
-		if selection == "" || selection == "done" {
+		if selection == "" || selection == "done" || selection == "q" || selection == "exit" {
 			return
 		}
 
 		num := parseIntOrZero(selection)
 		if num < 1 || num > 6 {
-			ui.PrintError("Invalid selection. Please enter a number 1-6.")
+			ui.PrintError("Invalid selection. Please enter a number 1-6, or 'q' to exit.")
 			return
 		}
 
@@ -153,34 +186,14 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		secretsPath := filepath.Join(dir, "secrets.age")
-		keyPath := filepath.Join(dir, "age.key")
-
-		var existingSecrets string
-		existingSecrets, err = crypto.DecryptSecrets(secretsPath, keyPath)
-		if err != nil {
-			existingSecrets = ""
-		}
-
-		lines := make(map[string]string)
-		for _, line := range strings.Split(existingSecrets, "\n") {
-			if line == "" {
-				continue
-			}
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) == 2 {
-				lines[parts[0]] = parts[1]
-			}
-		}
-
 		if providerName == "custom" {
-			lines[fmt.Sprintf("CUSTOM_%s_API_KEY", providerName)] = apiKey
+			secrets[fmt.Sprintf("CUSTOM_%s_API_KEY", providerName)] = apiKey
 		} else {
-			lines[fmt.Sprintf("%s_API_KEY", providerName)] = apiKey
+			secrets[fmt.Sprintf("%s_API_KEY", providerName)] = apiKey
 		}
 
 		var secretsBuilder strings.Builder
-		for key, value := range lines {
+		for key, value := range secrets {
 			if key != "" && value != "" {
 				secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
 			}
