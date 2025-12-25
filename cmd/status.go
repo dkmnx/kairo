@@ -41,8 +41,7 @@ var statusCmd = &cobra.Command{
 			return
 		}
 
-		ui.PrintHeader("Provider Status")
-		fmt.Println()
+		ui.PrintSection("Provider Status")
 
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
@@ -57,14 +56,13 @@ var statusCmd = &cobra.Command{
 
 		for name, provider := range cfg.Providers {
 			if name == "anthropic" {
-				fmt.Printf("  %s%s%s %s\n", ui.Green, "✓", ui.Reset, name)
-				fmt.Printf("      Native Anthropic (no API key required)\n")
+				ui.PrintInfo(fmt.Sprintf("✓ %s", name))
+				ui.PrintInfo("    Native Anthropic (no API key required)")
 				continue
 			}
 
 			if provider.BaseURL == "" {
-				fmt.Printf("  %s%s%s %s\n", ui.Yellow, "⚠", ui.Reset, name)
-				fmt.Printf("      No base URL configured\n")
+				ui.PrintWarn(fmt.Sprintf("%s - No base URL configured", name))
 				continue
 			}
 
@@ -82,22 +80,19 @@ var statusCmd = &cobra.Command{
 			}
 
 			if !hasApiKey {
-				fmt.Printf("  %s%s%s %s\n", ui.Yellow, "?", ui.Reset, name)
-				fmt.Printf("      %s\n", provider.BaseURL)
-				fmt.Printf("      %sAPI key not configured%s\n", ui.Yellow, ui.Reset)
+				ui.PrintWarn(fmt.Sprintf("%s - API key not configured", name))
+				ui.PrintInfo(fmt.Sprintf("    %s", provider.BaseURL))
 				continue
 			}
 
-			fmt.Printf("  %s%s%s %s\n", ui.Green, "✓", ui.Reset, name)
-			fmt.Printf("      %s\n", provider.BaseURL)
+			ui.PrintInfo(fmt.Sprintf("✓ %s", name))
+			ui.PrintInfo(fmt.Sprintf("    %s", provider.BaseURL))
 		}
 
 		if cfg.DefaultProvider != "" {
-			fmt.Println()
 			ui.PrintInfo(fmt.Sprintf("Default provider: %s", cfg.DefaultProvider))
 		}
 
-		fmt.Println()
 		ui.PrintInfo("To configure a provider: kairo config <provider>")
 	},
 }

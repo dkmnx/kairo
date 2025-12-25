@@ -7,7 +7,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "dev"
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = ""
+)
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
@@ -15,6 +19,12 @@ var versionCmd = &cobra.Command{
 	Long:  "Display the version number of Kairo",
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.PrintSuccess(fmt.Sprintf("Kairo version: %s", version))
+		if commit != "unknown" && commit != "" {
+			ui.PrintInfo(fmt.Sprintf("Commit: %s", commit))
+		}
+		if date != "" {
+			ui.PrintInfo(fmt.Sprintf("Date: %s", date))
+		}
 	},
 }
 

@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/pkg/env"
 	"github.com/spf13/cobra"
 )
 
@@ -65,9 +66,5 @@ func getConfigDir() string {
 	if configDir != "" {
 		return configDir
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return home + "/.config/kairo"
+	return env.GetConfigDir()
 }

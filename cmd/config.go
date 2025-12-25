@@ -63,21 +63,21 @@ var configCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("Configuring %s\n\n", provider.Name)
+		ui.PrintHeader(fmt.Sprintf("Configuring %s", provider.Name))
 
 		apiKey, err := ui.PromptSecret("API Key")
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error reading API key: %v", err))
 			return
 		}
-		if err := validate.ValidateAPIKey(apiKey); err != nil {
+		if err := validate.ValidateAPIKey(apiKey, provider.Name); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}
 
 		if builtinDef.BaseURL == "" {
 			baseURL := ui.PromptWithDefault("Base URL", provider.BaseURL)
-			if err := validate.ValidateURL(baseURL); err != nil {
+			if err := validate.ValidateURL(baseURL, provider.Name); err != nil {
 				ui.PrintError(err.Error())
 				return
 			}
@@ -88,7 +88,7 @@ var configCmd = &cobra.Command{
 				currentBaseURL = builtinDef.BaseURL
 			}
 			baseURL := ui.PromptWithDefault("Base URL", currentBaseURL)
-			if err := validate.ValidateURL(baseURL); err != nil {
+			if err := validate.ValidateURL(baseURL, provider.Name); err != nil {
 				ui.PrintError(err.Error())
 				return
 			}

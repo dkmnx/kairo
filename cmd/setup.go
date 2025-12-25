@@ -88,17 +88,16 @@ var setupCmd = &cobra.Command{
 		}
 
 		ui.PrintHeader("Kairo Setup Wizard")
-		fmt.Println()
 
-		fmt.Println("Available providers:")
+		ui.PrintInfo("Available providers:")
 		ui.PrintProviderOption(1, "Native Anthropic (no API key required)", cfg, secrets, "anthropic")
 		ui.PrintProviderOption(2, "Z.AI", cfg, secrets, "zai")
 		ui.PrintProviderOption(3, "MiniMax", cfg, secrets, "minimax")
 		ui.PrintProviderOption(4, "Kimi", cfg, secrets, "kimi")
 		ui.PrintProviderOption(5, "DeepSeek", cfg, secrets, "deepseek")
-		fmt.Println("  6.   Custom Provider")
-		fmt.Println("  q.   Exit")
-		fmt.Println()
+		ui.PrintInfo("6.   Custom Provider")
+		ui.PrintInfo("q.   Exit")
+		ui.PrintInfo("")
 
 		selection := ui.PromptWithDefault("Select provider to configure", "")
 		selection = strings.TrimSpace(selection)
@@ -149,7 +148,7 @@ var setupCmd = &cobra.Command{
 			def.Name = providerName
 		}
 
-		fmt.Println()
+		ui.PrintInfo("")
 		ui.PrintHeader(fmt.Sprintf("%s Configuration", def.Name))
 
 		provider := config.Provider{
@@ -161,13 +160,13 @@ var setupCmd = &cobra.Command{
 			ui.PrintError(fmt.Sprintf("Error reading API key: %v", err))
 			return
 		}
-		if err := validate.ValidateAPIKey(apiKey); err != nil {
+		if err := validate.ValidateAPIKey(apiKey, def.Name); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}
 
 		baseURL := ui.PromptWithDefault("Base URL", def.BaseURL)
-		if err := validate.ValidateURL(baseURL); err != nil {
+		if err := validate.ValidateURL(baseURL, def.Name); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}

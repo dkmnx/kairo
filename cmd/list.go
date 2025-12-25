@@ -38,19 +38,17 @@ var listCmd = &cobra.Command{
 			return
 		}
 
-		ui.PrintHeader("Configured Providers")
-		fmt.Println()
+		ui.PrintSection("Configured Providers")
 
 		for name, p := range cfg.Providers {
 			if name == cfg.DefaultProvider {
-				fmt.Printf("  %s%s%s %s %s\n", ui.Green, "✓", ui.Reset, name, p.BaseURL)
+				ui.PrintInfo(fmt.Sprintf("✓ %s %s", name, p.BaseURL))
 			} else {
-				fmt.Printf("  %s %s %s\n", " ", name, p.BaseURL)
+				ui.PrintInfo(fmt.Sprintf("  %s %s", name, p.BaseURL))
 			}
 		}
 
 		if cfg.DefaultProvider != "" {
-			fmt.Println()
 			ui.PrintInfo(fmt.Sprintf("Default provider: %s", cfg.DefaultProvider))
 		}
 	},

@@ -1,38 +1,51 @@
 package validate
 
 import (
+	"fmt"
 	"net"
 	"net/url"
 )
 
-func ValidateAPIKey(key string) error {
+func ValidateAPIKey(key string, providerName string) error {
 	if len(key) < 8 {
-		return ErrInvalidAPIKey
+		return &ValidationError{
+			msg: fmt.Sprintf("%s API key must be at least 8 characters (current: %d)", providerName, len(key)),
+		}
 	}
 	return nil
 }
 
-func ValidateURL(rawURL string) error {
+func ValidateURL(rawURL string, providerName string) error {
 	if rawURL == "" {
-		return ErrInvalidURL
+		return &ValidationError{
+			msg: fmt.Sprintf("%s BaseURL cannot be empty", providerName),
+		}
 	}
 
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return ErrInvalidURL
+		return &ValidationError{
+			msg: fmt.Sprintf("%s BaseURL is not a valid URL: %v", providerName, err),
+		}
 	}
 
 	if parsed.Scheme != "https" {
-		return ErrInvalidURL
+		return &ValidationError{
+			msg: fmt.Sprintf("%s BaseURL must use HTTPS protocol", providerName),
+		}
 	}
 
 	host := parsed.Host
 	if host == "" {
-		return ErrInvalidURL
+		return &ValidationError{
+			msg: fmt.Sprintf("%s BaseURL missing host component", providerName),
+		}
 	}
 
 	if isBlockedHost(host) {
-		return ErrInvalidURL
+		return &ValidationError{
+			msg: fmt.Sprintf("%s BaseURL cannot use blocked host: %s (localhost/private IPs not allowed)", providerName, host),
+		}
 	}
 
 	return nil
