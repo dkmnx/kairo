@@ -53,7 +53,11 @@ var switchCmd = &cobra.Command{
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
 		secrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
-		if err == nil {
+		if err != nil {
+			if verbose {
+				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt secrets: %v", err))
+			}
+		} else {
 			for _, line := range strings.Split(secrets, "\n") {
 				if line == "" {
 					continue

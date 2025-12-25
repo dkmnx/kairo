@@ -71,7 +71,12 @@ var setupCmd = &cobra.Command{
 		keyPath := filepath.Join(dir, "age.key")
 
 		secrets := make(map[string]string)
-		existingSecrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
+		existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
+		if err != nil {
+			if verbose {
+				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
+			}
+		}
 		for _, line := range strings.Split(existingSecrets, "\n") {
 			if line == "" {
 				continue
