@@ -9,6 +9,9 @@ import (
 )
 
 func TestDefaultCommandNoArgs(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 
@@ -33,6 +36,9 @@ providers:
 }
 
 func TestDefaultCommandSetProvider(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 
@@ -63,7 +69,6 @@ providers:
 	}
 	t.Logf("After: configDir=%s", configDir)
 
-	configDir = tmpDir
 	cfg, err := config.LoadConfig(tmpDir)
 	if err != nil {
 		t.Fatalf("LoadConfig() error = %v", err)
@@ -80,6 +85,9 @@ providers:
 }
 
 func TestDefaultCommandProviderNotFound(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 

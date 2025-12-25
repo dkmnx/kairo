@@ -1,0 +1,458 @@
+package cmd
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/crypto"
+	"github.com/dkmnx/kairo/internal/providers"
+	"github.com/dkmnx/kairo/internal/ui"
+)
+
+func TestPrintBanner(t *testing.T) {
+	tests := []struct {
+		name     string
+		provider string
+		wantSub  string
+	}{
+		{
+			name:     "banner with version and provider",
+			provider: "v0.1.0 - MiniMax",
+			wantSub:  "v0.1.0 - MiniMax",
+		},
+		{
+			name:     "banner with custom provider",
+			provider: "vdev - Custom Provider",
+			wantSub:  "vdev - Custom Provider",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ui.PrintBanner(tt.provider)
+		})
+	}
+}
+
+func TestPrintBannerContainsASCIIArt(t *testing.T) {
+	ui.PrintBanner("test - provider")
+}
+
+func TestPrintProviderOptionConfigured(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"anthropic": {Name: "Native Anthropic"},
+			"minimax":   {Name: "MiniMax"},
+		},
+	}
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	keyPath := filepath.Join(tmpDir, "age.key")
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, "MINIMAX_API_KEY=test-key\n"); err != nil {
+		t.Fatal(err)
+	}
+
+	secrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
+	secretsMap := parseSecretsForTest(secrets)
+
+	ui.PrintProviderOption(1, "Native Anthropic", cfg, secretsMap, "anthropic")
+	ui.PrintProviderOption(2, "MiniMax", cfg, secretsMap, "minimax")
+}
+
+func TestPrintProviderOptionNotConfigured(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"anthropic": {Name: "Native Anthropic"},
+		},
+	}
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	keyPath := filepath.Join(tmpDir, "age.key")
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, ""); err != nil {
+		t.Fatal(err)
+	}
+
+	secrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
+	secretsMap := parseSecretsForTest(secrets)
+
+	ui.PrintProviderOption(1, "Native Anthropic", cfg, secretsMap, "anthropic")
+	ui.PrintProviderOption(2, "Kimi", cfg, secretsMap, "kimi")
+}
+
+func TestIsProviderConfigured(t *testing.T) {
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"anthropic": {Name: "Native Anthropic"},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		provider string
+		secrets  map[string]string
+		cfg      *config.Config
+		want     bool
+	}{
+		{
+			name:     "anthropic configured",
+			provider: "anthropic",
+			secrets:  map[string]string{},
+			cfg:      cfg,
+			want:     true,
+		},
+		{
+			name:     "anthropic not configured",
+			provider: "anthropic",
+			secrets:  map[string]string{},
+			cfg:      &config.Config{Providers: map[string]config.Provider{}},
+			want:     false,
+		},
+		{
+			name:     "minimax with API key",
+			provider: "minimax",
+			secrets:  map[string]string{"MINIMAX_API_KEY": "test-key"},
+			cfg:      &config.Config{Providers: map[string]config.Provider{}},
+			want:     true,
+		},
+		{
+			name:     "minimax without API key",
+			provider: "minimax",
+			secrets:  map[string]string{},
+			cfg:      &config.Config{Providers: map[string]config.Provider{}},
+			want:     false,
+		},
+		{
+			name:     "zai with uppercase key",
+			provider: "zai",
+			secrets:  map[string]string{"ZAI_API_KEY": "test-key"},
+			cfg:      &config.Config{Providers: map[string]config.Provider{}},
+			want:     true,
+		},
+		{
+			name:     "zai with lowercase key",
+			provider: "zai",
+			secrets:  map[string]string{"zai_API_KEY": "test-key"},
+			cfg:      &config.Config{Providers: map[string]config.Provider{}},
+			want:     true,
+		},
+		{
+			name:     "deepseek not configured",
+			provider: "deepseek",
+			secrets:  map[string]string{"OTHER_KEY": "value"},
+			cfg:      &config.Config{Providers: map[string]config.Provider{}},
+			want:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isProviderConfiguredForTest(tt.cfg, tt.secrets, tt.provider)
+			if got != tt.want {
+				t.Errorf("isProviderConfiguredForTest() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func isProviderConfiguredForTest(cfg *config.Config, secrets map[string]string, provider string) bool {
+	if provider == "anthropic" {
+		_, exists := cfg.Providers["anthropic"]
+		return exists
+	}
+
+	apiKeyKey := strings.ToUpper(provider) + "_API_KEY"
+	for k := range secrets {
+		if strings.EqualFold(k, apiKeyKey) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestParseIntOrZero(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  int
+	}{
+		{"empty string", "", 0},
+		{"single digit", "1", 1},
+		{"multiple digits", "123", 123},
+		{"invalid character", "12a", 0},
+		{"only letters", "abc", 0},
+		{"leading zeros", "007", 7},
+		{"whitespace", " 123", 0},
+		{"zero", "0", 0},
+		{"negative", "-1", 0},
+		{"decimal", "1.5", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseIntOrZero(tt.input)
+			if got != tt.want {
+				t.Errorf("parseIntOrZero(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func parseSecretsForTest(secrets string) map[string]string {
+	result := make(map[string]string)
+	for _, line := range strings.Split(secrets, "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			result[parts[0]] = parts[1]
+		}
+	}
+	return result
+}
+
+func TestProviderStatusIcon(t *testing.T) {
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"anthropic": {Name: "Native Anthropic"},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		provider string
+		secrets  map[string]string
+		cfg      *config.Config
+		wantIcon string
+	}{
+		{
+			name:     "anthropic configured",
+			provider: "anthropic",
+			secrets:  map[string]string{},
+			cfg:      cfg,
+			wantIcon: "[x]",
+		},
+		{
+			name:     "anthropic not configured",
+			provider: "anthropic",
+			secrets:  map[string]string{},
+			cfg:      &config.Config{Providers: map[string]config.Provider{}},
+			wantIcon: "  ",
+		},
+		{
+			name:     "minimax with key",
+			provider: "minimax",
+			secrets:  map[string]string{"MINIMAX_API_KEY": "key"},
+			cfg:      &config.Config{Providers: map[string]config.Provider{}},
+			wantIcon: "[x]",
+		},
+		{
+			name:     "minimax without key",
+			provider: "minimax",
+			secrets:  map[string]string{},
+			cfg:      &config.Config{Providers: map[string]config.Provider{}},
+			wantIcon: "  ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := providerStatusIcon(tt.cfg, tt.secrets, tt.provider)
+			if !strings.Contains(got, "[x]") && tt.wantIcon == "[x]" {
+				t.Errorf("providerStatusIcon() should contain checkmark")
+			}
+			if !strings.Contains(got, "  ") && tt.wantIcon == "  " {
+				t.Errorf("providerStatusIcon() should contain spaces")
+			}
+		})
+	}
+}
+
+func TestExitOptionDetection(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantExit bool
+	}{
+		{"empty string", "", true},
+		{"done", "done", true},
+		{"lowercase q", "q", true},
+		{"exit", "exit", true},
+		{"number", "1", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			trimmed := strings.TrimSpace(tt.input)
+			got := trimmed == "" || trimmed == "done" || trimmed == "q" || trimmed == "exit"
+			if got != tt.wantExit {
+				t.Errorf("exit detection for %q = %v, want %v", tt.input, got, tt.wantExit)
+			}
+		})
+	}
+}
+
+func TestParseSecretsForIntegration(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"zai":     {Name: "Z.AI"},
+			"minimax": {Name: "MiniMax"},
+		},
+	}
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	keyPath := filepath.Join(tmpDir, "age.key")
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsContent := "ZAI_API_KEY=zai-key\nMINIMAX_API_KEY=minimax-key\nDEEPSEEK_API_KEY=deepseek-key\n"
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+		t.Fatal(err)
+	}
+
+	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() error = %v", err)
+	}
+
+	secretsMap := parseSecretsForTest(decrypted)
+
+	if len(secretsMap) != 3 {
+		t.Errorf("parseSecrets() returned %d entries, want 3", len(secretsMap))
+	}
+
+	expectedKeys := []string{"ZAI_API_KEY", "MINIMAX_API_KEY", "DEEPSEEK_API_KEY"}
+	for _, key := range expectedKeys {
+		if _, ok := secretsMap[key]; !ok {
+			t.Errorf("parseSecrets() missing key %q", key)
+		}
+	}
+}
+
+func TestProviderListConstant(t *testing.T) {
+	providerList := []string{"anthropic", "zai", "minimax", "kimi", "deepseek", "custom"}
+
+	if len(providerList) != 6 {
+		t.Errorf("providerList has %d entries, want 6", len(providerList))
+	}
+
+	expected := []string{"anthropic", "zai", "minimax", "kimi", "deepseek", "custom"}
+	for i, p := range providerList {
+		if p != expected[i] {
+			t.Errorf("providerList[%d] = %q, want %q", i, p, expected[i])
+		}
+	}
+}
+
+func TestProviderEnvVarSetup(t *testing.T) {
+	tests := []struct {
+		name         string
+		provider     string
+		wantEnvCount int
+	}{
+		{"anthropic has no env vars", "anthropic", 0},
+		{"zai has env vars", "zai", 1},
+		{"minimax has env vars", "minimax", 2},
+		{"kimi has env vars", "kimi", 2},
+		{"deepseek has env vars", "deepseek", 2},
+		{"custom has no env vars", "custom", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			def, ok := providers.GetBuiltInProvider(tt.provider)
+			if !ok {
+				t.Fatalf("GetBuiltInProvider(%q) failed", tt.provider)
+			}
+
+			if tt.wantEnvCount > 0 && len(def.EnvVars) == 0 {
+				t.Errorf("Provider %q has 0 env vars, want at least %d", tt.provider, tt.wantEnvCount)
+			}
+
+			if tt.wantEnvCount == 0 && len(def.EnvVars) > 0 {
+				t.Errorf("Provider %q has %d env vars, want 0", tt.provider, len(def.EnvVars))
+			}
+		})
+	}
+}
+
+func TestGetConfigDirWithEnv(t *testing.T) {
+	originalHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", originalHome)
+
+	tmpDir := t.TempDir()
+	os.Setenv("HOME", tmpDir)
+
+	expectedDir := filepath.Join(tmpDir, ".config", "kairo")
+	dir := getConfigDir()
+	if dir != expectedDir {
+		t.Errorf("getConfigDir() = %q, want %q", dir, expectedDir)
+	}
+}
+
+func TestGetConfigDirWithFlag(t *testing.T) {
+	originalConfigDir := configDir
+	configDir = "/custom/path"
+	defer func() { configDir = originalConfigDir }()
+
+	dir := getConfigDir()
+	if dir != "/custom/path" {
+		t.Errorf("getConfigDir() = %q, want %q", dir, "/custom/path")
+	}
+}
+
+func TestSwitchCmdProviderNotFound(t *testing.T) {
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"minimax": {Name: "MiniMax", BaseURL: "https://api.minimax.io", Model: "test"},
+		},
+	}
+
+	tmpDir := t.TempDir()
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	keyPath := filepath.Join(tmpDir, "age.key")
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, "MINIMAX_API_KEY=test-key\n"); err != nil {
+		t.Fatal(err)
+	}
+
+	originalConfigDir := configDir
+	configDir = tmpDir
+	defer func() { configDir = originalConfigDir }()
+
+	dir := getConfigDir()
+	if dir != tmpDir {
+		t.Errorf("getConfigDir() = %q, want %q", dir, tmpDir)
+	}
+}

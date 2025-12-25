@@ -7,6 +7,9 @@ import (
 )
 
 func TestTestCommandNoConfig(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 
@@ -17,6 +20,9 @@ func TestTestCommandNoConfig(t *testing.T) {
 }
 
 func TestTestCommandProviderNotFound(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 

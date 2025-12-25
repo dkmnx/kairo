@@ -8,6 +8,9 @@ import (
 )
 
 func TestListCommandNoConfig(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 
@@ -22,6 +25,9 @@ func TestListCommandNoConfig(t *testing.T) {
 }
 
 func TestListCommandWithConfig(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 

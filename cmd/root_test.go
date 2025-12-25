@@ -7,6 +7,9 @@ import (
 )
 
 func TestRootCommandNoArgsWithDefault(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 
@@ -31,6 +34,9 @@ providers:
 }
 
 func TestRootCommandNoArgsNoDefault(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 
@@ -42,6 +48,9 @@ func TestRootCommandNoArgsNoDefault(t *testing.T) {
 }
 
 func TestRootCommandNoArgsNoConfig(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
 	tmpDir := t.TempDir()
 	configDir = tmpDir
 
