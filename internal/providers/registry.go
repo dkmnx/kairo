@@ -62,3 +62,11 @@ func GetBuiltInProvider(name string) (ProviderDefinition, bool) {
 	def, ok := BuiltInProviders[name]
 	return def, ok
 }
+
+func GetProviderList() []string {
+	providers := make([]string, 0, len(BuiltInProviders))
+	for name := range BuiltInProviders {
+		providers = append(providers, name)
+	}
+	return providers
+}

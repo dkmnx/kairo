@@ -107,13 +107,13 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
+		providerList := providers.GetProviderList()
 		num := parseIntOrZero(selection)
-		if num < 1 || num > 6 {
-			ui.PrintError("Invalid selection. Please enter a number 1-6, or 'q' to exit.")
+		if num < 1 || num > len(providerList) {
+			ui.PrintError(fmt.Sprintf("Invalid selection. Please enter a number 1-%d, or 'q' to exit.", len(providerList)))
 			return
 		}
 
-		providerList := []string{"anthropic", "zai", "minimax", "kimi", "deepseek", "custom"}
 		providerName := providerList[num-1]
 
 		if providerName == "anthropic" {
