@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+kairo
 
 # Test binary
 *.test
