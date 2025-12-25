@@ -15,7 +15,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
 **Kairo** is a Go CLI tool for managing Claude Code API providers. It's a Go
-port of Clauver (bash-based CLI) focused on core provider switching with
+port of [clauver](https://github.com/dkmnx/clauver) (bash-based CLI) focused on core provider switching with
 encrypted secrets management using age encryption.
 
 ## Features
@@ -170,12 +170,12 @@ go build -o kairo
 kairo/
 ├── cmd/                  # CLI command implementations
 ├── internal/             # Private application code
-│   ├── config/          # Configuration loading/saving
-│   ├── crypto/          # age encryption/decryption
-│   ├── ui/              # User interface
-│   ├── providers/       # Provider registry and definitions
-│   └── validate/        # Input validation
-├── pkg/                 # Public libraries
+│   ├── config/           # Configuration loading/saving
+│   ├── crypto/           # age encryption/decryption
+│   ├── ui/               # User interface
+│   ├── providers/        # Provider registry and definitions
+│   └── validate/         # Input validation
+├── pkg/                  # Public libraries
 ├── go.mod
 └── main.go
 ```
