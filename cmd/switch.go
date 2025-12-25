@@ -60,6 +60,13 @@ var switchCmd = &cobra.Command{
 					continue
 				}
 				providerEnv = append(providerEnv, line)
+
+				if strings.HasPrefix(line, fmt.Sprintf("%s_API_KEY=", providerName)) {
+					parts := strings.SplitN(line, "=", 2)
+					if len(parts) == 2 {
+						providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_AUTH_TOKEN=%s", parts[1]))
+					}
+				}
 			}
 		}
 

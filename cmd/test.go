@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -20,32 +21,34 @@ var testCmd = &cobra.Command{
 
 		dir := getConfigDir()
 		if dir == "" {
-			cmd.Println("Error: config directory not found")
+			ui.PrintError("Config directory not found")
 			return
 		}
 
 		cfg, err := config.LoadConfig(dir)
 		if err != nil {
 			if os.IsNotExist(err) {
-				cmd.Printf("Error: provider '%s' not configured\n", providerName)
+				ui.PrintError(fmt.Sprintf("Provider '%s' not configured", providerName))
+				ui.PrintInfo("Run 'kairo config " + providerName + "' to configure")
 				return
 			}
-			cmd.Printf("Error loading config: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
 		}
 
 		provider, ok := cfg.Providers[providerName]
 		if !ok {
-			cmd.Printf("Error: provider '%s' not configured\n", providerName)
+			ui.PrintError(fmt.Sprintf("Provider '%s' not configured", providerName))
+			ui.PrintInfo("Run 'kairo config " + providerName + "' to configure")
 			return
 		}
 
 		if provider.BaseURL == "" {
-			cmd.Printf("Skipping %s: no base URL configured\n", providerName)
+			ui.PrintWarn(fmt.Sprintf("Skipping %s: no base URL configured", providerName))
 			return
 		}
 
-		cmd.Printf("Testing %s (%s)...\n", providerName, provider.BaseURL)
+		ui.PrintInfo(fmt.Sprintf("Testing %s (%s)...", providerName, provider.BaseURL))
 
 		client := &http.Client{
 			Timeout: 10 * time.Second,
@@ -53,21 +56,21 @@ var testCmd = &cobra.Command{
 
 		req, err := http.NewRequest("GET", provider.BaseURL+"/models", nil)
 		if err != nil {
-			cmd.Printf("  Error: %v\n", err)
+			ui.PrintError(err.Error())
 			return
 		}
 
 		resp, err := client.Do(req)
 		if err != nil {
-			cmd.Printf("  Failed: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Failed: %v", err))
 			return
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
-			cmd.Printf("  OK: HTTP %d\n", resp.StatusCode)
+			ui.PrintSuccess(fmt.Sprintf("OK: HTTP %d", resp.StatusCode))
 		} else {
-			cmd.Printf("  Warning: HTTP %d\n", resp.StatusCode)
+			ui.PrintWarn(fmt.Sprintf("HTTP %d", resp.StatusCode))
 		}
 	},
 }

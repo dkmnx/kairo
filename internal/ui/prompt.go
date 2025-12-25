@@ -7,20 +7,37 @@ import (
 	"golang.org/x/term"
 )
 
+const (
+	green  = "\033[0;32m"
+	yellow = "\033[0;33m"
+	red    = "\033[0;31m"
+	blue   = "\033[0;34m"
+	bold   = "\033[1m"
+	reset  = "\033[0m"
+)
+
 func PrintSuccess(msg string) {
-	fmt.Printf("✓ %s\n", msg)
+	fmt.Printf("%s✓%s %s%s\n", green, reset, msg, reset)
 }
 
 func PrintWarn(msg string) {
-	fmt.Printf("⚠ %s\n", msg)
+	fmt.Printf("%s⚠%s %s%s\n", yellow, reset, msg, reset)
 }
 
 func PrintError(msg string) {
-	fmt.Printf("✗ %s\n", msg)
+	fmt.Fprintf(os.Stderr, "%s✗%s %s%s\n", red, reset, msg, reset)
 }
 
 func PrintInfo(msg string) {
-	fmt.Printf("ℹ %s\n", msg)
+	fmt.Printf("%sℹ%s %s%s\n", blue, reset, msg, reset)
+}
+
+func PrintHeader(msg string) {
+	fmt.Printf("%s%s%s\n", bold, msg, reset)
+}
+
+func PrintSection(msg string) {
+	fmt.Printf("\n%s=== %s ===%s\n", bold, msg, reset)
 }
 
 func PromptSecret(prompt string) (string, error) {

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -16,28 +17,30 @@ var statusCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := getConfigDir()
 		if dir == "" {
-			cmd.Println("No configured providers")
+			ui.PrintWarn("No providers configured")
+			ui.PrintInfo("Run 'kairo setup' to get started")
 			return
 		}
 
 		cfg, err := config.LoadConfig(dir)
 		if err != nil {
 			if os.IsNotExist(err) {
-				cmd.Println("No configured providers")
+				ui.PrintWarn("No providers configured")
+				ui.PrintInfo("Run 'kairo setup' to get started")
 				return
 			}
-			cmd.Printf("Error loading config: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
 		}
 
 		if len(cfg.Providers) == 0 {
-			cmd.Println("No configured providers")
+			ui.PrintWarn("No providers configured")
+			ui.PrintInfo("Run 'kairo setup' to get started")
 			return
 		}
 
-		cmd.Println("Provider Status")
-		cmd.Println("===============")
-		cmd.Println()
+		ui.PrintHeader("Provider Status")
+		fmt.Println()
 
 		var wg sync.WaitGroup
 		results := make(map[string]string)
@@ -49,7 +52,7 @@ var statusCmd = &cobra.Command{
 				defer wg.Done()
 				ok, status := testProvider(p)
 				mu.Lock()
-				results[n] = fmt.Sprintf("%s: %s", statusMarker(ok), status)
+				results[n] = fmt.Sprintf("%s %s", statusMarker(ok), status)
 				mu.Unlock()
 			}(name, provider)
 		}
@@ -57,20 +60,21 @@ var statusCmd = &cobra.Command{
 		wg.Wait()
 
 		for name, status := range results {
-			cmd.Printf("  %s - %s\n", name, status)
+			fmt.Printf("  %s - %s\n", name, status)
 		}
 
 		if cfg.DefaultProvider != "" {
-			cmd.Printf("\nDefault provider: %s\n", cfg.DefaultProvider)
+			fmt.Println()
+			ui.PrintInfo(fmt.Sprintf("Default provider: %s", cfg.DefaultProvider))
 		}
 	},
 }
 
 func statusMarker(ok bool) string {
 	if ok {
-		return "✓"
+		return "✓ OK"
 	}
-	return "✗"
+	return "✗ Failed"
 }
 
 func init() {

@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -14,57 +16,50 @@ var listCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := getConfigDir()
 		if dir == "" {
-			cmd.Println("No configured providers")
+			ui.PrintError("Config directory not found")
+			ui.PrintInfo("Run 'kairo setup' to configure providers")
 			return
 		}
 
 		cfg, err := config.LoadConfig(dir)
 		if err != nil {
 			if os.IsNotExist(err) {
-				cmd.Println("No configured providers")
+				ui.PrintWarn("No providers configured")
+				ui.PrintInfo("Run 'kairo setup' to get started")
 				return
 			}
-			cmd.Printf("Error loading config: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
 		}
 
 		if len(cfg.Providers) == 0 {
-			cmd.Println("No configured providers")
+			ui.PrintWarn("No providers configured")
+			ui.PrintInfo("Run 'kairo setup' to get started")
 			return
 		}
 
-		cmd.Println("Configured providers:")
+		ui.PrintHeader("Configured Providers")
+		fmt.Println()
+
 		for name, p := range cfg.Providers {
 			marker := " "
 			if name == cfg.DefaultProvider {
 				marker = "*"
 			}
-			cmd.Printf("  %s %s (%s)\n", marker, name, p.BaseURL)
+			status := " "
+			if p.BaseURL != "" {
+				status = "✓"
+			}
+			fmt.Printf("  %s %s %s %s\n", marker, status, name, p.BaseURL)
 		}
 
 		if cfg.DefaultProvider != "" {
-			cmd.Printf("\nDefault provider: %s\n", cfg.DefaultProvider)
+			fmt.Println()
+			ui.PrintInfo(fmt.Sprintf("Default provider: %s", cfg.DefaultProvider))
 		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(listCmd)
-}
-
-func providerExists(name string, cfg *config.Config) bool {
-	_, ok := cfg.Providers[name]
-	return ok
-}
-
-func getProvider(name string, cfg *config.Config) (config.Provider, bool) {
-	p, ok := cfg.Providers[name]
-	return p, ok
-}
-
-func setProvider(name string, p config.Provider, cfg *config.Config) {
-	if cfg.Providers == nil {
-		cfg.Providers = make(map[string]config.Provider)
-	}
-	cfg.Providers[name] = p
 }
