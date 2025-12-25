@@ -1,0 +1,101 @@
+package crypto
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestKeyGeneration(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(keyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+		t.Error("key file not created")
+	}
+
+	data, err := os.ReadFile(keyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) == 0 {
+		t.Error("key file is empty")
+	}
+}
+
+func TestEncryptDecryptRoundtrip(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(keyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	secrets := `ZAI_API_KEY=sk-test-key
+MINIMAX_API_KEY=sk-another-key
+`
+
+	err = EncryptSecrets(secretsPath, keyPath, secrets)
+	if err != nil {
+		t.Fatalf("EncryptSecrets() error = %v", err)
+	}
+
+	decrypted, err := DecryptSecrets(secretsPath, keyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() error = %v", err)
+	}
+
+	if decrypted != secrets {
+		t.Errorf("decrypted = %q, want %q", decrypted, secrets)
+	}
+}
+
+func TestDecryptInvalidFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(keyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "nonexistent.age")
+	_, err = DecryptSecrets(secretsPath, keyPath)
+	if err == nil {
+		t.Error("DecryptSecrets() should error on nonexistent file")
+	}
+}
+
+func TestEncryptToReadonlyDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	writableDir := filepath.Join(tmpDir, "writable")
+	err := os.MkdirAll(writableDir, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	keyPath := filepath.Join(writableDir, "age.key")
+	err = GenerateKey(keyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	readonlyDir := filepath.Join(tmpDir, "readonly")
+	err = os.MkdirAll(readonlyDir, 0555)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(readonlyDir, "secrets.age")
+	err = EncryptSecrets(secretsPath, keyPath, "test=secret")
+	if err == nil {
+		t.Error("EncryptSecrets() should error on readonly directory")
+	}
+}
