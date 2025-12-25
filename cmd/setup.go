@@ -186,11 +186,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		if providerName == "custom" {
-			secrets[fmt.Sprintf("CUSTOM_%s_API_KEY", providerName)] = apiKey
-		} else {
-			secrets[fmt.Sprintf("%s_API_KEY", providerName)] = apiKey
-		}
+		secrets[fmt.Sprintf("%s_API_KEY", providerName)] = apiKey
 
 		var secretsBuilder strings.Builder
 		for key, value := range secrets {
