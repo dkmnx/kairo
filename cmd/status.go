@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"sync"
+	"path/filepath"
+	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -17,7 +19,7 @@ var statusCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := getConfigDir()
 		if dir == "" {
-			ui.PrintWarn("No providers configured")
+			ui.PrintWarn("Config directory not found")
 			ui.PrintInfo("Run 'kairo setup' to get started")
 			return
 		}
@@ -42,39 +44,62 @@ var statusCmd = &cobra.Command{
 		ui.PrintHeader("Provider Status")
 		fmt.Println()
 
-		var wg sync.WaitGroup
-		results := make(map[string]string)
-		var mu sync.Mutex
+		secretsPath := filepath.Join(dir, "secrets.age")
+		keyPath := filepath.Join(dir, "age.key")
 
-		for name, provider := range cfg.Providers {
-			wg.Add(1)
-			go func(n string, p config.Provider) {
-				defer wg.Done()
-				ok, status := testProvider(p)
-				mu.Lock()
-				results[n] = fmt.Sprintf("%s %s", statusMarker(ok), status)
-				mu.Unlock()
-			}(name, provider)
+		secretsContent := ""
+		if _, err := os.Stat(secretsPath); err == nil {
+			secretsContent, err = crypto.DecryptSecrets(secretsPath, keyPath)
+			if err != nil && verbose {
+				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt secrets: %v", err))
+			}
 		}
 
-		wg.Wait()
+		for name, provider := range cfg.Providers {
+			if name == "anthropic" {
+				fmt.Printf("  %s%s%s %s\n", ui.Green, "✓", ui.Reset, name)
+				fmt.Printf("      Native Anthropic (no API key required)\n")
+				continue
+			}
 
-		for name, status := range results {
-			fmt.Printf("  %s - %s\n", name, status)
+			if provider.BaseURL == "" {
+				fmt.Printf("  %s%s%s %s\n", ui.Yellow, "⚠", ui.Reset, name)
+				fmt.Printf("      No base URL configured\n")
+				continue
+			}
+
+			apiKeyVar := fmt.Sprintf("%s_API_KEY", name)
+			hasApiKey := false
+
+			for _, line := range strings.Split(secretsContent, "\n") {
+				if line == "" {
+					continue
+				}
+				if strings.HasPrefix(line, apiKeyVar+"=") {
+					hasApiKey = true
+					break
+				}
+			}
+
+			if !hasApiKey {
+				fmt.Printf("  %s%s%s %s\n", ui.Yellow, "?", ui.Reset, name)
+				fmt.Printf("      %s\n", provider.BaseURL)
+				fmt.Printf("      %sAPI key not configured%s\n", ui.Yellow, ui.Reset)
+				continue
+			}
+
+			fmt.Printf("  %s%s%s %s\n", ui.Green, "✓", ui.Reset, name)
+			fmt.Printf("      %s\n", provider.BaseURL)
 		}
 
 		if cfg.DefaultProvider != "" {
 			fmt.Println()
 			ui.PrintInfo(fmt.Sprintf("Default provider: %s", cfg.DefaultProvider))
 		}
-	},
-}
 
-func statusMarker(ok bool) string {
-	if ok {
-		return "✓ OK"
-	}
-	return "✗ Failed"
+		fmt.Println()
+		ui.PrintInfo("To configure a provider: kairo config <provider>")
+	},
 }
 
 func init() {

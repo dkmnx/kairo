@@ -53,149 +53,99 @@ var setupCmd = &cobra.Command{
 		ui.PrintHeader("Kairo Setup Wizard")
 		fmt.Println()
 
-		providerList := []string{"anthropic", "zai", "minimax", "kimi", "deepseek", "custom"}
-
 		fmt.Println("Available providers:")
-		for i, name := range providerList {
-			def, _ := providers.GetBuiltInProvider(name)
-			marker := " "
-			if _, exists := cfg.Providers[name]; exists {
-				marker = "✓"
-			}
-			fmt.Printf("  %d. %s %s\n", i+1, marker, def.Name)
-		}
+		fmt.Println("  1. Native Anthropic (no API key required)")
+		fmt.Println("  2. Z.AI")
+		fmt.Println("  3. MiniMax")
+		fmt.Println("  4. Kimi")
+		fmt.Println("  5. DeepSeek")
+		fmt.Println("  6. Custom Provider")
 		fmt.Println()
-		fmt.Println("Enter provider numbers to configure (e.g., '1 2 3' or '1-3'),")
-		fmt.Println("or 'all' to configure all, 'done' to finish:")
 
-		selection := ui.Prompt("Selection")
+		selection := ui.PromptWithDefault("Select provider to configure", "")
 		selection = strings.TrimSpace(selection)
 
-		var providersToConfigure []string
-
-		if selection == "done" || selection == "" {
+		if selection == "" || selection == "done" {
 			return
 		}
 
-		if selection == "all" {
-			providersToConfigure = providerList
-		} else if strings.Contains(selection, "-") {
-			parts := strings.Split(selection, "-")
-			if len(parts) == 2 {
-				start := parseIntOrZero(parts[0])
-				end := parseIntOrZero(parts[1])
-				for i := start; i <= end; i++ {
-					if i > 0 && i <= len(providerList) {
-						providersToConfigure = append(providersToConfigure, providerList[i-1])
-					}
-				}
-			}
-		} else {
-			for _, part := range strings.Fields(selection) {
-				num := parseIntOrZero(part)
-				if num > 0 && num <= len(providerList) {
-					providersToConfigure = append(providersToConfigure, providerList[num-1])
-				}
-			}
+		num := parseIntOrZero(selection)
+		if num < 1 || num > 6 {
+			ui.PrintError("Invalid selection. Please enter a number 1-6.")
+			return
 		}
 
-		for _, name := range providersToConfigure {
-			if name == "anthropic" {
-				cfg.Providers["anthropic"] = config.Provider{
-					Name:    "Native Anthropic",
-					BaseURL: "",
-					Model:   "",
-				}
-				ui.PrintSuccess("Native Anthropic selected (no API key required)")
-				continue
+		providerList := []string{"anthropic", "zai", "minimax", "kimi", "deepseek", "custom"}
+		providerName := providerList[num-1]
+
+		if providerName == "anthropic" {
+			cfg.Providers["anthropic"] = config.Provider{
+				Name:    "Native Anthropic",
+				BaseURL: "",
+				Model:   "",
 			}
-
-			def, _ := providers.GetBuiltInProvider(name)
-
-			fmt.Println()
-			ui.PrintHeader(fmt.Sprintf("Configuring %s", def.Name))
-
-			provider := config.Provider{
-				Name: def.Name,
+			if err := config.SaveConfig(dir, cfg); err != nil {
+				ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
+				return
 			}
+			ui.PrintSuccess("Native Anthropic is ready to use!")
+			ui.PrintInfo("Run 'kairo anthropic' or just 'kairo' to use it.")
+			return
+		}
 
-			baseURL := ui.PromptWithDefault("Base URL", def.BaseURL)
-			if err := validate.ValidateURL(baseURL); err != nil {
-				ui.PrintError(err.Error())
-				continue
+		if providerName == "custom" {
+			customName := ui.Prompt("Provider name")
+			if customName == "" {
+				ui.PrintError("Provider name is required")
+				return
 			}
-			provider.BaseURL = baseURL
-
-			model := ui.PromptWithDefault("Model", def.Model)
-			provider.Model = model
-
-			apiKey, err := ui.PromptSecret("API Key")
-			if err != nil {
-				ui.PrintError(fmt.Sprintf("Error reading API key: %v", err))
-				continue
+			if providers.IsBuiltInProvider(customName) {
+				ui.PrintError("This is a reserved provider name")
+				return
 			}
-			if err := validate.ValidateAPIKey(apiKey); err != nil {
-				ui.PrintError(err.Error())
-				continue
-			}
+			providerName = customName
+		}
 
-			if len(def.EnvVars) > 0 {
-				provider.EnvVars = def.EnvVars
-			}
-
-			cfg.Providers[name] = provider
-
-			secretsPath := filepath.Join(dir, "secrets.age")
-			keyPath := filepath.Join(dir, "age.key")
-
-			var existingSecrets string
-			existingSecrets, err = crypto.DecryptSecrets(secretsPath, keyPath)
-			if err != nil {
-				existingSecrets = ""
-			}
-
-			lines := make(map[string]string)
-			for _, line := range strings.Split(existingSecrets, "\n") {
-				if line == "" {
-					continue
-				}
-				parts := strings.SplitN(line, "=", 2)
-				if len(parts) == 2 {
-					lines[parts[0]] = parts[1]
-				}
-			}
-
-			lines[fmt.Sprintf("%s_API_KEY", name)] = apiKey
-
-			var secretsBuilder strings.Builder
-			for key, value := range lines {
-				if key != "" && value != "" {
-					secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
-				}
-			}
-
-			if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
-				ui.PrintError(fmt.Sprintf("Error saving API key: %v", err))
-				continue
-			}
-
-			ui.PrintSuccess(fmt.Sprintf("%s configured", def.Name))
+		def, _ := providers.GetBuiltInProvider(providerName)
+		if def.Name == "" {
+			def.Name = providerName
 		}
 
 		fmt.Println()
-		if len(cfg.Providers) > 0 {
-			ui.PrintInfo("Configured providers:")
-			for name := range cfg.Providers {
-				fmt.Printf("  - %s\n", name)
-			}
-			fmt.Println()
+		ui.PrintHeader(fmt.Sprintf("%s Configuration", def.Name))
 
-			defaultProvider := ui.PromptWithDefault("Set default provider", "")
-			if defaultProvider != "" {
-				if _, ok := cfg.Providers[defaultProvider]; ok {
-					cfg.DefaultProvider = defaultProvider
-				}
-			}
+		provider := config.Provider{
+			Name: def.Name,
+		}
+
+		apiKey, err := ui.PromptSecret("API Key")
+		if err != nil {
+			ui.PrintError(fmt.Sprintf("Error reading API key: %v", err))
+			return
+		}
+		if err := validate.ValidateAPIKey(apiKey); err != nil {
+			ui.PrintError(err.Error())
+			return
+		}
+
+		baseURL := ui.PromptWithDefault("Base URL", def.BaseURL)
+		if err := validate.ValidateURL(baseURL); err != nil {
+			ui.PrintError(err.Error())
+			return
+		}
+		provider.BaseURL = baseURL
+
+		model := ui.PromptWithDefault("Model", def.Model)
+		provider.Model = model
+
+		if len(def.EnvVars) > 0 {
+			provider.EnvVars = def.EnvVars
+		}
+
+		cfg.Providers[providerName] = provider
+
+		if cfg.DefaultProvider == "" {
+			cfg.DefaultProvider = providerName
 		}
 
 		if err := config.SaveConfig(dir, cfg); err != nil {
@@ -203,9 +153,46 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Println()
-		ui.PrintSuccess("Setup complete!")
-		fmt.Println("Run 'kairo list' to see configured providers")
+		secretsPath := filepath.Join(dir, "secrets.age")
+		keyPath := filepath.Join(dir, "age.key")
+
+		var existingSecrets string
+		existingSecrets, err = crypto.DecryptSecrets(secretsPath, keyPath)
+		if err != nil {
+			existingSecrets = ""
+		}
+
+		lines := make(map[string]string)
+		for _, line := range strings.Split(existingSecrets, "\n") {
+			if line == "" {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				lines[parts[0]] = parts[1]
+			}
+		}
+
+		if providerName == "custom" {
+			lines[fmt.Sprintf("CUSTOM_%s_API_KEY", providerName)] = apiKey
+		} else {
+			lines[fmt.Sprintf("%s_API_KEY", providerName)] = apiKey
+		}
+
+		var secretsBuilder strings.Builder
+		for key, value := range lines {
+			if key != "" && value != "" {
+				secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+			}
+		}
+
+		if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
+			ui.PrintError(fmt.Sprintf("Error saving API key: %v", err))
+			return
+		}
+
+		ui.PrintSuccess(fmt.Sprintf("%s configured successfully", def.Name))
+		ui.PrintInfo(fmt.Sprintf("Run 'kairo %s' to use this provider", providerName))
 	},
 }
 

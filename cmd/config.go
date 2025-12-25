@@ -83,15 +83,26 @@ var configCmd = &cobra.Command{
 			}
 			provider.BaseURL = baseURL
 		} else {
-			provider.BaseURL = builtinDef.BaseURL
-			fmt.Printf("Base URL: %s\n", provider.BaseURL)
+			currentBaseURL := provider.BaseURL
+			if currentBaseURL == "" {
+				currentBaseURL = builtinDef.BaseURL
+			}
+			baseURL := ui.PromptWithDefault("Base URL", currentBaseURL)
+			if err := validate.ValidateURL(baseURL); err != nil {
+				ui.PrintError(err.Error())
+				return
+			}
+			provider.BaseURL = baseURL
 		}
 
 		if builtinDef.Model == "" {
 			provider.Model = ui.PromptWithDefault("Model", provider.Model)
 		} else {
-			provider.Model = builtinDef.Model
-			fmt.Printf("Model: %s\n", provider.Model)
+			currentModel := provider.Model
+			if currentModel == "" {
+				currentModel = builtinDef.Model
+			}
+			provider.Model = ui.PromptWithDefault("Model", currentModel)
 		}
 
 		if len(builtinDef.EnvVars) > 0 && len(provider.EnvVars) == 0 {
