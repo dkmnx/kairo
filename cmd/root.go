@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 
+	"github.com/dkmnx/kairo/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +19,36 @@ var rootCmd = &cobra.Command{
 encrypted secrets management using age encryption.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		dir := getConfigDir()
+		if dir == "" {
+			cmd.Println("Error: config directory not found")
+			cmd.Help()
+			return
+		}
+
+		cfg, err := config.LoadConfig(dir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
+				return
+			}
+			cmd.Printf("Error loading config: %v\n", err)
+			return
+		}
+
+		if cfg.DefaultProvider == "" {
+			cmd.Println("No default provider set.")
+			cmd.Println()
+			cmd.Println("Usage:")
+			cmd.Println("  kairo setup        # Configure providers")
+			cmd.Println("  kairo default <provider>  # Set default provider")
+			cmd.Println("  kairo <provider> [args]   # Switch and run Claude")
+			return
+		}
+
+		switchCmd.Run(cmd, append([]string{cfg.DefaultProvider}, args...))
 	},
 }
 

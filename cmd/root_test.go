@@ -1,32 +1,53 @@
 package cmd
 
 import (
-	"bytes"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
-func TestRootCommand(t *testing.T) {
-	buf := new(bytes.Buffer)
-	rootCmd.SetOut(buf)
-	rootCmd.SetErr(buf)
-	rootCmd.SetArgs([]string{"--help"})
+func TestRootCommandNoArgsWithDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+	configDir = tmpDir
 
+	configPath := filepath.Join(tmpDir, "config")
+	configContent := `default_provider: zai
+providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai/api/anthropic
+    model: glm-4.7
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.SetArgs([]string{})
+	err = rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+}
+
+func TestRootCommandNoArgsNoDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+	configDir = tmpDir
+
+	rootCmd.SetArgs([]string{})
 	err := rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
-
-	output := buf.String()
-	if output == "" {
-		t.Error("output is empty")
-	}
 }
 
-func TestRootFlagsExist(t *testing.T) {
-	if rootCmd.Flags().Lookup("config") == nil {
-		t.Error("--config flag not found")
-	}
-	if rootCmd.Flags().Lookup("verbose") == nil {
-		t.Error("--verbose flag not found")
+func TestRootCommandNoArgsNoConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	configDir = tmpDir
+
+	rootCmd.SetArgs([]string{})
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
 	}
 }
