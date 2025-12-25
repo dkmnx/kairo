@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -427,13 +428,17 @@ func TestGetConfigDirWithFlag(t *testing.T) {
 }
 
 func TestSwitchCmdProviderNotFound(t *testing.T) {
+	originalConfigDir := configDir
+	defer func() { configDir = originalConfigDir }()
+
+	tmpDir := t.TempDir()
+	configDir = tmpDir
+
 	cfg := &config.Config{
 		Providers: map[string]config.Provider{
 			"minimax": {Name: "MiniMax", BaseURL: "https://api.minimax.io", Model: "test"},
 		},
 	}
-
-	tmpDir := t.TempDir()
 	if err := config.SaveConfig(tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -447,12 +452,128 @@ func TestSwitchCmdProviderNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	originalConfigDir := configDir
-	configDir = tmpDir
-	defer func() { configDir = originalConfigDir }()
-
 	dir := getConfigDir()
 	if dir != tmpDir {
 		t.Errorf("getConfigDir() = %q, want %q", dir, tmpDir)
 	}
+}
+
+func TestCustomProviderKeyFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"myprovider": {Name: "My Provider", BaseURL: "https://api.myprovider.com", Model: "model-1"},
+		},
+	}
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	keyPath := filepath.Join(tmpDir, "age.key")
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	customName := "myprovider"
+	apiKey := "sk-test-key-12345"
+	secrets := map[string]string{
+		fmt.Sprintf("%s_API_KEY", customName): apiKey,
+	}
+
+	var secretsBuilder strings.Builder
+	for key, value := range secrets {
+		if key != "" && value != "" {
+			secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		}
+	}
+
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
+		t.Fatal(err)
+	}
+
+	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() error = %v", err)
+	}
+
+	expectedKey := fmt.Sprintf("%s_API_KEY=", customName)
+	if !strings.Contains(decrypted, expectedKey) {
+		t.Errorf("Decrypted secrets should contain %q, got: %q", expectedKey, decrypted)
+	}
+
+	if !strings.Contains(decrypted, "myprovider_API_KEY=sk-test-key-12345") {
+		t.Errorf("Decrypted secrets should contain 'myprovider_API_KEY=sk-test-key-12345', got: %q", decrypted)
+	}
+
+	for _, line := range strings.Split(decrypted, "\n") {
+		if strings.HasPrefix(line, expectedKey) {
+			if strings.HasPrefix(line, "CUSTOM_") {
+				t.Errorf("Custom provider key should NOT have CUSTOM_ prefix, got: %q", line)
+			}
+			return
+		}
+	}
+
+	t.Errorf("Expected key %q not found in decrypted secrets", expectedKey)
+}
+
+func TestCustomProviderKeyLookupInSwitch(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	providerName := "mycustomprovider"
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			providerName: {Name: "My Custom Provider", BaseURL: "https://api.example.com", Model: "test"},
+		},
+		DefaultProvider: providerName,
+	}
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	keyPath := filepath.Join(tmpDir, "age.key")
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	apiKey := "sk-custom-key-abcdef"
+	secretsContent := fmt.Sprintf("%s_API_KEY=%s\n", providerName, apiKey)
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+		t.Fatal(err)
+	}
+
+	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() error = %v", err)
+	}
+
+	prefix := fmt.Sprintf("%s_API_KEY=", providerName)
+	if !strings.HasPrefix(decrypted, prefix) {
+		t.Errorf("Secrets should start with %q, got: %q", prefix, decrypted)
+	}
+
+	for _, line := range strings.Split(decrypted, "\n") {
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, prefix) {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) != 2 {
+				t.Errorf("Expected key=value format, got: %q", line)
+				continue
+			}
+			if parts[1] != apiKey {
+				t.Errorf("API key = %q, want %q", parts[1], apiKey)
+			}
+			if strings.HasPrefix(line, "CUSTOM_") {
+				t.Errorf("Key should NOT have CUSTOM_ prefix for custom provider")
+			}
+			return
+		}
+	}
+
+	t.Errorf("Expected to find %q in secrets", prefix)
 }
