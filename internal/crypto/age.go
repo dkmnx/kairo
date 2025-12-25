@@ -96,6 +96,9 @@ func loadRecipient(keyPath string) (age.Recipient, error) {
 	if !scanner.Scan() {
 		return nil, fmt.Errorf("key file is empty")
 	}
+	if !scanner.Scan() {
+		return nil, fmt.Errorf("key file missing recipient")
+	}
 
 	recipient, err := age.ParseX25519Recipient(scanner.Text())
 	if err != nil {

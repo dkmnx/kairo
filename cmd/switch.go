@@ -9,6 +9,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
+	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -77,6 +78,8 @@ var switchCmd = &cobra.Command{
 			cmd.Println("Error: 'claude' command not found in PATH")
 			return
 		}
+
+		ui.PrintBanner(fmt.Sprintf("v%s - %s", version, provider.Name))
 
 		execCmd := exec.Command(claudePath, claudeArgs...)
 		execCmd.Env = providerEnv
