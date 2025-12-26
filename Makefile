@@ -37,6 +37,22 @@ lint:
 		echo "golangci-lint not installed, skipping"; \
 	fi
 
+pre-commit:
+	@echo "Running pre-commit hooks..."
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		pre-commit run --all-files; \
+	else \
+		echo "pre-commit not installed. Install with: pip install pre-commit"; \
+	fi
+
+pre-commit-install:
+	@echo "Installing pre-commit hooks..."
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		pre-commit install; \
+	else \
+		echo "pre-commit not installed. Install with: pip install pre-commit"; \
+	fi
+
 format:
 	@echo "Formatting code..."
 	gofmt -w .

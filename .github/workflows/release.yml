@@ -1,0 +1,199 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+env:
+  GO_VERSION: '1.23'
+  GORELEASER_VERSION: 'v2'
+
+jobs:
+  # Validate release
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check-tag.outputs.is_release }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if release tag
+        id: check-tag
+        run: |
+          if [[ ${{ github.ref }} =~ ^refs/tags/v ]]; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "Release detected: ${{ github.ref }}"
+          else
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "Not a release tag, running dry-run"
+          fi
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Run tests
+        run: go test -race ./...
+
+  # Create Draft Release (on PR merge or tag push)
+  release-draft:
+    name: Create Draft Release
+    needs: validate
+    if: needs.validate.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install goreleaser
+        run: |
+          curl -sL https://goreleaser.com/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GORELEASER_VERSION }}
+
+      - name: Create Draft Release
+        run: |
+          $(go env GOPATH)/bin/goreleaser release --clean --draft --skip=publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Create Snapshot Release (on PR)
+  release-snapshot:
+    name: Create Snapshot Release
+    needs: validate
+    if: needs.validate.outputs.is_release == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install goreleaser
+        run: |
+          curl -sL https://goreleaser.com/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GORELEASER_VERSION }}
+
+      - name: Create Snapshot Release
+        run: |
+          $(go env GOPATH)/bin/goreleaser release --clean --snapshot --skip=publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Publish Release (manual approval)
+  publish:
+    name: Publish Release
+    needs: release-draft
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install cosign
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: v2
+
+      - name: Install goreleaser
+        run: |
+          curl -sL https://goreleaser.com/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GORELEASER_VERSION }}
+
+      - name: Publish Release
+        run: |
+          $(go env GOPATH)/bin/goreleaser release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COSIGN_EXPERIMENTAL: 1
+
+      - name: Upload Release Assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: dist/*
+          retention-days: 7
+
+  # Update Homebrew (on release)
+  homebrew:
+    name: Update Homebrew
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Pull Request for Homebrew
+        uses: dawidd6/action-homebrew-bump-formula@v3
+        with:
+          formula: kairo
+          token: ${{ secrets.HOMEBREW_TOKEN }}
