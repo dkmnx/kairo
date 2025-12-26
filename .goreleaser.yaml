@@ -21,7 +21,7 @@ builds:
       - -tags=osusergo,netgo
     ldflags:
       - -s -w
-      - -X github.com/dkmnx/kairo/internal/version.Version={{.Version}}
+      - -X github.com/dkmnx/kairo/internal/version.Version={{.Tag}}
       - -X github.com/dkmnx/kairo/internal/version.Commit={{.Commit}}
       - -X github.com/dkmnx/kairo/internal/version.Date={{.Date}}
     env:
