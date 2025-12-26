@@ -7,6 +7,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
+	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -56,8 +57,9 @@ var statusCmd = &cobra.Command{
 		}
 
 		for name, provider := range cfg.Providers {
-			if name == "anthropic" {
-				ui.PrintInfo(fmt.Sprintf("✓ %s", name))
+			if !providers.RequiresAPIKey(name) {
+				def, _ := providers.GetBuiltInProvider(name)
+				ui.PrintInfo(fmt.Sprintf("✓ %s", def.Name))
 				ui.PrintInfo("    Native Anthropic (no API key required)")
 				continue
 			}

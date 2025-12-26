@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/providers"
 	"golang.org/x/term"
 )
 
@@ -93,8 +94,8 @@ func PrintProviderOption(number int, name string, cfg *config.Config, secrets ma
 }
 
 func isProviderConfigured(cfg *config.Config, secrets map[string]string, provider string) bool {
-	if provider == "anthropic" {
-		_, exists := cfg.Providers["anthropic"]
+	if !providers.RequiresAPIKey(provider) {
+		_, exists := cfg.Providers[provider]
 		return exists
 	}
 
