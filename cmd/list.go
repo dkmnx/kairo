@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
@@ -41,7 +42,22 @@ var listCmd = &cobra.Command{
 
 		ui.PrintSection("Configured Providers")
 
-		for name, p := range cfg.Providers {
+		names := make([]string, 0, len(cfg.Providers))
+		for name := range cfg.Providers {
+			names = append(names, name)
+		}
+		sort.Slice(names, func(i, j int) bool {
+			if names[i] == cfg.DefaultProvider {
+				return true
+			}
+			if names[j] == cfg.DefaultProvider {
+				return false
+			}
+			return names[i] < names[j]
+		})
+
+		for _, name := range names {
+			p := cfg.Providers[name]
 			isDefault := (name == cfg.DefaultProvider)
 
 			// Print provider name
