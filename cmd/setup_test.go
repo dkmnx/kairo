@@ -65,7 +65,7 @@ func TestPrintProviderOptionConfigured(t *testing.T) {
 	}
 
 	secrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
-	secretsMap := parseSecretsForTest(secrets)
+	secretsMap := config.ParseSecrets(secrets)
 
 	ui.PrintProviderOption(1, "Native Anthropic", cfg, secretsMap, "anthropic")
 	ui.PrintProviderOption(2, "MiniMax", cfg, secretsMap, "minimax")
@@ -93,7 +93,7 @@ func TestPrintProviderOptionNotConfigured(t *testing.T) {
 	}
 
 	secrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
-	secretsMap := parseSecretsForTest(secrets)
+	secretsMap := config.ParseSecrets(secrets)
 
 	ui.PrintProviderOption(1, "Native Anthropic", cfg, secretsMap, "anthropic")
 	ui.PrintProviderOption(2, "Kimi", cfg, secretsMap, "kimi")
@@ -217,20 +217,6 @@ func TestParseIntOrZero(t *testing.T) {
 	}
 }
 
-func parseSecretsForTest(secrets string) map[string]string {
-	result := make(map[string]string)
-	for _, line := range strings.Split(secrets, "\n") {
-		if line == "" {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			result[parts[0]] = parts[1]
-		}
-	}
-	return result
-}
-
 func TestProviderStatusIcon(t *testing.T) {
 	cfg := &config.Config{
 		Providers: map[string]config.Provider{
@@ -341,17 +327,91 @@ func TestParseSecretsForIntegration(t *testing.T) {
 		t.Fatalf("DecryptSecrets() error = %v", err)
 	}
 
-	secretsMap := parseSecretsForTest(decrypted)
+	secretsMap := config.ParseSecrets(decrypted)
 
 	if len(secretsMap) != 3 {
-		t.Errorf("parseSecrets() returned %d entries, want 3", len(secretsMap))
+		t.Errorf("ParseSecrets() returned %d entries, want 3", len(secretsMap))
 	}
 
 	expectedKeys := []string{"ZAI_API_KEY", "MINIMAX_API_KEY", "DEEPSEEK_API_KEY"}
 	for _, key := range expectedKeys {
 		if _, ok := secretsMap[key]; !ok {
-			t.Errorf("parseSecrets() missing key %q", key)
+			t.Errorf("ParseSecrets() missing key %q", key)
 		}
+	}
+}
+
+func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"zai":     {Name: "Z.AI"},
+			"minimax": {Name: "MiniMax"},
+		},
+	}
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	keyPath := filepath.Join(tmpDir, "age.key")
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	existingSecrets := "ZAI_API_KEY=zai-secret-123\nMINIMAX_API_KEY=minimax-secret-456\n"
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, existingSecrets); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() error = %v", err)
+	}
+
+	secrets := config.ParseSecrets(secretsContent)
+	if len(secrets) != 2 {
+		t.Errorf("ParseSecrets() returned %d entries, want 2", len(secrets))
+	}
+
+	newApiKey := "deepseek-secret-789"
+	secrets["DEEPSEEK_API_KEY"] = newApiKey
+
+	var secretsBuilder strings.Builder
+	keys := make([]string, 0, len(secrets))
+	for key := range secrets {
+		keys = append(keys, key)
+	}
+	for _, key := range keys {
+		value := secrets[key]
+		if key != "" && value != "" {
+			secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		}
+	}
+
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
+		t.Fatalf("EncryptSecrets() error = %v", err)
+	}
+
+	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() error = %v", err)
+	}
+
+	secretsMap := config.ParseSecrets(decrypted)
+	if len(secretsMap) != 3 {
+		t.Errorf("After adding provider, expected 3 secrets, got %d", len(secretsMap))
+	}
+
+	if secretsMap["ZAI_API_KEY"] != "zai-secret-123" {
+		t.Errorf("ZAI_API_KEY was lost, got %q", secretsMap["ZAI_API_KEY"])
+	}
+	if secretsMap["MINIMAX_API_KEY"] != "minimax-secret-456" {
+		t.Errorf("MINIMAX_API_KEY was lost, got %q", secretsMap["MINIMAX_API_KEY"])
+	}
+	if secretsMap["DEEPSEEK_API_KEY"] != "deepseek-secret-789" {
+		t.Errorf("DEEPSEEK_API_KEY not saved correctly, got %q", secretsMap["DEEPSEEK_API_KEY"])
 	}
 }
 
