@@ -99,3 +99,84 @@ func TestEncryptToReadonlyDir(t *testing.T) {
 		t.Error("EncryptSecrets() should error on readonly directory")
 	}
 }
+
+func TestEnsureKeyExistsWhenKeyExists(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(keyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	err = EnsureKeyExists(tmpDir)
+	if err != nil {
+		t.Errorf("EnsureKeyExists() error = %v, want nil when key exists", err)
+	}
+}
+
+func TestEnsureKeyExistsCreatesKey(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	if _, err := os.Stat(keyPath); !os.IsNotExist(err) {
+		t.Fatal("key file should not exist before test")
+	}
+
+	err := EnsureKeyExists(tmpDir)
+	if err != nil {
+		t.Fatalf("EnsureKeyExists() error = %v", err)
+	}
+
+	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+		t.Error("key file was not created")
+	}
+}
+
+func TestEnsureKeyExistsCreatesCorrectFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	err := EnsureKeyExists(tmpDir)
+	if err != nil {
+		t.Fatalf("EnsureKeyExists() error = %v", err)
+	}
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	data, err := os.ReadFile(keyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content := string(data)
+	if len(content) == 0 {
+		t.Error("key file is empty")
+	}
+
+	if content[len(content)-1] != '\n' {
+		t.Error("key file should end with newline")
+	}
+}
+
+func TestEnsureKeyExistsWithNestedDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	nestedDir := filepath.Join(tmpDir, "nested", "dir")
+
+	err := os.MkdirAll(nestedDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create nested directory: %v", err)
+	}
+
+	keyPath := filepath.Join(nestedDir, "age.key")
+	if _, err := os.Stat(nestedDir); os.IsNotExist(err) {
+		t.Fatal("nested directory should exist before test")
+	}
+
+	err = EnsureKeyExists(nestedDir)
+	if err != nil {
+		t.Fatalf("EnsureKeyExists() error = %v", err)
+	}
+
+	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+		t.Error("key file was not created in nested directory")
+	}
+}

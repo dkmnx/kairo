@@ -257,3 +257,84 @@ func TestCompletionCommandAutoSaveToDefaultLocation(t *testing.T) {
 	// Clean up for next test
 	os.Remove(defaultPath)
 }
+
+func TestGetDefaultCompletionPathBash(t *testing.T) {
+	home := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", originalHome)
+	os.Setenv("HOME", home)
+
+	path := getDefaultCompletionPath("bash")
+
+	expected := filepath.Join(home, ".bash_completion.d", "kairo")
+	if path != expected {
+		t.Errorf("getDefaultCompletionPath(bash) = %q, want %q", path, expected)
+	}
+}
+
+func TestGetDefaultCompletionPathZsh(t *testing.T) {
+	home := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", originalHome)
+	os.Setenv("HOME", home)
+
+	path := getDefaultCompletionPath("zsh")
+
+	expected := filepath.Join(home, ".zsh", "completion", "_kairo")
+	if path != expected {
+		t.Errorf("getDefaultCompletionPath(zsh) = %q, want %q", path, expected)
+	}
+}
+
+func TestGetDefaultCompletionPathFish(t *testing.T) {
+	home := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", originalHome)
+	os.Setenv("HOME", home)
+
+	path := getDefaultCompletionPath("fish")
+
+	expected := filepath.Join(home, ".config", "fish", "completions", "kairo.fish")
+	if path != expected {
+		t.Errorf("getDefaultCompletionPath(fish) = %q, want %q", path, expected)
+	}
+}
+
+func TestGetDefaultCompletionPathPowerShell(t *testing.T) {
+	home := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", originalHome)
+	os.Setenv("HOME", home)
+
+	path := getDefaultCompletionPath("powershell")
+
+	expected := filepath.Join(home, "kairo.ps1")
+	if path != expected {
+		t.Errorf("getDefaultCompletionPath(powershell) = %q, want %q", path, expected)
+	}
+}
+
+func TestGetDefaultCompletionPathUnknown(t *testing.T) {
+	home := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", originalHome)
+	os.Setenv("HOME", home)
+
+	path := getDefaultCompletionPath("unknown")
+
+	if path != "kairo-completion.sh" {
+		t.Errorf("getDefaultCompletionPath(unknown) = %q, want %q", path, "kairo-completion.sh")
+	}
+}
+
+func TestGetDefaultCompletionPathNoHomeDir(t *testing.T) {
+	originalHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", originalHome)
+	os.Unsetenv("HOME")
+
+	path := getDefaultCompletionPath("bash")
+
+	if path != "kairo-completion.sh" {
+		t.Errorf("getDefaultCompletionPath without HOME = %q, want %q", path, "kairo-completion.sh")
+	}
+}
