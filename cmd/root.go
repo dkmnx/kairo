@@ -18,14 +18,11 @@ var rootCmd = &cobra.Command{
 	Short: "Kairo - Manage Claude Code API providers",
 	Long: `Kairo is a CLI tool for managing Claude Code API providers with 
 encrypted secrets management using age encryption.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := getConfigDir()
 		if dir == "" {
 			cmd.Println("Error: config directory not found")
-			_ = cmd.Help()
+			_ = cmd.Help() // Ignoring error - Help() rarely fails and we're exiting anyway
 			return
 		}
 

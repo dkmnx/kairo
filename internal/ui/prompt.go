@@ -39,7 +39,7 @@ func PrintError(msg string) {
 }
 
 func PrintInfo(msg string) {
-	fmt.Printf("%sℹ%s %s%s\n", blue, reset, msg, reset)
+	fmt.Printf("%s%s\n", blue, msg)
 }
 
 func PrintHeader(msg string) {
@@ -66,6 +66,7 @@ func Prompt(prompt string) string {
 	fmt.Print(prompt)
 	fmt.Print(": ")
 	var input string
+	// Ignoring error - user can Ctrl+C/D to exit, or input is used as-is
 	_, _ = fmt.Scanln(&input)
 	return input
 }
@@ -77,6 +78,7 @@ func PromptWithDefault(prompt, defaultVal string) string {
 	fmt.Print(prompt)
 	fmt.Print(": ")
 	var input string
+	// Ignoring error - user can Ctrl+C/D to exit, or input is used as-is
 	_, _ = fmt.Scanln(&input)
 	if input == "" {
 		return defaultVal
