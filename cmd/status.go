@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
@@ -46,11 +45,13 @@ var statusCmd = &cobra.Command{
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
 
-		secretsContent := ""
+		secrets := make(map[string]string)
 		if _, err := os.Stat(secretsPath); err == nil {
-			secretsContent, err = crypto.DecryptSecrets(secretsPath, keyPath)
+			secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
 			if err != nil && verbose {
 				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt secrets: %v", err))
+			} else if err == nil {
+				secrets = config.ParseSecrets(secretsContent)
 			}
 		}
 
@@ -67,17 +68,7 @@ var statusCmd = &cobra.Command{
 			}
 
 			apiKeyVar := fmt.Sprintf("%s_API_KEY", name)
-			hasApiKey := false
-
-			for _, line := range strings.Split(secretsContent, "\n") {
-				if line == "" {
-					continue
-				}
-				if strings.HasPrefix(line, apiKeyVar+"=") {
-					hasApiKey = true
-					break
-				}
-			}
+			_, hasApiKey := secrets[apiKeyVar]
 
 			if !hasApiKey {
 				ui.PrintWarn(fmt.Sprintf("%s - API key not configured", name))

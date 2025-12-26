@@ -10,6 +10,7 @@ import (
 	"filippo.io/age"
 )
 
+// GenerateKey generates a new X25519 encryption key and saves it to the specified path.
 func GenerateKey(keyPath string) error {
 	key, err := age.GenerateX25519Identity()
 	if err != nil {
@@ -30,6 +31,7 @@ func GenerateKey(keyPath string) error {
 	return nil
 }
 
+// EncryptSecrets encrypts the given secrets string using age encryption and saves to the specified path.
 func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 	recipient, err := loadRecipient(keyPath)
 	if err != nil {
@@ -59,6 +61,7 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 	return nil
 }
 
+// DecryptSecrets decrypts the secrets file and returns the plaintext content.
 func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 	identity, err := loadIdentity(keyPath)
 	if err != nil {
@@ -128,6 +131,7 @@ func loadIdentity(keyPath string) (age.Identity, error) {
 	return identity, nil
 }
 
+// EnsureKeyExists generates a new encryption key if one doesn't exist at the specified directory.
 func EnsureKeyExists(configDir string) error {
 	keyPath := filepath.Join(configDir, "age.key")
 	_, err := os.Stat(keyPath)

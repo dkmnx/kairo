@@ -3,13 +3,15 @@ package env
 import (
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 var (
 	configDir string
 )
 
+// GetConfigDir returns the configuration directory path.
+// If configDir is set (for testing), it returns that value.
+// Otherwise, it returns the default path: ~/.config/kairo
 func GetConfigDir() string {
 	if configDir != "" {
 		return configDir
@@ -19,20 +21,4 @@ func GetConfigDir() string {
 		return ""
 	}
 	return filepath.Join(home, ".config", "kairo")
-}
-
-func SetConfigDir(dir string) {
-	configDir = dir
-}
-
-func UserHomeDir() (string, error) {
-	return os.UserHomeDir()
-}
-
-func IsSubPath(parent, child string) bool {
-	if !strings.HasPrefix(child, parent) {
-		return false
-	}
-	rel := strings.TrimPrefix(child, parent)
-	return rel != "" && (rel[0] == '/' || rel[0] == filepath.Separator)
 }

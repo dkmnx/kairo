@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
@@ -52,24 +51,18 @@ var switchCmd = &cobra.Command{
 
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
-		secrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
+		secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
 		if err != nil {
 			if verbose {
 				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt secrets: %v", err))
 			}
 		} else {
-			for _, line := range strings.Split(secrets, "\n") {
-				if line == "" {
-					continue
-				}
-				providerEnv = append(providerEnv, line)
-
-				if strings.HasPrefix(line, fmt.Sprintf("%s_API_KEY=", providerName)) {
-					parts := strings.SplitN(line, "=", 2)
-					if len(parts) == 2 {
-						providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_AUTH_TOKEN=%s", parts[1]))
-					}
-				}
+			secrets := config.ParseSecrets(secretsContent)
+			for key, value := range secrets {
+				providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", key, value))
+			}
+			if apiKey, ok := secrets[fmt.Sprintf("%s_API_KEY", providerName)]; ok {
+				providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_AUTH_TOKEN=%s", apiKey))
 			}
 		}
 

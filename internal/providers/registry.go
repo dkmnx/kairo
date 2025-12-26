@@ -1,5 +1,6 @@
 package providers
 
+// BuiltInProviders contains the definitions of all supported built-in providers.
 var BuiltInProviders = map[string]ProviderDefinition{
 	"anthropic": {
 		Name:    "Native Anthropic",
@@ -46,6 +47,7 @@ var BuiltInProviders = map[string]ProviderDefinition{
 	},
 }
 
+// ProviderDefinition contains the configuration for a provider.
 type ProviderDefinition struct {
 	Name    string
 	BaseURL string
@@ -53,16 +55,19 @@ type ProviderDefinition struct {
 	EnvVars []string
 }
 
+// IsBuiltInProvider returns true if the given name is a built-in provider.
 func IsBuiltInProvider(name string) bool {
 	_, ok := BuiltInProviders[name]
 	return ok
 }
 
+// GetBuiltInProvider returns the provider definition and whether it exists.
 func GetBuiltInProvider(name string) (ProviderDefinition, bool) {
 	def, ok := BuiltInProviders[name]
 	return def, ok
 }
 
+// GetProviderList returns a list of all built-in provider names.
 func GetProviderList() []string {
 	providers := make([]string, 0, len(BuiltInProviders))
 	for name := range BuiltInProviders {
