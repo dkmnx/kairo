@@ -31,12 +31,23 @@ encrypted secrets management using age encryption.
 
 ## Installation
 
-```bash
-# Build from source
-go build -o kairo
+### Quick Install (Recommended)
 
-# Install to PATH
-go install
+```bash
+curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh
+```
+
+### Build from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/dkmnx/kairo.git
+# Change to the project directory
+cd kairo
+# Build the binary, outputs to ./dist/kairo
+make build
+# Install to ~/.local/bin
+make install
 ```
 
 ## Quick Start
