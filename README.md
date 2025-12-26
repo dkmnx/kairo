@@ -44,7 +44,7 @@ curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh 
 git clone https://github.com/dkmnx/kairo.git
 # Change to the project directory
 cd kairo
-# Build the binary, outputs to ./dist/kairo
+# Build the binary (outputs to ./dist/kairo)
 make build
 # Install to ~/.local/bin
 make install
@@ -71,6 +71,12 @@ kairo switch zai "Help me write a function"
 # Set default provider
 kairo default zai
 
+# Reset/remove a specific provider
+kairo reset zai
+
+# Reset all providers
+kairo reset all
+
 # Use default provider (query mode)
 kairo "Help me debug this"
 ```
@@ -86,6 +92,7 @@ kairo "Help me debug this"
 | `kairo switch`         | Switch and exec Claude with args              |
 | `kairo default`        | Get or set default provider                   |
 | `kairo test`           | Test specific provider connectivity           |
+| `kairo reset`          | Reset/remove a provider configuration         |
 | `kairo [query]`        | Query mode using default provider             |
 | `kairo version`        | Show version                                  |
 
@@ -147,17 +154,82 @@ providers:
 ## Development
 
 ```bash
-# Run tests
-go test ./internal/config/
-go test ./internal/crypto/
-go test ./internal/validate/
+# Run all tests with race detection
+make test
 
-# Run tests with coverage
-go test -cover ./...
+# Run tests with coverage report
+make test-coverage
 
-# Build
-go build -o kairo
+# Build the binary
+make build
+
+# Install to ~/.local/bin
+make install
+
+# Run code quality checks
+make lint
+
+# Format code
+make format
+
+# Run pre-commit hooks locally
+make pre-commit
 ```
+
+### Makefile Targets
+
+| Target               | Description                               |
+| -------------------- | ----------------------------------------- |
+| `make build`         | Build binary to `dist/kairo`              |
+| `make test`          | Run tests with race detection             |
+| `make test-coverage` | Generate coverage report                  |
+| `make lint`          | Run gofmt, go vet, golangci-lint          |
+| `make format`        | Format code with gofmt                    |
+| `make pre-commit`    | Run pre-commit hooks                      |
+| `make install`       | Install to `~/.local/bin`                 |
+| `make uninstall`     | Remove from `~/.local/bin`                |
+| `make clean`         | Remove build artifacts                    |
+| `make release`       | Create release with goreleaser            |
+
+### CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+- **CI Workflow** (`.github/workflows/ci.yml`):
+  - Code quality checks (gofmt, go vet)
+  - Security scanning (gosec, govulncheck)
+  - Multi-version testing (Go 1.21, 1.22, 1.23)
+  - Multi-platform builds (Linux, macOS, Windows)
+  - Dependency validation and tidy check
+  - Coverage reporting
+
+- **Release Workflow** (`.github/workflows/release.yml`):
+  - Draft release creation on tag push
+  - Snapshot releases for pull requests
+  - goreleaser for multi-platform builds
+  - Homebrew formula updates
+
+### Pre-commit Hooks
+
+Install pre-commit for local quality gates:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+
+# Run all hooks
+pre-commit run --all-files
+```
+
+Available hooks:
+
+- `gofmt` - Code formatting check
+- `go vet` - Static analysis
+- `go test` - Run tests with race detection
+- `go mod tidy` - Verify go.mod/go.sum consistency
 
 ## Validation Rules
 
