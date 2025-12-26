@@ -49,7 +49,7 @@ var listCmd = &cobra.Command{
 		}
 
 		if cfg.DefaultProvider != "" {
-			ui.PrintInfo(fmt.Sprintf("Default provider: %s", cfg.DefaultProvider))
+			ui.PrintInfo(fmt.Sprintf("\nDefault provider: %s", cfg.DefaultProvider))
 		}
 	},
 }

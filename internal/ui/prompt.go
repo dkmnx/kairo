@@ -110,7 +110,7 @@ func isProviderConfigured(cfg *config.Config, secrets map[string]string, provide
 	return false
 }
 
-func PrintBanner(provider string) {
+func PrintBanner(version, provider string) {
 	banner := ` █████                 ███                    
 ░░███                 ░░░                     
  ░███ █████  ██████   ████  ████████   ██████ 
@@ -118,6 +118,6 @@ func PrintBanner(provider string) {
  ░██████░    ███████  ░███  ░███ ░░░ ░███ ░███
  ░███░░███  ███░░███  ░███  ░███     ░███ ░███
  ████ █████░░████████ █████ █████    ░░██████ 
-░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░      ░░░░░░  ` + provider
+░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░      ` + version + ` - ` + provider
 	fmt.Printf("%s%s\n", Bold, banner)
 }

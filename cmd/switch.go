@@ -9,6 +9,7 @@ import (
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
+	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -74,7 +75,7 @@ var switchCmd = &cobra.Command{
 			return
 		}
 
-		ui.PrintBanner(provider.Name)
+		ui.PrintBanner(version.Version, provider.Name)
 
 		execCmd := exec.Command(claudePath, claudeArgs...)
 		execCmd.Env = providerEnv

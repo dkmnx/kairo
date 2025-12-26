@@ -40,7 +40,7 @@ var defaultCmd = &cobra.Command{
 				ui.PrintWarn("No default provider configured")
 				ui.PrintInfo("Run 'kairo default <provider>' to set one")
 			} else {
-				ui.PrintSuccess(fmt.Sprintf("Default provider: %s", cfg.DefaultProvider))
+				ui.PrintSuccess(fmt.Sprintf("\nDefault provider: %s", cfg.DefaultProvider))
 			}
 			return
 		}
