@@ -47,27 +47,8 @@ checksum:
 snapshot:
   version_template: '{{ .Version }}-next'
 
+changelog:
+  disable: true
+
 release:
   draft: true
-  header: |
-    ## Installation
-
-    ### Homebrew
-    ```bash
-    brew install dkmnx/tap/kairo
-    ```
-
-    ### Manual
-    Download the appropriate archive for your platform and extract it:
-    ```bash
-    tar -xzf kairo_*.tar.gz
-    sudo mv kairo /usr/local/bin/
-    ```
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
-      - '^merge pull request'
