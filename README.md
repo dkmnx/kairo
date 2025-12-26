@@ -66,17 +66,17 @@ kairo "Help me debug this"
 
 ## Commands
 
-| Command | Description |
-| ------- | ----------- |
-| `kairo setup` | Interactive setup wizard |
-| `kairo config <provider>` | Configure provider (API key, URL, model) |
-| `kairo list` | List all configured providers |
-| `kairo status` | Test connectivity for all providers |
-| `kairo switch <provider> [args]` | Switch and exec Claude with args |
-| `kairo default [provider]` | Get or set default provider |
-| `kairo test <provider>` | Test specific provider connectivity |
-| `kairo [query]` | Query mode using default provider |
-| `kairo version` | Show version |
+| Command                | Description                                   |
+|------------------------|-----------------------------------------------|
+| `kairo setup`          | Interactive setup wizard                      |
+| `kairo config`         | Configure provider (API key, URL, model)      |
+| `kairo list`           | List all configured providers                 |
+| `kairo status`         | Test connectivity for all providers           |
+| `kairo switch`         | Switch and exec Claude with args              |
+| `kairo default`        | Get or set default provider                   |
+| `kairo test`           | Test specific provider connectivity           |
+| `kairo [query]`        | Query mode using default provider             |
+| `kairo version`        | Show version                                  |
 
 ## Supported Providers
 
@@ -93,11 +93,11 @@ kairo "Help me debug this"
 
 All configuration is stored in `~/.config/kairo/`:
 
-| File | Purpose |
-| ---- | ------- |
-| `config` | Provider configurations (YAML, 0600) |
-| `secrets.age` | Encrypted API keys (age, 0600) |
-| `age.key` | Encryption private key (age, 0600) |
+| File          | Purpose                                       |
+|---------------|-----------------------------------------------|
+| `config`      | Provider configurations (YAML, 0600)          |
+| `secrets.age` | Encrypted API keys (age, 0600)                |
+| `age.key`     | Encryption private key (age, 0600)            |
 
 ### Config File Format
 
@@ -176,8 +176,9 @@ kairo/
 │   ├── providers/        # Provider registry and definitions
 │   └── validate/         # Input validation
 ├── pkg/                  # Public libraries
-├── go.mod
-└── main.go
+├── go.mod                # Go module definition
+├── go.sum                # Go module checksums
+└── main.go               # Application entry point 
 ```
 
 ## License
