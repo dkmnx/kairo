@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -14,8 +16,12 @@ var versionCmd = &cobra.Command{
 		if version.Commit != "unknown" && version.Commit != "" {
 			cmd.Printf("Commit: %s\n", version.Commit)
 		}
-		if version.Date != "" {
-			cmd.Printf("Date: %s\n", version.Date)
+		if version.Date != "" && version.Date != "unknown" {
+			if t, err := time.Parse(time.RFC3339, version.Date); err == nil {
+				cmd.Printf("Date: %s\n", t.Format("2006-01-02"))
+			} else {
+				cmd.Printf("Date: %s\n", version.Date)
+			}
 		}
 	},
 }
