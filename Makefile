@@ -67,7 +67,7 @@ run: build
 release:
 	@echo "Running goreleaser..."
 	@if command -v goreleaser >/dev/null 2>&1; then \
-		goreleaser release --rm-dist; \
+		goreleaser release --clean; \
 	else \
 		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
 	fi
