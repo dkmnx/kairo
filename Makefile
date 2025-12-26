@@ -5,7 +5,8 @@ DIST_DIR := dist
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE := $(shell date -u +%Y-%m-%d)
-LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)
+LDFLAGS := -X github.com/dkmnx/kairo/cmd.version=$(VERSION) -X github.com/dkmnx/kairo/cmd.commit=$(COMMIT) -X github.com/dkmnx/kairo/cmd.date=$(DATE)
+LOCAL_BIN := $(shell echo $$HOME)/.local/bin
 
 all: build
 
@@ -44,14 +45,17 @@ clean:
 	@echo "Cleaning..."
 	rm -rf $(DIST_DIR)
 
-install:
-	@echo "Installing $(BINARY_NAME) to /usr/local/bin..."
-	install -d /usr/local/bin
-	install -m 755 $(DIST_DIR)/$(BINARY_NAME) /usr/local/bin/$(BINARY_NAME)
+install: build
+	@echo "Installing $(BINARY_NAME) to ~/.local/bin..."
+	install -d $(LOCAL_BIN)
+	install -m 755 $(DIST_DIR)/$(BINARY_NAME) $(LOCAL_BIN)/$(BINARY_NAME)
+	@echo "Installed $(BINARY_NAME) to $(LOCAL_BIN)/"
+	@echo "Add $(LOCAL_BIN) to your PATH if not already present:"
 
 uninstall:
-	@echo "Removing $(BINARY_NAME) from /usr/local/bin..."
-	rm -f /usr/local/bin/$(BINARY_NAME)
+	@echo "Removing $(BINARY_NAME) from ~/.local/bin..."
+	rm -f $(LOCAL_BIN)/$(BINARY_NAME)
+	@echo "Uninstalled $(BINARY_NAME) from $(LOCAL_BIN)/"
 
 run: build
 	@echo "Running $(BINARY_NAME)..."
@@ -89,6 +93,7 @@ help:
 	@echo "Kairo Makefile"
 	@echo ""
 	@echo "Output directory: $(DIST_DIR)/"
+	@echo "Install location: $(LOCAL_BIN)/"
 	@echo ""
 	@echo "Targets:"
 	@echo "  all           - Build the binary (default)"
@@ -98,8 +103,8 @@ help:
 	@echo "  lint          - Run linters (gofmt, govet)"
 	@echo "  format        - Format code with gofmt"
 	@echo "  clean         - Remove $(DIST_DIR)/ directory"
-	@echo "  install       - Install to /usr/local/bin"
-	@echo "  uninstall     - Remove from /usr/local/bin"
+	@echo "  install       - Install to $(LOCAL_BIN)/"
+	@echo "  uninstall     - Remove from $(LOCAL_BIN)/"
 	@echo "  run           - Build and run with ARGS"
 	@echo "  build-linux   - Build for Linux amd64"
 	@echo "  build-darwin  - Build for Darwin amd64"
