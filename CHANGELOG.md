@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2025-12-26
+
+### Fixed
+
+- **Critical:** Fixed secrets key format inconsistency - API keys now stored with uppercase provider names (e.g., `ZAI_API_KEY`) for consistent lookup across all commands
+- Switch command now exits with status 1 when Claude execution fails
+- Status command now correctly detects API keys stored with uppercase key format
+
+### Changed
+
+- Standardized secrets key format to use uppercase provider names consistently across `setup`, `config`, `status`, and `switch` commands
+- Added constants for hardcoded Claude environment variable names (ANTHROPIC_BASE_URL, ANTHROPIC_MODEL, etc.)
+- Custom provider names now validated to start with a letter and contain only alphanumeric characters, underscores, or hyphens
+- Made `exec.Command` and `os.Exit` mockable in tests for better testability
+- Refactored secrets parsing to use `config.ParseSecrets()` consistently instead of duplicate code
+
+### Added
+
+- Godoc comments for exported functions in `cmd` package
+- Test suite for status command (`status_test.go`) with coverage for key format consistency
+
+### Migration Note
+
+After upgrading to v0.2.2, existing users need to reconfigure their providers to save API keys with the correct uppercase format:
+
+```bash
+kairo config <provider>
+```
+
+This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) instead of the previous lowercase format.
+
 ## [0.2.1] - 2025-12-26
 
 ### Changed
@@ -63,3 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GoReleaser integration for releases
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
+
+[0.2.2]: https://github.com/dkmnx/kairo/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/dkmnx/kairo/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/dkmnx/kairo/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/dkmnx/kairo/releases/tag/v0.1.0
