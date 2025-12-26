@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -58,19 +57,7 @@ var statusCmd = &cobra.Command{
 			}
 		}
 
-		names := make([]string, 0, len(cfg.Providers))
-		for name := range cfg.Providers {
-			names = append(names, name)
-		}
-		sort.Slice(names, func(i, j int) bool {
-			if names[i] == cfg.DefaultProvider {
-				return true
-			}
-			if names[j] == cfg.DefaultProvider {
-				return false
-			}
-			return names[i] < names[j]
-		})
+		names := sortProviderNames(cfg.Providers, cfg.DefaultProvider)
 
 		for _, name := range names {
 			provider := cfg.Providers[name]

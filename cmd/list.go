@@ -42,19 +42,7 @@ var listCmd = &cobra.Command{
 
 		ui.PrintSection("Configured Providers")
 
-		names := make([]string, 0, len(cfg.Providers))
-		for name := range cfg.Providers {
-			names = append(names, name)
-		}
-		sort.Slice(names, func(i, j int) bool {
-			if names[i] == cfg.DefaultProvider {
-				return true
-			}
-			if names[j] == cfg.DefaultProvider {
-				return false
-			}
-			return names[i] < names[j]
-		})
+		names := sortProviderNames(cfg.Providers, cfg.DefaultProvider)
 
 		for _, name := range names {
 			p := cfg.Providers[name]
@@ -103,4 +91,21 @@ var listCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(listCmd)
+}
+
+func sortProviderNames(providers map[string]config.Provider, defaultProvider string) []string {
+	names := make([]string, 0, len(providers))
+	for name := range providers {
+		names = append(names, name)
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if names[i] == defaultProvider {
+			return true
+		}
+		if names[j] == defaultProvider {
+			return false
+		}
+		return names[i] < names[j]
+	})
+	return names
 }
