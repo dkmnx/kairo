@@ -59,7 +59,9 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 		w.Close()
 
 		buf := new(bytes.Buffer)
-		if _, err := buf.ReadFrom(r); err != nil { t.Logf("ReadFrom error: %v", err) }
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Logf("ReadFrom error: %v", err)
+		}
 		output := buf.String()
 
 		if strings.Contains(output, "decrypt") || strings.Contains(output, "Decrypt") {
@@ -117,7 +119,9 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 		w.Close()
 
 		buf := new(bytes.Buffer)
-		if _, err := buf.ReadFrom(r); err != nil { t.Logf("ReadFrom error: %v", err) }
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Logf("ReadFrom error: %v", err)
+		}
 		output := buf.String()
 
 		if strings.Contains(output, "decrypt") || strings.Contains(output, "Decrypt") {
@@ -220,7 +224,9 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 		w.Close()
 
 		buf := new(bytes.Buffer)
-		if _, err := buf.ReadFrom(r); err != nil { t.Logf("ReadFrom error: %v", err) }
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Logf("ReadFrom error: %v", err)
+		}
 		output := buf.String()
 
 		t.Logf("Output: %s", output)
@@ -273,7 +279,9 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 		w.Close()
 
 		buf := new(bytes.Buffer)
-		if _, err := buf.ReadFrom(r); err != nil { t.Logf("ReadFrom error: %v", err) }
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Logf("ReadFrom error: %v", err)
+		}
 		output := buf.String()
 
 		if strings.Contains(output, "decrypt") || strings.Contains(output, "Decrypt") {
@@ -397,7 +405,9 @@ func TestVerboseFlagBehavior(t *testing.T) {
 		w.Close()
 
 		buf := new(bytes.Buffer)
-		if _, err := buf.ReadFrom(r); err != nil { t.Logf("ReadFrom error: %v", err) }
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Logf("ReadFrom error: %v", err)
+		}
 		output := buf.String()
 
 		t.Logf("Output with verbose=true: '%s'", output)
@@ -453,7 +463,9 @@ func TestVerboseFlagBehavior(t *testing.T) {
 		w.Close()
 
 		buf := new(bytes.Buffer)
-		if _, err := buf.ReadFrom(r); err != nil { t.Logf("ReadFrom error: %v", err) }
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Logf("ReadFrom error: %v", err)
+		}
 		output := buf.String()
 
 		if strings.Contains(output, "Warning") || strings.Contains(output, "warn") {
@@ -515,7 +527,9 @@ func TestVerboseFlagBehavior(t *testing.T) {
 		w.Close()
 
 		buf := new(bytes.Buffer)
-		if _, err := buf.ReadFrom(r); err != nil { t.Logf("ReadFrom error: %v", err) }
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Logf("ReadFrom error: %v", err)
+		}
 		output := buf.String()
 
 		t.Logf("Output with verbose=true: '%s'", output)
@@ -706,7 +720,9 @@ func TestDecryptSecretsFailureBehavior(t *testing.T) {
 		w.Close()
 
 		buf := new(bytes.Buffer)
-		if _, err := buf.ReadFrom(r); err != nil { t.Logf("ReadFrom error: %v", err) }
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Logf("ReadFrom error: %v", err)
+		}
 		output := buf.String()
 
 		t.Logf("Output with verbose=true: '%s'", output)
@@ -762,7 +778,9 @@ func TestDecryptSecretsFailureBehavior(t *testing.T) {
 		w.Close()
 
 		buf := new(bytes.Buffer)
-		if _, err := buf.ReadFrom(r); err != nil { t.Logf("ReadFrom error: %v", err) }
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Logf("ReadFrom error: %v", err)
+		}
 		output := buf.String()
 
 		if strings.Contains(output, "Warning") || strings.Contains(output, "warn") {
