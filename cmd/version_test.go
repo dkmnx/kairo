@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +18,7 @@ func TestVersionCommand(t *testing.T) {
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.SetOut(buf)
 			cmd.SetErr(buf)
-			cmd.Printf("Kairo version: %s\n", version)
+			cmd.Printf("Kairo version: %s\n", version.Version)
 		},
 	}
 

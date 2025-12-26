@@ -4,13 +4,8 @@ import (
 	"fmt"
 
 	"github.com/dkmnx/kairo/internal/ui"
+	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
-)
-
-var (
-	version = "dev"
-	commit  = "unknown"
-	date    = ""
 )
 
 var versionCmd = &cobra.Command{
@@ -18,12 +13,12 @@ var versionCmd = &cobra.Command{
 	Short: "Show version information",
 	Long:  "Display the version number of Kairo",
 	Run: func(cmd *cobra.Command, args []string) {
-		ui.PrintSuccess(fmt.Sprintf("Kairo version: %s", version))
-		if commit != "unknown" && commit != "" {
-			ui.PrintInfo(fmt.Sprintf("Commit: %s", commit))
+		ui.PrintSuccess(fmt.Sprintf("Kairo version: %s", version.Version))
+		if version.Commit != "unknown" && version.Commit != "" {
+			ui.PrintInfo(fmt.Sprintf("Commit: %s", version.Commit))
 		}
-		if date != "" {
-			ui.PrintInfo(fmt.Sprintf("Date: %s", date))
+		if version.Date != "" {
+			ui.PrintInfo(fmt.Sprintf("Date: %s", version.Date))
 		}
 	},
 }

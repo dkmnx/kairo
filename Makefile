@@ -5,7 +5,7 @@ DIST_DIR := dist
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE := $(shell date -u +%Y-%m-%d)
-LDFLAGS := -X github.com/dkmnx/kairo/cmd.version=$(VERSION) -X github.com/dkmnx/kairo/cmd.commit=$(COMMIT) -X github.com/dkmnx/kairo/cmd.date=$(DATE)
+LDFLAGS := -X github.com/dkmnx/kairo/internal/version.Version=$(VERSION) -X github.com/dkmnx/kairo/internal/version.Commit=$(COMMIT) -X github.com/dkmnx/kairo/internal/version.Date=$(DATE)
 LOCAL_BIN := $(shell echo $$HOME)/.local/bin
 
 all: build

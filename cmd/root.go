@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoversion "github.com/dkmnx/kairo/internal/version"
 	"github.com/dkmnx/kairo/pkg/env"
 	"github.com/spf13/cobra"
 )
@@ -16,8 +18,10 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "kairo",
 	Short: "Kairo - Manage Claude Code API providers",
-	Long: `Kairo is a CLI tool for managing Claude Code API providers with 
-encrypted secrets management using age encryption.`,
+	Long: fmt.Sprintf(`Kairo is a CLI tool for managing Claude Code API providers with 
+encrypted secrets management using age encryption.
+
+Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, kairoversion.Date),
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := getConfigDir()
 		if dir == "" {
