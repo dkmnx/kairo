@@ -76,14 +76,15 @@ var setupCmd = &cobra.Command{
 			if verbose {
 				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
 			}
-		}
-		for _, line := range strings.Split(existingSecrets, "\n") {
-			if line == "" {
-				continue
-			}
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) == 2 {
-				secrets[parts[0]] = parts[1]
+		} else {
+			for _, line := range strings.Split(existingSecrets, "\n") {
+				if line == "" {
+					continue
+				}
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					secrets[parts[0]] = parts[1]
+				}
 			}
 		}
 

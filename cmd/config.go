@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
@@ -120,8 +121,36 @@ var configCmd = &cobra.Command{
 		}
 
 		secretsPath := filepath.Join(dir, "secrets.age")
-		secrets := fmt.Sprintf("%s_API_KEY=%s\n", providerName, apiKey)
-		if err := crypto.EncryptSecrets(secretsPath, filepath.Join(dir, "age.key"), secrets); err != nil {
+		keyPath := filepath.Join(dir, "age.key")
+
+		secrets := make(map[string]string)
+		existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
+		if err != nil {
+			if verbose {
+				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
+			}
+		} else {
+			for _, line := range strings.Split(existingSecrets, "\n") {
+				if line == "" {
+					continue
+				}
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					secrets[parts[0]] = parts[1]
+				}
+			}
+		}
+
+		secrets[fmt.Sprintf("%s_API_KEY", providerName)] = apiKey
+
+		var secretsBuilder strings.Builder
+		for key, value := range secrets {
+			if key != "" && value != "" {
+				secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+			}
+		}
+
+		if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving API key: %v", err))
 			return
 		}
