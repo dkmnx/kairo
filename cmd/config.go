@@ -130,18 +130,10 @@ var configCmd = &cobra.Command{
 				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
 			}
 		} else {
-			for _, line := range strings.Split(existingSecrets, "\n") {
-				if line == "" {
-					continue
-				}
-				parts := strings.SplitN(line, "=", 2)
-				if len(parts) == 2 {
-					secrets[parts[0]] = parts[1]
-				}
-			}
+			secrets = config.ParseSecrets(existingSecrets)
 		}
 
-		secrets[fmt.Sprintf("%s_API_KEY", providerName)] = apiKey
+		secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
 
 		var secretsBuilder strings.Builder
 		for key, value := range secrets {

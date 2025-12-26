@@ -6,9 +6,22 @@ import (
 	"testing"
 )
 
+func setupMockExec(t *testing.T) {
+	originalExecCommand := execCommand
+	originalExitProcess := exitProcess
+	t.Cleanup(func() {
+		execCommand = originalExecCommand
+		exitProcess = originalExitProcess
+	})
+
+	// Mock exitProcess to prevent test termination
+	exitProcess = func(code int) {}
+}
+
 func TestTestCommandNoConfig(t *testing.T) {
+	setupMockExec(t)
 	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	t.Cleanup(func() { configDir = originalConfigDir })
 
 	tmpDir := t.TempDir()
 	configDir = tmpDir
@@ -20,8 +33,9 @@ func TestTestCommandNoConfig(t *testing.T) {
 }
 
 func TestTestCommandProviderNotFound(t *testing.T) {
+	setupMockExec(t)
 	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	t.Cleanup(func() { configDir = originalConfigDir })
 
 	tmpDir := t.TempDir()
 	configDir = tmpDir
@@ -47,8 +61,9 @@ providers:
 }
 
 func TestSwitchCommandNoConfig(t *testing.T) {
+	setupMockExec(t)
 	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	t.Cleanup(func() { configDir = originalConfigDir })
 
 	tmpDir := t.TempDir()
 	configDir = tmpDir
@@ -61,8 +76,9 @@ func TestSwitchCommandNoConfig(t *testing.T) {
 }
 
 func TestSwitchCommandProviderNotFound(t *testing.T) {
+	setupMockExec(t)
 	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	t.Cleanup(func() { configDir = originalConfigDir })
 
 	tmpDir := t.TempDir()
 	configDir = tmpDir

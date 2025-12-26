@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
@@ -69,7 +70,7 @@ var statusCmd = &cobra.Command{
 				continue
 			}
 
-			apiKeyVar := fmt.Sprintf("%s_API_KEY", name)
+			apiKeyVar := fmt.Sprintf("%s_API_KEY", strings.ToUpper(name))
 			_, hasApiKey := secrets[apiKeyVar]
 
 			if !hasApiKey {

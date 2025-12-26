@@ -180,7 +180,7 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		return fmt.Errorf("saving config: %w", err)
 	}
 
-	secrets[fmt.Sprintf("%s_API_KEY", providerName)] = apiKey
+	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
 
 	var secretsBuilder strings.Builder
 	keys := make([]string, 0, len(secrets))
