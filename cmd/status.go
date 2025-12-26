@@ -58,9 +58,15 @@ var statusCmd = &cobra.Command{
 		}
 
 		for name, provider := range cfg.Providers {
+			isDefault := (name == cfg.DefaultProvider)
+
 			if !providers.RequiresAPIKey(name) {
 				def, _ := providers.GetBuiltInProvider(name)
-				ui.PrintInfo(fmt.Sprintf("✓ %s", def.Name))
+				if isDefault {
+					ui.PrintDefault(fmt.Sprintf("✓ %s", def.Name))
+				} else {
+					ui.PrintInfo(fmt.Sprintf("✓ %s", def.Name))
+				}
 				ui.PrintInfo("    Native Anthropic (no API key required)")
 				continue
 			}
@@ -75,19 +81,23 @@ var statusCmd = &cobra.Command{
 
 			if !hasApiKey {
 				ui.PrintWarn(fmt.Sprintf("%s - API key not configured", name))
-				ui.PrintInfo(fmt.Sprintf("    %s", provider.BaseURL))
+				ui.PrintWhite(fmt.Sprintf("    %s", provider.BaseURL))
 				continue
 			}
 
-			ui.PrintInfo(fmt.Sprintf("✓ %s", name))
-			ui.PrintInfo(fmt.Sprintf("    %s", provider.BaseURL))
-		}
+			if isDefault {
+				ui.PrintDefault(fmt.Sprintf("✓ %s", name))
+			} else {
+				ui.PrintInfo(fmt.Sprintf("✓ %s", name))
+			}
 
-		if cfg.DefaultProvider != "" {
-			ui.PrintInfo(fmt.Sprintf("\nDefault provider: %s", cfg.DefaultProvider))
+			// Print URL with appropriate color
+			if isDefault {
+				ui.PrintDefault(fmt.Sprintf("    %s", provider.BaseURL))
+			} else {
+				ui.PrintInfo(fmt.Sprintf("    %s", provider.BaseURL))
+			}
 		}
-
-		ui.PrintInfo("\nTo configure a provider: kairo config <provider>")
 	},
 }
 

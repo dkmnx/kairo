@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -41,15 +42,45 @@ var listCmd = &cobra.Command{
 		ui.PrintSection("Configured Providers")
 
 		for name, p := range cfg.Providers {
-			if name == cfg.DefaultProvider {
-				ui.PrintInfo(fmt.Sprintf("✓ %s %s", name, p.BaseURL))
-			} else {
-				ui.PrintInfo(fmt.Sprintf("  %s %s", name, p.BaseURL))
-			}
-		}
+			isDefault := (name == cfg.DefaultProvider)
 
-		if cfg.DefaultProvider != "" {
-			ui.PrintInfo(fmt.Sprintf("\nDefault provider: %s", cfg.DefaultProvider))
+			// Print provider name
+			if isDefault {
+				ui.PrintDefault(fmt.Sprintf("✓ %s", name))
+			} else {
+				ui.PrintWhite(fmt.Sprintf("  %s", name))
+			}
+
+			// Handle Native Anthropic providers
+			if !providers.RequiresAPIKey(name) {
+				def, _ := providers.GetBuiltInProvider(name)
+				if isDefault {
+					ui.PrintDefault(fmt.Sprintf("    %s", def.Name))
+					ui.PrintDefault("    Native Anthropic (no API key required)")
+				} else {
+					ui.PrintWhite(fmt.Sprintf("    %s", def.Name))
+					ui.PrintWhite("    Native Anthropic (no API key required)")
+				}
+				continue
+			}
+
+			// Print base URL
+			if p.BaseURL != "" {
+				if isDefault {
+					ui.PrintDefault(fmt.Sprintf("    %s", p.BaseURL))
+				} else {
+					ui.PrintWhite(fmt.Sprintf("    %s", p.BaseURL))
+				}
+			}
+
+			// Print model if available
+			if p.Model != "" {
+				if isDefault {
+					ui.PrintDefault(fmt.Sprintf("    %s", p.Model))
+				} else {
+					ui.PrintWhite(fmt.Sprintf("    %s", p.Model))
+				}
+			}
 		}
 	},
 }
