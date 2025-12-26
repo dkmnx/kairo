@@ -1,3 +1,5 @@
+version: 2
+
 before:
   hooks:
     - go mod tidy
@@ -27,10 +29,11 @@ builds:
 
 archives:
   - id: kairo
-    name_template: '{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    formats: ["tar.gz", "zip"]
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
     format_overrides:
       - goos: windows
-        format: zip
+        formats: ["zip"]
     files:
       - src: LICENSE
         dst: LICENSE
@@ -38,11 +41,11 @@ archives:
         dst: README.md
 
 checksum:
-  name_template: '{{ .Binary }}_{{ .Version }}_checksums.txt'
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
   algorithm: sha256
 
 snapshot:
-  name_template: '{{ .Binary }}_next'
+  version_template: '{{ .Version }}-next'
 
 release:
   draft: true

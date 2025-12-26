@@ -64,14 +64,6 @@ run: build
 	@echo "Running $(BINARY_NAME)..."
 	$(DIST_DIR)/$(BINARY_NAME) $(ARGS)
 
-release:
-	@echo "Running goreleaser..."
-	@if command -v goreleaser >/dev/null 2>&1; then \
-		goreleaser release --clean; \
-	else \
-		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
-	fi
-
 deps:
 	@echo "Installing dependencies..."
 	go mod download
@@ -80,6 +72,34 @@ deps:
 verify-deps:
 	@echo "Verifying dependencies..."
 	go mod verify
+
+release:
+	@echo "Running goreleaser..."
+	@if command -v goreleaser >/dev/null 2>&1; then \
+		if [ -z "$$GITHUB_TOKEN" ]; then \
+			echo "GITHUB_TOKEN not set. "; \
+		else \
+			goreleaser release --clean; \
+		fi; \
+	else \
+		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
+	fi
+
+release-local:
+	@echo "Running goreleaser (snapshot build)..."
+	@if command -v goreleaser >/dev/null 2>&1; then \
+		goreleaser release --clean --snapshot; \
+	else \
+		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
+	fi
+
+release-dry-run:
+	@echo "Running goreleaser (dry-run, no publish)..."
+	@if command -v goreleaser >/dev/null 2>&1; then \
+		goreleaser release --clean --snapshot --skip=publish; \
+	else \
+		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
+	fi
 
 help:
 	@echo "Kairo Makefile"
@@ -99,14 +119,8 @@ help:
 	@echo "  uninstall     - Remove from $(LOCAL_BIN)/"
 	@echo "  run           - Build and run with ARGS"
 	@echo "  release       - Create release builds with goreleaser"
+	@echo "  release-local - Create local snapshot build"
+	@echo "  release-dry-run - Build without publishing"
 	@echo "  deps          - Download and tidy dependencies"
 	@echo "  verify-deps   - Verify dependency checksums"
 	@echo "  help          - Show this help message"
-
-goreleaser:
-	@echo "Running goreleaser..."
-	@if command -v goreleaser >/dev/null 2>&1; then \
-		goreleaser release --rm-dist; \
-	else \
-		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
-	fi
