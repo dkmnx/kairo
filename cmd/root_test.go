@@ -46,7 +46,7 @@ providers:
 	}
 
 	rootCmd.SetArgs([]string{})
-	rootCmd.Execute()
+	_ = rootCmd.Execute()
 	// We expect the command to fail (exitCalled=true) since claude isn't really available
 	if !exitCalled {
 		t.Log("Note: Command did not exit, which may indicate mocking is not working correctly")

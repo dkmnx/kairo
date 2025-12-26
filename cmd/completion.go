@@ -58,7 +58,7 @@ Auto-save to default locations:
 `,
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
-	Args:                  cobra.ExactValidArgs(1),
+	Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	Run: func(cmd *cobra.Command, args []string) {
 		var out io.Writer
 		var closeOut bool
@@ -96,13 +96,21 @@ Auto-save to default locations:
 		// Generate completion for the specified shell
 		switch args[0] {
 		case "bash":
-			rootCmd.GenBashCompletion(out)
+			if err := rootCmd.GenBashCompletion(out); err != nil {
+				cmd.Printf("Error generating bash completion: %v\n", err)
+			}
 		case "zsh":
-			rootCmd.GenZshCompletion(out)
+			if err := rootCmd.GenZshCompletion(out); err != nil {
+				cmd.Printf("Error generating zsh completion: %v\n", err)
+			}
 		case "fish":
-			rootCmd.GenFishCompletion(out, true)
+			if err := rootCmd.GenFishCompletion(out, true); err != nil {
+				cmd.Printf("Error generating fish completion: %v\n", err)
+			}
 		case "powershell":
-			rootCmd.GenPowerShellCompletionWithDesc(out)
+			if err := rootCmd.GenPowerShellCompletionWithDesc(out); err != nil {
+				cmd.Printf("Error generating powershell completion: %v\n", err)
+			}
 		}
 
 		if closeOut {

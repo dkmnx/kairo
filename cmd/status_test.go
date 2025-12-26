@@ -169,9 +169,9 @@ func TestStatusCommandNoConfig(t *testing.T) {
 // use the same uppercase key format
 func TestStatusCommandKeyFormatConsistency(t *testing.T) {
 	testCases := []struct {
-		name          string
-		providerName  string
-		expectedKey   string
+		name         string
+		providerName string
+		expectedKey  string
 	}{
 		{"zai uppercase", "zai", "ZAI_API_KEY"},
 		{"minimax uppercase", "minimax", "MINIMAX_API_KEY"},
