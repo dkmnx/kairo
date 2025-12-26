@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -15,6 +16,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// validProviderName validates custom provider names to ensure they start with
+// a letter and contain only alphanumeric characters, underscores, or hyphens.
+var validProviderName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
+
+// providerStatusIcon returns a status indicator for a provider's configuration.
 func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider string) string {
 	if !providers.RequiresAPIKey(provider) {
 		if _, exists := cfg.Providers[provider]; exists {
@@ -32,6 +38,7 @@ func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider 
 	return "  "
 }
 
+// ensureConfigDirectory creates the config directory and encryption key if they don't exist.
 func ensureConfigDirectory(dir string) error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return fmt.Errorf("creating config directory: %w", err)
@@ -42,6 +49,7 @@ func ensureConfigDirectory(dir string) error {
 	return nil
 }
 
+// loadOrInitializeConfig loads an existing config or creates a new empty one.
 func loadOrInitializeConfig(dir string) (*config.Config, error) {
 	cfg, err := config.LoadConfig(dir)
 	if err != nil && !os.IsNotExist(err) {
@@ -85,6 +93,7 @@ func promptForProvider() string {
 	return strings.TrimSpace(selection)
 }
 
+// parseProviderSelection converts user input to a provider name.
 func parseProviderSelection(selection string) (string, bool) {
 	if selection == "" || selection == "done" || selection == "q" || selection == "exit" {
 		return "", false
@@ -120,6 +129,9 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		customName := ui.Prompt("Provider name")
 		if customName == "" {
 			return fmt.Errorf("provider name is required")
+		}
+		if !validProviderName.MatchString(customName) {
+			return fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters, underscores, or hyphens")
 		}
 		if providers.IsBuiltInProvider(customName) {
 			return fmt.Errorf("reserved provider name")
@@ -239,6 +251,7 @@ var setupCmd = &cobra.Command{
 	},
 }
 
+// parseIntOrZero converts a string to an integer, returning 0 if invalid.
 func parseIntOrZero(s string) int {
 	var result int
 	for _, c := range s {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
@@ -40,13 +41,24 @@ var switchCmd = &cobra.Command{
 		}
 
 		providerEnv := os.Environ()
-		providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_BASE_URL=%s", provider.BaseURL))
-		providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_MODEL=%s", provider.Model))
+	// Environment variable name constants for model configuration
+	const (
+		envBaseURL       = "ANTHROPIC_BASE_URL"
+		envModel         = "ANTHROPIC_MODEL"
+		envHaikuModel    = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+		envSonnetModel   = "ANTHROPIC_DEFAULT_SONNET_MODEL"
+		envOpusModel     = "ANTHROPIC_DEFAULT_OPUS_MODEL"
+		envSmallFast     = "ANTHROPIC_SMALL_FAST_MODEL"
+		envAuthToken     = "ANTHROPIC_AUTH_TOKEN"
+	)
 
-		providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_DEFAULT_HAIKU_MODEL=%s", provider.Model))
-		providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_DEFAULT_SONNET_MODEL=%s", provider.Model))
-		providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_DEFAULT_OPUS_MODEL=%s", provider.Model))
-		providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_SMALL_FAST_MODEL=%s", provider.Model))
+	providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL))
+	providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envModel, provider.Model))
+
+	providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envHaikuModel, provider.Model))
+	providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envSonnetModel, provider.Model))
+	providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envOpusModel, provider.Model))
+	providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envSmallFast, provider.Model))
 
 		providerEnv = append(providerEnv, provider.EnvVars...)
 
@@ -62,8 +74,9 @@ var switchCmd = &cobra.Command{
 			for key, value := range secrets {
 				providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", key, value))
 			}
-			if apiKey, ok := secrets[fmt.Sprintf("%s_API_KEY", providerName)]; ok {
-				providerEnv = append(providerEnv, fmt.Sprintf("ANTHROPIC_AUTH_TOKEN=%s", apiKey))
+			apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
+			if apiKey, ok := secrets[apiKeyKey]; ok {
+				providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envAuthToken, apiKey))
 			}
 		}
 
@@ -85,6 +98,7 @@ var switchCmd = &cobra.Command{
 
 		if err := execCmd.Run(); err != nil {
 			cmd.Printf("Error running Claude: %v\n", err)
+			os.Exit(1)
 		}
 	},
 }

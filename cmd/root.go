@@ -63,6 +63,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 }
 
+// getConfigDir returns the configuration directory path.
+// It uses the --config flag if provided, otherwise falls back to the default.
 func getConfigDir() string {
 	if configDir != "" {
 		return configDir
