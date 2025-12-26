@@ -1,0 +1,70 @@
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: kairo
+    binary: kairo
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    goarm:
+      - "7"
+    flags:
+      - -trimpath
+      - -tags=osusergo,netgo
+    ldflags:
+      - -s -w
+      - -X github.com/dkmnx/kairo/internal/version.Version={{.Version}}
+      - -X github.com/dkmnx/kairo/internal/version.Commit={{.Commit}}
+      - -X github.com/dkmnx/kairo/internal/version.Date={{.Date}}
+    env:
+      - CGO_ENABLED=0
+
+archives:
+  - id: kairo
+    name_template: '{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - src: LICENSE
+        dst: LICENSE
+      - src: README.md
+        dst: README.md
+
+checksum:
+  name_template: '{{ .Binary }}_{{ .Version }}_checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: '{{ .Binary }}_next'
+
+release:
+  draft: true
+  header: |
+    ## Installation
+
+    ### Homebrew
+    ```bash
+    brew install dkmnx/tap/kairo
+    ```
+
+    ### Manual
+    Download the appropriate archive for your platform and extract it:
+    ```bash
+    tar -xzf kairo_*.tar.gz
+    sudo mv kairo /usr/local/bin/
+    ```
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^merge pull request'

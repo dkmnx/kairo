@@ -1,4 +1,4 @@
-.PHONY: all build test clean lint format run install uninstall
+.PHONY: all build test clean lint format run install uninstall goreleaser
 
 BINARY_NAME := kairo
 DIST_DIR := dist
@@ -45,12 +45,15 @@ clean:
 	@echo "Cleaning..."
 	rm -rf $(DIST_DIR)
 
-install: build
-	@echo "Installing $(BINARY_NAME) to ~/.local/bin..."
-	install -d $(LOCAL_BIN)
-	install -m 755 $(DIST_DIR)/$(BINARY_NAME) $(LOCAL_BIN)/$(BINARY_NAME)
-	@echo "Installed $(BINARY_NAME) to $(LOCAL_BIN)/"
-	@echo "Add $(LOCAL_BIN) to your PATH if not already present:"
+install:
+	@echo "Installing $(BINARY_NAME) to $(LOCAL_BIN)..."
+	@if [ -f scripts/install.sh ]; then \
+		./scripts/install.sh -b $(LOCAL_BIN); \
+	else \
+		install -d $(LOCAL_BIN); \
+		install -m 755 $(DIST_DIR)/$(BINARY_NAME) $(LOCAL_BIN)/$(BINARY_NAME); \
+		echo "Installed $(BINARY_NAME) to $(LOCAL_BIN)/"; \
+	fi
 
 uninstall:
 	@echo "Removing $(BINARY_NAME) from ~/.local/bin..."
@@ -61,24 +64,13 @@ run: build
 	@echo "Running $(BINARY_NAME)..."
 	$(DIST_DIR)/$(BINARY_NAME) $(ARGS)
 
-build-linux:
-	@echo "Building $(BINARY_NAME) for linux..."
-	@mkdir -p $(DIST_DIR)
-	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/$(BINARY_NAME)-linux-amd64 .
-
-build-darwin:
-	@echo "Building $(BINARY_NAME) for darwin..."
-	@mkdir -p $(DIST_DIR)
-	GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64 .
-
-build-windows:
-	@echo "Building $(BINARY_NAME) for windows..."
-	@mkdir -p $(DIST_DIR)
-	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe .
-
-release: build-linux build-darwin build-windows
-	@echo "Release builds created in $(DIST_DIR)/:"
-	@ls -la $(DIST_DIR)/$(BINARY_NAME)-* 2>/dev/null || echo "No release builds found"
+release:
+	@echo "Running goreleaser..."
+	@if command -v goreleaser >/dev/null 2>&1; then \
+		goreleaser release --rm-dist; \
+	else \
+		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
+	fi
 
 deps:
 	@echo "Installing dependencies..."
@@ -106,10 +98,15 @@ help:
 	@echo "  install       - Install to $(LOCAL_BIN)/"
 	@echo "  uninstall     - Remove from $(LOCAL_BIN)/"
 	@echo "  run           - Build and run with ARGS"
-	@echo "  build-linux   - Build for Linux amd64"
-	@echo "  build-darwin  - Build for Darwin amd64"
-	@echo "  build-windows - Build for Windows amd64"
-	@echo "  release       - Build all release binaries (linux, darwin, windows)"
+	@echo "  release       - Create release builds with goreleaser"
 	@echo "  deps          - Download and tidy dependencies"
 	@echo "  verify-deps   - Verify dependency checksums"
 	@echo "  help          - Show this help message"
+
+goreleaser:
+	@echo "Running goreleaser..."
+	@if command -v goreleaser >/dev/null 2>&1; then \
+		goreleaser release --rm-dist; \
+	else \
+		echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
+	fi
