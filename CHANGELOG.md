@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-12-27
+
+### Added
+
+- `kairo update` now automatically downloads and installs the latest version without requiring manual intervention
+
 ## [0.4.2] - 2025-12-27
 
 ### Changed
@@ -21,7 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added version badge to README
 - Updated project description with key features
-- Fixed ASCII art formatting in README
+  - Fixed ASCII art formatting in README
+
+## [0.4.1] - 2025-12-27
 
 ### Fixed
 
@@ -174,7 +182,9 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[0.5.0]: https://github.com/dkmnx/kairo/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/dkmnx/kairo/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/dkmnx/kairo/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/dkmnx/kairo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dkmnx/kairo/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/dkmnx/kairo/compare/v0.2.1...v0.2.2
