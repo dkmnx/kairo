@@ -81,6 +81,7 @@ jobs:
 
       - name: Create Draft Release
         run: |
+          rm -rf .claude/
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           goreleaser release --clean --draft --skip=publish
         env:
@@ -113,6 +114,7 @@ jobs:
 
       - name: Create Snapshot Release
         run: |
+          rm -rf .claude/
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           goreleaser release --clean --snapshot --skip=publish
         env:
@@ -154,6 +156,7 @@ jobs:
 
       - name: Publish Release
         run: |
+          rm -rf .claude/
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           goreleaser release --clean
         env:
