@@ -267,3 +267,195 @@ func TestEncryptSecretsFileError(t *testing.T) {
 		t.Error("EncryptSecrets() should fail when cannot create secrets file")
 	}
 }
+
+func TestRotateKey(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	oldKeyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(oldKeyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	oldKeyContent, err := os.ReadFile(oldKeyPath)
+	if err != nil {
+		t.Fatalf("failed to read old key: %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	originalSecrets := `ZAI_API_KEY=sk-test-key
+MINIMAX_API_KEY=sk-another-key
+DEEPSEEK_API_KEY=sk-deepseek-key
+`
+	err = EncryptSecrets(secretsPath, oldKeyPath, originalSecrets)
+	if err != nil {
+		t.Fatalf("EncryptSecrets() error = %v", err)
+	}
+
+	err = RotateKey(tmpDir)
+	if err != nil {
+		t.Fatalf("RotateKey() error = %v", err)
+	}
+
+	newKeyPath := filepath.Join(tmpDir, "age.key")
+
+	_, err = os.Stat(newKeyPath)
+	if err != nil {
+		t.Errorf("new key file was not created: %v", err)
+	}
+
+	newKeyContent, err := os.ReadFile(newKeyPath)
+	if err != nil {
+		t.Fatalf("failed to read new key: %v", err)
+	}
+
+	if string(oldKeyContent) == string(newKeyContent) {
+		t.Error("key content should have changed after rotation")
+	}
+
+	decrypted, err := DecryptSecrets(secretsPath, newKeyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() with new key error = %v", err)
+	}
+
+	if decrypted != originalSecrets {
+		t.Errorf("decrypted secrets = %q, want %q", decrypted, originalSecrets)
+	}
+}
+
+func TestRotateKeyWithEmptySecrets(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	oldKeyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(oldKeyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	emptySecrets := ""
+
+	err = EncryptSecrets(secretsPath, oldKeyPath, emptySecrets)
+	if err != nil {
+		t.Fatalf("EncryptSecrets() error = %v", err)
+	}
+
+	err = RotateKey(tmpDir)
+	if err != nil {
+		t.Fatalf("RotateKey() error = %v", err)
+	}
+
+	newKeyPath := filepath.Join(tmpDir, "age.key")
+	decrypted, err := DecryptSecrets(secretsPath, newKeyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() with new key error = %v", err)
+	}
+
+	if decrypted != emptySecrets {
+		t.Errorf("decrypted secrets = %q, want empty string", decrypted)
+	}
+}
+
+func TestRotateKeyPreservesConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	configPath := filepath.Join(tmpDir, "config")
+	configContent := `default_provider: zai
+providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai
+    model: zai-model
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	oldKeyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(oldKeyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	err = EncryptSecrets(secretsPath, oldKeyPath, "ZAI_API_KEY=sk-key\n")
+	if err != nil {
+		t.Fatalf("EncryptSecrets() error = %v", err)
+	}
+
+	err = RotateKey(tmpDir)
+	if err != nil {
+		t.Fatalf("RotateKey() error = %v", err)
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("config file was lost: %v", err)
+	}
+
+	if string(data) != configContent {
+		t.Errorf("config content changed after key rotation")
+	}
+}
+
+func TestRotateKeyNoSecretsFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	oldKeyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(oldKeyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	err = RotateKey(tmpDir)
+	if err != nil {
+		t.Fatalf("RotateKey() should succeed when no secrets file exists, error = %v", err)
+	}
+
+	newKeyPath := filepath.Join(tmpDir, "age.key")
+	_, err = os.Stat(newKeyPath)
+	if err != nil {
+		t.Errorf("new key file should still be created: %v", err)
+	}
+}
+
+func TestRotateKeyInvalidOldKey(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	validKeyPath := filepath.Join(tmpDir, "valid.key")
+	err := GenerateKey(validKeyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	validKeyContent, err := os.ReadFile(validKeyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	secrets := "TEST_KEY=secret\n"
+
+	if err := EncryptSecrets(secretsPath, validKeyPath, secrets); err != nil {
+		t.Fatalf("EncryptSecrets() error = %v", err)
+	}
+
+	oldKeyPath := filepath.Join(tmpDir, "age.key")
+	if err := os.WriteFile(oldKeyPath, []byte("AGE-SECRET-KEY-INVALID1234567890abcdef\nAGE-SECRET-KEY-RECIPIENT123456789012345678901234567890\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	err = RotateKey(tmpDir)
+	if err == nil {
+		t.Error("RotateKey() should error when old key cannot decrypt secrets")
+	}
+
+	if err := os.WriteFile(oldKeyPath, validKeyContent, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = DecryptSecrets(secretsPath, oldKeyPath)
+	if err != nil {
+		t.Errorf("should be able to decrypt with valid key: %v", err)
+	}
+}

@@ -143,3 +143,48 @@ func EnsureKeyExists(configDir string) error {
 	}
 	return GenerateKey(keyPath)
 }
+
+// RotateKey generates a new encryption key and re-encrypts all secrets with it.
+// The old key is replaced with the new key. This should be done periodically
+// as a security best practice.
+func RotateKey(configDir string) error {
+	oldKeyPath := filepath.Join(configDir, "age.key")
+	secretsPath := filepath.Join(configDir, "secrets.age")
+
+	_, err := os.Stat(secretsPath)
+	if os.IsNotExist(err) {
+		return generateNewKeyAndReplace(oldKeyPath)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to check secrets file: %w", err)
+	}
+
+	decrypted, err := DecryptSecrets(secretsPath, oldKeyPath)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt existing secrets: %w", err)
+	}
+
+	if err := generateNewKeyAndReplace(oldKeyPath); err != nil {
+		return err
+	}
+
+	if err := EncryptSecrets(secretsPath, oldKeyPath, decrypted); err != nil {
+		return fmt.Errorf("failed to encrypt secrets with new key: %w", err)
+	}
+
+	return nil
+}
+
+func generateNewKeyAndReplace(keyPath string) error {
+	newKeyPath := keyPath + ".new"
+	if err := GenerateKey(newKeyPath); err != nil {
+		return fmt.Errorf("failed to generate new key: %w", err)
+	}
+
+	if err := os.Rename(newKeyPath, keyPath); err != nil {
+		os.Remove(newKeyPath)
+		return fmt.Errorf("failed to replace old key with new key: %w", err)
+	}
+
+	return nil
+}
