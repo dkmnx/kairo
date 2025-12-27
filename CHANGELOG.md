@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2025-12-27
+
+### Changed
+
+- UI: Introduced gray color for non-default providers in list and status output
+- UI: Default provider now displays "(default)" indicator in list command
+
+### Testing
+
+- Increased test coverage across config, env, and ui packages (+6.1% overall)
+- Added comprehensive tests for crypto package (loadRecipient edge cases, file errors)
+- Added validation tests for isPrivateIP and isBlockedHost functions
+- Added ui package tests for all Print functions (PrintSuccess, PrintWarn, PrintError, etc.)
+- Added config tests for file not found, invalid YAML, empty providers, permissions
+
+### Fixed
+
+- Config: Fixed file permission check in crypto tests for root user environments
+- Validation: Simplified isBlockedHost loop using slices.Contains
+
 ## [0.5.0] - 2025-12-27
 
 ### Added
@@ -182,6 +202,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[0.5.1]: https://github.com/dkmnx/kairo/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/dkmnx/kairo/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/dkmnx/kairo/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/dkmnx/kairo/compare/v0.4.0...v0.4.1
