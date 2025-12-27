@@ -24,11 +24,14 @@
 
 ## Overview
 
-- **Multi-Provider Support**: Switch between Native Anthropic, Z.AI, MiniMax, Kimi, DeepSeek, and custom providers
-- **Secure Encryption**: All API keys encrypted with age (X25519) encryption
-- **Interactive Setup**: Guided configuration wizard
-- **Provider Testing**: Test connectivity and configuration
-- **Auto-Update Notifications**: Notifies when new version available
+| Feature           | Description                                                            |
+| ----------------- | ---------------------------------------------------------------------- |
+| Multi-Provider    | Switch between Native Anthropic, Z.AI, MiniMax, Kimi, DeepSeek, custom |
+| Secure Encryption | All API keys encrypted with age (X25519) encryption                    |
+| Key Rotation      | Periodically rotate encryption keys for enhanced security              |
+| Interactive Setup | Guided configuration wizard                                            |
+| Provider Testing  | Test connectivity and configuration                                    |
+| Auto-Update       | Notifies when new version available                                    |
 
 ## Quick Start
 
@@ -49,7 +52,10 @@ kairo test zai
 kairo switch zai "Help me write a function"
 
 # Passing arguments directly
-kairo switch zai -- --continue
+kairo -- --continue
+
+# Rotate encryption key (security best practice)
+kairo rotate
 
 # Update to latest version
 kairo update
@@ -67,20 +73,21 @@ kairo update
 | `kairo switch <provider>`    | Switch and exec Claude           |
 | `kairo default [provider]`   | Get/set default provider         |
 | `kairo reset <provider/all>` | Remove provider config           |
-| `kairo "query"`              | Query mode (default provider)    |
+| `kairo rotate`               | Rotate encryption key            |
+| `kairo -- "query"`           | Query mode (default provider)    |
 | `kairo version`              | Show version + check for updates |
 | `kairo update`               | Check for and update to latest   |
 
 ## Supported Providers
 
-| Provider          | API Key Required |
-|-------------------|------------------|
-| Native Anthropic  | No               |
-| Z.AI              | Yes              |
-| MiniMax           | Yes              |
-| Kimi (Moonshot)   | Yes              |
-| DeepSeek          | Yes              |
-| Custom            | Yes              |
+| Provider            | API Key Required   |
+| ------------------- | ------------------ |
+| Native Anthropic    | No                 |
+| Z.AI                | Yes                |
+| MiniMax             | Yes                |
+| Kimi (Moonshot)     | Yes                |
+| DeepSeek            | Yes                |
+| Custom              | Yes                |
 
 ## Modules
 
@@ -126,6 +133,7 @@ make install  # Install to ~/.local/bin
 - 0600 permissions on sensitive files
 - Secrets decrypted in-memory only
 - Keys generated on first run (backup recommended)
+- Key rotation - use `kairo rotate` to periodically regenerate encryption key
 
 ## License
 

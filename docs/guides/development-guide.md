@@ -130,6 +130,31 @@ kairo config newprovider
 kairo test newprovider
 ```
 
+## Adding Key Rotation Support
+
+The `crypto.RotateKey()` function handles encryption key rotation:
+
+```go
+// RotateKey generates a new key and re-encrypts all secrets
+func RotateKey(configDir string) error
+```
+
+### Implementation Requirements
+
+1. **Decrypt** existing secrets with old key
+2. **Generate** new X25519 key pair
+3. **Encrypt** secrets with new key
+4. **Replace** old key atomically
+
+### Testing Key Rotation
+
+```bash
+go test ./internal/crypto/... -run Rotate
+go test ./cmd/... -run Rotate
+```
+
+See `internal/crypto/crypto_test.go` for test patterns.
+
 ## Testing Guidelines
 
 ### Writing Tests

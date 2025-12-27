@@ -159,6 +159,29 @@ kairo reset zai
 kairo reset all
 ```
 
+### `kairo rotate`
+
+Rotate encryption key for enhanced security.
+
+```bash
+kairo rotate
+```
+
+**What happens:**
+
+1. Decrypts all existing secrets with current key
+2. Generates a new X25519 encryption key
+3. Re-encrypts all secrets with the new key
+4. Replaces the old key (old key becomes invalid immediately)
+
+**Security best practice:** Run periodically (e.g., monthly) to limit exposure if key is compromised.
+
+```bash
+# Rotate and verify
+kairo rotate
+kairo status
+```
+
 ### `kairo [query]`
 
 Query mode using default provider.
@@ -220,11 +243,32 @@ Location: `~/.config/kairo/`
 - Keys are generated on first run
 - Secrets are decrypted in-memory only when needed
 
+### Key Rotation
+
+Use `kairo rotate` to generate a new encryption key and re-encrypt all secrets.
+
+```bash
+kairo rotate
+```
+
+**Benefits:**
+
+- Limits exposure if encryption key is compromised
+- Regular rotation is a security best practice
+- All secrets remain accessible after rotation
+
+**Recommendation:** Rotate keys periodically (monthly) or after:
+
+- Suspected security incident
+- Sharing configuration files
+- Migrating to a new system
+
 ### Best Practices
 
 1. **Backup your `age.key`** - Without it, you cannot decrypt your API keys
 2. **Never commit secrets** - Config files contain no plaintext keys
 3. **Use 0600 permissions** - Files are automatically set with correct permissions
+4. **Rotate keys regularly** - Use `kairo rotate` monthly
 
 ## Troubleshooting
 
