@@ -23,6 +23,7 @@
 - **Secure Encryption**: All API keys encrypted with age (X25519) encryption
 - **Interactive Setup**: Guided configuration wizard
 - **Provider Testing**: Test connectivity and configuration
+- **Auto-Update Notifications**: Notifies when new version available
 
 ## Quick Start
 
@@ -42,8 +43,11 @@ kairo test zai
 # Switch and use Claude
 kairo switch zai "Help me write a function"
 
-# Or use default provider
-kairo "Quick query"
+# Passing arguments directly
+kairo switch zai -- --continue
+
+# Update to latest version
+kairo update
 ```
 
 ## Commands
@@ -59,7 +63,8 @@ kairo "Quick query"
 | `kairo default [provider]`   | Get/set default provider         |
 | `kairo reset <provider/all>` | Remove provider config           |
 | `kairo "query"`              | Query mode (default provider)    |
-| `kairo version`              | Show version                     |
+| `kairo version`              | Show version + check for updates |
+| `kairo update`               | Check for and update to latest   |
 
 ## Supported Providers
 
