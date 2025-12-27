@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/version"
@@ -78,8 +80,7 @@ var updateCmd = &cobra.Command{
 
 This command will:
 1. Check GitHub for the latest release
-2. Download and install the new version
-3. Backup the current binary (optional)`,
+2. Download and install the new version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentVersion := version.Version
 		if currentVersion == "dev" {
@@ -98,14 +99,32 @@ This command will:
 			return
 		}
 
-		cmd.Printf("New version available: %s\n", latest.TagName)
-		cmd.Printf("Current version: %s\n", currentVersion)
-		cmd.Println()
-		cmd.Printf("Release notes: %s\n", latest.HTMLURL)
-		cmd.Println()
-		cmd.Println("To update, run:")
-		cmd.Println()
-		cmd.Printf("  curl -sSL %s | sh\n", "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh")
+		cmd.Printf("Updating to %s...\n", latest.TagName)
+
+		installScript := "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh"
+		updateCmd := exec.Command("curl", "-fsSL", installScript)
+		updateCmd.Stdout = os.Stdout
+		updateCmd.Stderr = os.Stderr
+		updateCmd.Stdin = os.Stdin
+
+		shCmd := exec.Command("sh")
+		shCmd.Stdin, _ = updateCmd.StdoutPipe()
+		shCmd.Stdout = os.Stdout
+		shCmd.Stderr = os.Stderr
+		shCmd.Stdin = os.Stdin
+
+		if err := shCmd.Start(); err != nil {
+			cmd.Printf("Error starting update: %v\n", err)
+			return
+		}
+		if err := updateCmd.Run(); err != nil {
+			cmd.Printf("Error downloading update: %v\n", err)
+			return
+		}
+		if err := shCmd.Wait(); err != nil {
+			cmd.Printf("Error during installation: %v\n", err)
+			return
+		}
 	},
 }
 
