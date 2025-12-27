@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,12 +9,14 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
 
 const defaultUpdateURL = "https://api.github.com/repos/dkmnx/kairo/releases/latest"
+const requestTimeout = 10 * time.Second
 
 type release struct {
 	TagName string `json:"tag_name"`
@@ -43,8 +46,16 @@ func getLatestReleaseURL() string {
 }
 
 func getLatestRelease() (*release, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+
 	url := getLatestReleaseURL()
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch release: %w", err)
 	}
