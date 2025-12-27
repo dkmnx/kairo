@@ -43,6 +43,76 @@ providers:
 	}
 }
 
+func TestLoadConfigFileNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	_, err := LoadConfig(tmpDir)
+	if err == nil {
+		t.Error("LoadConfig() should error when file not found")
+	}
+	if err != ErrConfigNotFound {
+		t.Errorf("LoadConfig() error = %v, want %v", err, ErrConfigNotFound)
+	}
+}
+
+func TestLoadConfigInvalidYAML(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config")
+
+	invalidYAML := `invalid: yaml: content: [`
+	if err := os.WriteFile(configPath, []byte(invalidYAML), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadConfig(tmpDir)
+	if err == nil {
+		t.Error("LoadConfig() should error on invalid YAML")
+	}
+}
+
+func TestLoadConfigEmptyProviders(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config")
+
+	configContent := `default_provider: zai
+providers: {}
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.Providers == nil {
+		t.Error("Providers should not be nil")
+	}
+	if len(cfg.Providers) != 0 {
+		t.Errorf("Providers count = %d, want 0", len(cfg.Providers))
+	}
+}
+
+func TestLoadConfigNoProviders(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config")
+
+	configContent := `default_provider: zai
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.Providers == nil {
+		t.Error("Providers should not be nil when omitted")
+	}
+}
+
 func TestSaveConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config")
@@ -73,11 +143,56 @@ func TestSaveConfig(t *testing.T) {
 	}
 }
 
+func TestSaveConfigCreatesFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config")
+
+	cfg := &Config{
+		DefaultProvider: "test",
+		Providers:       make(map[string]Provider),
+	}
+
+	err := SaveConfig(tmpDir, cfg)
+	if err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Error("config file was not created")
+	}
+}
+
+func TestSaveConfigPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config")
+
+	cfg := &Config{
+		DefaultProvider: "test",
+		Providers:       make(map[string]Provider),
+	}
+
+	err := SaveConfig(tmpDir, cfg)
+	if err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	info, err := os.Stat(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perm := info.Mode().Perm()
+	if perm != 0600 {
+		t.Errorf("File permissions = %o, want 0600", perm)
+	}
+}
+
 func TestProviderStruct(t *testing.T) {
 	p := Provider{
 		Name:    "Test Provider",
 		BaseURL: "https://api.test.com",
 		Model:   "test-model",
+		EnvVars: []string{"VAR1=value1", "VAR2=value2"},
 	}
 
 	if p.Name != "Test Provider" {
@@ -88,6 +203,29 @@ func TestProviderStruct(t *testing.T) {
 	}
 	if p.Model != "test-model" {
 		t.Errorf("Model = %q, want %q", p.Model, "test-model")
+	}
+	if len(p.EnvVars) != 2 {
+		t.Errorf("EnvVars count = %d, want 2", len(p.EnvVars))
+	}
+}
+
+func TestConfigStruct(t *testing.T) {
+	cfg := Config{
+		DefaultProvider: "test-provider",
+		Providers: map[string]Provider{
+			"test": {
+				Name:    "Test",
+				BaseURL: "https://test.com",
+				Model:   "model",
+			},
+		},
+	}
+
+	if cfg.DefaultProvider != "test-provider" {
+		t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "test-provider")
+	}
+	if len(cfg.Providers) != 1 {
+		t.Errorf("Providers count = %d, want 1", len(cfg.Providers))
 	}
 }
 

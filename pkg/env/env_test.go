@@ -20,3 +20,33 @@ func TestGetConfigDir(t *testing.T) {
 		}
 	})
 }
+
+func TestGetConfigDirWithOverride(t *testing.T) {
+	original := configDir
+	defer func() { configDir = original }()
+
+	tmpDir := t.TempDir()
+	configDir = tmpDir
+
+	dir := GetConfigDir()
+	if dir != tmpDir {
+		t.Errorf("GetConfigDir() = %q, want %q", dir, tmpDir)
+	}
+}
+
+func TestGetConfigDirEmptyOverride(t *testing.T) {
+	original := configDir
+	defer func() { configDir = original }()
+
+	configDir = ""
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("cannot find home directory")
+	}
+
+	expected := filepath.Join(home, ".config", "kairo")
+	dir := GetConfigDir()
+	if dir != expected {
+		t.Errorf("GetConfigDir() = %q, want %q", dir, expected)
+	}
+}

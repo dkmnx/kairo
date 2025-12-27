@@ -15,7 +15,7 @@ func TestPrintSuccess(t *testing.T) {
 	PrintSuccess("test message")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
 	output := buf.String()
@@ -37,7 +37,7 @@ func TestPrintWarn(t *testing.T) {
 	PrintWarn("test warning")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
 	output := buf.String()
@@ -56,7 +56,7 @@ func TestPrintError(t *testing.T) {
 	PrintError("test error")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stderr = originalStderr
 
 	if !bytes.Contains(buf.Bytes(), []byte("✗")) {
@@ -73,7 +73,7 @@ func TestPrintInfo(t *testing.T) {
 	PrintInfo("info message")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
 	if !bytes.Contains(buf.Bytes(), []byte("info message")) {
@@ -90,7 +90,7 @@ func TestPrintHeader(t *testing.T) {
 	PrintHeader("header text")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
 	if !bytes.Contains(buf.Bytes(), []byte("header text")) {
@@ -107,7 +107,7 @@ func TestPrintSection(t *testing.T) {
 	PrintSection("section name")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
 	if !bytes.Contains(buf.Bytes(), []byte("section name")) {
@@ -127,7 +127,7 @@ func TestPrintWhite(t *testing.T) {
 	PrintWhite("white text")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
 	if !bytes.Contains(buf.Bytes(), []byte("white text")) {
@@ -144,7 +144,7 @@ func TestPrintGray(t *testing.T) {
 	PrintGray("gray text")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
 	if !bytes.Contains(buf.Bytes(), []byte("gray text")) {
@@ -161,7 +161,7 @@ func TestPrintDefault(t *testing.T) {
 	PrintDefault("provider name")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
 	output := buf.String()
@@ -183,7 +183,7 @@ func TestColorReset(t *testing.T) {
 	PrintWhite("message with reset")
 
 	w.Close()
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
 	output := buf.String()

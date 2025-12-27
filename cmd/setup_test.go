@@ -553,6 +553,41 @@ func TestGetConfigDirWithFlag(t *testing.T) {
 	}
 }
 
+func TestGetConfigDirWithFlagAndEnv(t *testing.T) {
+	originalHome := os.Getenv("HOME")
+	originalConfigDir := configDir
+	defer func() {
+		os.Setenv("HOME", originalHome)
+		configDir = originalConfigDir
+	}()
+
+	tmpDir := t.TempDir()
+	os.Setenv("HOME", tmpDir)
+	configDir = "/custom/path"
+
+	dir := getConfigDir()
+	if dir != "/custom/path" {
+		t.Errorf("getConfigDir() = %q, want %q (flag should take precedence)", dir, "/custom/path")
+	}
+}
+
+func TestGetConfigDirEmptyConfigDir(t *testing.T) {
+	originalConfigDir := configDir
+	configDir = ""
+	defer func() { configDir = originalConfigDir }()
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("cannot find home directory")
+	}
+
+	expectedDir := filepath.Join(home, ".config", "kairo")
+	dir := getConfigDir()
+	if dir != expectedDir {
+		t.Errorf("getConfigDir() = %q, want %q", dir, expectedDir)
+	}
+}
+
 func TestSwitchCmdProviderNotFound(t *testing.T) {
 	originalConfigDir := configDir
 	defer func() { configDir = originalConfigDir }()
