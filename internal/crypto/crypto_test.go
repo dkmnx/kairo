@@ -74,6 +74,10 @@ func TestDecryptInvalidFile(t *testing.T) {
 }
 
 func TestEncryptToReadonlyDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("Skipping readonly test when running as root (permissions don't apply)")
+	}
+
 	tmpDir := t.TempDir()
 	writableDir := filepath.Join(tmpDir, "writable")
 	err := os.MkdirAll(writableDir, 0755)
