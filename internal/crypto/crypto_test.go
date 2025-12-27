@@ -3,6 +3,7 @@ package crypto
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -182,5 +183,87 @@ func TestEnsureKeyExistsWithNestedDir(t *testing.T) {
 
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 		t.Error("key file was not created in nested directory")
+	}
+}
+
+func TestLoadRecipientEmptyFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	keyPath := filepath.Join(tmpDir, "empty.key")
+
+	if err := os.WriteFile(keyPath, []byte(""), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := loadRecipient(keyPath)
+	if err == nil {
+		t.Error("loadRecipient() should error on empty file")
+	}
+	if !strings.Contains(err.Error(), "empty") {
+		t.Errorf("error should mention 'empty', got: %v", err)
+	}
+}
+
+func TestLoadRecipientMissingRecipient(t *testing.T) {
+	tmpDir := t.TempDir()
+	keyPath := filepath.Join(tmpDir, "missing-recipient.key")
+
+	if err := os.WriteFile(keyPath, []byte("identity-line-only\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := loadRecipient(keyPath)
+	if err == nil {
+		t.Error("loadRecipient() should error on file missing recipient line")
+	}
+	if !strings.Contains(err.Error(), "recipient") {
+		t.Errorf("error should mention 'recipient', got: %v", err)
+	}
+}
+
+func TestEncryptSecretsWithInvalidKeyPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+
+	err := EncryptSecrets(secretsPath, "/nonexistent/path/key", "test=secret")
+	if err == nil {
+		t.Error("EncryptSecrets() should error on invalid key path")
+	}
+}
+
+func TestDecryptSecretsWithInvalidKeyPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+
+	_, err := DecryptSecrets(secretsPath, "/nonexistent/path/key")
+	if err == nil {
+		t.Error("DecryptSecrets() should error on invalid key path")
+	}
+}
+
+func TestEncryptSecretsFileError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("Skipping readonly test when running as root")
+	}
+
+	tmpDir := t.TempDir()
+	writableDir := filepath.Join(tmpDir, "writable")
+	if err := os.MkdirAll(writableDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	keyPath := filepath.Join(writableDir, "age.key")
+	if err := GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	readonlyDir := filepath.Join(tmpDir, "readonly")
+	if err := os.MkdirAll(readonlyDir, 0555); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsPath := filepath.Join(readonlyDir, "secrets.age")
+	err := EncryptSecrets(secretsPath, keyPath, "test=secret")
+	if err == nil {
+		t.Error("EncryptSecrets() should fail when cannot create secrets file")
 	}
 }

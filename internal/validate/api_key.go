@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"slices"
 )
 
 func ValidateAPIKey(key string, providerName string) error {
@@ -58,10 +59,8 @@ func isBlockedHost(host string) bool {
 		"::1",
 	}
 
-	for _, blocked := range blockedHosts {
-		if host == blocked {
-			return true
-		}
+	if slices.Contains(blockedHosts, host) {
+		return true
 	}
 
 	ip := net.ParseIP(host)

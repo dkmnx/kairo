@@ -64,6 +64,11 @@ func PrintGray(msg string) {
 	fmt.Printf("%s%s%s\n", gray, msg, reset)
 }
 
+// PrintDefault prints provider name with "(default)" indicator in gray
+func PrintDefault(msg string) {
+	fmt.Printf("%s%s %s(default)%s\n", white, msg, gray, reset)
+}
+
 func PromptSecret(prompt string) (string, error) {
 	fmt.Print(prompt)
 	fmt.Print(": ")

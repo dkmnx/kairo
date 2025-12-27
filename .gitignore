@@ -10,6 +10,7 @@ dist/
 # Test binary
 *.test
 *.html
+*.txt
 
 # Output of go coverage
 *.out
