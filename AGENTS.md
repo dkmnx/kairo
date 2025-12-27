@@ -51,6 +51,15 @@ For issues and new features:
 - Pinned dependencies: Use specific versions in go.mod, run go mod verify
 - Fix all warnings: Use ReAct analysis (logs, code, causes) to resolve build warnings
 
+### Code Style Conventions
+
+- **Imports**: Standard library first (blank line), then third-party packages (blank line between groups)
+- **Formatting**: Run `gofmt -w .` before committing (enforced by pre-commit)
+- **Naming**: PascalCase for exported functions/types, camelCase for unexported, ALL_CAPS for constants
+- **YAML struct tags**: Use snake_case (e.g., `yaml:"default_provider"`)
+- **Error handling**: Wrap with `fmt.Errorf("operation: %w", err)`, custom types when useful
+- **Test patterns**: Use `t.TempDir()` for isolation, `t.Cleanup()` for cleanup, table-driven tests for validation
+
 ## Debugging
 
 ### Scientific Method
@@ -141,8 +150,12 @@ Partial submissions waste time — reviewing agent will reject them, and you wil
 
 - `make build`: Build to dist/kairo with version injection
 - `make test`: Run all tests with verbose output and race detection
+- `go test -v ./package -run TestName`: Run single test
+- `make test-coverage`: Generate HTML coverage report in dist/coverage.html
 - `make lint`: Run gofmt, go vet, golangci-lint
+- `make format`: Format all Go files with gofmt
 - `make release`: Create cross-platform builds with goreleaser
+- `make pre-commit`: Run all pre-commit hooks (requires pre-commit)
 
 ### Security Checklist
 
