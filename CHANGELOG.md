@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI workflow: Fixed govulncheck dependency issues
 - CI workflow: Added proper permissions block for GitHub Actions
 - Release workflow: Fixed goreleaser path resolution
+- Release workflow: Fixed cosign version (v2 → v2.5.2)
+- Crypto test: Skip readonly directory test when running as root (Docker/act)
 
 ## [0.3.0] - 2025-12-27
 
