@@ -40,7 +40,9 @@ var listCmd = &cobra.Command{
 			return
 		}
 
-		ui.PrintSection("Configured Providers")
+		fmt.Println()
+		ui.PrintWhite("Configured providers:")
+		fmt.Println()
 
 		names := sortProviderNames(cfg.Providers, cfg.DefaultProvider)
 
@@ -48,14 +50,12 @@ var listCmd = &cobra.Command{
 			p := cfg.Providers[name]
 			isDefault := (name == cfg.DefaultProvider)
 
-			// Print provider name
 			if isDefault {
-				ui.PrintDefault(fmt.Sprintf("✓ %s", name))
+				ui.PrintDefault(fmt.Sprintf("  ❯ %s", name))
 			} else {
-				ui.PrintWhite(fmt.Sprintf("  %s", name))
+				ui.PrintWhite(fmt.Sprintf("  ❯ %s", name))
 			}
 
-			// Handle Native Anthropic providers
 			if !providers.RequiresAPIKey(name) {
 				def, _ := providers.GetBuiltInProvider(name)
 				if isDefault {
@@ -65,26 +65,23 @@ var listCmd = &cobra.Command{
 					ui.PrintWhite(fmt.Sprintf("    %s", def.Name))
 					ui.PrintWhite("    Native Anthropic (no API key required)")
 				}
-				continue
-			}
-
-			// Print base URL
-			if p.BaseURL != "" {
-				if isDefault {
-					ui.PrintDefault(fmt.Sprintf("    %s", p.BaseURL))
-				} else {
-					ui.PrintWhite(fmt.Sprintf("    %s", p.BaseURL))
+			} else {
+				if p.BaseURL != "" {
+					if isDefault {
+						ui.PrintDefault(fmt.Sprintf("    URL   : %s", p.BaseURL))
+					} else {
+						ui.PrintWhite(fmt.Sprintf("    URL   : %s", p.BaseURL))
+					}
+				}
+				if p.Model != "" {
+					if isDefault {
+						ui.PrintDefault(fmt.Sprintf("    Model : %s", p.Model))
+					} else {
+						ui.PrintWhite(fmt.Sprintf("    Model : %s", p.Model))
+					}
 				}
 			}
-
-			// Print model if available
-			if p.Model != "" {
-				if isDefault {
-					ui.PrintDefault(fmt.Sprintf("    %s", p.Model))
-				} else {
-					ui.PrintWhite(fmt.Sprintf("    %s", p.Model))
-				}
-			}
+			fmt.Println()
 		}
 	},
 }
