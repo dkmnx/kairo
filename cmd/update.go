@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -79,9 +79,15 @@ func getLatestRelease() (*release, error) {
 }
 
 func versionGreaterThan(current, latest string) bool {
-	current = strings.TrimPrefix(current, "v")
-	latest = strings.TrimPrefix(latest, "v")
-	return current < latest
+	c, err := semver.NewVersion(current)
+	if err != nil {
+		return false
+	}
+	l, err := semver.NewVersion(latest)
+	if err != nil {
+		return false
+	}
+	return c.LessThan(l)
 }
 
 var updateCmd = &cobra.Command{

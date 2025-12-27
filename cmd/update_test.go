@@ -165,3 +165,34 @@ func TestVersionGreaterThan(t *testing.T) {
 		}
 	}
 }
+
+func TestVersionGreaterThanEdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		current  string
+		latest   string
+		wantBool bool
+	}{
+		{"patch version", "v1.0.0", "v1.0.1", true},
+		{"minor version", "v1.0.0", "v1.1.0", true},
+		{"major version", "v1.0.0", "v2.0.0", true},
+		{"pre-release after patch", "v1.0.0", "v1.0.1-alpha", true},
+		{"pre-release beta", "v1.0.0", "v1.0.1-beta.1", true},
+		{"rc version", "v1.0.0", "v1.0.1-rc.1", true},
+		{"alpha vs beta", "v1.0.1-alpha", "v1.0.1-beta", true},
+		{"build metadata", "v1.0.0+build123", "v1.0.1", true},
+		{"v0 versions", "v0.9.0", "v0.10.0", true},
+		{"many patch digits", "v1.0.0", "v1.0.10", true},
+		{"many minor digits", "v1.0.0", "v1.10.0", true},
+		{"pre-release vs release", "v1.0.1-alpha", "v1.0.1", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := versionGreaterThan(tt.current, tt.latest)
+			if got != tt.wantBool {
+				t.Errorf("versionGreaterThan(%q, %q) = %v, want %v", tt.current, tt.latest, got, tt.wantBool)
+			}
+		})
+	}
+}
