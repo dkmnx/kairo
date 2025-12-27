@@ -13,7 +13,7 @@ func TestUpdateCommand(t *testing.T) {
 		if r.URL.Path == "/repos/dkmnx/kairo/releases/latest" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"tag_name": "v1.2.0",
 				"html_url": "https://github.com/dkmnx/kairo/releases/tag/v1.2.0",
 				"body": "Release v1.2.0"
@@ -56,7 +56,7 @@ func TestUpdateCommandNoNewVersion(t *testing.T) {
 		if r.URL.Path == "/repos/dkmnx/kairo/releases/latest" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"tag_name": "v1.0.0"}`))
+			_, _ = w.Write([]byte(`{"tag_name": "v1.0.0"}`))
 			return
 		}
 		http.NotFound(w, r)
@@ -112,7 +112,7 @@ func TestVersionNotification(t *testing.T) {
 		if r.URL.Path == "/repos/dkmnx/kairo/releases/latest" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"tag_name": "v1.5.0",
 				"html_url": "https://github.com/dkmnx/kairo/releases/tag/v1.5.0"
 			}`))

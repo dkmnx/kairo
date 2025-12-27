@@ -19,13 +19,6 @@ type release struct {
 	Body    string `json:"body"`
 }
 
-func getenv(key string) string {
-	if value, ok := getEnvFunc(key); ok {
-		return value
-	}
-	return ""
-}
-
 func getEnvFunc(key string) (string, bool) {
 	value := getEnvValue(key)
 	if value != "" {
@@ -118,8 +111,4 @@ This command will:
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
-}
-
-func createUpdateCommand() *cobra.Command {
-	return updateCmd
 }

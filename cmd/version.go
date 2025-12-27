@@ -49,7 +49,3 @@ func checkForUpdates(cmd *cobra.Command) {
 func init() {
 	rootCmd.AddCommand(versionCmd)
 }
-
-func createVersionCommand() *cobra.Command {
-	return versionCmd
-}
