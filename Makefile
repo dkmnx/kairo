@@ -1,4 +1,4 @@
-.PHONY: all build test clean lint format run install uninstall goreleaser
+.PHONY: all build test clean lint format run install uninstall goreleaser ci-local
 
 BINARY_NAME := kairo
 DIST_DIR := dist
@@ -139,4 +139,26 @@ help:
 	@echo "  release-dry-run - Build without publishing"
 	@echo "  deps          - Download and tidy dependencies"
 	@echo "  verify-deps   - Verify dependency checksums"
+	@echo "  ci-local      - Run GitHub Actions locally with act"
+	@echo "  ci-local-list - List all CI jobs"
 	@echo "  help          - Show this help message"
+
+ci-local-list:
+	@echo "Listing GitHub Actions jobs..."
+	@if command -v act >/dev/null 2>&1; then \
+		act -l; \
+	else \
+		echo "act not installed. Install with:"; \
+		echo "  curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sh"; \
+		echo "  or: brew install act"; \
+	fi
+
+ci-local:
+	@echo "Running GitHub Actions locally with act..."
+	@if command -v act >/dev/null 2>&1; then \
+		act $(CI_ARGS); \
+	else \
+		echo "act not installed. Install with:"; \
+		echo "  curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sh"; \
+		echo "  or: brew install act"; \
+	fi
