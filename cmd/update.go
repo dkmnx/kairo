@@ -102,22 +102,19 @@ This command will:
 		cmd.Printf("Updating to %s...\n", latest.TagName)
 
 		installScript := "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh"
-		updateCmd := exec.Command("curl", "-fsSL", installScript)
-		updateCmd.Stdout = os.Stdout
-		updateCmd.Stderr = os.Stderr
-		updateCmd.Stdin = os.Stdin
+		curlCmd := exec.Command("curl", "-fsSL", installScript)
+		curlCmd.Stderr = os.Stderr
 
 		shCmd := exec.Command("sh")
-		shCmd.Stdin, _ = updateCmd.StdoutPipe()
+		shCmd.Stdin, _ = curlCmd.StdoutPipe()
 		shCmd.Stdout = os.Stdout
 		shCmd.Stderr = os.Stderr
-		shCmd.Stdin = os.Stdin
 
 		if err := shCmd.Start(); err != nil {
 			cmd.Printf("Error starting update: %v\n", err)
 			return
 		}
-		if err := updateCmd.Run(); err != nil {
+		if err := curlCmd.Run(); err != nil {
 			cmd.Printf("Error downloading update: %v\n", err)
 			return
 		}
