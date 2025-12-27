@@ -34,4 +34,4 @@ Thumbs.db
 # Config files (contain sensitive data)
 .age.key
 secrets.age
-config
+./config
