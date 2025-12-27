@@ -15,7 +15,11 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/dkmnx/kairo/ci.yml?branch=main&style=flat-square)](https://github.com/dkmnx/kairo/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-**Kairo** is a Go CLI tool for managing Claude Code API providers with encrypted secrets management using age (X25519) encryption.
+**Kairo** is a Go port of [clauver](https://github.com/dkmnx/clauver), rewritten from Bash to provide:
+
+- **Cross-platform single binary** - Works on Linux, macOS, and Windows
+- **Enhanced security** - Type-safe Go implementation with comprehensive validation
+- **Easier maintenance** - Go modules, structured testing, and standardized code organization
 
 ## Overview
 
