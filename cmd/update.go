@@ -33,7 +33,7 @@ func getEnvFunc(key string) (string, bool) {
 }
 
 func getEnvValue(key string) string {
-	return ""
+	return os.Getenv(key)
 }
 
 var envGetter func(string) (string, bool) = getEnvFunc
