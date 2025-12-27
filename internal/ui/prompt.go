@@ -19,54 +19,45 @@ const (
 	Gray   = "\033[0;90m"
 	Bold   = "\033[1m"
 	Reset  = "\033[0m"
-
-	green  = Green
-	yellow = Yellow
-	red    = Red
-	blue   = Blue
-	white  = White
-	gray   = Gray
-	bold   = Bold
-	reset  = Reset
 )
 
 func PrintSuccess(msg string) {
-	fmt.Printf("%s✓%s %s%s\n", green, reset, msg, reset)
+	fmt.Printf("%s✓%s %s%s\n", Green, Reset, msg, Reset)
 }
 
 func PrintWarn(msg string) {
-	fmt.Printf("%s⚠%s %s%s\n", yellow, reset, msg, reset)
+	fmt.Printf("%s⚠%s %s%s\n", Yellow, Reset, msg, Reset)
 }
 
 func PrintError(msg string) {
-	fmt.Fprintf(os.Stderr, "%s✗%s %s%s\n", red, reset, msg, reset)
+	fmt.Fprintf(os.Stderr, "%s✗%s %s%s\n", Red, Reset, msg, Reset)
 }
 
 func PrintInfo(msg string) {
-	fmt.Printf("%s%s\n", blue, msg)
+	fmt.Printf("%s%s\n", Blue, msg)
 }
 
 func PrintHeader(msg string) {
-	fmt.Printf("%s%s%s\n", bold, msg, reset)
+	fmt.Printf("%s%s%s\n", Bold, msg, Reset)
 }
 
 func PrintSection(msg string) {
-	fmt.Printf("\n%s=== %s ===%s\n", bold, msg, reset)
+	fmt.Printf("\n%s=== %s ===%s\n", Bold, msg, Reset)
 }
 
 // PrintWhite prints a message in white (no color)
 func PrintWhite(msg string) {
-	fmt.Printf("%s%s%s\n", white, msg, reset)
+	fmt.Printf("%s%s%s\n", White, msg, Reset)
 }
 
 // PrintGray prints a message in gray
 func PrintGray(msg string) {
-	fmt.Printf("%s%s%s\n", gray, msg, reset)
+	fmt.Printf("%s%s%s\n", Gray, msg, Reset)
 }
 
 // PrintDefault prints provider name with "(default)" indicator in gray
 func PrintDefault(msg string) {
-	fmt.Printf("%s%s %s(default)%s\n", white, msg, gray, reset)
+	fmt.Printf("%s%s %s(default)%s\n", White, msg, Gray, Reset)
 }
 
 func PromptSecret(prompt string) (string, error) {
