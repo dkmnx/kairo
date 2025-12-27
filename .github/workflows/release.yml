@@ -83,7 +83,8 @@ jobs:
 
       - name: Install goreleaser
         run: |
-          curl -sL https://goreleaser.com/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GORELEASER_VERSION }}
+          GOBIN=$(go env GOPATH)/bin
+          curl -sL https://goreleaser.com/install.sh | sh -s -- -b "$GOBIN" ${{ env.GORELEASER_VERSION }}
 
       - name: Create Draft Release
         run: |
@@ -121,7 +122,8 @@ jobs:
 
       - name: Install goreleaser
         run: |
-          curl -sL https://goreleaser.com/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GORELEASER_VERSION }}
+          GOBIN=$(go env GOPATH)/bin
+          curl -sL https://goreleaser.com/install.sh | sh -s -- -b "$GOBIN" ${{ env.GORELEASER_VERSION }}
 
       - name: Create Snapshot Release
         run: |
@@ -168,7 +170,8 @@ jobs:
 
       - name: Install goreleaser
         run: |
-          curl -sL https://goreleaser.com/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GORELEASER_VERSION }}
+          GOBIN=$(go env GOPATH)/bin
+          curl -sL https://goreleaser.com/install.sh | sh -s -- -b "$GOBIN" ${{ env.GORELEASER_VERSION }}
 
       - name: Publish Release
         run: |
