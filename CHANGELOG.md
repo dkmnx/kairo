@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-12-28
+
+### Added
+
+- Production-ready release with complete feature set
+- Comprehensive documentation suite (User Guide, Development Guide, Architecture, Troubleshooting, Contributing, Deployment Guide)
+- 80%+ test coverage across all packages
+- Multi-platform binary releases (Linux, macOS, Windows amd64/arm64)
+- Homebrew tap support for easy installation
+- Automated CI/CD pipeline with testing, linting, and releasing
+
+### Changed
+
+- Stabilized CLI interface for production use
+- Standardized configuration format (YAML) for backward compatibility
+- Achieved comprehensive test coverage across all modules
+
+### Security
+
+- Age (X25519) encryption for all API keys
+- Automatic key rotation with `kairo rotate` command
+- 0600 file permissions on sensitive files (config, secrets.age, age.key)
+- Secrets decrypted in-memory only
+- No plaintext API keys stored in configuration files
+
 ## [0.5.3] - 2025-12-28
 
 ### Added
@@ -231,6 +256,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.0.0]: https://github.com/dkmnx/kairo/compare/v0.5.3...v1.0.0
 [0.5.3]: https://github.com/dkmnx/kairo/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/dkmnx/kairo/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/dkmnx/kairo/compare/v0.5.0...v0.5.1
