@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-12-27
+
+### Added
+
+- `reset` command for removing provider configurations
+- `completion` command with configurable output paths (`kairo completion --write-compile-file`)
+- Color highlighting for provider display in list and status commands
+- Comprehensive test coverage (config, crypto, providers, validate, CLI commands)
+- CI/CD workflows for testing, linting, and releasing
+- Pre-commit configuration for code quality enforcement
+- AGENTS.md with project guidelines, guardrails, and best practices
+- Development tooling documentation
+
+### Changed
+
+- Providers now sorted with default provider first in `list` and `status` commands
+- Extracted provider sorting logic into shared helper function
+- Improved completion error handling for better user experience
+- Documentation restructured with architecture, contributing, guides, and troubleshooting sections
+
+### Fixed
+
+- Completion error handling for edge cases
+
+### Build
+
+- GoReleaser v2 configuration updated
+- Multi-platform release builds (Linux, Darwin, Windows, amd64/arm64)
+
 ## [0.2.2] - 2025-12-26
 
 ### Fixed
@@ -95,6 +124,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[0.3.0]: https://github.com/dkmnx/kairo/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/dkmnx/kairo/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dkmnx/kairo/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dkmnx/kairo/compare/v0.1.0...v0.2.0
