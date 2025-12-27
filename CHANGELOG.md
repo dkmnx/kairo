@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2025-12-28
+
+### Added
+
+- **Version tests**: Added `internal/version/version_test.go` with 5 tests for version parsing and validation
+- **UI output tests**: Added `internal/ui/prompt_test.go` with comprehensive tests for all Print functions
+- **cmd package tests**: Expanded test coverage from 29% to 36.3% with new tests for:
+  - `ensureConfigDirectory`, `loadOrInitializeConfig`, `loadSecrets`
+  - `parseProviderSelection`, `configureAnthropic`
+  - `checkForUpdates` (update notification logic)
+- **Semver dependency**: Added `github.com/Masterminds/semver/v3` for proper version comparison
+
+### Changed
+
+- **Semver parsing**: Replaced fragile string comparison with proper `Masterminds/semver` library
+  - Fixes edge cases: `v0.9.0` vs `v0.10.0`, pre-release versions, multi-digit version numbers
+- **getEnvValue()**: Implemented using `os.Getenv()` to enable `KAIRO_UPDATE_URL` environment variable override
+
+### Fixed
+
+- **UI constants**: Removed unused lowercase duplicate constants, all functions now use uppercase constants (Green, Yellow, Red, etc.)
+- **Code cleanup**: Updated CODE_REVIEW.md to reflect all completed items
+
 ## [0.5.2] - 2025-12-27
 
 ### Fixed
@@ -208,6 +231,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[0.5.3]: https://github.com/dkmnx/kairo/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/dkmnx/kairo/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/dkmnx/kairo/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/dkmnx/kairo/compare/v0.4.2...v0.5.0
