@@ -23,9 +23,33 @@ var versionCmd = &cobra.Command{
 				cmd.Printf("Date: %s\n", version.Date)
 			}
 		}
+
+		if version.Version != "dev" {
+			checkForUpdates(cmd)
+		}
 	},
+}
+
+func checkForUpdates(cmd *cobra.Command) {
+	latest, err := getLatestRelease()
+	if err != nil {
+		return
+	}
+
+	if versionGreaterThan(version.Version, latest.TagName) {
+		cmd.Println()
+		cmd.Printf("A new version is available: %s\n", latest.TagName)
+		cmd.Printf("You are currently on: %s\n", version.Version)
+		cmd.Println()
+		cmd.Println("To update, run:")
+		cmd.Println("  kairo update")
+	}
 }
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+}
+
+func createVersionCommand() *cobra.Command {
+	return versionCmd
 }
