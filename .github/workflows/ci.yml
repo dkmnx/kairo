@@ -14,8 +14,14 @@ on:
       - LICENSE
       - ".gitignore"
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  checks: write
+
 env:
-  GO_VERSION: "1.23"
+  GO_VERSION: "1.25"
   GOLANGCI_LINT_VERSION: v1.60.1
 
 jobs:
@@ -30,17 +36,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles("**/go.sum") }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Install golangci-lint
         run: |
@@ -72,20 +69,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles("**/go.sum") }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Run gosec
-        uses: securego/gosec-action@master
+        uses: securego/gosec-action@v2
         with:
           args: -fmt=sarif -output=gosec.sarif -quiet ./...
 
@@ -107,9 +95,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.21", "1.22", "1.23"]
+        go-version: ["1.23", "1.24", "1.25"]
         include:
-          - go-version: "1.23"
+          - go-version: "1.25"
             latest: true
     steps:
       - name: Checkout code
@@ -119,20 +107,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-          cache: false
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go${{ matrix.go-version }}-${{ hashFiles("**/go.sum") }}
-          restore-keys: |
-            ${{ runner.os }}-go${{ matrix.go-version }}-
-
-      - name: Download dependencies
-        run: go mod download
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Verify dependencies
         run: go mod verify
@@ -174,17 +150,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles("**/go.sum") }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Build for ${{ matrix.os }}
         run: |
@@ -209,7 +176,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Run go mod tidy
         run: go mod tidy

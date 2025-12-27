@@ -81,10 +81,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Install goreleaser
-        run: |
-          GOBIN=$(go env GOPATH)/bin
-          curl -sL https://goreleaser.com/install.sh | sh -s -- -b "$GOBIN" ${{ env.GORELEASER_VERSION }}
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          install-only: true
 
       - name: Create Draft Release
         run: |
@@ -120,10 +121,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Install goreleaser
-        run: |
-          GOBIN=$(go env GOPATH)/bin
-          curl -sL https://goreleaser.com/install.sh | sh -s -- -b "$GOBIN" ${{ env.GORELEASER_VERSION }}
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          install-only: true
 
       - name: Create Snapshot Release
         run: |
@@ -168,10 +170,11 @@ jobs:
         with:
           cosign-release: v2
 
-      - name: Install goreleaser
-        run: |
-          GOBIN=$(go env GOPATH)/bin
-          curl -sL https://goreleaser.com/install.sh | sh -s -- -b "$GOBIN" ${{ env.GORELEASER_VERSION }}
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          install-only: true
 
       - name: Publish Release
         run: |
