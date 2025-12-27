@@ -67,7 +67,7 @@ var statusCmd = &cobra.Command{
 			if !providers.RequiresAPIKey(name) {
 				def, _ := providers.GetBuiltInProvider(name)
 				if isDefault {
-					ui.PrintDefault(fmt.Sprintf("%s:%s: - ✓ Good", def.Name, provider.Model))
+					fmt.Printf("%s%s:%s: - %s(default)%s ✓ Good\n", ui.White, def.Name, provider.Model, ui.Gray, ui.Reset)
 				} else {
 					ui.PrintWhite(fmt.Sprintf("%s:%s: - ✓ Good", def.Name, provider.Model))
 				}
@@ -88,7 +88,7 @@ var statusCmd = &cobra.Command{
 			}
 
 			if isDefault {
-				ui.PrintDefault(fmt.Sprintf("%s:%s: %s - ✓ Good", name, provider.Model, provider.BaseURL))
+				fmt.Printf("%s%s:%s: %s %s(default)%s - ✓ Good\n", ui.White, name, provider.Model, provider.BaseURL, ui.Gray, ui.Reset)
 			} else {
 				ui.PrintWhite(fmt.Sprintf("%s:%s: %s - ✓ Good", name, provider.Model, provider.BaseURL))
 			}

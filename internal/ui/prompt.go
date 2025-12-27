@@ -16,6 +16,7 @@ const (
 	Red    = "\033[0;31m"
 	Blue   = "\033[0;34m"
 	White  = "\033[0;37m"
+	Gray   = "\033[0;90m"
 	Bold   = "\033[1m"
 	Reset  = "\033[0m"
 
@@ -24,6 +25,7 @@ const (
 	red    = Red
 	blue   = Blue
 	white  = White
+	gray   = Gray
 	bold   = Bold
 	reset  = Reset
 )
@@ -57,9 +59,9 @@ func PrintWhite(msg string) {
 	fmt.Printf("%s%s%s\n", white, msg, reset)
 }
 
-// PrintDefault prints a message in green (for default provider)
-func PrintDefault(msg string) {
-	fmt.Printf("%s%s%s\n", green, msg, reset)
+// PrintGray prints a message in gray
+func PrintGray(msg string) {
+	fmt.Printf("%s%s%s\n", gray, msg, reset)
 }
 
 func PromptSecret(prompt string) (string, error) {

@@ -51,34 +51,21 @@ var listCmd = &cobra.Command{
 			isDefault := (name == cfg.DefaultProvider)
 
 			if isDefault {
-				ui.PrintDefault(fmt.Sprintf("  ❯ %s", name))
+				fmt.Printf("%s  ❯ %s %s(default)%s\n", ui.White, name, ui.Gray, ui.Reset)
 			} else {
 				ui.PrintWhite(fmt.Sprintf("  ❯ %s", name))
 			}
 
 			if !providers.RequiresAPIKey(name) {
 				def, _ := providers.GetBuiltInProvider(name)
-				if isDefault {
-					ui.PrintDefault(fmt.Sprintf("    %s", def.Name))
-					ui.PrintDefault("    Native Anthropic (no API key required)")
-				} else {
-					ui.PrintWhite(fmt.Sprintf("    %s", def.Name))
-					ui.PrintWhite("    Native Anthropic (no API key required)")
-				}
+				ui.PrintWhite(fmt.Sprintf("    %s", def.Name))
+				ui.PrintWhite("    Native Anthropic (no API key required)")
 			} else {
 				if p.BaseURL != "" {
-					if isDefault {
-						ui.PrintDefault(fmt.Sprintf("    URL   : %s", p.BaseURL))
-					} else {
-						ui.PrintWhite(fmt.Sprintf("    URL   : %s", p.BaseURL))
-					}
+					ui.PrintWhite(fmt.Sprintf("    URL   : %s", p.BaseURL))
 				}
 				if p.Model != "" {
-					if isDefault {
-						ui.PrintDefault(fmt.Sprintf("    Model : %s", p.Model))
-					} else {
-						ui.PrintWhite(fmt.Sprintf("    Model : %s", p.Model))
-					}
+					ui.PrintWhite(fmt.Sprintf("    Model : %s", p.Model))
 				}
 			}
 			fmt.Println()
