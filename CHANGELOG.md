@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-12-27
+
+### Added
+
+- `kairo update` command to check for and report new releases
+- Auto-update notification in `kairo version` command when new version available
+- `make ci-local` and `make ci-local-list` targets for testing GitHub Actions locally with act
+
+### Changed
+
+- Upgraded to Go 1.25.5
+- Updated golangci-lint to v1.62.0
+- Simplified CI caching using `setup-go` built-in caching instead of manual `actions/cache`
+- Updated CodeQL action to v4
+- Updated build matrix to test Go 1.25.5 only
+
+### Fixed
+
+- CI workflow: Fixed gosec SARIF generation and upload issues
+- CI workflow: Fixed golangci-lint Go version compatibility
+- CI workflow: Fixed govulncheck dependency issues
+- CI workflow: Added proper permissions block for GitHub Actions
+- Release workflow: Fixed goreleaser path resolution
+
 ## [0.3.0] - 2025-12-27
 
 ### Added
@@ -124,6 +148,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[0.4.0]: https://github.com/dkmnx/kairo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dkmnx/kairo/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/dkmnx/kairo/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dkmnx/kairo/compare/v0.2.0...v0.2.1
