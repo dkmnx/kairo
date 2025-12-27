@@ -42,7 +42,8 @@ var statusCmd = &cobra.Command{
 			return
 		}
 
-		ui.PrintSection("Provider Status")
+		ui.PrintWhite("Checking provider status...")
+		fmt.Println()
 
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
@@ -66,11 +67,10 @@ var statusCmd = &cobra.Command{
 			if !providers.RequiresAPIKey(name) {
 				def, _ := providers.GetBuiltInProvider(name)
 				if isDefault {
-					ui.PrintDefault(fmt.Sprintf("✓ %s", def.Name))
+					ui.PrintDefault(fmt.Sprintf("%s:%s: - ✓ Good", def.Name, provider.Model))
 				} else {
-					ui.PrintInfo(fmt.Sprintf("✓ %s", def.Name))
+					ui.PrintWhite(fmt.Sprintf("%s:%s: - ✓ Good", def.Name, provider.Model))
 				}
-				ui.PrintInfo("    Native Anthropic (no API key required)")
 				continue
 			}
 
@@ -84,21 +84,13 @@ var statusCmd = &cobra.Command{
 
 			if !hasApiKey {
 				ui.PrintWarn(fmt.Sprintf("%s - API key not configured", name))
-				ui.PrintWhite(fmt.Sprintf("    %s", provider.BaseURL))
 				continue
 			}
 
 			if isDefault {
-				ui.PrintDefault(fmt.Sprintf("✓ %s", name))
+				ui.PrintDefault(fmt.Sprintf("%s:%s: %s - ✓ Good", name, provider.Model, provider.BaseURL))
 			} else {
-				ui.PrintInfo(fmt.Sprintf("✓ %s", name))
-			}
-
-			// Print URL with appropriate color
-			if isDefault {
-				ui.PrintDefault(fmt.Sprintf("    %s", provider.BaseURL))
-			} else {
-				ui.PrintInfo(fmt.Sprintf("    %s", provider.BaseURL))
+				ui.PrintWhite(fmt.Sprintf("%s:%s: %s - ✓ Good", name, provider.Model, provider.BaseURL))
 			}
 		}
 	},
