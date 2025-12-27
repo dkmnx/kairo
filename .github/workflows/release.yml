@@ -14,7 +14,7 @@ permissions:
   id-token: write
 
 env:
-  GO_VERSION: '1.23'
+  GO_VERSION: '1.25'
   GORELEASER_VERSION: 'v2'
 
 jobs:
@@ -45,7 +45,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Build
         run: go build -v ./...
@@ -69,17 +70,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -89,7 +81,8 @@ jobs:
 
       - name: Create Draft Release
         run: |
-          $(go env GOPATH)/bin/goreleaser release --clean --draft --skip=publish
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          goreleaser release --clean --draft --skip=publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -109,17 +102,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -129,7 +113,8 @@ jobs:
 
       - name: Create Snapshot Release
         run: |
-          $(go env GOPATH)/bin/goreleaser release --clean --snapshot --skip=publish
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          goreleaser release --clean --snapshot --skip=publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -152,17 +137,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Install cosign
         if: startsWith(github.ref, 'refs/tags/v')
@@ -178,7 +154,8 @@ jobs:
 
       - name: Publish Release
         run: |
-          $(go env GOPATH)/bin/goreleaser release --clean
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COSIGN_EXPERIMENTAL: 1
