@@ -3,6 +3,7 @@ package cmd
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/version"
@@ -195,4 +196,204 @@ func TestVersionGreaterThanEdgeCases(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestVersionGreaterThanInvalidVersions(t *testing.T) {
+	t.Run("returns false for invalid current version", func(t *testing.T) {
+		result := versionGreaterThan("invalid-version", "v1.0.0")
+		if result {
+			t.Error("versionGreaterThan() should return false for invalid current version")
+		}
+	})
+
+	t.Run("returns false for invalid latest version", func(t *testing.T) {
+		result := versionGreaterThan("v1.0.0", "not-a-version")
+		if result {
+			t.Error("versionGreaterThan() should return false for invalid latest version")
+		}
+	})
+
+	t.Run("returns false for both invalid versions", func(t *testing.T) {
+		result := versionGreaterThan("bad", "also-bad")
+		if result {
+			t.Error("versionGreaterThan() should return false for both invalid versions")
+		}
+	})
+}
+
+func TestGetEnvFunc(t *testing.T) {
+	t.Run("returns value and true when env var is set", func(t *testing.T) {
+		// Set a temporary environment variable
+		t.Setenv("KAIRO_TEST_VAR", "test-value")
+
+		value, ok := getEnvFunc("KAIRO_TEST_VAR")
+		if !ok {
+			t.Error("getEnvFunc() ok = false, want true")
+		}
+		if value != "test-value" {
+			t.Errorf("getEnvFunc() = %q, want 'test-value'", value)
+		}
+	})
+
+	t.Run("returns empty string and false when env var is not set", func(t *testing.T) {
+		// Unset to ensure it's not set
+		_ = os.Unsetenv("KAIRO_NONEXISTENT_VAR")
+
+		value, ok := getEnvFunc("KAIRO_NONEXISTENT_VAR")
+		if ok {
+			t.Error("getEnvFunc() ok = true, want false")
+		}
+		if value != "" {
+			t.Errorf("getEnvFunc() = %q, want empty string", value)
+		}
+	})
+
+	t.Run("returns false for empty env var", func(t *testing.T) {
+		t.Setenv("KAIRO_EMPTY_VAR", "")
+
+		value, ok := getEnvFunc("KAIRO_EMPTY_VAR")
+		if ok {
+			t.Error("getEnvFunc() ok = true, want false for empty value")
+		}
+		if value != "" {
+			t.Errorf("getEnvFunc() = %q, want empty string", value)
+		}
+	})
+}
+
+func TestGetLatestRelease(t *testing.T) {
+	t.Run("returns release on success", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"tag_name": "v2.0.0",
+				"html_url": "https://github.com/dkmnx/kairo/releases/tag/v2.0.0",
+				"body": "Release v2.0.0"
+			}`))
+		}))
+		defer server.Close()
+
+		// Override the update URL
+		originalEnvGetter := envGetter
+		envGetter = func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL, true
+			}
+			return originalEnvGetter(key)
+		}
+		defer func() { envGetter = originalEnvGetter }()
+
+		release, err := getLatestRelease()
+		if err != nil {
+			t.Fatalf("getLatestRelease() error = %v", err)
+		}
+
+		if release.TagName != "v2.0.0" {
+			t.Errorf("release.TagName = %q, want 'v2.0.0'", release.TagName)
+		}
+
+		if release.HTMLURL != "https://github.com/dkmnx/kairo/releases/tag/v2.0.0" {
+			t.Errorf("release.HTMLURL = %q, want 'https://github.com/dkmnx/kairo/releases/tag/v2.0.0'", release.HTMLURL)
+		}
+	})
+
+	t.Run("returns error on HTTP failure", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		originalEnvGetter := envGetter
+		envGetter = func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL, true
+			}
+			return originalEnvGetter(key)
+		}
+		defer func() { envGetter = originalEnvGetter }()
+
+		_, err := getLatestRelease()
+		if err == nil {
+			t.Error("getLatestRelease() should return error for 500 status")
+		}
+	})
+
+	t.Run("returns error on timeout", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Simulate timeout by not responding
+			<-r.Context().Done()
+		}))
+		defer server.Close()
+
+		originalEnvGetter := envGetter
+		envGetter = func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL, true
+			}
+			return originalEnvGetter(key)
+		}
+		defer func() { envGetter = originalEnvGetter }()
+
+		_, err := getLatestRelease()
+		if err == nil {
+			t.Error("getLatestRelease() should return error on timeout")
+		}
+	})
+
+	t.Run("returns error on invalid JSON", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"invalid": json}`))
+		}))
+		defer server.Close()
+
+		originalEnvGetter := envGetter
+		envGetter = func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL, true
+			}
+			return originalEnvGetter(key)
+		}
+		defer func() { envGetter = originalEnvGetter }()
+
+		_, err := getLatestRelease()
+		if err == nil {
+			t.Error("getLatestRelease() should return error for invalid JSON")
+		}
+	})
+}
+
+func TestGetLatestReleaseURL(t *testing.T) {
+	t.Run("uses environment variable when set", func(t *testing.T) {
+		t.Setenv("KAIRO_UPDATE_URL", "https://custom.example.com/releases/latest")
+
+		url := getLatestReleaseURL()
+		expected := "https://custom.example.com/releases/latest"
+		if url != expected {
+			t.Errorf("getLatestReleaseURL() = %q, want %q", url, expected)
+		}
+	})
+
+	t.Run("uses default URL when env var is not set", func(t *testing.T) {
+		// Unset to ensure it's not set
+		_ = os.Unsetenv("KAIRO_UPDATE_URL")
+
+		url := getLatestReleaseURL()
+		expected := defaultUpdateURL
+		if url != expected {
+			t.Errorf("getLatestReleaseURL() = %q, want %q", url, expected)
+		}
+	})
+
+	t.Run("uses default URL when env var is empty", func(t *testing.T) {
+		t.Setenv("KAIRO_UPDATE_URL", "")
+
+		url := getLatestReleaseURL()
+		expected := defaultUpdateURL
+		if url != expected {
+			t.Errorf("getLatestReleaseURL() = %q, want %q", url, expected)
+		}
+	})
 }
