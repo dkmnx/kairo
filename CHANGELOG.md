@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-12-28
+
+### Fixed
+
+- **Update command**: Fixed checksum file download error by correcting filename construction
+  - Script was using version with 'v' prefix (e.g., `kairo_v1.0.1_checksums.txt`)
+  - Actual release asset uses format without prefix (e.g., `kairo_1.0.1_checksums.txt`)
+  - Added version prefix stripping logic to match actual GoReleaser naming
+- **Install script**: Fixed shellcheck warnings for safer script execution
+  - Changed `trap` command to use single quotes to prevent early variable expansion
+  - Fixed PATH export statement for proper variable display
+
 ## [1.0.1] - 2025-12-28
 
 ### Added
@@ -288,6 +300,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.0.2]: https://github.com/dkmnx/kairo/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/dkmnx/kairo/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/dkmnx/kairo/compare/v0.5.3...v1.0.0
 [0.5.3]: https://github.com/dkmnx/kairo/compare/v0.5.2...v0.5.3
