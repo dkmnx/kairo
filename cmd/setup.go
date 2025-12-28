@@ -20,6 +20,79 @@ import (
 // a letter and contain only alphanumeric characters, underscores, or hyphens.
 var validProviderName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 
+// validateCustomProviderName validates a custom provider name and returns the validated name or an error.
+func validateCustomProviderName(name string) (string, error) {
+	if name == "" {
+		return "", fmt.Errorf("provider name is required")
+	}
+	if !validProviderName.MatchString(name) {
+		return "", fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters, underscores, or hyphens")
+	}
+	if providers.IsBuiltInProvider(name) {
+		return "", fmt.Errorf("reserved provider name")
+	}
+	return name, nil
+}
+
+// buildProviderConfig creates a Provider configuration from a ProviderDefinition.
+func buildProviderConfig(def providers.ProviderDefinition, baseURL, model string) config.Provider {
+	provider := config.Provider{
+		Name:    def.Name,
+		BaseURL: baseURL,
+		Model:   model,
+	}
+	if len(def.EnvVars) > 0 {
+		provider.EnvVars = def.EnvVars
+	}
+	return provider
+}
+
+// getSortedSecretsKeys returns a sorted slice of keys from a secrets map.
+func getSortedSecretsKeys(secrets map[string]string) []string {
+	keys := make([]string, 0, len(secrets))
+	for key := range secrets {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// formatSecretsFileContent formats a secrets map into a string suitable for file storage.
+func formatSecretsFileContent(secrets map[string]string) string {
+	var builder strings.Builder
+	keys := getSortedSecretsKeys(secrets)
+	for _, key := range keys {
+		value := secrets[key]
+		if key != "" && value != "" {
+			builder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		}
+	}
+	return builder.String()
+}
+
+// saveProviderConfigFile saves a provider configuration to the config file.
+// If setAsDefault is true and no default provider is set, the provider becomes the default.
+func saveProviderConfigFile(dir string, cfg *config.Config, providerName string, provider config.Provider, setAsDefault bool) error {
+	cfg.Providers[providerName] = provider
+	if setAsDefault && cfg.DefaultProvider == "" {
+		cfg.DefaultProvider = providerName
+	}
+	if err := config.SaveConfig(dir, cfg); err != nil {
+		return fmt.Errorf("saving config: %w", err)
+	}
+	return nil
+}
+
+// validateAPIKey is a wrapper around validate.ValidateAPIKey for consistency.
+func validateAPIKey(key, providerName string) error {
+	return validate.ValidateAPIKey(key, providerName)
+}
+
+// validateBaseURL is a wrapper around validate.ValidateURL for consistency.
+func validateBaseURL(url, providerName string) error {
+	return validate.ValidateURL(url, providerName)
+}
+
 // providerStatusIcon returns a status indicator for a provider's configuration.
 func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider string) string {
 	if !providers.RequiresAPIKey(provider) {
@@ -125,18 +198,14 @@ func configureAnthropic(dir string, cfg *config.Config, providerName string) err
 }
 
 func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string) error {
+	// Handle custom provider name
 	if providerName == "custom" {
 		customName := ui.Prompt("Provider name")
-		if customName == "" {
-			return fmt.Errorf("provider name is required")
+		validatedName, err := validateCustomProviderName(customName)
+		if err != nil {
+			return err
 		}
-		if !validProviderName.MatchString(customName) {
-			return fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters, underscores, or hyphens")
-		}
-		if providers.IsBuiltInProvider(customName) {
-			return fmt.Errorf("reserved provider name")
-		}
-		providerName = customName
+		providerName = validatedName
 	}
 
 	def, _ := providers.GetBuiltInProvider(providerName)
@@ -144,64 +213,60 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		def.Name = providerName
 	}
 
+	// Prompt for configuration details
 	ui.PrintInfo("")
 	ui.PrintHeader(fmt.Sprintf("%s Configuration", def.Name))
 
-	apiKey, err := ui.PromptSecret("API Key")
+	apiKey, err := promptForAPIKey(def.Name)
 	if err != nil {
-		return fmt.Errorf("reading API key: %w", err)
-	}
-	if err := validate.ValidateAPIKey(apiKey, def.Name); err != nil {
 		return err
 	}
 
-	baseURL := ui.PromptWithDefault("Base URL", def.BaseURL)
-	if err := validate.ValidateURL(baseURL, def.Name); err != nil {
+	baseURL, err := promptForBaseURL(def.BaseURL, def.Name)
+	if err != nil {
 		return err
 	}
 
 	model := ui.PromptWithDefault("Model", def.Model)
 
-	provider := config.Provider{
-		Name:    def.Name,
-		BaseURL: baseURL,
-		Model:   model,
-	}
-	if len(def.EnvVars) > 0 {
-		provider.EnvVars = def.EnvVars
+	// Build and save provider configuration
+	provider := buildProviderConfig(def, baseURL, model)
+	setAsDefault := cfg.DefaultProvider == ""
+	if err := saveProviderConfigFile(dir, cfg, providerName, provider, setAsDefault); err != nil {
+		return err
 	}
 
-	cfg.Providers[providerName] = provider
-	if cfg.DefaultProvider == "" {
-		cfg.DefaultProvider = providerName
-	}
-
-	if err := config.SaveConfig(dir, cfg); err != nil {
-		return fmt.Errorf("saving config: %w", err)
-	}
-
+	// Save secrets
 	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
-
-	var secretsBuilder strings.Builder
-	keys := make([]string, 0, len(secrets))
-	for key := range secrets {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		value := secrets[key]
-		if key != "" && value != "" {
-			secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
-		}
-	}
-
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
+	secretsContent := formatSecretsFileContent(secrets)
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
 		return fmt.Errorf("saving API key: %w", err)
 	}
 
 	ui.PrintSuccess(fmt.Sprintf("%s configured successfully", def.Name))
 	ui.PrintInfo(fmt.Sprintf("Run 'kairo %s' to use this provider", providerName))
 	return nil
+}
+
+// promptForAPIKey prompts user for an API key and validates it.
+func promptForAPIKey(providerName string) (string, error) {
+	apiKey, err := ui.PromptSecret("API Key")
+	if err != nil {
+		return "", fmt.Errorf("reading API key: %w", err)
+	}
+	if err := validateAPIKey(apiKey, providerName); err != nil {
+		return "", err
+	}
+	return apiKey, nil
+}
+
+// promptForBaseURL prompts user for a base URL and validates it.
+func promptForBaseURL(defaultURL, providerName string) (string, error) {
+	baseURL := ui.PromptWithDefault("Base URL", defaultURL)
+	if err := validateBaseURL(baseURL, providerName); err != nil {
+		return "", err
+	}
+	return baseURL, nil
 }
 
 var setupCmd = &cobra.Command{
