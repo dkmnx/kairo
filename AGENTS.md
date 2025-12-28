@@ -18,10 +18,10 @@ providers.
 
 ### Code Quality
 
-- **YAGNI (You Aren't Gonna Need It)**: Implement features based on actual user requirements, not speculation
-- **SOLID**: Single responsibility per package, open/closed for provider registry, dependency injection for testability
-- **DRY (Don't Repeat Yourself)**: Extract duplicated logic into shared functions (e.g., config.ParseSecrets())
-- **KISS (Keep It Simple, Stupid)**: Prefer simple, readable Go code over complex abstractions
+- **YAGNI**: Implement features based on actual user requirements, not speculation
+- **SOLID**: Single responsibility per package, open/closed for provider registry, dependency injection
+- **DRY**: Extract duplicated logic into shared functions (e.g., config.ParseSecrets())
+- **KISS**: Prefer simple, readable Go code over complex abstractions
 
 ### 1-3-1 Framework
 
@@ -31,34 +31,50 @@ For issues and new features:
 - **3 solutions**: Brainstorm alternatives with pros/cons (performance, maintainability, security)
 - **1 best recommendation**: Select and justify the optimal approach
 
-### Documentation
+### Code Style
 
-- Add godoc comments for all exported functions
-- Clean code with comments only for complex logic (validation rules, encryption operations)
-- Update CHANGELOG.md for all user-facing changes
+- **Imports**: Standard library first, then third-party (blank line between groups)
+- **Formatting**: Run `gofmt -w .` before committing (enforced by pre-commit)
+- **Naming**: PascalCase for exported, camelCase for unexported, ALL_CAPS for constants
+- **YAML tags**: Use snake_case (e.g., `yaml:"default_provider"`)
+- **Error handling**: Wrap with `fmt.Errorf("operation: %w", err)`, custom types when useful
+- **Tests**: Use `t.TempDir()` for isolation, `t.Cleanup()` for cleanup, table-driven tests
 
 ### Security
 
 - **No secrets**: Never commit API keys, age keys, or encrypted secrets
-- **Threat modeling**: Consider XSS, path traversal, file permission escalation when handling user input
-- Validation: Enforce HTTPS-only URLs, block localhost/private IPs, validate API key length (min 8 chars)
+- **Threat modeling**: Consider XSS, path traversal, file permission escalation
+- Validation: Enforce HTTPS-only URLs, block localhost/private IPs, API key min 8 chars
 - File permissions: Sensitive files must use 0600 permissions
 
-### Testing Requirements
+### Documentation
 
-- **80%+ test coverage**: Target for all internal packages (config, crypto, validate, providers)
-- Comprehensive docs: README for usage, godoc for API reference
-- Pinned dependencies: Use specific versions in go.mod, run go mod verify
-- Fix all warnings: Use ReAct analysis (logs, code, causes) to resolve build warnings
+- Add godoc comments for all exported functions
+- Clean code with comments only for complex logic
+- Update CHANGELOG.md for all user-facing changes
 
-### Code Style Conventions
+## Test-Driven Development (MANDATORY)
 
-- **Imports**: Standard library first (blank line), then third-party packages (blank line between groups)
-- **Formatting**: Run `gofmt -w .` before committing (enforced by pre-commit)
-- **Naming**: PascalCase for exported functions/types, camelCase for unexported, ALL_CAPS for constants
-- **YAML struct tags**: Use snake_case (e.g., `yaml:"default_provider"`)
-- **Error handling**: Wrap with `fmt.Errorf("operation: %w", err)`, custom types when useful
-- **Test patterns**: Use `t.TempDir()` for isolation, `t.Cleanup()` for cleanup, table-driven tests for validation
+ALL implementation must follow strict TDD:
+
+### Cycle
+
+1. **RED**: Write failing test first (never write production code without test)
+2. **GREEN**: Write minimal code to pass (no more, no less)
+3. **REFACTOR**: Improve while tests stay green
+
+### Structure
+
+- **Arrange-Act-Assert**: Set up test state, perform action, verify outcomes
+- **Coverage**: 100% for critical paths, 90%+ overall
+- **Order**: unit → integration → e2e, never skip levels
+
+### Rules
+
+- **Forbidden**: Writing code before tests, skipping tests, "I'll test later"
+- **Test doubles**: Use mocks/stubs/spies only at boundaries (external APIs, file system, os.Exit)
+- **Each test**: Independent, fast, readable, maintainable
+- **Naming**: `testShould_ExpectedBehavior_When_StateUnderTest`
 
 ## Debugging
 
@@ -73,7 +89,7 @@ For issues and new features:
 
 - Isolate failing code in standalone test
 - Remove dependencies on external services when possible
-- Use test doubles (mocks, stubs) for non-deterministic components
+- Use test doubles for non-deterministic components
 
 ### 3 Strategic Prints
 
@@ -83,7 +99,7 @@ For issues and new features:
 
 ### Binary Search (if needed)
 
-For complex failures with multiple interacting components, systematically narrow down:
+For complex failures with multiple interacting components:
 
 - Split test suite in half (first half vs second half)
 - Run isolated package tests vs integration tests
@@ -113,18 +129,29 @@ Partial submissions waste time — reviewing agent will reject them, and you wil
 
 **Submit only complete, correct, final code.**
 
+## Build & Release
+
+- `make build`: Build to dist/kairo with version injection
+- `make test`: Run all tests (verbose + race detection)
+- `go test -v ./package -run TestName`: Run single test
+- `make test-coverage`: Generate HTML coverage report in dist/coverage.html
+- `make lint`: Run gofmt, go vet, golangci-lint
+- `make format`: Format all Go files with gofmt
+- `make verify-deps`: Verify dependency checksums (security)
+- `make ci-local`: Run GitHub Actions locally with act
+
 ## Project-Specific Guidelines
 
 ### Architecture
 
-- `cmd/` package: CLI commands using Cobra framework. Keep logic minimal, delegate to internal packages
-- `internal/` packages: Business logic, validation, encryption. No CLI dependencies
-- `pkg/` packages: Reusable utilities with minimal dependencies
+- `cmd/`: CLI commands using Cobra framework. Keep logic minimal, delegate to internal packages
+- `internal/`: Business logic, validation, encryption. No CLI dependencies
+- `pkg/`: Reusable utilities with minimal dependencies
 
 ### Configuration
 
 - File format: YAML with snake_case keys (default_provider, base_url)
-- Storage location: `~/.config/kairo/` (use pkg/env.GetConfigDir())
+- Storage location: `~/.config/kairo/` (use `pkg/env.GetConfigDir()`)
 - Permissions: 0600 for config, secrets.age, age.key files
 
 ### Provider Names
@@ -132,30 +159,6 @@ Partial submissions waste time — reviewing agent will reject them, and you wil
 - Storage keys: Lowercase in config YAML (zai, minimax, custom)
 - Environment variables: Uppercase for API keys (ZAI_API_KEY, MINIMAX_API_KEY)
 - Custom providers: Must start with letter, alphanumeric/underscore/hyphen only (regex: `^[a-zA-Z][a-zA-Z0-9_-]*$`)
-
-### Error Handling
-
-- Wrap errors with context: `fmt.Errorf("operation failed: %w", err)`
-- Return typed errors from internal packages when useful for caller checks
-- CLI commands: Print errors via cmd.Printf() or ui.PrintError(), return to let Cobra handle exit code
-
-### Testing
-
-- Use `t.TempDir()` for test isolation (creates temp dirs, auto-cleanup)
-- Table-driven tests for validation rules and provider registry
-- Mock external dependencies (exec.Command, os.Exit) for CLI command tests
-- Run `go test -race ./...` to catch data races
-
-### Build & Release
-
-- `make build`: Build to dist/kairo with version injection
-- `make test`: Run all tests with verbose output and race detection
-- `go test -v ./package -run TestName`: Run single test
-- `make test-coverage`: Generate HTML coverage report in dist/coverage.html
-- `make lint`: Run gofmt, go vet, golangci-lint
-- `make format`: Format all Go files with gofmt
-- `make release`: Create cross-platform builds with goreleaser
-- `make pre-commit`: Run all pre-commit hooks (requires pre-commit)
 
 ### Security Checklist
 
