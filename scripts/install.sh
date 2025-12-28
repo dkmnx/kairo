@@ -78,15 +78,16 @@ download_and_install() {
     log "Downloading $url..."
 
     tmpdir=$(mktemp -d)
-    trap "rm -rf $tmpdir" EXIT
+    trap 'rm -rf "$tmpdir"' EXIT
 
     archive_path="$tmpdir/$filename"
-    checksum_path="$tmpdir/${BINARY_NAME}_${version}_checksums.txt"
+    version_no_prefix="${version#v}"
+    checksum_path="$tmpdir/${BINARY_NAME}_${version_no_prefix}_checksums.txt"
 
     curl -fsSL -o "$archive_path" "$url" || error "Failed to download $url"
 
     log "Verifying checksum..."
-    curl -fsSL -o "$checksum_path" "https://github.com/$REPO/releases/download/$version/${BINARY_NAME}_${version}_checksums.txt" || true
+    curl -fsSL -o "$checksum_path" "https://github.com/$REPO/releases/download/$version/${BINARY_NAME}_${version_no_prefix}_checksums.txt" || true
 
     if [ -f "$checksum_path" ]; then
         cd "$tmpdir"
@@ -117,7 +118,7 @@ download_and_install() {
     log "Installed $BINARY_NAME $version to $INSTALL_DIR/$BINARY_NAME"
     log ""
     log "Add to PATH by running:"
-    log '  export PATH="$INSTALL_DIR:$PATH"'
+    log "  export PATH=\"$INSTALL_DIR:\$PATH\""
 }
 
 parse_args() {
