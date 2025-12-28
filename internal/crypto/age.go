@@ -8,24 +8,31 @@ import (
 	"path/filepath"
 
 	"filippo.io/age"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 // GenerateKey generates a new X25519 encryption key and saves it to the specified path.
 func GenerateKey(keyPath string) error {
 	key, err := age.GenerateX25519Identity()
 	if err != nil {
-		return fmt.Errorf("failed to generate key: %w", err)
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to generate encryption key", err).
+			WithContext("path", keyPath)
 	}
 
 	keyFile, err := os.OpenFile(keyPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
-		return fmt.Errorf("failed to create key file: %w", err)
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to create key file", err).
+			WithContext("path", keyPath)
 	}
 	defer keyFile.Close()
 
 	_, err = fmt.Fprintf(keyFile, "%s\n%s\n", key.String(), key.Recipient().String())
 	if err != nil {
-		return fmt.Errorf("failed to write key: %w", err)
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to write key to file", err).
+			WithContext("path", keyPath)
 	}
 
 	return nil
@@ -35,27 +42,36 @@ func GenerateKey(keyPath string) error {
 func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 	recipient, err := loadRecipient(keyPath)
 	if err != nil {
-		return err
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to load encryption key", err).
+			WithContext("key_path", keyPath).
+			WithContext("secrets_path", secretsPath)
 	}
 
 	file, err := os.OpenFile(secretsPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
-		return fmt.Errorf("failed to create secrets file: %w", err)
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to create secrets file", err).
+			WithContext("path", secretsPath)
 	}
 	defer file.Close()
 
 	w, err := age.Encrypt(file, recipient)
 	if err != nil {
-		return fmt.Errorf("failed to create encryptor: %w", err)
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to initialize encryption", err).
+			WithContext("secrets_path", secretsPath)
 	}
 
 	_, err = w.Write([]byte(secrets))
 	if err != nil {
-		return fmt.Errorf("failed to encrypt: %w", err)
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to encrypt secrets", err)
 	}
 
 	if err := w.Close(); err != nil {
-		return fmt.Errorf("failed to close encryptor: %w", err)
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to finalize encryption", err)
 	}
 
 	return nil
@@ -65,24 +81,32 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 	identity, err := loadIdentity(keyPath)
 	if err != nil {
-		return "", err
+		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to load decryption key", err).
+			WithContext("key_path", keyPath)
 	}
 
 	file, err := os.Open(secretsPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open secrets file: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to open secrets file", err).
+			WithContext("path", secretsPath)
 	}
 	defer file.Close()
 
 	r, err := age.Decrypt(file, identity)
 	if err != nil {
-		return "", fmt.Errorf("failed to decrypt: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to decrypt secrets file", err).
+			WithContext("path", secretsPath).
+			WithContext("hint", "ensure key file matches the one used for encryption")
 	}
 
 	var buf bytes.Buffer
 	_, err = buf.ReadFrom(r)
 	if err != nil {
-		return "", fmt.Errorf("failed to read decrypted content: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to read decrypted content", err)
 	}
 
 	return buf.String(), nil
@@ -91,21 +115,31 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 func loadRecipient(keyPath string) (age.Recipient, error) {
 	file, err := os.Open(keyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open key file: %w", err)
+		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to open key file", err).
+			WithContext("path", keyPath)
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	if !scanner.Scan() {
-		return nil, fmt.Errorf("key file is empty")
+		return nil, kairoerrors.NewError(kairoerrors.CryptoError,
+			"key file is empty").
+			WithContext("path", keyPath)
 	}
 	if !scanner.Scan() {
-		return nil, fmt.Errorf("key file missing recipient")
+		return nil, kairoerrors.NewError(kairoerrors.CryptoError,
+			"key file is missing recipient line").
+			WithContext("path", keyPath).
+			WithContext("hint", "key file should contain identity and recipient lines")
 	}
 
 	recipient, err := age.ParseX25519Recipient(scanner.Text())
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse recipient: %w", err)
+		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to parse recipient from key file", err).
+			WithContext("path", keyPath).
+			WithContext("hint", "key file may be corrupted or malformed")
 	}
 
 	return recipient, nil
@@ -114,18 +148,25 @@ func loadRecipient(keyPath string) (age.Recipient, error) {
 func loadIdentity(keyPath string) (age.Identity, error) {
 	file, err := os.Open(keyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open key file: %w", err)
+		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to open key file", err).
+			WithContext("path", keyPath)
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	if !scanner.Scan() {
-		return nil, fmt.Errorf("key file is empty")
+		return nil, kairoerrors.NewError(kairoerrors.CryptoError,
+			"key file is empty").
+			WithContext("path", keyPath)
 	}
 
 	identity, err := age.ParseX25519Identity(scanner.Text())
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse identity: %w", err)
+		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to parse identity from key file", err).
+			WithContext("path", keyPath).
+			WithContext("hint", "key file may be corrupted or invalid format")
 	}
 
 	return identity, nil
@@ -139,7 +180,9 @@ func EnsureKeyExists(configDir string) error {
 		return nil
 	}
 	if !os.IsNotExist(err) {
-		return err
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to check key file status", err).
+			WithContext("path", keyPath)
 	}
 	return GenerateKey(keyPath)
 }
@@ -156,20 +199,30 @@ func RotateKey(configDir string) error {
 		return generateNewKeyAndReplace(oldKeyPath)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to check secrets file: %w", err)
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to check secrets file status", err).
+			WithContext("path", secretsPath)
 	}
 
 	decrypted, err := DecryptSecrets(secretsPath, oldKeyPath)
 	if err != nil {
-		return fmt.Errorf("failed to decrypt existing secrets: %w", err)
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to decrypt secrets with old key during rotation", err).
+			WithContext("hint", "old key may be corrupted or invalid").
+			WithContext("secrets_path", secretsPath)
 	}
 
 	if err := generateNewKeyAndReplace(oldKeyPath); err != nil {
-		return err
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to generate and replace new encryption key", err).
+			WithContext("path", oldKeyPath)
 	}
 
 	if err := EncryptSecrets(secretsPath, oldKeyPath, decrypted); err != nil {
-		return fmt.Errorf("failed to encrypt secrets with new key: %w", err)
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to re-encrypt secrets with new key", err).
+			WithContext("hint", "secrets were not encrypted after key rotation").
+			WithContext("secrets_path", secretsPath)
 	}
 
 	return nil
@@ -178,12 +231,19 @@ func RotateKey(configDir string) error {
 func generateNewKeyAndReplace(keyPath string) error {
 	newKeyPath := keyPath + ".new"
 	if err := GenerateKey(newKeyPath); err != nil {
-		return fmt.Errorf("failed to generate new key: %w", err)
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to generate temporary new key", err).
+			WithContext("path", newKeyPath).
+			WithContext("target_path", keyPath)
 	}
 
 	if err := os.Rename(newKeyPath, keyPath); err != nil {
 		os.Remove(newKeyPath)
-		return fmt.Errorf("failed to replace old key with new key: %w", err)
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to replace old key with new key", err).
+			WithContext("from", newKeyPath).
+			WithContext("to", keyPath).
+			WithContext("hint", "check file permissions")
 	}
 
 	return nil
