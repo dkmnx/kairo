@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-12-28
+
+### Added
+
+- **Structured error handling**: Implemented `internal/errors` package with typed errors (ConfigError, CryptoError, ValidationError, ProviderError, NetworkError, FileSystemError)
+- **Error context**: All errors now include structured context and helpful hints for debugging
+- **Comprehensive user guides**: Added new documentation:
+  - Error handling examples (`docs/guides/error-handling-examples.md`)
+  - Advanced configuration scenarios (`docs/guides/advanced-configuration.md`)
+  - Claude Code integration examples (`docs/guides/claude-integration-examples.md`)
+- **Enhanced troubleshooting**: Added 7 advanced troubleshooting scenarios to `docs/troubleshooting/README.md`
+- **Setup helper tests**: Added tests for prompt functions (promptForProvider, promptForAPIKey, promptForBaseURL)
+- **Update command tests**: Added tests for getEnvFunc, getLatestRelease, and versionGreaterThan
+- **Helper function tests**: Added tests for parseIntOrZero, parseProviderSelection, validateCustomProviderName
+
+### Changed
+
+- **Internal refactoring**: Extracted 8 helper functions from `cmd/setup.go` for better maintainability:
+  - `validateCustomProviderName`, `buildProviderConfig`, `getSortedSecretsKeys`
+  - `formatSecretsFileContent`, `saveProviderConfigFile`, `validateAPIKey`, `validateBaseURL`
+- **Improved error messages**: All config and crypto errors now use structured types with context
+- **Better test coverage**: cmd package coverage increased from 35.2% to 40.5%
+  - Added tests for edge cases and error paths in update.go
+  - Increased coverage for version comparison from 71.4% to 100%
+  - Increased coverage for getLatestRelease from 78.9% to 89.5%
+- **README improvements**: Added usage examples, reorganized documentation section, added Direct Query Mode (`--`) documentation
+
+### Fixed
+
+- **Documentation**: Fixed 15 markdownlint errors across new documentation files
+- **Error handling tests**: internal/errors package coverage improved from 78.1% to 100%
+
 ## [1.0.0] - 2025-12-28
 
 ### Added
@@ -256,6 +288,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.0.1]: https://github.com/dkmnx/kairo/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/dkmnx/kairo/compare/v0.5.3...v1.0.0
 [0.5.3]: https://github.com/dkmnx/kairo/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/dkmnx/kairo/compare/v0.5.1...v0.5.2
