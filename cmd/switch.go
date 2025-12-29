@@ -22,6 +22,10 @@ var execCommand = exec.Command
 // It can be replaced in tests to avoid actual exit calls.
 var exitProcess = os.Exit
 
+// lookPath is the function used to search for executables in PATH.
+// It can be replaced in tests to avoid requiring actual executables.
+var lookPath = exec.LookPath
+
 var switchCmd = &cobra.Command{
 	Use:   "switch <provider> [args]",
 	Short: "Switch to a provider and execute Claude",
@@ -90,7 +94,7 @@ var switchCmd = &cobra.Command{
 
 		claudeArgs := args[1:]
 
-		claudePath, err := exec.LookPath("claude")
+		claudePath, err := lookPath("claude")
 		if err != nil {
 			cmd.Println("Error: 'claude' command not found in PATH")
 			return

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -96,11 +98,22 @@ func TestRootCmd(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetErr(output)
 
+		// Mock lookPath to return a fake claude path (for Docker/CI environments)
+		originalLookPath := lookPath
+		lookPath = func(file string) (string, error) {
+			if file == "claude" {
+				return "/usr/bin/claude", nil
+			}
+			return originalLookPath(file)
+		}
+		defer func() { lookPath = originalLookPath }()
+
 		// Mock execCommand to capture invocation without actually running
-		execCalled := false
+		// Use atomic.Bool for race-safe access
+		var execCalled atomic.Bool
 		originalExecCommand := execCommand
 		execCommand = func(name string, arg ...string) *exec.Cmd {
-			execCalled = true
+			execCalled.Store(true)
 			// Return a command that does nothing
 			cmd := originalExecCommand("echo", "mocked")
 			cmd.Args = []string{"echo", "mocked"}
@@ -117,7 +130,7 @@ func TestRootCmd(t *testing.T) {
 		rootCmd.Run(rootCmd, []string{"anthropic"})
 
 		// Verify execCommand was called (meaning switch behavior was triggered)
-		if !execCalled {
+		if !execCalled.Load() {
 			t.Errorf("Expected execCommand to be called when provider name is passed as argument")
 		}
 	})
@@ -322,11 +335,22 @@ func TestExecute(t *testing.T) {
 			os.Remove(configPath)
 		}()
 
+		// Mock lookPath to return a fake claude path (for Docker/CI environments)
+		originalLookPath := lookPath
+		lookPath = func(file string) (string, error) {
+			if file == "claude" {
+				return "/usr/bin/claude", nil
+			}
+			return originalLookPath(file)
+		}
+		defer func() { lookPath = originalLookPath }()
+
 		// Mock execCommand to capture invocation
-		execCalled := false
+		// Use atomic.Bool for race-safe access
+		var execCalled atomic.Bool
 		originalExecCommand := execCommand
 		execCommand = func(name string, arg ...string) *exec.Cmd {
-			execCalled = true
+			execCalled.Store(true)
 			cmd := originalExecCommand("echo", "mocked")
 			cmd.Args = []string{"echo", "mocked"}
 			return cmd
@@ -346,7 +370,7 @@ func TestExecute(t *testing.T) {
 		}
 
 		// Verify execCommand was called (switch behavior triggered)
-		if !execCalled {
+		if !execCalled.Load() {
 			t.Errorf("Expected execCommand to be called when provider name is passed")
 		}
 
@@ -406,7 +430,7 @@ func containsString(s, substr string) bool {
 
 // Helper function to create a test config file
 func createConfigFile(t *testing.T, dir string, cfg *config.Config) string {
-	configPath := dir + "/config.yaml"
+	configPath := filepath.Join(dir, "config")  // SaveConfig uses "config" not "config.yaml"
 	if err := config.SaveConfig(dir, cfg); err != nil {
 		t.Fatalf("Failed to create test config: %v", err)
 	}
