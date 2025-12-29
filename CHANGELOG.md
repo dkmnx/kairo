@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-29
+
+### Added
+
+- **Provider shorthand**: Use `kairo <provider>` instead of `kairo switch <provider>` for quicker provider switching
+  - Arguments after provider name are passed through to Claude (e.g., `kairo anthropic --help`)
+  - Unknown provider names now show "not configured" error instead of "unknown command"
+  - All existing subcommands remain unaffected
+
 ## [1.0.2] - 2025-12-28
 
 ### Fixed
@@ -300,6 +309,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.1.0]: https://github.com/dkmnx/kairo/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/dkmnx/kairo/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/dkmnx/kairo/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/dkmnx/kairo/compare/v0.5.3...v1.0.0
