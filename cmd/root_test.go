@@ -213,7 +213,7 @@ func TestExecute(t *testing.T) {
 
 		err := Execute()
 
-		// Should not error - gets converted to switch command which shows "not configured"
+		// Should not error - gets converted to switch command which shows provider error
 		if err != nil {
 			t.Errorf("Execute() should succeed, got error: %v", err)
 		}
@@ -223,9 +223,9 @@ func TestExecute(t *testing.T) {
 		if containsString(result, "unknown command") {
 			t.Errorf("Should not show 'unknown command', got: %s", result)
 		}
-		// Should show provider not configured message
-		if !containsString(result, "not configured") {
-			t.Errorf("Expected 'not configured' message, got: %s", result)
+		// Should show either "not configured" (provider missing) OR "configuration file not found" (no config)
+		if !containsString(result, "not configured") && !containsString(result, "configuration file not found") {
+			t.Errorf("Expected 'not configured' or 'configuration file not found' message, got: %s", result)
 		}
 	})
 

@@ -78,14 +78,20 @@ func Execute() error {
 
 	// Check if the first non-flag argument is a provider name (not a subcommand)
 	firstArg := findFirstNonFlagArg(args)
+	finalArgs := args
+
 	if firstArg != "" && !isKnownSubcommand(firstArg) {
 		// This looks like a provider name - convert to switch command
 		// Let switchCmd handle validation and error messages
-		newArgs := []string{"switch"}
-		newArgs = append(newArgs, args...)
-		os.Args = append([]string{os.Args[0]}, newArgs...)
+		finalArgs = append([]string{"switch"}, args...)
 	}
 
+	// Clean up args after execution to prevent test pollution
+	defer func() {
+		rootCmd.SetArgs(nil)
+	}()
+
+	rootCmd.SetArgs(finalArgs)
 	return rootCmd.Execute()
 }
 
