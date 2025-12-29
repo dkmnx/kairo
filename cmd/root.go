@@ -41,6 +41,13 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		}
 
 		if cfg.DefaultProvider == "" {
+			// If args provided, try to use the first arg as provider name
+			if len(args) > 0 {
+				// Let switchCmd.Run handle provider validation and errors
+				switchCmd.Run(cmd, args)
+				return
+			}
+
 			cmd.Println("No default provider set.")
 			cmd.Println()
 			cmd.Println("Usage:")
@@ -55,7 +62,63 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 }
 
 func Execute() error {
+	args := os.Args[1:]
+
+	// Parse flags to get --config value
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--config" && i+1 < len(args) {
+			configDir = args[i+1]
+			break
+		}
+		if len(args[i]) > 8 && args[i][:9] == "--config=" {
+			configDir = args[i][9:]
+			break
+		}
+	}
+
+	// Check if the first non-flag argument is a provider name (not a subcommand)
+	firstArg := findFirstNonFlagArg(args)
+	if firstArg != "" && !isKnownSubcommand(firstArg) {
+		// This looks like a provider name - convert to switch command
+		// Let switchCmd handle validation and error messages
+		newArgs := []string{"switch"}
+		newArgs = append(newArgs, args...)
+		os.Args = append([]string{os.Args[0]}, newArgs...)
+	}
+
 	return rootCmd.Execute()
+}
+
+// findFirstNonFlagArg returns the first argument that's not a flag
+func findFirstNonFlagArg(args []string) string {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		// Skip flags
+		if len(arg) > 0 && arg[0] == '-' {
+			// Skip flag value if it's a separate argument
+			if arg == "--config" && i+1 < len(args) {
+				i++ // skip next arg
+			}
+			continue
+		}
+		return arg
+	}
+	return ""
+}
+
+// isKnownSubcommand checks if the given name is a known subcommand
+func isKnownSubcommand(name string) bool {
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.Name() == name {
+			return true
+		}
+		for _, alias := range cmd.Aliases {
+			if alias == name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func init() {

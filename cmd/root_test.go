@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -71,6 +72,88 @@ func TestRootCmd(t *testing.T) {
 	t.Run("has default provider - delegates to switch", func(t *testing.T) {
 		t.Skip("Skipping: switchCmd requires TTY/input, hard to test without mocking")
 	})
+
+	t.Run("no default provider with provider arg - switches to provider", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Create config file without default provider, but with "anthropic" configured
+		cfg := &config.Config{
+			DefaultProvider: "",
+			Providers: map[string]config.Provider{
+				"anthropic": {Name: "Native Anthropic"},
+			},
+		}
+		configPath := createConfigFile(t, tmpDir, cfg)
+
+		originalConfigDir := configDir
+		configDir = tmpDir
+		defer func() {
+			configDir = originalConfigDir
+			os.Remove(configPath)
+		}()
+
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+		rootCmd.SetErr(output)
+
+		// Mock execCommand to capture invocation without actually running
+		execCalled := false
+		originalExecCommand := execCommand
+		execCommand = func(name string, arg ...string) *exec.Cmd {
+			execCalled = true
+			// Return a command that does nothing
+			cmd := originalExecCommand("echo", "mocked")
+			cmd.Args = []string{"echo", "mocked"}
+			return cmd
+		}
+		defer func() { execCommand = originalExecCommand }()
+
+		// Also mock exitProcess to prevent test from exiting
+		originalExitProcess := exitProcess
+		exitProcess = func(int) {}
+		defer func() { exitProcess = originalExitProcess }()
+
+		// Execute root command with provider name as argument
+		rootCmd.Run(rootCmd, []string{"anthropic"})
+
+		// Verify execCommand was called (meaning switch behavior was triggered)
+		if !execCalled {
+			t.Errorf("Expected execCommand to be called when provider name is passed as argument")
+		}
+	})
+
+	t.Run("no default provider with invalid provider arg - shows usage", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Create config file without default provider
+		cfg := &config.Config{
+			DefaultProvider: "",
+			Providers: map[string]config.Provider{
+				"anthropic": {Name: "Native Anthropic"},
+			},
+		}
+		configPath := createConfigFile(t, tmpDir, cfg)
+
+		originalConfigDir := configDir
+		configDir = tmpDir
+		defer func() {
+			configDir = originalConfigDir
+			os.Remove(configPath)
+		}()
+
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+		rootCmd.SetErr(output)
+
+		// Execute root command with non-existent provider name
+		rootCmd.Run(rootCmd, []string{"nonexistent"})
+
+		result := output.String()
+		// Should show error about provider not configured
+		if !containsString(result, "not configured") {
+			t.Errorf("Expected 'not configured' error, got: %s", result)
+		}
+	})
 }
 
 func TestExecute(t *testing.T) {
@@ -106,15 +189,16 @@ func TestExecute(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid command returns error", func(t *testing.T) {
+	t.Run("invalid command treated as provider name", func(t *testing.T) {
 		// Save original args
 		oldArgs := os.Args
 		defer func() { os.Args = oldArgs }()
 
-		// Set args to simulate invalid command
+		// Set args to simulate invalid command (not a subcommand)
 		os.Args = []string{"kairo", "invalid-command-that-does-not-exist"}
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
+		rootCmd.SetErr(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
 		// Save and restore flag values
@@ -129,13 +213,20 @@ func TestExecute(t *testing.T) {
 
 		err := Execute()
 
-		if err == nil {
-			t.Error("Execute() with invalid command should return error")
+		// Should not error - gets converted to switch command which shows "not configured"
+		if err != nil {
+			t.Errorf("Execute() should succeed, got error: %v", err)
 		}
 
 		result := output.String()
-		// Cobra should show error about unknown command
-		_ = result
+		// Should show "not configured" from switchCmd, not "unknown command" from Cobra
+		if containsString(result, "unknown command") {
+			t.Errorf("Should not show 'unknown command', got: %s", result)
+		}
+		// Should show provider not configured message
+		if !containsString(result, "not configured") {
+			t.Errorf("Expected 'not configured' message, got: %s", result)
+		}
 	})
 
 	t.Run("with --verbose flag", func(t *testing.T) {
@@ -198,6 +289,72 @@ func TestExecute(t *testing.T) {
 		// Note: We can't reliably check configDir value here because it's a global variable
 		// that may be modified by other tests. The test above verifies that Execute() works
 		// with --config flag without errors.
+	})
+
+	t.Run("provider shorthand without default - switches to provider", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Create config file without default provider, but with "anthropic" configured
+		cfg := &config.Config{
+			DefaultProvider: "",
+			Providers: map[string]config.Provider{
+				"anthropic": {Name: "Native Anthropic"},
+			},
+		}
+		configPath := createConfigFile(t, tmpDir, cfg)
+
+		oldArgs := os.Args
+		defer func() { os.Args = oldArgs }()
+
+		os.Args = []string{"kairo", "--config", tmpDir, "anthropic"}
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+		rootCmd.SetErr(output)
+		rootCmd.SetArgs(nil)
+
+		originalConfigDir := configDir
+		originalVerbose := verbose
+		configDir = ""
+		verbose = false
+		defer func() {
+			configDir = originalConfigDir
+			verbose = originalVerbose
+			os.Remove(configPath)
+		}()
+
+		// Mock execCommand to capture invocation
+		execCalled := false
+		originalExecCommand := execCommand
+		execCommand = func(name string, arg ...string) *exec.Cmd {
+			execCalled = true
+			cmd := originalExecCommand("echo", "mocked")
+			cmd.Args = []string{"echo", "mocked"}
+			return cmd
+		}
+		defer func() { execCommand = originalExecCommand }()
+
+		// Mock exitProcess
+		originalExitProcess := exitProcess
+		exitProcess = func(int) {}
+		defer func() { exitProcess = originalExitProcess }()
+
+		err := Execute()
+
+		// Should succeed (no error about unknown command)
+		if err != nil {
+			t.Errorf("Execute() with provider name should succeed, got error: %v", err)
+		}
+
+		// Verify execCommand was called (switch behavior triggered)
+		if !execCalled {
+			t.Errorf("Expected execCommand to be called when provider name is passed")
+		}
+
+		// Verify output doesn't contain "unknown command" error
+		result := output.String()
+		if containsString(result, "unknown command") {
+			t.Errorf("Got 'unknown command' error, output: %s", result)
+		}
 	})
 }
 
