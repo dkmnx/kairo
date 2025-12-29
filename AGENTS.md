@@ -37,8 +37,28 @@ For issues and new features:
 - **Formatting**: Run `gofmt -w .` before committing (enforced by pre-commit)
 - **Naming**: PascalCase for exported, camelCase for unexported, ALL_CAPS for constants
 - **YAML tags**: Use snake_case (e.g., `yaml:"default_provider"`)
-- **Error handling**: Wrap with `fmt.Errorf("operation: %w", err)`, custom types when useful
+- **Error handling**: Use `kairoerrors.WrapError()` for wrapping with context, custom KairoError types
+- **File operations**: Always specify 0600 permissions for sensitive files using `os.WriteFile(path, data, 0600)`
 - **Tests**: Use `t.TempDir()` for isolation, `t.Cleanup()` for cleanup, table-driven tests
+
+### Error Handling Pattern
+
+Use the custom `internal/errors` package for structured error handling:
+
+```go
+import kairoerrors "github.com/dkmnx/kairo/internal/errors"
+
+// Wrap with context
+return kairoerrors.WrapError(kairoerrors.ConfigError,
+    "failed to read configuration", err).
+    WithContext("path", configPath).
+    WithContext("hint", "check file permissions")
+
+// Create new error
+return kairoerrors.NewError(kairoerrors.ValidationError, "invalid provider name")
+```
+
+Available error types: ConfigError, CryptoError, ValidationError, ProviderError, FileSystemError, NetworkError
 
 ### Security
 
@@ -137,8 +157,11 @@ Partial submissions waste time — reviewing agent will reject them, and you wil
 - `make test-coverage`: Generate HTML coverage report in dist/coverage.html
 - `make lint`: Run gofmt, go vet, golangci-lint
 - `make format`: Format all Go files with gofmt
+- `make pre-commit`: Run pre-commit hooks manually (gofmt, govet, go-test, go-mod-tidy)
 - `make verify-deps`: Verify dependency checksums (security)
 - `make ci-local`: Run GitHub Actions locally with act
+
+Pre-commit hooks run automatically on commit: gofmt, govet, go-test (race), go-mod-tidy
 
 ## Project-Specific Guidelines
 
