@@ -2,37 +2,38 @@
 
 Reusable utilities with minimal dependencies.
 
-## `env/`
+## Structure
+
+```
+pkg/
+└── env/         # Environment and path utilities
+```
+
+## env/
 
 Cross-platform configuration directory resolution.
 
-| Function         | Purpose                                   |
-| ---------------- | ----------------------------------------- |
+| Function | Purpose |
+|----------|---------|
 | `GetConfigDir()` | Get platform-appropriate config directory |
+| `GetConfigDirWithOverride()` | Get config dir with environment override |
 
 ### Supported Platforms
 
-| OS      | Path                                          |
-| ------- | --------------------------------------------- |
-| Linux   | `$XDG_CONFIG_HOME/kairo` or `~/.config/kairo` |
-| macOS   | `~/Library/Application Support/kairo`         |
-| Windows | `%APPDATA%\kairo`                             |
+| OS | Path |
+|---|------|
+| Linux | `$XDG_CONFIG_HOME/kairo` or `~/.config/kairo` |
+| macOS | `~/Library/Application Support/kairo` |
+| Windows | `%APPDATA%\kairo` |
 
-## Setup
-
-```bash
-# No additional setup required
-cd /path/to/kairo
-go build ./pkg/...
-```
-
-## Testing
+### Environment Overrides
 
 ```bash
-go test ./pkg/...
+# Override config directory
+export KAIRO_CONFIG_DIR=/path/to/config
 ```
 
-## Usage
+### Usage
 
 ```go
 import "github.com/dkmnx/kairo/pkg/env"
@@ -41,13 +42,49 @@ configDir, err := env.GetConfigDir()
 if err != nil {
     // Handle error
 }
-// Use configDir for config operations
+// Returns: ~/.config/kairo (Linux)
+//         ~/Library/Application Support/kairo (macOS)
+//         %APPDATA%\kairo (Windows)
+```
+
+## Design Principles
+
+1. **Minimal Dependencies** - Only standard library where possible
+2. **Cross-Platform** - Works on Linux, macOS, Windows
+3. **Testable** - Easy to mock for testing
+4. **Reusable** - Not tied to CLI context
+
+## Testing
+
+```bash
+go test ./pkg/...
+go test -race ./pkg/env/...
 ```
 
 ## File Permissions
 
 All sensitive files use 0600 permissions:
 
-- `config` - Provider configurations (YAML)
-- `secrets.age` - Encrypted API keys
-- `age.key` - Encryption private key
+| File | Purpose |
+|------|---------|
+| `config` | Provider configurations (YAML) |
+| `secrets.age` | Encrypted API keys |
+| `age.key` | Encryption private key |
+| `audit.log` | Configuration change history |
+
+## Adding a New Package
+
+Create a new directory under `pkg/` with:
+
+1. **Package-level documentation** (README.md optional for small packages)
+2. **Godoc comments** for all exported functions
+3. **Tests** (`*_test.go` files)
+4. **Minimal dependencies** - prefer standard library
+
+Example structure:
+
+```
+pkg/newpackage/
+├── newpackage.go      # Main implementation
+└── newpackage_test.go # Tests
+```

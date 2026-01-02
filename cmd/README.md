@@ -15,57 +15,186 @@ CLI command implementations using the Cobra framework.
 | `switch.go` | Switch provider and execute Claude |
 | `default.go` | Get or set default provider |
 | `reset.go` | Remove provider configurations |
+| `rotate.go` | Rotate encryption key |
 | `version.go` | Display version information |
+| `update.go` | Check for and install updates |
 | `completion.go` | Shell completion support |
+| `audit.go` | View and export audit logs |
 
-## Setup
+## Command Architecture
+
+```mermaid
+flowchart TB
+    subgraph Root
+        Main[main.go] --> RootCmd[root.go]
+        RootCmd --> Flags[Global Flags]
+    end
+
+    subgraph Configuration
+        RootCmd --> Setup[setup]
+        RootCmd --> Config[config]
+        RootCmd --> DefaultCmd[default]
+        RootCmd --> Reset[reset]
+    end
+
+    subgraph Execution
+        RootCmd --> Switch[switch]
+        RootCmd --> Test[test]
+    end
+
+    subgraph Information
+        RootCmd --> List[list]
+        RootCmd --> Status[status]
+        RootCmd --> Version[version]
+        RootCmd --> Audit[audit]
+    end
+
+    subgraph Maintenance
+        RootCmd --> Rotate[rotate]
+        RootCmd --> Update[update]
+        RootCmd --> Completion[completion]
+    end
+```
+
+## Command Reference
+
+### Setup Commands
+
+| Command | Description |
+|---------|-------------|
+| `kairo setup` | Interactive setup wizard for initial configuration |
+| `kairo config <provider>` | Configure a specific provider |
+
+### Provider Management
+
+| Command | Description |
+|---------|-------------|
+| `kairo list` | List all configured providers |
+| `kairo status` | Test connectivity for all providers |
+| `kairo test <provider>` | Test specific provider |
+| `kairo default [provider]` | Get or set default provider |
+| `kairo reset <provider\|all>` | Remove provider configuration |
+
+### Execution
+
+| Command | Description |
+|---------|-------------|
+| `kairo switch <provider>` | Switch and execute Claude |
+| `kairo <provider> [args]` | Shorthand for switch (e.g., `kairo zai`) |
+| `kairo -- "query"` | Query mode using default provider |
+
+### Maintenance
+
+| Command | Description |
+|---------|-------------|
+| `kairo rotate` | Rotate encryption key |
+| `kairo update` | Check for and install updates |
+| `kairo version` | Display version info |
+| `kairo completion <shell>` | Generate shell completion |
+| `kairo audit [list\|export]` | View/export audit logs |
+
+## Adding a New Command
+
+### 1. Create Command File
+
+Create `cmd/newcommand.go`:
+
+```go
+package cmd
+
+import (
+    "fmt"
+    "github.com/spf13/cobra"
+)
+
+var newCommand = &cobra.Command{
+    Use:   "newcommand",
+    Short: "Brief description",
+    Long:  `Longer description with examples`,
+    Run: func(cmd *cobra.Command, args []string) {
+        // Implementation
+    },
+}
+
+func init() {
+    rootCmd.AddCommand(newCommand)
+}
+```
+
+### 2. Add to Root Command
+
+Import and add in `cmd/root.go`:
+
+```go
+import _ "github.com/dkmnx/kairo/cmd"  // Blank import for init()
+```
+
+### 3. Testing
 
 ```bash
-# No additional setup required - commands are part of main binary
-cd /path/to/kairo
-go build -o kairo .
+go test ./cmd/... -run TestNewCommand
 ```
 
 ## Testing
 
 ```bash
-# Run all cmd package tests
+# All cmd package tests
 go test ./cmd/...
 
-# Run with race detection
+# With race detection
 go test -race ./cmd/...
 
-# Run specific test file
+# Specific test file
 go test -v ./cmd/... -run TestSetup
-```
 
-## Architecture
-
-```mermaid
-flowchart TB
-    subgraph CLI Layer
-        Main --> Root[Root Command]
-        Root --> Setup[setup]
-        Root --> Config[config]
-        Root --> List[list]
-        Root --> Status[status]
-        Root --> Test[test]
-        Root --> Switch[switch]
-        Root --> Default[default]
-        Root --> Reset[reset]
-        Root --> Version[version]
-    end
-
-    subgraph Internal Layer
-        Config --> ConfigLoader
-        Switch --> Crypto
-        Status --> Providers
-        Config --> Validate
-    end
+# Integration tests
+go test -v ./cmd/... -run Integration
 ```
 
 ## Dependencies
 
 - `github.com/spf13/cobra` - CLI framework
 - `github.com/spf13/viper` - Configuration management
-- Internal packages: `config`, `crypto`, `providers`, `validate`, `ui`
+- Internal packages: `config`, `crypto`, `providers`, `validate`, `ui`, `audit`
+
+## Global Flags
+
+| Flag | Purpose |
+|------|---------|
+| `-v, --verbose` | Enable verbose output |
+| `-h, --help` | Show help for command |
+
+## Banner Display
+
+The root command displays version and provider information:
+
+```
+kairo v1.2.0 - Provider: zai
+```
+
+This is rendered from `internal/version/version.go` and `providers` package.
+
+## Provider Shorthand
+
+Users can use provider name directly instead of `switch`:
+
+```bash
+# These are equivalent:
+kairo switch zai "Help me"
+kairo zai "Help me"
+```
+
+This is handled in `root.go` by checking if the first argument is a valid provider name.
+
+## Audit Integration
+
+All configuration commands log changes to `~/.config/kairo/audit.log`:
+
+- `config` - Logs api_key, base_url, model changes
+- `default` - Logs default provider changes
+- `reset` - Logs provider resets
+- `rotate` - Logs key rotations
+- `setup` - Logs provider setup
+- `switch` - Logs provider switches
+
+See: [docs/guides/audit-guide.md](../guides/audit-guide.md)

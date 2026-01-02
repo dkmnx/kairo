@@ -1,107 +1,266 @@
 # Internal Packages
 
-Core business logic with no CLI dependencies.
+Core business logic modules with no CLI dependencies.
+
+## Architecture Overview
+
+```mermaid
+flowchart TB
+    subgraph cmd[CLI Layer]
+        Root[root.go]
+        Setup[setup.go]
+        Config[config.go]
+        Switch[switch.go]
+        Audit[audit.go]
+    end
+
+    subgraph internal[Internal Layer]
+        UI[ui/]
+        Validate[validate/]
+    end
+
+    subgraph biz[Business Logic]
+        ConfigBL[config/]
+        Crypto[crypto/]
+        Providers[providers/]
+        AuditBL[audit/]
+    end
+
+    Root --> Setup
+    Root --> Config
+    Root --> Switch
+    Root --> Audit
+    Setup --> ConfigBL
+    Config --> ConfigBL
+    Config --> Crypto
+    Switch --> Providers
+    Switch --> Crypto
+    Audit --> AuditBL
+    ConfigBL --> UI
+    ConfigBL --> Validate
+```
 
 ## Packages
 
-### `config/`
+### audit/
+
+Audit logging for configuration changes.
+
+| Function | Purpose |
+|----------|---------|
+| `NewLogger()` | Create audit logger |
+| `LogConfig()` | Log provider config changes |
+| `LogDefault()` | Log default provider changes |
+| `LogReset()` | Log provider resets |
+| `LogRotate()` | Log key rotations |
+| `LogSetup()` | Log provider setup |
+| `LogSwitch()` | Log provider switches |
+| `ListEntries()` | Read audit entries |
+| `ExportCSV()` | Export to CSV format |
+| `ExportJSON()` | Export to JSON format |
+
+**Key Types:**
+- `AuditEntry` - Individual log entry with timestamp, event, provider, action
+- `Change` - Field-level change tracking (field, old, new values)
+
+**See:** [docs/guides/audit-guide.md](../guides/audit-guide.md)
+
+### config/
 
 Configuration loading and saving with YAML support.
 
-| Function         | Purpose                                             |
-| ---------------- | --------------------------------------------------- |
-| `LoadConfig()`   | Read and parse config from `~/.config/kairo/config` |
-| `SaveConfig()`   | Write config with 0600 permissions                  |
-| `ParseSecrets()` | Parse API key environment variables                 |
+| Function | Purpose |
+|----------|---------|
+| `LoadConfig()` | Load YAML configuration |
+| `SaveConfig()` | Save YAML configuration |
+| `ParseSecrets()` | Parse secrets file content |
 
-**Setup:** Standard Go package - no external setup.
+**Key Types:**
+- `Config` - Root configuration with default provider and providers map
+- `Provider` - Provider configuration (name, base_url, model, env_vars)
 
-**Testing:** `go test ./internal/config/...`
+**Configuration Schema:**
+```yaml
+default_provider: zai
+providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai/api/anthropic
+    model: glm-4.7
+  anthropic:
+    name: Native Anthropic
+```
 
-### `crypto/`
+### crypto/
 
 Age (X25519) encryption for secrets management.
 
-| Function            | Purpose                           |
-| ------------------- | --------------------------------- |
-| `GenerateKey()`     | Create new X25519 key pair        |
-| `EncryptSecrets()`  | Encrypt API keys to `secrets.age` |
-| `DecryptSecrets()`  | Decrypt secrets file              |
-| `EnsureKeyExists()` | Auto-generate key on first run    |
+| Function | Purpose |
+|----------|---------|
+| `EnsureKeyExists()` | Generate key if missing |
+| `EncryptSecrets()` | Encrypt API keys to file |
+| `DecryptSecrets()` | Decrypt secrets from file |
+| `RotateKey()` | Regenerate key and re-encrypt |
 
-**Setup:** Requires `filippo.io/age` dependency.
+**Security Model:**
+- X25519 key pair generated on first run
+- Private key stored in `age.key` (0600)
+- Secrets encrypted with recipient public key
+- All decryption happens in-memory only
 
-**Testing:** `go test ./internal/crypto/...`
+**File Structure:**
+```
+~/.config/kairo/
+├── age.key       # Private key (0600)
+└── secrets.age   # Encrypted API keys (0600)
+```
 
-### `providers/`
+### providers/
 
 Built-in provider definitions and registry.
 
-| Function               | Purpose                         |
-| ---------------------- | ------------------------------- |
-| `IsBuiltInProvider()`  | Check if provider is built-in   |
-| `GetBuiltInProvider()` | Get provider definition         |
-| `GetProviderList()`    | List all built-in providers     |
-| `RequiresAPIKey()`     | Check if provider needs API key |
+| Function | Purpose |
+|----------|---------|
+| `GetBuiltInProvider()` | Get provider definition |
+| `IsBuiltInProvider()` | Check if provider exists |
+| `GetProviderList()` | List all built-in providers |
+| `RequiresAPIKey()` | Check if API key required |
 
 **Built-in Providers:**
 
-- `anthropic` - Native Anthropic API (no key required)
-- `zai` - Z.AI API
-- `minimax` - MiniMax API
-- `kimi` - Moonshot AI (Kimi)
-- `deepseek` - DeepSeek AI
-- `custom` - User-defined provider
+| Provider | Base URL | Model | API Key |
+|----------|----------|-------|---------|
+| anthropic | - | - | No |
+| zai | api.z.ai/api/anthropic | glm-4.7 | Yes |
+| minimax | api.minimax.io/anthropic | Minimax-M2.1 | Yes |
+| kimi | api.kimi.com/coding | kimi-for-coding | Yes |
+| deepseek | api.deepseek.com/anthropic | deepseek-chat | Yes |
+| custom | user-defined | user-defined | Yes |
 
-**Testing:** `go test ./internal/providers/...`
+### validate/
 
-### `validate/`
+Input validation for API keys, URLs, and provider names.
 
-Input validation for API keys and URLs.
+| Function | Purpose |
+|----------|---------|
+| `ValidateAPIKey()` | Validate API key format |
+| `ValidateURL()` | Validate HTTPS URL |
+| `ValidateCustomName()` | Validate custom provider name |
 
-| Validator          | Rules                                |
-| ------------------ | ------------------------------------ |
-| `ValidateAPIKey()` | Minimum 8 characters                 |
-| `ValidateURL()`    | HTTPS-only, no localhost/private IPs |
+**Validation Rules:**
+- API key: Minimum 8 characters, no whitespace
+- URL: HTTPS required, no localhost/private IPs
+- Provider name: `^[a-zA-Z][a-zA-Z0-9_-]*$`
 
-**Testing:** `go test ./internal/validate/...`
+### ui/
 
-### `ui/`
+Terminal UI utilities with colored formatting.
 
-Terminal UI utilities and prompts.
+| Function | Purpose |
+|----------|---------|
+| `PrintHeader()` | Section header |
+| `PrintSuccess()` | Green success message |
+| `PrintWarn()` | Yellow warning message |
+| `PrintError()` | Red error message |
+| `PrintInfo()` | Gray info message |
+| `PromptSecret()` | Password-style input |
+| `PromptWithDefault()` | Input with default value |
 
-**Testing:** `go test ./internal/ui/...`
+**Colors:**
+- Success: Green
+- Warning: Yellow
+- Error: Red
+- Info: Gray/White
+- Header: Cyan
 
-## Running All Tests
+## Testing
 
 ```bash
-go test ./internal/...
+# All internal package tests
 go test -race ./internal/...
+
+# Specific package
+go test -race ./internal/config/...
+go test -race ./internal/crypto/...
+go test -race ./internal/providers/...
+go test -race ./internal/validate/...
+go test -race ./internal/audit/...
+
+# With coverage
+go test -coverprofile=coverage.out ./internal/...
+go tool cover -func=coverage.out
 ```
 
-## Architecture
+## Adding a New Provider
+
+1. **Define in `providers/registry.go`:**
+```go
+var BuiltInProviders = map[string]ProviderDefinition{
+    "newprovider": {
+        Name:           "New Provider",
+        BaseURL:        "https://api.newprovider.com/anthropic",
+        Model:          "new-model",
+        RequiresAPIKey: true,
+        EnvVars:        []string{},
+    },
+}
+```
+
+2. **Add validation (if needed):**
+Update `internal/validate/api_key.go` for provider-specific validation.
+
+3. **Test:**
+```bash
+go test ./internal/providers/...
+kairo config newprovider
+kairo test newprovider
+```
+
+## Error Handling
+
+Use typed errors from `internal/errors`:
+
+```go
+import kairoerrors "github.com/dkmnx/kairo/internal/errors"
+
+// Wrap with context
+return kairoerrors.WrapError(kairoerrors.ConfigError,
+    "failed to load configuration", err).
+    WithContext("path", configPath)
+
+// Create new error
+return kairoerrors.NewError(kairoerrors.ValidationError, "invalid provider name")
+```
+
+**Error Types:**
+- `ConfigError` - Configuration loading/saving
+- `CryptoError` - Encryption/decryption
+- `ValidationError` - Input validation
+- `ProviderError` - Provider operations
+- `FileSystemError` - File operations
+- `NetworkError` - Network operations
+
+## Data Flow
 
 ```mermaid
 flowchart LR
-    subgraph Config
-        Loader[config/loader.go]
-        Secrets[config/secrets.go]
-    end
-
-    subgraph Crypto
-        Age[crypto/age.go]
-    end
-
-    subgraph Providers
-        Registry[providers/registry.go]
-    end
-
-    subgraph Validation
-        Validator[validate/api_key.go]
-    end
-
-    Loader --> Secrets
-    Secrets --> Age
-    Validator --> Loader
-    Registry --> Config
+    User[User] --> CLI[cmd/]
+    CLI --> Config[config.LoadConfig]
+    Config --> YAML[config YAML]
+    CLI --> Crypto[crypto]
+    Crypto --> AgeKey[age.key]
+    Crypto --> SecretsAge[secrets.age]
+    CLI --> Validate[validate]
+    Validate --> APIKey[API Key]
+    Validate --> URL[Base URL]
+    CLI --> Providers[providers]
+    Providers --> Registry[Built-in Providers]
 ```
+
+## Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `filipko.io/age` | X25519 encryption |
+| `gopkg.in/yaml.v3` | YAML parsing |
+| `github.com/Masterminds/semver` | Version comparison |

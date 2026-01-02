@@ -1,8 +1,14 @@
 # Architecture
 
+System architecture and design documentation for Kairo.
+
 ## Overview
 
-Kairo is a Go CLI tool for managing Claude Code API providers with encrypted secrets management using age (X25519) encryption.
+Kairo is a Go CLI tool for managing Claude Code API providers with:
+
+- **Age (X25519) encryption** for secure API key storage
+- **Multi-provider support** for switching between providers
+- **Audit logging** for tracking configuration changes
 
 ## System Architecture
 
@@ -24,12 +30,14 @@ flowchart TB
         Crypto[Encryption Service]
         Providers[Provider Registry]
         Validate[Input Validation]
+        Audit[Audit Logger]
     end
 
     subgraph Storage
         ConfigFile[config YAML]
         SecretsAge[secrets.age]
         AgeKey[age.key]
+        AuditLog[audit.log]
     end
 
     subgraph External
@@ -44,9 +52,11 @@ flowchart TB
     Commands --> Config
     Commands --> Crypto
     Commands --> Validate
+    Commands --> Audit
     Config --> ConfigFile
     Crypto --> SecretsAge
     Crypto --> AgeKey
+    Audit --> AuditLog
     Config --> Providers
     Commands --> APIs
     Commands --> Claude
@@ -78,7 +88,7 @@ sequenceDiagram
 
 ## Directory Structure
 
-```text
+```
 kairo/
 ├── cmd/                 # CLI commands (Cobra)
 │   ├── root.go          # Root command
@@ -90,16 +100,24 @@ kairo/
 │   ├── switch.go        # Switch & exec
 │   ├── default.go       # Default provider
 │   ├── reset.go         # Reset config
+│   ├── rotate.go        # Rotate key
+│   ├── audit.go         # Audit logs
 │   └── version.go       # Version info
 ├── internal/            # Business logic
+│   ├── audit/           # Audit logging
 │   ├── config/          # Config loading
 │   ├── crypto/          # age encryption
+│   ├── errors/          # Typed errors
 │   ├── providers/       # Provider registry
-│   ├── validate/        # Input validation
-│   └── ui/              # UI utilities
+│   ├── ui/              # UI utilities
+│   └── validate/        # Input validation
 ├── pkg/                 # Reusable utilities
 │   └── env/             # Environment helpers
 ├── docs/                # Documentation
+│   ├── architecture/    # This directory
+│   ├── contributing/    # Contribution guidelines
+│   ├── guides/          # User & dev guides
+│   └── troubleshooting/ # Common issues
 ├── scripts/             # Install scripts
 └── Makefile             # Build targets
 ```
@@ -114,6 +132,7 @@ flowchart LR
     D --> E[Write secrets.age]
     F[Config Update] --> G[Write config YAML]
     G --> H[Set Permissions 0600]
+    H --> I[Log Audit Entry]
 ```
 
 ## Security Architecture
@@ -137,6 +156,7 @@ flowchart TB
         ConfigFile[config]
         SecretsFile[secrets.age]
         KeyFile[age.key]
+        AuditFile[audit.log]
     end
 
     X25519 --> Generate
@@ -147,6 +167,44 @@ flowchart TB
     Perms --> ConfigFile
     Perms --> SecretsFile
     Perms --> KeyFile
+    Perms --> AuditFile
+```
+
+## Audit Logging
+
+```mermaid
+flowchart TB
+    subgraph Commands
+        ConfigCmd[config]
+        SwitchCmd[switch]
+        DefaultCmd[default]
+        ResetCmd[reset]
+        RotateCmd[rotate]
+    end
+
+    subgraph Audit
+        ChangeTracker[Change Tracker]
+        LogFormatter[Log Formatter]
+        FileWriter[File Writer]
+    end
+
+    subgraph Output
+        AuditLog[audit.log]
+        CSVExport[CSV Export]
+        JSONExport[JSON Export]
+    end
+
+    ConfigCmd --> ChangeTracker
+    SwitchCmd --> ChangeTracker
+    DefaultCmd --> ChangeTracker
+    ResetCmd --> ChangeTracker
+    RotateCmd --> ChangeTracker
+
+    ChangeTracker --> LogFormatter
+    LogFormatter --> FileWriter
+    FileWriter --> AuditLog
+    FileWriter --> CSVExport
+    FileWriter --> JSONExport
 ```
 
 ## Configuration Schema
@@ -169,11 +227,84 @@ providers:
 
 ## Provider Registry
 
-| Provider     | Base URL                     | Model               | API Key Required    |
-| ------------ | ---------------------------- | ------------------- | ------------------- |
-| anthropic    | -                            | -                   | No                  |
-| zai          | api.z.ai/api/anthropic       | glm-4.7             | Yes                 |
-| minimax      | api.minimax.io/anthropic     | Minimax-M2.1        | Yes                 |
-| kimi         | api.kimi.com/coding          | kimi-for-coding     | Yes                 |
-| deepseek     | api.deepseek.com/anthropic   | deepseek-chat       | Yes                 |
-| custom       | user-defined                 | user-defined        | Yes                 |
+| Provider | Base URL | Model | API Key Required |
+|----------|----------|-------|------------------|
+| anthropic | - | - | No |
+| zai | api.z.ai/api/anthropic | glm-4.7 | Yes |
+| minimax | api.minimax.io/anthropic | Minimax-M2.1 | Yes |
+| kimi | api.kimi.com/coding | kimi-for-coding | Yes |
+| deepseek | api.deepseek.com/anthropic | deepseek-chat | Yes |
+| custom | user-defined | user-defined | Yes |
+
+## Error Handling
+
+```mermaid
+flowchart TB
+    subgraph Error Types
+        ConfigErr[ConfigError]
+        CryptoErr[CryptoError]
+        ValidErr[ValidationError]
+        ProviderErr[ProviderError]
+        FileErr[FileSystemError]
+        NetErr[NetworkError]
+    end
+
+    subgraph Error Handling
+        Wrap[Wrap with context]
+        Context[Add context data]
+        Hint[Provide hints]
+    end
+
+    ConfigErr --> Wrap
+    CryptoErr --> Wrap
+    ValidErr --> Wrap
+    Wrap --> Context
+    Context --> Hint
+```
+
+## Dependencies
+
+### Runtime Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `filippo.io/age` | X25519 encryption |
+| `github.com/spf13/cobra` | CLI framework |
+| `gopkg.in/yaml.v3` | YAML parsing |
+
+### Development Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `github.com/Masterminds/semver` | Version comparison |
+| `github.com/stretchr/testify` | Testing assertions |
+
+## Design Principles
+
+### 1. Security First
+
+- All API keys encrypted at rest
+- 0600 permissions on sensitive files
+- No plaintext secrets in logs
+- HTTPS-only for provider APIs
+
+### 2. User Experience
+
+- Interactive setup wizard
+- Clear error messages with hints
+- Colored terminal output
+- Shell completion support
+
+### 3. Maintainability
+
+- Clean package structure
+- Comprehensive test coverage
+- Typed error handling
+- Documentation-driven design
+
+### 4. Extensibility
+
+- Provider registry pattern
+- Configurable via environment
+- Exportable audit logs
+- Modular architecture
