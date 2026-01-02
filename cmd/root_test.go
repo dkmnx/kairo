@@ -430,7 +430,7 @@ func containsString(s, substr string) bool {
 
 // Helper function to create a test config file
 func createConfigFile(t *testing.T, dir string, cfg *config.Config) string {
-	configPath := filepath.Join(dir, "config")  // SaveConfig uses "config" not "config.yaml"
+	configPath := filepath.Join(dir, "config") // SaveConfig uses "config" not "config.yaml"
 	if err := config.SaveConfig(dir, cfg); err != nil {
 		t.Fatalf("Failed to create test config: %v", err)
 	}
