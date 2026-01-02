@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
@@ -57,6 +58,9 @@ var resetCmd = &cobra.Command{
 			}
 
 			ui.PrintSuccess("All providers reset successfully")
+
+			logger, _ := audit.NewLogger(dir)
+			_ = logger.LogReset("all")
 			return
 		}
 
@@ -106,6 +110,9 @@ var resetCmd = &cobra.Command{
 		}
 
 		ui.PrintSuccess(fmt.Sprintf("Provider '%s' reset successfully", target))
+
+		logger, _ := audit.NewLogger(dir)
+		_ = logger.LogReset(target)
 	},
 }
 

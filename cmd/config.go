@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
@@ -110,16 +111,6 @@ var configCmd = &cobra.Command{
 			provider.EnvVars = builtinDef.EnvVars
 		}
 
-		cfg.Providers[providerName] = provider
-		if cfg.DefaultProvider == "" {
-			cfg.DefaultProvider = providerName
-		}
-
-		if err := config.SaveConfig(dir, cfg); err != nil {
-			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
-			return
-		}
-
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
 
@@ -131,6 +122,18 @@ var configCmd = &cobra.Command{
 			}
 		} else {
 			secrets = config.ParseSecrets(existingSecrets)
+		}
+
+		oldAPIKey := secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))]
+		oldProvider := cfg.Providers[providerName]
+		cfg.Providers[providerName] = provider
+		if cfg.DefaultProvider == "" {
+			cfg.DefaultProvider = providerName
+		}
+
+		if err := config.SaveConfig(dir, cfg); err != nil {
+			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
+			return
 		}
 
 		secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
@@ -148,7 +151,47 @@ var configCmd = &cobra.Command{
 		}
 
 		ui.PrintSuccess(fmt.Sprintf("Provider '%s' configured successfully", providerName))
+
+		action := "add"
+		if exists {
+			action = "update"
+		}
+
+		var changes []audit.Change
+		if apiKey != "" {
+			displayKey := truncateKey(apiKey)
+			oldDisplayKey := truncateKey(oldAPIKey)
+			if oldAPIKey != "" {
+				changes = append(changes, audit.Change{Field: "api_key", Old: oldDisplayKey, New: displayKey})
+			} else {
+				changes = append(changes, audit.Change{Field: "api_key", New: displayKey})
+			}
+		}
+		if provider.BaseURL != "" && provider.BaseURL != oldProvider.BaseURL {
+			old := oldProvider.BaseURL
+			if old == "" && builtinDef.BaseURL != "" {
+				old = builtinDef.BaseURL
+			}
+			changes = append(changes, audit.Change{Field: "base_url", Old: old, New: provider.BaseURL})
+		}
+		if provider.Model != "" && provider.Model != oldProvider.Model {
+			old := oldProvider.Model
+			if old == "" && builtinDef.Model != "" {
+				old = builtinDef.Model
+			}
+			changes = append(changes, audit.Change{Field: "model", Old: old, New: provider.Model})
+		}
+
+		logger, _ := audit.NewLogger(dir)
+		_ = logger.LogConfig(providerName, action, changes)
 	},
+}
+
+func truncateKey(key string) string {
+	if len(key) <= 9 {
+		return "***"
+	}
+	return key[:5] + "********" + key[len(key)-4:]
 }
 
 func init() {

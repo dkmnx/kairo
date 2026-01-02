@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
@@ -42,6 +43,9 @@ Examples:
 		}
 
 		ui.PrintSuccess("Encryption key rotated successfully")
+
+		logger, _ := audit.NewLogger(dir)
+		_ = logger.LogRotate("all")
 	},
 }
 

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
@@ -51,6 +52,9 @@ var switchCmd = &cobra.Command{
 			cmd.Printf("Error: provider '%s' not configured\n", providerName)
 			return
 		}
+
+		logger, _ := audit.NewLogger(dir)
+		_ = logger.LogSwitch(providerName)
 
 		providerEnv := os.Environ()
 		// Environment variable name constants for model configuration

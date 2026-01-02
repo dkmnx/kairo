@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
@@ -303,15 +304,30 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
+		var configuredProvider string
 		if !providers.RequiresAPIKey(providerName) {
 			if err := configureAnthropic(dir, cfg, providerName); err != nil {
 				ui.PrintError(fmt.Sprintf("Error: %v", err))
+				return
 			}
-			return
+			configuredProvider = providerName
+		} else {
+			if err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath); err != nil {
+				ui.PrintError(fmt.Sprintf("Error: %v", err))
+				return
+			}
+			if providerName == "custom" {
+				customName := ui.Prompt("Provider name")
+				validatedName, _ := validateCustomProviderName(customName)
+				configuredProvider = validatedName
+			} else {
+				configuredProvider = providerName
+			}
 		}
 
-		if err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath); err != nil {
-			ui.PrintError(fmt.Sprintf("Error: %v", err))
+		if configuredProvider != "" {
+			logger, _ := audit.NewLogger(dir)
+			_ = logger.LogSetup(configuredProvider)
 		}
 	},
 }

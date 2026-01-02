@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
@@ -59,6 +60,9 @@ var defaultCmd = &cobra.Command{
 		}
 
 		ui.PrintSuccess(fmt.Sprintf("Default provider set to: %s", providerName))
+
+		logger, _ := audit.NewLogger(dir)
+		_ = logger.LogDefault(providerName)
 	},
 }
 
