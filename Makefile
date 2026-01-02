@@ -29,7 +29,12 @@ test-coverage:
 
 lint:
 	@echo "Running linters..."
-	@gofmt -l .
+	@gofmt -w .
+	@if [ -n "$$(gofmt -l .)" ]; then \
+		echo "Formatting issues found (cannot be auto-fixed):"; \
+		gofmt -l .; \
+		exit 1; \
+	fi
 	@go vet ./...
 	@if command -v golangci-lint >/dev/null 2>&1; then \
 		golangci-lint run ./...; \
