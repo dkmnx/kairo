@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-01-03
+
+### Fixed
+
+- **Shell completion**: Fixed `kairo completion fish` and other shell completion commands
+  - The `__complete` and `__completeNoDesc` hidden Cobra commands were being intercepted and treated as provider names
+  - Added check in `cmd/root.go` to allow these completion commands to pass through unchanged
+  - Fish completions now properly list all subcommands and providers
+
+### Documentation
+
+- Updated documentation for audit feature and architecture
+- Added `docs/guides/audit-guide.md` with comprehensive audit log usage documentation
+- Updated `cmd/README.md` with new command reference, architecture diagrams, and audit integration docs
+- Updated `docs/architecture/README.md` with audit logging architecture, error handling patterns, and design principles
+
 ## [1.2.0] - 2026-01-02
 
 ### Added
@@ -336,6 +352,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.2.1]: https://github.com/dkmnx/kairo/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/dkmnx/kairo/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/dkmnx/kairo/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dkmnx/kairo/compare/v1.0.2...v1.1.0
