@@ -80,7 +80,10 @@ func Execute() error {
 	firstArg := findFirstNonFlagArg(args)
 	finalArgs := args
 
-	if firstArg != "" && !isKnownSubcommand(firstArg) {
+	// Allow Cobra's completion hidden commands to pass through
+	if firstArg == "__complete" || firstArg == "__completeNoDesc" {
+		// Do nothing, let Cobra handle completion
+	} else if firstArg != "" && !isKnownSubcommand(firstArg) {
 		// This looks like a provider name - convert to switch command
 		// Let switchCmd handle validation and error messages
 		finalArgs = append([]string{"switch"}, args...)
@@ -123,6 +126,10 @@ func isKnownSubcommand(name string) bool {
 				return true
 			}
 		}
+	}
+	// Allow Cobra's completion hidden commands
+	if name == "__complete" || name == "__completeNoDesc" {
+		return true
 	}
 	return false
 }
