@@ -4,27 +4,29 @@ Reusable utilities with minimal dependencies.
 
 ## Structure
 
-```
+```text
 pkg/
 └── env/         # Environment and path utilities
 ```
+
+**See:** [docs/architecture/README.md](../docs/architecture/README.md) for system architecture.
 
 ## env/
 
 Cross-platform configuration directory resolution.
 
-| Function | Purpose |
-|----------|---------|
-| `GetConfigDir()` | Get platform-appropriate config directory |
-| `GetConfigDirWithOverride()` | Get config dir with environment override |
+| Function                     | Purpose                                   |
+| ---------------------------- | ----------------------------------------- |
+| `GetConfigDir()`             | Get platform-appropriate config directory |
+| `GetConfigDirWithOverride()` | Get config dir with environment override  |
 
 ### Supported Platforms
 
-| OS | Path |
-|---|------|
-| Linux | `$XDG_CONFIG_HOME/kairo` or `~/.config/kairo` |
-| macOS | `~/Library/Application Support/kairo` |
-| Windows | `%APPDATA%\kairo` |
+| OS      | Path                                          |
+| ------- | --------------------------------------------- |
+| Linux   | `$XDG_CONFIG_HOME/kairo` or `~/.config/kairo` |
+| macOS   | `~/Library/Application Support/kairo`         |
+| Windows | `%APPDATA%\kairo`                             |
 
 ### Environment Overrides
 
@@ -57,20 +59,29 @@ if err != nil {
 ## Testing
 
 ```bash
+# All pkg tests
 go test ./pkg/...
+
+# With race detection
 go test -race ./pkg/env/...
+
+# With coverage
+go test -coverprofile=coverage.out ./pkg/...
+go tool cover -func=coverage.out
 ```
 
 ## File Permissions
 
 All sensitive files use 0600 permissions:
 
-| File | Purpose |
-|------|---------|
-| `config` | Provider configurations (YAML) |
-| `secrets.age` | Encrypted API keys |
-| `age.key` | Encryption private key |
-| `audit.log` | Configuration change history |
+| File          | Purpose                        |
+| ------------- | ------------------------------ |
+| `config`      | Provider configurations (YAML) |
+| `secrets.age` | Encrypted API keys             |
+| `age.key`     | Encryption private key         |
+| `audit.log`   | Configuration change history   |
+
+**See:** [docs/architecture/README.md#security](../docs/architecture/README.md#security) for security details.
 
 ## Adding a New Package
 
@@ -83,7 +94,7 @@ Create a new directory under `pkg/` with:
 
 Example structure:
 
-```
+```text
 pkg/newpackage/
 ├── newpackage.go      # Main implementation
 └── newpackage_test.go # Tests

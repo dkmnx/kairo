@@ -4,22 +4,22 @@ CLI command implementations using the Cobra framework.
 
 ## Structure
 
-| File | Purpose |
-|------|---------|
-| `root.go` | Root command, banner display, global flags |
-| `setup.go` | Interactive configuration wizard |
-| `config.go` | Configure individual providers |
-| `list.go` | List all configured providers |
-| `status.go` | Test connectivity for all providers |
-| `test.go` | Test specific provider connectivity |
-| `switch.go` | Switch provider and execute Claude |
-| `default.go` | Get or set default provider |
-| `reset.go` | Remove provider configurations |
-| `rotate.go` | Rotate encryption key |
-| `version.go` | Display version information |
-| `update.go` | Check for and install updates |
-| `completion.go` | Shell completion support |
-| `audit.go` | View and export audit logs |
+| File                | Purpose                                        |
+| ------------------- | ---------------------------------------------- |
+| `root.go`           | Root command, banner display, global flags     |
+| `setup.go`          | Interactive configuration wizard               |
+| `config.go`         | Configure individual providers                 |
+| `list.go`           | List all configured providers                  |
+| `status.go`         | Test connectivity for all providers            |
+| `test.go`           | Test specific provider connectivity            |
+| `switch.go`         | Switch provider and execute Claude             |
+| `default.go`        | Get or set default provider                    |
+| `reset.go`          | Remove provider configurations                 |
+| `rotate.go`         | Rotate encryption key                          |
+| `version.go`        | Display version information                    |
+| `update.go`         | Check for and install updates                  |
+| `completion.go`     | Shell completion support                       |
+| `audit.go`          | View and export audit logs                     |
 
 ## Command Architecture
 
@@ -60,38 +60,38 @@ flowchart TB
 
 ### Setup Commands
 
-| Command | Description |
-|---------|-------------|
-| `kairo setup` | Interactive setup wizard for initial configuration |
-| `kairo config <provider>` | Configure a specific provider |
+| Command                    | Description                                        |
+| -------------------------- | -------------------------------------------------- |
+| `kairo setup`              | Interactive setup wizard for initial configuration |
+| `kairo config <provider>`  | Configure a specific provider                      |
 
 ### Provider Management
 
-| Command | Description |
-|---------|-------------|
-| `kairo list` | List all configured providers |
-| `kairo status` | Test connectivity for all providers |
-| `kairo test <provider>` | Test specific provider |
-| `kairo default [provider]` | Get or set default provider |
-| `kairo reset <provider\|all>` | Remove provider configuration |
+| Command                       | Description                         |
+| ----------------------------- | ----------------------------------- |
+| `kairo list`                  | List all configured providers       |
+| `kairo status`                | Test connectivity for all providers |
+| `kairo test <provider>`       | Test specific provider              |
+| `kairo default <provider>`    | Get or set default provider         |
+| `kairo reset <provider\|all>` | Remove provider configuration       |
 
 ### Execution
 
-| Command | Description |
-|---------|-------------|
-| `kairo switch <provider>` | Switch and execute Claude |
-| `kairo <provider> [args]` | Shorthand for switch (e.g., `kairo zai`) |
-| `kairo -- "query"` | Query mode using default provider |
+| Command                       | Description                                        |
+| ----------------------------- | -------------------------------------------------- |
+| `kairo switch <provider>`     | Switch and execute Claude                          |
+| `kairo <provider> [args]`     | Shorthand for switch (e.g., `kairo zai`)           |
+| `kairo -- "query"`            | Query mode using default provider                  |
 
 ### Maintenance
 
-| Command | Description |
-|---------|-------------|
-| `kairo rotate` | Rotate encryption key |
-| `kairo update` | Check for and install updates |
-| `kairo version` | Display version info |
-| `kairo completion <shell>` | Generate shell completion |
-| `kairo audit [list\|export]` | View/export audit logs |
+| Command                      | Description                   |
+| ---------------------------- | ----------------------------- |
+| `kairo rotate`               | Rotate encryption key         |
+| `kairo update`               | Check for and install updates |
+| `kairo version`              | Display version info          |
+| `kairo completion <shell>`   | Generate shell completion     |
+| `kairo audit <list\|export>` | View/export audit logs        |
 
 ## Adding a New Command
 
@@ -159,16 +159,16 @@ go test -v ./cmd/... -run Integration
 
 ## Global Flags
 
-| Flag | Purpose |
-|------|---------|
-| `-v, --verbose` | Enable verbose output |
-| `-h, --help` | Show help for command |
+| Flag             | Purpose                          |
+| ---------------- | -------------------------------- |
+| `-v, --verbose`  | Enable verbose output            |
+| `-h, --help`     | Show help for command            |
 
 ## Banner Display
 
 The root command displays version and provider information:
 
-```
+```text
 kairo v1.2.0 - Provider: zai
 ```
 
