@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-01-04
+
+### Fixed
+
+- **Audit errors**: Audit logger failures now log to stderr instead of being silently ignored
+  - Fixes potential data loss when audit logging fails (permission errors, disk full, etc.)
+  - Added `logAuditEvent()` helper function for centralized error handling
+- **Thread safety**: Fixed global variable race conditions in concurrent scenarios
+  - Added mutex-protected accessors: `getVerbose()`, `setVerbose()`, `setConfigDir()`
+  - Updated all production code to use thread-safe accessors for `verbose` flag reads
+  - Updated all tests to use thread-safe accessors for global variable access
+  - Added race condition tests in `cmd/race_test.go`
+- **Lock optimization**: Reduced lock hold time in `getConfigDir()` by releasing before `env.GetConfigDir()`
+- **Duplicate binding**: Removed duplicate `verbose` flag binding in `cmd/audit.go`
+  - Persistent flags in `cmd/root.go` are automatically inherited by all subcommands
+- **Flag parsing**: Removed redundant manual `--config` parsing in `Execute()` function
+  - Cobra's persistent flag binding already handles this correctly
+
+### Changed
+
+- **Code quality**: Removed unused `getConfigDirRaw()` function (YAGNI)
+
 ## [1.2.1] - 2026-01-03
 
 ### Fixed
@@ -352,6 +374,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.2.2]: https://github.com/dkmnx/kairo/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/dkmnx/kairo/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/dkmnx/kairo/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/dkmnx/kairo/compare/v1.1.0...v1.1.1
