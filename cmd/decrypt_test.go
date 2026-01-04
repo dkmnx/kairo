@@ -14,11 +14,11 @@ import (
 func TestDecryptSecretsErrorHandling(t *testing.T) {
 	t.Parallel()
 	t.Run("setup should handle DecryptSecrets error with verbose flag", func(t *testing.T) {
-		originalConfigDir := configDir
-		defer func() { configDir = originalConfigDir }()
+		originalConfigDir := getConfigDir()
+		defer func() { setConfigDir(originalConfigDir) }()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -44,7 +44,7 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stderr = w
 
-		verbose = true
+		setVerbose(true)
 
 		existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
 		if err != nil {
@@ -70,15 +70,15 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 	})
 
 	t.Run("switch should warn on DecryptSecrets error with verbose flag", func(t *testing.T) {
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -108,7 +108,7 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stderr = w
 
-		verbose = true
+		setVerbose(true)
 
 		_, err := crypto.DecryptSecrets(secretsPath, keyPath)
 		if err != nil {
@@ -174,15 +174,15 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 	})
 
 	t.Run("status should print warning only with verbose flag", func(t *testing.T) {
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -208,7 +208,7 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verbose = true
+		setVerbose(true)
 		oldStderr := os.Stderr
 		r, w, _ := os.Pipe()
 		os.Stderr = w
@@ -233,15 +233,15 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 	})
 
 	t.Run("status should NOT print warning without verbose flag", func(t *testing.T) {
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -263,7 +263,7 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verbose = false
+		setVerbose(false)
 		oldStderr := os.Stderr
 		r, w, _ := os.Pipe()
 		os.Stderr = w
@@ -290,15 +290,15 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 	})
 
 	t.Run("verbose flag controls warning output", func(t *testing.T) {
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -320,7 +320,7 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verbose = true
+		setVerbose(true)
 		var outputWithVerbose bytes.Buffer
 
 		secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
@@ -328,7 +328,7 @@ func TestDecryptSecretsErrorHandling(t *testing.T) {
 			outputWithVerbose.WriteString("decrypted successfully")
 		}
 
-		verbose = false
+		setVerbose(false)
 
 		if outputWithVerbose.Len() > 0 {
 			t.Logf("With verbose=true: %s", outputWithVerbose.String())
@@ -344,27 +344,27 @@ func TestVerboseFlagBehavior(t *testing.T) {
 			t.Log("verbose is initially false")
 		}
 
-		verbose = true
+		setVerbose(true)
 		if !verbose {
 			t.Error("verbose should be settable to true")
 		}
 
-		verbose = false
+		setVerbose(false)
 		if verbose {
 			t.Error("verbose should be settable to false")
 		}
 	})
 
 	t.Run("setup prints warning on DecryptSecrets error with verbose", func(t *testing.T) {
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -386,7 +386,7 @@ func TestVerboseFlagBehavior(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verbose = true
+		setVerbose(true)
 
 		oldStderr := os.Stderr
 		r, w, _ := os.Pipe()
@@ -414,15 +414,15 @@ func TestVerboseFlagBehavior(t *testing.T) {
 	})
 
 	t.Run("setup silently ignores error without verbose", func(t *testing.T) {
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -444,7 +444,7 @@ func TestVerboseFlagBehavior(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verbose = false
+		setVerbose(false)
 
 		oldStderr := os.Stderr
 		r, w, _ := os.Pipe()
@@ -474,15 +474,15 @@ func TestVerboseFlagBehavior(t *testing.T) {
 	})
 
 	t.Run("switch prints warning on DecryptSecrets error with verbose", func(t *testing.T) {
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -508,7 +508,7 @@ func TestVerboseFlagBehavior(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verbose = true
+		setVerbose(true)
 
 		oldStderr := os.Stderr
 		r, w, _ := os.Pipe()
@@ -538,11 +538,11 @@ func TestVerboseFlagBehavior(t *testing.T) {
 
 func TestDecryptSecretsFailureBehavior(t *testing.T) {
 	t.Run("setup handles missing secrets file gracefully", func(t *testing.T) {
-		originalConfigDir := configDir
-		defer func() { configDir = originalConfigDir }()
+		originalConfigDir := getConfigDir()
+		defer func() { setConfigDir(originalConfigDir) }()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -583,11 +583,11 @@ func TestDecryptSecretsFailureBehavior(t *testing.T) {
 	})
 
 	t.Run("setup handles corrupted key file gracefully", func(t *testing.T) {
-		originalConfigDir := configDir
-		defer func() { configDir = originalConfigDir }()
+		originalConfigDir := getConfigDir()
+		defer func() { setConfigDir(originalConfigDir) }()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -630,11 +630,11 @@ func TestDecryptSecretsFailureBehavior(t *testing.T) {
 	})
 
 	t.Run("switch handles DecryptSecrets error gracefully", func(t *testing.T) {
-		originalConfigDir := configDir
-		defer func() { configDir = originalConfigDir }()
+		originalConfigDir := getConfigDir()
+		defer func() { setConfigDir(originalConfigDir) }()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -671,15 +671,15 @@ func TestDecryptSecretsFailureBehavior(t *testing.T) {
 	})
 
 	t.Run("verbose mode shows warning on decryption failure", func(t *testing.T) {
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -705,7 +705,7 @@ func TestDecryptSecretsFailureBehavior(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verbose = true
+		setVerbose(true)
 
 		oldStderr := os.Stderr
 		r, w, _ := os.Pipe()
@@ -729,15 +729,15 @@ func TestDecryptSecretsFailureBehavior(t *testing.T) {
 	})
 
 	t.Run("non-verbose mode suppresses warning on decryption failure", func(t *testing.T) {
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		tmpDir := t.TempDir()
-		configDir = tmpDir
+		setConfigDir(tmpDir)
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
@@ -763,7 +763,7 @@ func TestDecryptSecretsFailureBehavior(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verbose = false
+		setVerbose(false)
 
 		oldStderr := os.Stderr
 		r, w, _ := os.Pipe()

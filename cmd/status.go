@@ -51,7 +51,7 @@ var statusCmd = &cobra.Command{
 		secrets := make(map[string]string)
 		if _, err := os.Stat(secretsPath); err == nil {
 			secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
-			if err != nil && verbose {
+			if err != nil && getVerbose() {
 				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt secrets: %v", err))
 			} else if err == nil {
 				secrets = config.ParseSecrets(secretsContent)

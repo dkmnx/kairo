@@ -10,11 +10,11 @@ import (
 
 func TestResetCommandNoConfig(t *testing.T) {
 	setupMockExec(t)
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	rootCmd.SetArgs([]string{"reset"})
 	err := rootCmd.Execute()
@@ -25,11 +25,11 @@ func TestResetCommandNoConfig(t *testing.T) {
 
 func TestResetCommandSingleProvider(t *testing.T) {
 	setupMockExec(t)
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config")
 	configContent := `providers:
@@ -69,11 +69,11 @@ func TestResetCommandSingleProvider(t *testing.T) {
 
 func TestResetCommandAllProviders(t *testing.T) {
 	setupMockExec(t)
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config")
 	configContent := `providers:
@@ -109,11 +109,11 @@ func TestResetCommandAllProviders(t *testing.T) {
 
 func TestResetCommandNonexistentProvider(t *testing.T) {
 	setupMockExec(t)
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config")
 	configContent := `providers:

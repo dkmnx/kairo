@@ -17,9 +17,9 @@ func TestRootCmd(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		// Set config dir to temp directory
-		originalConfigDir := configDir
-		configDir = tmpDir
-		defer func() { configDir = originalConfigDir }()
+		originalConfigDir := getConfigDir()
+		setConfigDir(tmpDir)
+		defer func() { setConfigDir(originalConfigDir) }()
 
 		// Capture output
 		output := &bytes.Buffer{}
@@ -47,10 +47,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := configDir
-		configDir = tmpDir
+		originalConfigDir := getConfigDir()
+		setConfigDir(tmpDir)
 		defer func() {
-			configDir = originalConfigDir
+			setConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -87,10 +87,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := configDir
-		configDir = tmpDir
+		originalConfigDir := getConfigDir()
+		setConfigDir(tmpDir)
 		defer func() {
-			configDir = originalConfigDir
+			setConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -147,10 +147,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := configDir
-		configDir = tmpDir
+		originalConfigDir := getConfigDir()
+		setConfigDir(tmpDir)
 		defer func() {
-			configDir = originalConfigDir
+			setConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -181,13 +181,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
 		// Save original flag values
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
-		configDir = ""
-		verbose = false
+		setConfigDir("")
+		setVerbose(false)
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -215,13 +215,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
 		// Save and restore flag values
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
-		configDir = ""
-		verbose = false
+		setConfigDir("")
+		setVerbose(false)
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -252,13 +252,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
 		// Save and restore flag values
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
-		configDir = ""
-		verbose = false
+		setConfigDir("")
+		setVerbose(false)
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -267,7 +267,7 @@ func TestExecute(t *testing.T) {
 			t.Errorf("Execute() with --verbose should succeed, got error: %v", err)
 		}
 
-		if !verbose {
+		if !getVerbose() {
 			t.Error("verbose flag should be set")
 		}
 	})
@@ -284,13 +284,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
 		// Reset and restore flag values
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
-		configDir = ""
-		verbose = false
+		setConfigDir("")
+		setVerbose(false)
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -325,13 +325,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetErr(output)
 		rootCmd.SetArgs(nil)
 
-		originalConfigDir := configDir
+		originalConfigDir := getConfigDir()
 		originalVerbose := verbose
-		configDir = ""
-		verbose = false
+		setConfigDir("")
+		setVerbose(false)
 		defer func() {
-			configDir = originalConfigDir
-			verbose = originalVerbose
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
 			os.Remove(configPath)
 		}()
 
@@ -384,9 +384,9 @@ func TestExecute(t *testing.T) {
 
 func TestRootCmdGetConfigDir(t *testing.T) {
 	t.Run("returns flag value when set", func(t *testing.T) {
-		originalConfigDir := configDir
-		configDir = "/custom/config/dir"
-		defer func() { configDir = originalConfigDir }()
+		originalConfigDir := getConfigDir()
+		setConfigDir("/custom/config/dir")
+		defer func() { setConfigDir(originalConfigDir) }()
 
 		result := getConfigDir()
 		if result != "/custom/config/dir" {
@@ -395,9 +395,9 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 	})
 
 	t.Run("returns env default when flag is empty", func(t *testing.T) {
-		originalConfigDir := configDir
-		configDir = ""
-		defer func() { configDir = originalConfigDir }()
+		originalConfigDir := getConfigDir()
+		setConfigDir("")
+		defer func() { setConfigDir(originalConfigDir) }()
 
 		result := getConfigDir()
 		// Should return the value from env.GetConfigDir()
@@ -409,9 +409,9 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 	})
 
 	t.Run("empty flag value uses default", func(t *testing.T) {
-		originalConfigDir := configDir
-		configDir = ""
-		defer func() { configDir = originalConfigDir }()
+		originalConfigDir := getConfigDir()
+		setConfigDir("")
+		defer func() { setConfigDir(originalConfigDir) }()
 
 		result := getConfigDir()
 		// Just verify it doesn't crash and returns a string

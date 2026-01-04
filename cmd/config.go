@@ -117,7 +117,7 @@ var configCmd = &cobra.Command{
 		secrets := make(map[string]string)
 		existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
 		if err != nil {
-			if verbose {
+			if getVerbose() {
 				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
 			}
 		} else {
@@ -182,8 +182,9 @@ var configCmd = &cobra.Command{
 			changes = append(changes, audit.Change{Field: "model", Old: old, New: provider.Model})
 		}
 
-		logger, _ := audit.NewLogger(dir)
-		_ = logger.LogConfig(providerName, action, changes)
+		logAuditEvent(dir, func(logger *audit.Logger) error {
+			return logger.LogConfig(providerName, action, changes)
+		})
 	},
 }
 

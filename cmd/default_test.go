@@ -9,11 +9,11 @@ import (
 )
 
 func TestDefaultCommandNoArgs(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config")
 	configContent := `default_provider: zai
@@ -36,11 +36,11 @@ providers:
 }
 
 func TestDefaultCommandSetProvider(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	t.Logf("tmpDir: %s", tmpDir)
 
@@ -85,11 +85,11 @@ providers:
 }
 
 func TestDefaultCommandProviderNotFound(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config")
 	configContent := `default_provider: anthropic

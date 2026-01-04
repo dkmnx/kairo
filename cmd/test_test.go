@@ -20,11 +20,11 @@ func setupMockExec(t *testing.T) {
 
 func TestTestCommandNoConfig(t *testing.T) {
 	setupMockExec(t)
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	err := testCmd.Execute()
 	if err != nil {
@@ -34,11 +34,11 @@ func TestTestCommandNoConfig(t *testing.T) {
 
 func TestTestCommandProviderNotFound(t *testing.T) {
 	setupMockExec(t)
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config")
 	configContent := `default_provider: anthropic
@@ -62,11 +62,11 @@ providers:
 
 func TestSwitchCommandNoConfig(t *testing.T) {
 	setupMockExec(t)
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	switchCmd.SetArgs([]string{"zai"})
 	err := switchCmd.Execute()
@@ -77,11 +77,11 @@ func TestSwitchCommandNoConfig(t *testing.T) {
 
 func TestSwitchCommandProviderNotFound(t *testing.T) {
 	setupMockExec(t)
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config")
 	configContent := `default_provider: anthropic

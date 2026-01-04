@@ -44,8 +44,9 @@ Examples:
 
 		ui.PrintSuccess("Encryption key rotated successfully")
 
-		logger, _ := audit.NewLogger(dir)
-		_ = logger.LogRotate("all")
+		logAuditEvent(dir, func(logger *audit.Logger) error {
+			return logger.LogRotate("all")
+		})
 	},
 }
 

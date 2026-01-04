@@ -144,7 +144,7 @@ func loadSecrets(dir string) (map[string]string, string, string) {
 	secrets := make(map[string]string)
 	existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
 	if err != nil {
-		if verbose {
+		if getVerbose() {
 			ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
 		}
 	} else {
@@ -326,8 +326,9 @@ var setupCmd = &cobra.Command{
 		}
 
 		if configuredProvider != "" {
-			logger, _ := audit.NewLogger(dir)
-			_ = logger.LogSetup(configuredProvider)
+			logAuditEvent(dir, func(logger *audit.Logger) error {
+				return logger.LogSetup(configuredProvider)
+			})
 		}
 	},
 }

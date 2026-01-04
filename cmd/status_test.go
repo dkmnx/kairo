@@ -14,11 +14,11 @@ import (
 // TestStatusCommandUppercaseKeyFormat verifies that the status command
 // looks up API keys using uppercase provider names (e.g., ZAI_API_KEY)
 func TestStatusCommandUppercaseKeyFormat(t *testing.T) {
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	// Create config with lowercase provider name "zai"
 	configPath := filepath.Join(tmpDir, "config")
@@ -91,11 +91,11 @@ func TestStatusCommandUppercaseKeyFormat(t *testing.T) {
 // TestStatusCommandLowercaseKeyNotSeen verifies that keys stored with
 // lowercase provider names (the old bug) are NOT found by the status command
 func TestStatusCommandLowercaseKeyNotSeen(t *testing.T) {
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config")
 	configContent := `providers:
@@ -152,11 +152,11 @@ func TestStatusCommandLowercaseKeyNotSeen(t *testing.T) {
 
 // TestStatusCommandNoConfig tests status with no configuration
 func TestStatusCommandNoConfig(t *testing.T) {
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	// Just verify it executes without error
 	err := statusCmd.Execute()

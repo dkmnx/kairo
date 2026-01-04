@@ -53,8 +53,9 @@ var switchCmd = &cobra.Command{
 			return
 		}
 
-		logger, _ := audit.NewLogger(dir)
-		_ = logger.LogSwitch(providerName)
+		logAuditEvent(dir, func(logger *audit.Logger) error {
+			return logger.LogSwitch(providerName)
+		})
 
 		providerEnv := os.Environ()
 		// Environment variable name constants for model configuration
@@ -82,7 +83,7 @@ var switchCmd = &cobra.Command{
 		keyPath := filepath.Join(dir, "age.key")
 		secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
 		if err != nil {
-			if verbose {
+			if getVerbose() {
 				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt secrets: %v", err))
 			}
 		} else {

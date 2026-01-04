@@ -61,8 +61,9 @@ var defaultCmd = &cobra.Command{
 
 		ui.PrintSuccess(fmt.Sprintf("Default provider set to: %s", providerName))
 
-		logger, _ := audit.NewLogger(dir)
-		_ = logger.LogDefault(providerName)
+		logAuditEvent(dir, func(logger *audit.Logger) error {
+			return logger.LogDefault(providerName)
+		})
 	},
 }
 

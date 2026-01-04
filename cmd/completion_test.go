@@ -10,11 +10,11 @@ import (
 
 // TestCompletionCommandBash generates bash completion script
 func TestCompletionCommandBash(t *testing.T) {
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -42,11 +42,11 @@ func min(a, b int) int {
 
 // TestCompletionCommandZsh generates zsh completion script
 func TestCompletionCommandZsh(t *testing.T) {
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -67,11 +67,11 @@ func TestCompletionCommandZsh(t *testing.T) {
 
 // TestCompletionCommandFish generates fish completion script
 func TestCompletionCommandFish(t *testing.T) {
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -92,11 +92,11 @@ func TestCompletionCommandFish(t *testing.T) {
 
 // TestCompletionCommandPowerShell generates powershell completion script
 func TestCompletionCommandPowerShell(t *testing.T) {
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -117,11 +117,11 @@ func TestCompletionCommandPowerShell(t *testing.T) {
 
 // TestCompletionCommandUnknownShell returns error
 func TestCompletionCommandUnknownShell(t *testing.T) {
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -135,11 +135,11 @@ func TestCompletionCommandUnknownShell(t *testing.T) {
 
 // TestCompletionCommandNoArgs shows error (requires exactly 1 arg)
 func TestCompletionCommandNoArgs(t *testing.T) {
-	originalConfigDir := configDir
-	t.Cleanup(func() { configDir = originalConfigDir })
+	originalConfigDir := getConfigDir()
+	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -153,15 +153,15 @@ func TestCompletionCommandNoArgs(t *testing.T) {
 
 // TestCompletionCommandWithOutputFlag saves to file
 func TestCompletionCommandWithOutputFlag(t *testing.T) {
-	originalConfigDir := configDir
+	originalConfigDir := getConfigDir()
 	t.Cleanup(func() {
-		configDir = originalConfigDir
+		setConfigDir(originalConfigDir)
 		completionOutput = ""
 		completionSave = false
 	})
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	outputPath := filepath.Join(tmpDir, "kairo-completion.sh")
 	rootCmd.SetArgs([]string{"completion", "bash", "--output", outputPath})
@@ -189,15 +189,15 @@ func TestCompletionCommandWithOutputFlag(t *testing.T) {
 
 // TestCompletionCommandWithShortOutputFlag
 func TestCompletionCommandWithShortOutputFlag(t *testing.T) {
-	originalConfigDir := configDir
+	originalConfigDir := getConfigDir()
 	t.Cleanup(func() {
-		configDir = originalConfigDir
+		setConfigDir(originalConfigDir)
 		completionOutput = ""
 		completionSave = false
 	})
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	outputPath := filepath.Join(tmpDir, "kairo-completion.sh")
 	rootCmd.SetArgs([]string{"completion", "bash", "-o", outputPath})
@@ -215,17 +215,17 @@ func TestCompletionCommandWithShortOutputFlag(t *testing.T) {
 
 // TestCompletionCommandAutoSaveToDefaultLocation
 func TestCompletionCommandAutoSaveToDefaultLocation(t *testing.T) {
-	originalConfigDir := configDir
+	originalConfigDir := getConfigDir()
 	originalHome := os.Getenv("HOME")
 	t.Cleanup(func() {
-		configDir = originalConfigDir
+		setConfigDir(originalConfigDir)
 		os.Setenv("HOME", originalHome)
 		completionOutput = ""
 		completionSave = false
 	})
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 	os.Setenv("HOME", tmpDir)
 
 	// Verify HOME is set correctly

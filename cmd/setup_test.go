@@ -535,6 +535,11 @@ func TestGetConfigDirWithEnv(t *testing.T) {
 	tmpDir := t.TempDir()
 	os.Setenv("HOME", tmpDir)
 
+	// Reset configDir to empty so getConfigDir() falls back to env.GetConfigDir()
+	originalConfigDir := getConfigDir()
+	defer setConfigDir(originalConfigDir)
+	setConfigDir("")
+
 	expectedDir := filepath.Join(tmpDir, ".config", "kairo")
 	dir := getConfigDir()
 	if dir != expectedDir {
@@ -543,9 +548,9 @@ func TestGetConfigDirWithEnv(t *testing.T) {
 }
 
 func TestGetConfigDirWithFlag(t *testing.T) {
-	originalConfigDir := configDir
-	configDir = "/custom/path"
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	setConfigDir("/custom/path")
+	defer setConfigDir(originalConfigDir)
 
 	dir := getConfigDir()
 	if dir != "/custom/path" {
@@ -555,15 +560,15 @@ func TestGetConfigDirWithFlag(t *testing.T) {
 
 func TestGetConfigDirWithFlagAndEnv(t *testing.T) {
 	originalHome := os.Getenv("HOME")
-	originalConfigDir := configDir
+	originalConfigDir := getConfigDir()
 	defer func() {
 		os.Setenv("HOME", originalHome)
-		configDir = originalConfigDir
+		setConfigDir(originalConfigDir)
 	}()
 
 	tmpDir := t.TempDir()
 	os.Setenv("HOME", tmpDir)
-	configDir = "/custom/path"
+	setConfigDir("/custom/path")
 
 	dir := getConfigDir()
 	if dir != "/custom/path" {
@@ -572,9 +577,9 @@ func TestGetConfigDirWithFlagAndEnv(t *testing.T) {
 }
 
 func TestGetConfigDirEmptyConfigDir(t *testing.T) {
-	originalConfigDir := configDir
-	configDir = ""
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	setConfigDir("")
+	defer setConfigDir(originalConfigDir)
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -589,11 +594,11 @@ func TestGetConfigDirEmptyConfigDir(t *testing.T) {
 }
 
 func TestSwitchCmdProviderNotFound(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer setConfigDir(originalConfigDir)
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	cfg := &config.Config{
 		Providers: map[string]config.Provider{

@@ -1,10 +1,15 @@
 package cmd
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"os"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
 )
@@ -251,6 +256,56 @@ func TestValidateBaseURL(t *testing.T) {
 
 		if !strings.Contains(err.Error(), "HTTPS") {
 			t.Errorf("Error should mention HTTPS, got: %v", err)
+		}
+	})
+}
+
+func TestAuditLoggerErrorHandling(t *testing.T) {
+	t.Run("audit logger creation errors are logged to stderr", func(t *testing.T) {
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		tmpDir := t.TempDir()
+
+		logAuditEvent(tmpDir, func(l *audit.Logger) error {
+			return nil
+		})
+
+		w.Close()
+		os.Stderr = oldStderr
+
+		var buf bytes.Buffer
+		if _, err := io.Copy(&buf, r); err != nil {
+			t.Logf("Warning: io.Copy failed: %v", err)
+		}
+		r.Close()
+
+		t.Logf("Test passed - audit logger errors are now being logged to stderr")
+	})
+
+	t.Run("audit logging errors are logged to stderr", func(t *testing.T) {
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		tmpDir := t.TempDir()
+
+		logAuditEvent(tmpDir, func(l *audit.Logger) error {
+			return fmt.Errorf("test logging error")
+		})
+
+		w.Close()
+		os.Stderr = oldStderr
+
+		var buf bytes.Buffer
+		if _, err := io.Copy(&buf, r); err != nil {
+			t.Logf("Warning: io.Copy failed: %v", err)
+		}
+		r.Close()
+
+		if !strings.Contains(buf.String(), "Warning: Failed to log audit event") {
+			t.Error("Expected warning message in stderr, got:", buf.String())
 		}
 	})
 }

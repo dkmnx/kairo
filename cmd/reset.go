@@ -59,8 +59,9 @@ var resetCmd = &cobra.Command{
 
 			ui.PrintSuccess("All providers reset successfully")
 
-			logger, _ := audit.NewLogger(dir)
-			_ = logger.LogReset("all")
+			logAuditEvent(dir, func(logger *audit.Logger) error {
+				return logger.LogReset("all")
+			})
 			return
 		}
 
@@ -111,8 +112,9 @@ var resetCmd = &cobra.Command{
 
 		ui.PrintSuccess(fmt.Sprintf("Provider '%s' reset successfully", target))
 
-		logger, _ := audit.NewLogger(dir)
-		_ = logger.LogReset(target)
+		logAuditEvent(dir, func(logger *audit.Logger) error {
+			return logger.LogReset(target)
+		})
 	},
 }
 

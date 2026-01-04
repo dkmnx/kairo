@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/dkmnx/kairo/internal/config"
 	kairoversion "github.com/dkmnx/kairo/internal/version"
@@ -11,14 +12,33 @@ import (
 )
 
 var (
-	configDir string
-	verbose   bool
+	configDir  string
+	verbose    bool
+	configLock sync.RWMutex
 )
+
+func getVerbose() bool {
+	configLock.RLock()
+	defer configLock.RUnlock()
+	return verbose
+}
+
+func setVerbose(v bool) {
+	configLock.Lock()
+	verbose = v
+	configLock.Unlock()
+}
+
+func setConfigDir(dir string) {
+	configLock.Lock()
+	configDir = dir
+	configLock.Unlock()
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "kairo",
 	Short: "Kairo - Manage Claude Code API providers",
-	Long: fmt.Sprintf(`Kairo is a CLI tool for managing Claude Code API providers with 
+	Long: fmt.Sprintf(`Kairo is a CLI tool for managing Claude Code API providers with
 encrypted secrets management using age encryption.
 
 Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, kairoversion.Date),
@@ -41,9 +61,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		}
 
 		if cfg.DefaultProvider == "" {
-			// If args provided, try to use the first arg as provider name
 			if len(args) > 0 {
-				// Let switchCmd.Run handle provider validation and errors
 				switchCmd.Run(cmd, args)
 				return
 			}
@@ -64,25 +82,12 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 func Execute() error {
 	args := os.Args[1:]
 
-	// Parse flags to get --config value
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--config" && i+1 < len(args) {
-			configDir = args[i+1]
-			break
-		}
-		if len(args[i]) > 8 && args[i][:9] == "--config=" {
-			configDir = args[i][9:]
-			break
-		}
-	}
-
-	// Check if the first non-flag argument is a provider name (not a subcommand)
+	// Check if to first non-flag argument is a provider name (not a subcommand)
 	firstArg := findFirstNonFlagArg(args)
 	finalArgs := args
 
 	// Allow Cobra's completion hidden commands to pass through
 	if firstArg == "__complete" || firstArg == "__completeNoDesc" {
-		// Do nothing, let Cobra handle completion
 	} else if firstArg != "" && !isKnownSubcommand(firstArg) {
 		// This looks like a provider name - convert to switch command
 		// Let switchCmd handle validation and error messages
@@ -98,7 +103,6 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
-// findFirstNonFlagArg returns the first argument that's not a flag
 func findFirstNonFlagArg(args []string) string {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -106,7 +110,7 @@ func findFirstNonFlagArg(args []string) string {
 		if len(arg) > 0 && arg[0] == '-' {
 			// Skip flag value if it's a separate argument
 			if arg == "--config" && i+1 < len(args) {
-				i++ // skip next arg
+				i++
 			}
 			continue
 		}
@@ -115,7 +119,6 @@ func findFirstNonFlagArg(args []string) string {
 	return ""
 }
 
-// isKnownSubcommand checks if the given name is a known subcommand
 func isKnownSubcommand(name string) bool {
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Name() == name {
@@ -135,15 +138,32 @@ func isKnownSubcommand(name string) bool {
 }
 
 func init() {
+	// NOTE: Cobra's BoolVarP writes directly to verbose variable during flag parsing.
+	// This is acceptable because:
+	// 1. Flag parsing happens in the main thread before any concurrent access
+	// 2. In normal CLI execution, there is no concurrent access to flags
+	// 3. Tests should use setVerbose() to avoid potential race conditions
+	// 4. Thread-safe access is guaranteed through getVerbose() which uses configLock.RLock()
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default ~/.config/kairo)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 }
 
-// getConfigDir returns the configuration directory path.
-// It uses the --config flag if provided, otherwise falls back to the default.
 func getConfigDir() string {
-	if configDir != "" {
-		return configDir
+	configLock.RLock()
+	dir := configDir
+	configLock.RUnlock()
+
+	if dir != "" {
+		return dir
 	}
 	return env.GetConfigDir()
+}
+
+// getConfigDirRaw returns the raw configDir value without fallback logic.
+// Useful for testing scenarios where you want to access the variable directly.
+// nolint:unused // Reserved for future use and testing scenarios
+func getConfigDirRaw() string {
+	configLock.RLock()
+	defer configLock.RUnlock()
+	return configDir
 }

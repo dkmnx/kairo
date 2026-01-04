@@ -11,11 +11,11 @@ import (
 )
 
 func TestAuditCommandNoConfig(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -29,14 +29,14 @@ func TestAuditCommandNoConfig(t *testing.T) {
 }
 
 func TestAuditCommandListEmpty(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
 	if err := os.MkdirAll(tmpDir, 0700); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -50,14 +50,14 @@ func TestAuditCommandListEmpty(t *testing.T) {
 }
 
 func TestAuditCommandListWithEntries(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
 	if err := os.MkdirAll(tmpDir, 0700); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	logger, err := audit.NewLogger(tmpDir)
 	if err != nil {
@@ -94,14 +94,14 @@ func TestAuditCommandListWithEntries(t *testing.T) {
 }
 
 func TestAuditCommandExportCSV(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
 	if err := os.MkdirAll(tmpDir, 0700); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	logger, err := audit.NewLogger(tmpDir)
 	if err != nil {
@@ -150,14 +150,14 @@ func TestAuditCommandExportCSV(t *testing.T) {
 }
 
 func TestAuditCommandExportJSON(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
 	if err := os.MkdirAll(tmpDir, 0700); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	logger, err := audit.NewLogger(tmpDir)
 	if err != nil {
@@ -207,14 +207,14 @@ func TestAuditCommandExportJSON(t *testing.T) {
 }
 
 func TestAuditCommandInvalidFormat(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
 	if err := os.MkdirAll(tmpDir, 0700); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	_, err := audit.NewLogger(tmpDir)
 	if err != nil {
@@ -234,14 +234,14 @@ func TestAuditCommandInvalidFormat(t *testing.T) {
 }
 
 func TestAuditCommandMissingOutput(t *testing.T) {
-	originalConfigDir := configDir
-	defer func() { configDir = originalConfigDir }()
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
 	if err := os.MkdirAll(tmpDir, 0700); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	configDir = tmpDir
+	setConfigDir(tmpDir)
 
 	_, err := audit.NewLogger(tmpDir)
 	if err != nil {

@@ -162,7 +162,6 @@ func init() {
 
 	auditExportCmd.Flags().StringVarP(&exportFormat, "format", "f", "csv", "Export format (csv, json)")
 	auditExportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file path (required for export)")
-	auditListCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 }
 
 func printAuditList(entries []audit.AuditEntry, cmd *cobra.Command) {
