@@ -74,13 +74,12 @@ func GetBuiltInProvider(name string) (ProviderDefinition, bool) {
 	return def, ok
 }
 
-// GetProviderList returns a list of all built-in provider names.
+// providerOrder defines the display order of providers in setup wizard.
+var providerOrder = []string{"anthropic", "zai", "minimax", "deepseek", "kimi", "custom"}
+
+// GetProviderList returns a list of all built-in provider names in display order.
 func GetProviderList() []string {
-	providers := make([]string, 0, len(BuiltInProviders))
-	for name := range BuiltInProviders {
-		providers = append(providers, name)
-	}
-	return providers
+	return providerOrder
 }
 
 // RequiresAPIKey returns true if the provider requires an API key to configure.

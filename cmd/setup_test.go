@@ -482,13 +482,13 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 }
 
 func TestProviderListConstant(t *testing.T) {
-	providerList := []string{"anthropic", "zai", "minimax", "kimi", "deepseek", "custom"}
+	providerList := []string{"anthropic", "zai", "minimax", "deepseek", "kimi", "custom"}
 
 	if len(providerList) != 6 {
 		t.Errorf("providerList has %d entries, want 6", len(providerList))
 	}
 
-	expected := []string{"anthropic", "zai", "minimax", "kimi", "deepseek", "custom"}
+	expected := []string{"anthropic", "zai", "minimax", "deepseek", "kimi", "custom"}
 	for i, p := range providerList {
 		if p != expected[i] {
 			t.Errorf("providerList[%d] = %q, want %q", i, p, expected[i])
