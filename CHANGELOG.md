@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-01-06
+
+### Fixed
+
+- **Setup wizard**: Fixed `kairo setup` command that was failing with "configuration file not found" error
+  - The `loadOrInitializeConfig()` function used `os.IsNotExist()` to check for missing config
+  - Changed to use `errors.Is(err, config.ErrConfigNotFound)` for proper custom error detection
+  - Setup wizard now correctly creates a new config when none exists
+- **Provider order**: Fixed inconsistent provider ordering in setup wizard
+  - `GetProviderList()` previously iterated over a Go map with non-deterministic order
+  - Defined explicit `providerOrder` slice for consistent display: anthropic, zai, minimax, deepseek, kimi, custom
+
 ## [1.2.2] - 2026-01-04
 
 ### Fixed
@@ -374,6 +386,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.2.3]: https://github.com/dkmnx/kairo/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/dkmnx/kairo/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/dkmnx/kairo/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/dkmnx/kairo/compare/v1.1.1...v1.2.0
