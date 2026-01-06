@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -126,7 +127,7 @@ func ensureConfigDirectory(dir string) error {
 // loadOrInitializeConfig loads an existing config or creates a new empty one.
 func loadOrInitializeConfig(dir string) (*config.Config, error) {
 	cfg, err := config.LoadConfig(dir)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, config.ErrConfigNotFound) {
 		return nil, err
 	}
 	if err != nil {

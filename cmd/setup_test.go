@@ -788,10 +788,16 @@ func TestLoadOrInitializeConfigNew(t *testing.T) {
 
 	loadedCfg, err := loadOrInitializeConfig(tmpDir)
 	if err != nil {
-		t.Logf("loadOrInitializeConfig() error = %v (expected due to custom error type)", err)
+		t.Fatalf("loadOrInitializeConfig() returned unexpected error: %v", err)
 	}
 	if loadedCfg == nil {
-		t.Skip("loadOrInitializeConfig() returns nil for non-existent config (known issue)")
+		t.Fatal("loadOrInitializeConfig() returned nil for non-existent config, want empty config")
+	}
+	if loadedCfg.DefaultProvider != "" {
+		t.Errorf("DefaultProvider = %q, want empty string", loadedCfg.DefaultProvider)
+	}
+	if loadedCfg.Providers == nil {
+		t.Error("Providers map is nil, want empty map")
 	}
 }
 
