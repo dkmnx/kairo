@@ -18,13 +18,50 @@
 
 **Secure CLI for managing Claude Code API providers** with age (X25519) encryption, multi-provider support, and audit logging.
 
+## Prerequisites
+
+### Required: Claude Code CLI
+
+Kairo acts as a wrapper around Claude Code CLI to enable multi-provider support. You need to install Claude Code first.
+
+**Install Claude Code:**
+
+- Visit: <https://claude.com/product/claude-code>
+- Or via package managers:
+
+  ```bash
+  # Homebrew (macOS)
+  brew install --cask claude-code
+
+  # npm
+  npm install -g @anthropic-ai/claude-code
+  ```
+
+**Verify installation:**
+
+```bash
+claude --version
+```
+
 ## Quick Start
+
+### Linux/macOS
 
 ```bash
 # Install
 curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh
+```
 
-# Setup
+### Windows (PowerShell)
+
+```powershell
+# Install
+irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex
+```
+
+### Setup
+
+```bash
 kairo setup
 
 # Configure a provider
@@ -39,6 +76,31 @@ kairo switch zai "Help me write a function"
 # Or use default provider
 kairo -- "Quick question"
 ```
+
+### PATH Configuration
+
+After installation, add the binary to your PATH:
+
+**Linux/macOS:**
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# Current session:
+$env:PATH += ";$env:LOCALAPPDATA\Programs\kairo"
+
+# Permanent:
+[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$env:LOCALAPPDATA\Programs\kairo", [EnvironmentVariableTarget]::User)
+```
+
+### Manual Installation
+
+Download the latest release from [GitHub Releases](https://github.com/dkmnx/kairo/releases), extract the archive, and
+place the binary in your PATH.
 
 ## Commands
 
