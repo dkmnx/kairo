@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-01-07
+
+### Added
+
+- **Windows support**: PowerShell installer for Windows platforms
+  - Run `irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex` to install
+  - Supports AMD64, ARM64, and ARM7 architectures
+  - Automatic binary placement in `%LOCALAPPDATA%\Programs\kairo`
+  - Checksum verification for downloaded releases
+  - Auto-save completion files to PowerShell Modules directory
+- **Build automation**: Taskfile.yml with comprehensive build system
+  - Modern task runner to replace Makefile
+  - Build, test, and lint commands with proper output directories
+  - Dependency management and verification tasks
+  - Release automation with goreleaser integration
+  - Cross-platform installation and cleanup utilities
+  - Coverage reporting and race detection support
+
+### Changed
+
+- **Installer**: Change default install directory to user local bin (`~/.local/bin` on Unix, `%LOCALAPPDATA%\Programs` on Windows)
+
+### Fixed
+
+- **Windows installer**: Handle existing binary during reinstall
+  - Explicitly remove existing binary before moving new version to avoid "file already exists" errors
+- **Windows installer**: Improved error handling for locked binary
+  - Clear error messages when binary is in use or permissions are insufficient
+  - Suggests closing running processes or running as Administrator
+- **Windows installer**: Use approved PowerShell verbs
+  - Renamed functions to comply with PowerShell naming conventions (Get, Test, Install vs Show, Verify, Download)
+- **Completion**: Standardize documentation and improve consistency
+  - Use `--save` flag consistently across all shell examples
+  - Capitalize shell names (Bash, Zsh, Fish, PowerShell) for consistency
+  - Standardize language to "every new session"
+  - Fix comment discrepancies in completion code and tests
+
+### Test
+
+- **Cross-platform compatibility**: Make tests work on Windows
+  - Skip Unix-style file permission checks (0600) on Windows
+  - Skip read-only directory tests on Windows (different behavior)
+  - Fix TestGetConfigDirWithEnv to set both HOME and USERPROFILE
+  - Skip TestConfigureProvider on Windows (requires TTY/PTY)
+
 ## [1.2.3] - 2026-01-06
 
 ### Fixed
@@ -386,6 +431,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.3.0]: https://github.com/dkmnx/kairo/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/dkmnx/kairo/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/dkmnx/kairo/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/dkmnx/kairo/compare/v1.2.0...v1.2.1
