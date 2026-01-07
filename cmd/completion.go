@@ -21,40 +21,30 @@ var completionCmd = &cobra.Command{
 Bash:
   $ source <(kairo completion bash)
 
-  # To load completions for each session, execute once:
-  # Linux:
-  $ kairo completion bash > /etc/bash_completion.d/kairo
-  # macOS:
-  $ kairo completion bash > /usr/local/etc/bash_completion.d/kairo
+  # To load completions for every new session:
+  $ kairo completion bash --save
 
 Zsh:
   # If shell completion is not already enabled in your environment,
   # you will need to enable it.  You can execute the following once:
   $ echo "autoload -U compinit; compinit" >> ~/.zshrc
 
-  # To load completions for each session, execute once:
-  $ kairo completion zsh > "${fpath[1]}/_kairo"
+  # To load completions for every new session:
+  $ kairo completion zsh --save
 
   # You will need to start a new shell for this setup to take effect.
 
-fish:
+Fish:
   $ kairo completion fish | source
 
-  # To load completions for each session, execute once:
-  $ kairo completion fish > ~/.config/fish/completions/kairo.fish
+  # To load completions for every new session:
+  $ kairo completion fish --save
 
 PowerShell:
   PS> kairo completion powershell | Out-String | Invoke-Expression
 
-  # To load completions for every new session, run:
-  PS> kairo completion powershell > kairo.ps1
-  # and source this file from your PowerShell profile.
-
-Auto-save to default locations:
-  $ kairo completion bash --save
-  $ kairo completion zsh --save
-  $ kairo completion fish --save
-  $ kairo completion powershell --save
+  # To load completions for every new session:
+  PS> kairo completion powershell --save
 `,
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
@@ -63,9 +53,9 @@ Auto-save to default locations:
 		var out io.Writer
 		var closeOut bool
 
-		// Determine output destination
+		// Determine output destination.
 		if completionOutput != "" {
-			// Write to specified file
+			// Write to specified file.
 			f, err := os.Create(completionOutput)
 			if err != nil {
 				cmd.Printf("Error creating output file: %v\n", err)
@@ -74,7 +64,7 @@ Auto-save to default locations:
 			out = f
 			closeOut = true
 		} else if completionSave {
-			// Auto-save to default location
+			// Auto-save to default location.
 			defaultPath := getDefaultCompletionPath(args[0])
 			if err := os.MkdirAll(filepath.Dir(defaultPath), 0755); err != nil {
 				cmd.Printf("Error creating directory: %v\n", err)
@@ -89,11 +79,11 @@ Auto-save to default locations:
 			out = f
 			closeOut = true
 		} else {
-			// Write to stdout (use cmd's output to respect SetOut in tests)
+			// Write to stdout (use cmd's output to respect SetOut in tests).
 			out = cmd.OutOrStdout()
 		}
 
-		// Generate completion for the specified shell
+		// Generate completion for the specified shell.
 		switch args[0] {
 		case "bash":
 			if err := rootCmd.GenBashCompletion(out); err != nil {
@@ -109,7 +99,7 @@ Auto-save to default locations:
 			}
 		case "powershell":
 			if err := rootCmd.GenPowerShellCompletionWithDesc(out); err != nil {
-				cmd.Printf("Error generating powershell completion: %v\n", err)
+				cmd.Printf("Error generating PowerShell completion: %v\n", err)
 			}
 		}
 
@@ -127,7 +117,7 @@ func init() {
 	completionCmd.Flags().BoolVar(&completionSave, "save", false, "Auto-save to default shell completion directory")
 }
 
-// getDefaultCompletionPath returns the default completion file path for a shell
+// getDefaultCompletionPath returns the default completion file path for a shell.
 func getDefaultCompletionPath(shell string) string {
 	home, _ := os.UserHomeDir()
 	if home == "" {
@@ -136,16 +126,17 @@ func getDefaultCompletionPath(shell string) string {
 
 	switch shell {
 	case "bash":
-		// Use user's home directory for writable location
+		// Use user's home directory for writable location.
 		return filepath.Join(home, ".bash_completion.d", "kairo")
 	case "zsh":
-		// Try to find fpath from zsh
+		// Try to find fpath from zsh.
 		return filepath.Join(home, ".zsh", "completion", "_kairo")
 	case "fish":
 		return filepath.Join(home, ".config", "fish", "completions", "kairo.fish")
 	case "powershell":
-		// Windows-style path handling for PowerShell
-		return filepath.Join(home, "kairo.ps1")
+		// Use PowerShell Modules directory for auto-loading.
+		// PowerShell auto-loads .psm1 files from $env:USERPROFILE\Documents\PowerShell\Modules.
+		return filepath.Join(home, "Documents", "PowerShell", "Modules", "kairo-completion", "kairo-completion.psm1")
 	default:
 		return "kairo-completion.sh"
 	}
