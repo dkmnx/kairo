@@ -181,9 +181,12 @@ function Download-And-Install {
         exit 1
     }
 
-    # Move binary
+    # Move binary (remove existing first to avoid "file already exists" error)
     try {
-        Move-Item -Path $binaryPath -Destination $destBinaryPath -Force
+        if (Test-Path $destBinaryPath) {
+            Remove-Item -Path $destBinaryPath -Force
+        }
+        Move-Item -Path $binaryPath -Destination $destBinaryPath
     } catch {
         Write-Error-Log "Failed to move binary: $_"
         exit 1
