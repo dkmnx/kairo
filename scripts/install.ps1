@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $BINARY_NAME = "kairo"
-$DEFAULT_INSTALL_DIR = "$env:LOCALAPPDATA\Programs\kairo"
+$DEFAULT_INSTALL_DIR = "$env:USERPROFILE\.local\bin"
 
 function Write-Log {
     param([string]$Message)
