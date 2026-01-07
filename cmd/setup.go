@@ -156,13 +156,12 @@ func loadSecrets(dir string) (map[string]string, string, string) {
 
 func promptForProvider() string {
 	providerList := providers.GetProviderList()
-	ui.PrintHeader("Kairo Setup Wizard")
-	ui.PrintInfo("Available providers:")
+	ui.PrintHeader("Kairo Setup Wizard\n")
+	ui.PrintWhite("Available providers:")
 	for i, name := range providerList {
-		ui.PrintInfo(fmt.Sprintf("  %d.   %s", i+1, name))
+		ui.PrintWhite(fmt.Sprintf("  %d.   %s", i+1, name))
 	}
-	ui.PrintInfo("  q.   Exit")
-	ui.PrintInfo("")
+	ui.PrintWhite("  q.   Exit\n")
 
 	selection := ui.PromptWithDefault("Select provider to configure", "")
 	return strings.TrimSpace(selection)
