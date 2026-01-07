@@ -3,8 +3,8 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
-	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
@@ -136,7 +136,8 @@ func TestRotateCommandRequiresConfirmation(t *testing.T) {
 	}
 
 	// Reset the --yes flag to ensure test isolation
-	rotateYes = false
+	rotateYesFlag = false
+	rotateYes.Store(false)
 
 	originalStdin := os.Stdin
 	defer func() { os.Stdin = originalStdin }()
@@ -145,8 +146,10 @@ func TestRotateCommandRequiresConfirmation(t *testing.T) {
 	defer pr.Close()
 	defer pw.Close()
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		time.Sleep(10 * time.Millisecond)
+		defer wg.Done()
 		_, _ = pw.WriteString("n\n")
 		pw.Close()
 	}()
@@ -162,6 +165,8 @@ func TestRotateCommandRequiresConfirmation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
+
+	wg.Wait()
 
 	// Verify the key file was NOT modified by checking its content hasn't changed
 	// Since we cancelled, the original key should still be there
@@ -194,7 +199,8 @@ func TestRotateCommandWithYesFlag(t *testing.T) {
 	}
 
 	// Reset the --yes flag to ensure test isolation
-	rotateYes = false
+	rotateYesFlag = false
+	rotateYes.Store(false)
 
 	originalConfigDir := getConfigDir()
 	defer func() { setConfigDir(originalConfigDir) }()

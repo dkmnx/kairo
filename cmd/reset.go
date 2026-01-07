@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
@@ -12,7 +13,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var resetYes bool
+var (
+	// resetYesFlag is used by Cobra for flag binding
+	resetYesFlag bool
+	// resetYes provides atomic access for thread safety
+	resetYes atomic.Bool
+)
 
 var resetCmd = &cobra.Command{
 	Use:   "reset <provider | all>",
@@ -20,6 +26,8 @@ var resetCmd = &cobra.Command{
 	Long:  "Remove a provider's configuration. Use 'all' to reset all providers.",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// Sync flag value to atomic variable
+		resetYes.Store(resetYesFlag)
 		target := args[0]
 
 		dir := getConfigDir()
@@ -39,7 +47,7 @@ var resetCmd = &cobra.Command{
 		}
 
 		if target == "all" {
-			if !resetYes {
+			if !resetYes.Load() {
 				ui.PrintWarn("This will remove ALL provider configurations and secrets.")
 				if !ui.Confirm("Do you want to proceed?") {
 					ui.PrintInfo("Operation cancelled")
@@ -129,6 +137,6 @@ var resetCmd = &cobra.Command{
 }
 
 func init() {
-	resetCmd.Flags().BoolVar(&resetYes, "yes", false, "Skip confirmation prompt")
+	resetCmd.Flags().BoolVar(&resetYesFlag, "yes", false, "Skip confirmation prompt")
 	rootCmd.AddCommand(resetCmd)
 }

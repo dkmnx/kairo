@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/crypto"
@@ -11,7 +12,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var rotateYes bool
+var (
+	// rotateYesFlag is used by Cobra for flag binding
+	rotateYesFlag bool
+	// rotateYes provides atomic access for thread safety
+	rotateYes atomic.Bool
+)
 
 var rotateCmd = &cobra.Command{
 	Use:   "rotate",
@@ -27,6 +33,9 @@ after the rotation completes.
 Examples:
   kairo rotate`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Sync flag value to atomic variable
+		rotateYes.Store(rotateYesFlag)
+
 		dir := getConfigDir()
 		if dir == "" {
 			home, err := os.UserHomeDir()
@@ -37,7 +46,7 @@ Examples:
 			dir = filepath.Join(home, ".config", "kairo")
 		}
 
-		if !rotateYes {
+		if !rotateYes.Load() {
 			ui.PrintWarn("This will rotate your encryption key and re-encrypt all secrets.")
 			if !ui.Confirm("Do you want to proceed?") {
 				ui.PrintInfo("Operation cancelled")
@@ -61,6 +70,6 @@ Examples:
 }
 
 func init() {
-	rotateCmd.Flags().BoolVar(&rotateYes, "yes", false, "Skip confirmation prompt")
+	rotateCmd.Flags().BoolVar(&rotateYesFlag, "yes", false, "Skip confirmation prompt")
 	rootCmd.AddCommand(rotateCmd)
 }

@@ -3,8 +3,8 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
-	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
 )
@@ -144,6 +144,55 @@ func TestResetCommandNonexistentProvider(t *testing.T) {
 	}
 }
 
+func TestResetCommandSingleProviderWithYesFlag(t *testing.T) {
+	setupMockExec(t)
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
+
+	tmpDir := t.TempDir()
+	setConfigDir(tmpDir)
+
+	configPath := filepath.Join(tmpDir, "config")
+	configContent := `providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai/api/anthropic
+    model: glm-4.7
+  minimax:
+    name: MiniMax
+    base_url: https://api.minimax.io/anthropic
+    model: Minimax-M2.1
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Reset the --yes flag to ensure test isolation
+	resetYesFlag = false
+	resetYes.Store(false)
+
+	rootCmd.SetArgs([]string{"reset", "zai", "--yes"})
+	err = rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	// Verify zai provider was removed and minimax remains
+	cfg, err := config.LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if _, ok := cfg.Providers["zai"]; ok {
+		t.Error("zai provider should be removed")
+	}
+
+	if _, ok := cfg.Providers["minimax"]; !ok {
+		t.Error("minimax provider should still exist")
+	}
+}
+
 func TestResetCommandAllRequiresConfirmation(t *testing.T) {
 	setupMockExec(t)
 	originalConfigDir := getConfigDir()
@@ -165,7 +214,8 @@ func TestResetCommandAllRequiresConfirmation(t *testing.T) {
 	}
 
 	// Reset the --yes flag to ensure test isolation
-	resetYes = false
+	resetYesFlag = false
+	resetYes.Store(false)
 
 	// Simulate user input "n" for no confirmation
 	originalStdin := os.Stdin
@@ -175,8 +225,10 @@ func TestResetCommandAllRequiresConfirmation(t *testing.T) {
 	defer pr.Close()
 	defer pw.Close()
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		time.Sleep(10 * time.Millisecond)
+		defer wg.Done()
 		_, _ = pw.WriteString("n\n")
 		pw.Close()
 	}()
@@ -188,6 +240,8 @@ func TestResetCommandAllRequiresConfirmation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
+
+	wg.Wait()
 
 	// Verify providers still exist (operation was cancelled)
 	cfg, err := config.LoadConfig(tmpDir)
