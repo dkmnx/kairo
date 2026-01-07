@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var resetYes bool
+
 var resetCmd = &cobra.Command{
 	Use:   "reset <provider | all>",
 	Short: "Reset provider configuration",
@@ -37,6 +39,14 @@ var resetCmd = &cobra.Command{
 		}
 
 		if target == "all" {
+			if !resetYes {
+				ui.PrintWarn("This will remove ALL provider configurations and secrets.")
+				if !ui.Confirm("Do you want to proceed?") {
+					ui.PrintInfo("Operation cancelled")
+					return
+				}
+			}
+
 			for name := range cfg.Providers {
 				delete(cfg.Providers, name)
 			}
@@ -119,5 +129,6 @@ var resetCmd = &cobra.Command{
 }
 
 func init() {
+	resetCmd.Flags().BoolVar(&resetYes, "yes", false, "Skip confirmation prompt")
 	rootCmd.AddCommand(resetCmd)
 }

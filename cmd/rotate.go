@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var rotateYes bool
+
 var rotateCmd = &cobra.Command{
 	Use:   "rotate",
 	Short: "Rotate encryption key",
@@ -35,6 +37,14 @@ Examples:
 			dir = filepath.Join(home, ".config", "kairo")
 		}
 
+		if !rotateYes {
+			ui.PrintWarn("This will rotate your encryption key and re-encrypt all secrets.")
+			if !ui.Confirm("Do you want to proceed?") {
+				ui.PrintInfo("Operation cancelled")
+				return
+			}
+		}
+
 		cmd.Printf("Rotating encryption key in %s...\n", dir)
 
 		if err := crypto.RotateKey(dir); err != nil {
@@ -51,5 +61,6 @@ Examples:
 }
 
 func init() {
+	rotateCmd.Flags().BoolVar(&rotateYes, "yes", false, "Skip confirmation prompt")
 	rootCmd.AddCommand(rotateCmd)
 }

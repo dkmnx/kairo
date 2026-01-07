@@ -121,13 +121,23 @@ func isProviderConfigured(cfg *config.Config, secrets map[string]string, provide
 }
 
 func PrintBanner(version, provider string) {
-	banner := ` █████                 ███                    
-░░███                 ░░░                     
- ░███ █████  ██████   ████  ████████   ██████ 
+	banner := ` █████                 ███
+░░███                 ░░░
+ ░███ █████  ██████   ████  ████████   ██████
  ░███░░███  ░░░░░███ ░░███ ░░███░░███ ███░░███
  ░██████░    ███████  ░███  ░███ ░░░ ░███ ░███
  ░███░░███  ███░░███  ░███  ░███     ░███ ░███
- ████ █████░░████████ █████ █████    ░░██████ 
+ ████ █████░░████████ █████ █████    ░░██████
 ░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░      ░░░░░░   ` + version + ` - ` + provider
 	fmt.Printf("%s%s\n", Bold, banner)
+}
+
+// Confirm prompts the user for a yes/no confirmation.
+// Returns true if the user answers yes/y (case-insensitive), false otherwise.
+func Confirm(prompt string) bool {
+	fmt.Printf("%s [y/N]: ", prompt)
+	var input string
+	_, _ = fmt.Scanln(&input)
+	input = strings.TrimSpace(strings.ToLower(input))
+	return input == "y" || input == "yes"
 }

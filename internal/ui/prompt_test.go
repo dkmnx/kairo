@@ -834,3 +834,174 @@ func TestProviderRequirements(t *testing.T) {
 		}
 	})
 }
+
+func TestConfirm(t *testing.T) {
+	t.Run("returns true for 'yes' input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("yes\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		buf := new(bytes.Buffer)
+		originalStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		result := Confirm("Are you sure?")
+
+		w.Close()
+		_, _ = buf.ReadFrom(r)
+		os.Stdout = originalStdout
+
+		if !result {
+			t.Error("Confirm() should return true for 'yes' input")
+		}
+
+		output := buf.String()
+		if !strings.Contains(output, "Are you sure?") {
+			t.Error("Confirm should display prompt message")
+		}
+	})
+
+	t.Run("returns true for 'y' input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("y\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result := Confirm("Proceed?")
+		if !result {
+			t.Error("Confirm() should return true for 'y' input")
+		}
+	})
+
+	t.Run("returns true for 'YES' (uppercase)", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("YES\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result := Confirm("Continue?")
+		if !result {
+			t.Error("Confirm() should return true for 'YES' (case-insensitive)")
+		}
+	})
+
+	t.Run("returns false for 'no' input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("no\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result := Confirm("Delete all?")
+		if result {
+			t.Error("Confirm() should return false for 'no' input")
+		}
+	})
+
+	t.Run("returns false for 'n' input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("n\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result := Confirm("Destroy data?")
+		if result {
+			t.Error("Confirm() should return false for 'n' input")
+		}
+	})
+
+	t.Run("returns false for arbitrary input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("maybe\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result := Confirm("Confirm action?")
+		if result {
+			t.Error("Confirm() should return false for non-yes/no input")
+		}
+	})
+
+	t.Run("returns false for empty input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result := Confirm("Confirm?")
+		if result {
+			t.Error("Confirm() should return false for empty input")
+		}
+	})
+}
