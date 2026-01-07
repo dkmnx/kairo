@@ -1,0 +1,116 @@
+# https://taskfile.dev
+version: '3'
+
+vars:
+  BINARY_NAME: kairo
+  DIST_DIR: dist
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  DATE:
+    sh: date -u +%Y-%m-%d 2>/dev/null || echo "unknown"
+  LOCAL_BIN: '{{.HOME}}/.local/bin'
+
+tasks:
+  default:
+    desc: Build the binary
+    deps: [build]
+
+  build:
+    desc: Build the binary
+    cmds:
+      - echo "Building {{.BINARY_NAME}} {{.VERSION}}..."
+      - mkdir -p {{.DIST_DIR}}
+      - go build -ldflags="-X github.com/dkmnx/kairo/internal/version.Version={{.VERSION}} -X github.com/dkmnx/kairo/internal/version.Commit={{.COMMIT}} -X github.com/dkmnx/kairo/internal/version.Date={{.DATE}}" -o {{.DIST_DIR}}/{{.BINARY_NAME}} .
+
+  test:
+    desc: Run all tests
+    cmds:
+      - echo "Running tests..."
+      - go test -v ./...
+
+  test-race:
+    desc: Run tests with race detector
+    cmds:
+      - echo "Running tests with race detector..."
+      - go test -race ./...
+
+  test-coverage:
+    desc: Run tests with coverage report
+    cmds:
+      - echo "Running tests with coverage..."
+      - mkdir -p {{.DIST_DIR}}
+      - go test -coverprofile={{.DIST_DIR}}/coverage.out ./...
+      - echo "Coverage profile {{.DIST_DIR}}/coverage.out"
+
+  lint:
+    desc: Run linters
+    cmds:
+      - echo "Running linters..."
+      - gofmt -w .
+      - go vet ./...
+      - golangci-lint run ./... || echo "golangci-lint not installed, skipping"
+
+  format:
+    desc: Format code
+    cmds:
+      - echo "Formatting code..."
+      - gofmt -w .
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - echo "Cleaning..."
+      - rm -rf {{.DIST_DIR}}
+
+  install:
+    desc: Install binary to {{.LOCAL_BIN}}
+    cmds:
+      - echo "Installing {{.BINARY_NAME}} to {{.LOCAL_BIN}}..."
+      - mkdir -p {{.LOCAL_BIN}}
+      - cp {{.DIST_DIR}}/{{.BINARY_NAME}} {{.LOCAL_BIN}}/{{.BINARY_NAME}}
+
+  uninstall:
+    desc: Remove binary from {{.LOCAL_BIN}}
+    cmds:
+      - echo "Removing {{.BINARY_NAME}} from {{.LOCAL_BIN}}..."
+      - rm -f {{.LOCAL_BIN}}/{{.BINARY_NAME}}
+
+  run:
+    desc: Build and run
+    deps: [build]
+    cmds:
+      - echo "Running {{.BINARY_NAME}}..."
+      - "{{.DIST_DIR}}/{{.BINARY_NAME}}"
+
+  deps:
+    desc: Download and tidy dependencies
+    cmds:
+      - echo "Installing dependencies..."
+      - go mod download
+      - go mod tidy
+
+  verify-deps:
+    desc: Verify dependency checksums
+    cmds:
+      - echo "Verifying dependencies..."
+      - go mod verify
+
+  release:
+    desc: Create release builds with goreleaser
+    cmds:
+      - echo "Running goreleaser..."
+      - goreleaser release --clean
+
+  release-local:
+    desc: Create local snapshot build
+    cmds:
+      - echo "Running goreleaser (snapshot build)..."
+      - goreleaser release --clean --snapshot
+
+  release-dry-run:
+    desc: Build without publishing
+    cmds:
+      - echo "Running goreleaser (dry-run, no publish)..."
+      - goreleaser release --clean --snapshot --skip=publish
