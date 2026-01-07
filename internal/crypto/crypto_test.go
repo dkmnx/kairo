@@ -3,6 +3,7 @@ package crypto
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -75,6 +76,10 @@ func TestDecryptInvalidFile(t *testing.T) {
 }
 
 func TestEncryptToReadonlyDir(t *testing.T) {
+	// Skip on Windows (readonly directories work differently)
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping readonly test on Windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("Skipping readonly test when running as root (permissions don't apply)")
 	}
@@ -241,6 +246,10 @@ func TestDecryptSecretsWithInvalidKeyPath(t *testing.T) {
 }
 
 func TestEncryptSecretsFileError(t *testing.T) {
+	// Skip on Windows (readonly directories work differently)
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping readonly test on Windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("Skipping readonly test when running as root")
 	}

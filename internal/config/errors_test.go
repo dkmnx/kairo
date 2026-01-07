@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -48,6 +49,10 @@ providers:
 
 func TestSaveConfigErrorMessages(t *testing.T) {
 	t.Run("readonly directory returns permission error", func(t *testing.T) {
+		// Skip on Windows (readonly directories work differently)
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping readonly test on Windows")
+		}
 		if os.Getuid() == 0 {
 			t.Skip("Skipping readonly test when running as root")
 		}
@@ -135,6 +140,10 @@ func TestNilProvidersMapHandling(t *testing.T) {
 
 func TestErrorWrapping(t *testing.T) {
 	t.Run("SaveConfig wraps permission errors", func(t *testing.T) {
+		// Skip on Windows (readonly directories work differently)
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping readonly test on Windows")
+		}
 		if os.Getuid() == 0 {
 			t.Skip("Skipping readonly test when running as root")
 		}

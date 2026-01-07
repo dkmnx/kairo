@@ -3,6 +3,7 @@ package crypto
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -42,6 +43,10 @@ func TestEncryptSecretsErrorMessages(t *testing.T) {
 	})
 
 	t.Run("readonly directory returns permission error context", func(t *testing.T) {
+		// Skip on Windows (readonly directories work differently)
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping readonly test on Windows")
+		}
 		if os.Getuid() == 0 {
 			t.Skip("Skipping readonly test when running as root")
 		}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -530,10 +531,13 @@ func TestProviderEnvVarSetup(t *testing.T) {
 
 func TestGetConfigDirWithEnv(t *testing.T) {
 	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
 	defer os.Setenv("HOME", originalHome)
+	defer os.Setenv("USERPROFILE", originalUserProfile)
 
 	tmpDir := t.TempDir()
 	os.Setenv("HOME", tmpDir)
+	os.Setenv("USERPROFILE", tmpDir)
 
 	// Reset configDir to empty so getConfigDir() falls back to env.GetConfigDir()
 	originalConfigDir := getConfigDir()
@@ -1249,6 +1253,11 @@ func TestPromptForBaseURL(t *testing.T) {
 }
 
 func TestConfigureProvider(t *testing.T) {
+	// Skip on Windows - os.Pipe() doesn't work properly with term.ReadPassword
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping configureProvider tests on Windows (requires TTY)")
+	}
+
 	t.Run("configures built-in provider successfully", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		cfg := &config.Config{

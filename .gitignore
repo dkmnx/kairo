@@ -37,3 +37,4 @@ Thumbs.db
 secrets.age
 ./config
 .env
+*.local.json

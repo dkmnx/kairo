@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -44,9 +45,12 @@ func TestNewLoggerCreatesFileWithPermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	perm := info.Mode().Perm()
-	if perm != 0600 {
-		t.Errorf("File permissions = %o, want 0600", perm)
+	// Skip strict permission check on Windows (doesn't support Unix-style 0600)
+	if runtime.GOOS != "windows" {
+		perm := info.Mode().Perm()
+		if perm != 0600 {
+			t.Errorf("File permissions = %o, want 0600", perm)
+		}
 	}
 }
 
