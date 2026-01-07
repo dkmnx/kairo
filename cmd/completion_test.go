@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// TestCompletionCommandBash generates bash completion script
+// TestCompletionCommandBash generates bash completion script.
 func TestCompletionCommandBash(t *testing.T) {
 	originalConfigDir := getConfigDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
@@ -40,7 +40,7 @@ func min(a, b int) int {
 	return b
 }
 
-// TestCompletionCommandZsh generates zsh completion script
+// TestCompletionCommandZsh generates zsh completion script.
 func TestCompletionCommandZsh(t *testing.T) {
 	originalConfigDir := getConfigDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
@@ -65,7 +65,7 @@ func TestCompletionCommandZsh(t *testing.T) {
 	}
 }
 
-// TestCompletionCommandFish generates fish completion script
+// TestCompletionCommandFish generates fish completion script.
 func TestCompletionCommandFish(t *testing.T) {
 	originalConfigDir := getConfigDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
@@ -90,7 +90,7 @@ func TestCompletionCommandFish(t *testing.T) {
 	}
 }
 
-// TestCompletionCommandPowerShell generates powershell completion script
+// TestCompletionCommandPowerShell generates PowerShell completion script.
 func TestCompletionCommandPowerShell(t *testing.T) {
 	originalConfigDir := getConfigDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
@@ -109,13 +109,13 @@ func TestCompletionCommandPowerShell(t *testing.T) {
 
 	output := buf.String()
 
-	// Verify powershell completion markers
+	// Verify PowerShell completion markers
 	if !strings.Contains(output, "kairo") {
 		t.Error("Output should contain kairo reference")
 	}
 }
 
-// TestCompletionCommandUnknownShell returns error
+// TestCompletionCommandUnknownShell returns error for unknown shell.
 func TestCompletionCommandUnknownShell(t *testing.T) {
 	originalConfigDir := getConfigDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
@@ -133,7 +133,7 @@ func TestCompletionCommandUnknownShell(t *testing.T) {
 	}
 }
 
-// TestCompletionCommandNoArgs shows error (requires exactly 1 arg)
+// TestCompletionCommandNoArgs shows error when run without shell argument.
 func TestCompletionCommandNoArgs(t *testing.T) {
 	originalConfigDir := getConfigDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
@@ -151,7 +151,7 @@ func TestCompletionCommandNoArgs(t *testing.T) {
 	}
 }
 
-// TestCompletionCommandWithOutputFlag saves to file
+// TestCompletionCommandWithOutputFlag saves completion to file.
 func TestCompletionCommandWithOutputFlag(t *testing.T) {
 	originalConfigDir := getConfigDir()
 	t.Cleanup(func() {
@@ -187,7 +187,7 @@ func TestCompletionCommandWithOutputFlag(t *testing.T) {
 	}
 }
 
-// TestCompletionCommandWithShortOutputFlag
+// TestCompletionCommandWithShortOutputFlag saves to file using -o flag.
 func TestCompletionCommandWithShortOutputFlag(t *testing.T) {
 	originalConfigDir := getConfigDir()
 	t.Cleanup(func() {
@@ -213,30 +213,46 @@ func TestCompletionCommandWithShortOutputFlag(t *testing.T) {
 	}
 }
 
-// TestCompletionCommandAutoSaveToDefaultLocation
+// TestCompletionCommandAutoSaveToDefaultLocation saves completion to default location with --save flag.
 func TestCompletionCommandAutoSaveToDefaultLocation(t *testing.T) {
 	originalConfigDir := getConfigDir()
 	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
 	t.Cleanup(func() {
 		setConfigDir(originalConfigDir)
-		os.Setenv("HOME", originalHome)
+		if originalHome != "" {
+			os.Setenv("HOME", originalHome)
+		} else {
+			os.Unsetenv("HOME")
+		}
+		if originalUserProfile != "" {
+			os.Setenv("USERPROFILE", originalUserProfile)
+		} else {
+			os.Unsetenv("USERPROFILE")
+		}
 		completionOutput = ""
 		completionSave = false
 	})
 
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
-	os.Setenv("HOME", tmpDir)
 
-	// Verify HOME is set correctly
+	// Set both HOME and USERPROFILE for cross-platform compatibility
+	os.Setenv("HOME", tmpDir)
+	os.Setenv("USERPROFILE", tmpDir)
+
+	// Verify environment is set correctly
 	if home := os.Getenv("HOME"); home != tmpDir {
 		t.Fatalf("HOME not set correctly: got %s, want %s", home, tmpDir)
 	}
+	if userProfile := os.Getenv("USERPROFILE"); userProfile != tmpDir {
+		t.Fatalf("USERPROFILE not set correctly: got %s, want %s", userProfile, tmpDir)
+	}
 
-	// Verify UserHomeDir reads from HOME
+	// Verify UserHomeDir returns the test directory
 	userHome, _ := os.UserHomeDir()
 	if userHome != tmpDir {
-		t.Fatalf("UserHomeDir not reading HOME: got %s, want %s", userHome, tmpDir)
+		t.Fatalf("UserHomeDir not returning test directory: got %s, want %s", userHome, tmpDir)
 	}
 
 	// Test bash auto-save
@@ -261,8 +277,11 @@ func TestCompletionCommandAutoSaveToDefaultLocation(t *testing.T) {
 func TestGetDefaultCompletionPathBash(t *testing.T) {
 	home := t.TempDir()
 	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
 	defer os.Setenv("HOME", originalHome)
+	defer os.Setenv("USERPROFILE", originalUserProfile)
 	os.Setenv("HOME", home)
+	os.Setenv("USERPROFILE", home)
 
 	path := getDefaultCompletionPath("bash")
 
@@ -275,8 +294,11 @@ func TestGetDefaultCompletionPathBash(t *testing.T) {
 func TestGetDefaultCompletionPathZsh(t *testing.T) {
 	home := t.TempDir()
 	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
 	defer os.Setenv("HOME", originalHome)
+	defer os.Setenv("USERPROFILE", originalUserProfile)
 	os.Setenv("HOME", home)
+	os.Setenv("USERPROFILE", home)
 
 	path := getDefaultCompletionPath("zsh")
 
@@ -289,8 +311,11 @@ func TestGetDefaultCompletionPathZsh(t *testing.T) {
 func TestGetDefaultCompletionPathFish(t *testing.T) {
 	home := t.TempDir()
 	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
 	defer os.Setenv("HOME", originalHome)
+	defer os.Setenv("USERPROFILE", originalUserProfile)
 	os.Setenv("HOME", home)
+	os.Setenv("USERPROFILE", home)
 
 	path := getDefaultCompletionPath("fish")
 
@@ -303,12 +328,15 @@ func TestGetDefaultCompletionPathFish(t *testing.T) {
 func TestGetDefaultCompletionPathPowerShell(t *testing.T) {
 	home := t.TempDir()
 	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
 	defer os.Setenv("HOME", originalHome)
+	defer os.Setenv("USERPROFILE", originalUserProfile)
 	os.Setenv("HOME", home)
+	os.Setenv("USERPROFILE", home)
 
 	path := getDefaultCompletionPath("powershell")
 
-	expected := filepath.Join(home, "kairo.ps1")
+	expected := filepath.Join(home, "Documents", "PowerShell", "Modules", "kairo-completion", "kairo-completion.psm1")
 	if path != expected {
 		t.Errorf("getDefaultCompletionPath(powershell) = %q, want %q", path, expected)
 	}
@@ -317,8 +345,11 @@ func TestGetDefaultCompletionPathPowerShell(t *testing.T) {
 func TestGetDefaultCompletionPathUnknown(t *testing.T) {
 	home := t.TempDir()
 	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
 	defer os.Setenv("HOME", originalHome)
+	defer os.Setenv("USERPROFILE", originalUserProfile)
 	os.Setenv("HOME", home)
+	os.Setenv("USERPROFILE", home)
 
 	path := getDefaultCompletionPath("unknown")
 
@@ -329,8 +360,11 @@ func TestGetDefaultCompletionPathUnknown(t *testing.T) {
 
 func TestGetDefaultCompletionPathNoHomeDir(t *testing.T) {
 	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
 	defer os.Setenv("HOME", originalHome)
+	defer os.Setenv("USERPROFILE", originalUserProfile)
 	os.Unsetenv("HOME")
+	os.Unsetenv("USERPROFILE")
 
 	path := getDefaultCompletionPath("bash")
 
