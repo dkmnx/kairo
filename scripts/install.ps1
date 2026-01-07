@@ -182,20 +182,23 @@ function Download-And-Install {
     }
 
     # Move binary (remove existing first to avoid "file already exists" error)
-    try {
-        if (Test-Path $destBinaryPath) {
-            try {
-                Remove-Item -Path $destBinaryPath -Force
-            } catch {
-                Write-Error-Log "Failed to remove existing binary: $_"
-                Write-Error-Log "Please close any running kairo processes and try again."
-                Write-Error-Log "You can also run this as Administrator for write access."
-                exit 1
-            }
+    if (Test-Path $destBinaryPath) {
+        try {
+            Remove-Item -Path $destBinaryPath -Force -ErrorAction Stop
+        } catch {
+            Write-Error-Log "Failed to remove existing binary: $_"
+            Write-Error-Log "Please close any running kairo processes and try again."
+            Write-Error-Log "You can also run this as Administrator for write access."
+            exit 1
         }
-        Move-Item -Path $binaryPath -Destination $destBinaryPath
+    }
+
+    try {
+        Move-Item -Path $binaryPath -Destination $destBinaryPath -Force -ErrorAction Stop
     } catch {
         Write-Error-Log "Failed to move binary: $_"
+        Write-Error-Log "Please close any running kairo processes and try again."
+        Write-Error-Log "You can also run this as Administrator for write access."
         exit 1
     }
 
