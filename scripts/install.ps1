@@ -22,7 +22,7 @@ function Write-Error-Log {
     Write-Host "[kairo] ERROR: $Message" -ForegroundColor Red
 }
 
-function Show-Usage {
+function Get-Usage {
     @"
 Install kairo CLI
 
@@ -44,15 +44,18 @@ SHORTENED (One-liner):
     exit 0
 }
 
-function Detect-Architecture {
+function Get-Architecture {
     $arch = $env:PROCESSOR_ARCHITECTURE
     if ($arch -eq "AMD64") {
         return "amd64"
-    } elseif ($arch -eq "ARM64") {
+    }
+    elseif ($arch -eq "ARM64") {
         return "arm64"
-    } elseif ($arch -match "^ARM") {
+    }
+    elseif ($arch -match "^ARM") {
         return "arm7"
-    } else {
+    }
+    else {
         Write-Error-Log "Unsupported architecture: $arch"
         exit 1
     }
@@ -65,7 +68,8 @@ function Get-LatestVersion {
     try {
         $response = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -UseBasicParsing
         return $response.tag_name
-    } catch {
+    }
+    catch {
         Write-Error-Log "Failed to fetch latest version: $_"
         exit 1
     }
@@ -81,13 +85,14 @@ function Get-Checksum {
     try {
         $response = Invoke-RestMethod -Uri $checksumUrl -UseBasicParsing
         return $response
-    } catch {
+    }
+    catch {
         Write-Log "Warning: Checksum file not found, skipping verification"
         return $null
     }
 }
 
-function Verify-Checksum {
+function Test-Checksum {
     param([string]$FilePath, [string]$ChecksumData, [string]$BinaryName)
 
     if (-not $ChecksumData) {
@@ -107,7 +112,8 @@ function Verify-Checksum {
             if ($expectedHash -eq $actualHash) {
                 Write-Log "Checksum verified successfully"
                 return $true
-            } else {
+            }
+            else {
                 Write-Error-Log "Checksum verification failed"
                 Write-Error-Log "Expected: $expectedHash"
                 Write-Error-Log "Got:      $actualHash"
@@ -120,7 +126,7 @@ function Verify-Checksum {
     return $true # Continue anyway
 }
 
-function Download-And-Install {
+function Install-Binary {
     param(
         [string]$Version,
         [string]$Arch,
@@ -140,7 +146,8 @@ function Download-And-Install {
 
     try {
         Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing
-    } catch {
+    }
+    catch {
         Write-Error-Log "Failed to download $url : $_"
         exit 1
     }
@@ -149,7 +156,7 @@ function Download-And-Install {
     $checksumData = Get-Checksum -Repo $Repo -Version $Version -BinaryName $BinaryName
 
     # Verify checksum
-    if (-not (Verify-Checksum -FilePath $archivePath -ChecksumData $checksumData -BinaryName $BinaryName)) {
+    if (-not (Test-Checksum -FilePath $archivePath -ChecksumData $checksumData -BinaryName $BinaryName)) {
         Remove-Item -Path $archivePath -Force
         exit 1
     }
@@ -157,7 +164,8 @@ function Download-And-Install {
     Write-Log "Extracting archive..."
     try {
         Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force
-    } catch {
+    }
+    catch {
         Write-Error-Log "Failed to extract archive: $_"
         Remove-Item -Path $archivePath -Force
         exit 1
@@ -185,7 +193,8 @@ function Download-And-Install {
     if (Test-Path $destBinaryPath) {
         try {
             Remove-Item -Path $destBinaryPath -Force -ErrorAction Stop
-        } catch {
+        }
+        catch {
             Write-Error-Log "Failed to remove existing binary: $_"
             Write-Error-Log "Please close any running kairo processes and try again."
             Write-Error-Log "You can also run this as Administrator for write access."
@@ -195,7 +204,8 @@ function Download-And-Install {
 
     try {
         Move-Item -Path $binaryPath -Destination $destBinaryPath -Force -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Error-Log "Failed to move binary: $_"
         Write-Error-Log "Please close any running kairo processes and try again."
         Write-Error-Log "You can also run this as Administrator for write access."
@@ -219,13 +229,13 @@ function Download-And-Install {
 
 # Main execution
 if ($Help) {
-    Show-Usage
+    Get-Usage
 }
 
-$arch = Detect-Architecture
+$arch = Get-Architecture
 $installDir = if ($BinDir) { $BinDir } else { $DEFAULT_INSTALL_DIR }
 $version = if ($Version) { $Version } else { (Get-LatestVersion -Repo $Repo) }
 
 Write-Log "Installing $BINARY_NAME $version for windows/$arch..."
 
-Download-And-Install -Version $version -Arch $arch -InstallDir $installDir -Repo $Repo -BinaryName $BINARY_NAME
+Install-Binary -Version $version -Arch $arch -InstallDir $installDir -Repo $Repo -BinaryName $BINARY_NAME
