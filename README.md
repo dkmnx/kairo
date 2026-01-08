@@ -45,23 +45,19 @@ claude --version
 
 ## Quick Start
 
-### Linux/macOS
+### Install
 
-```bash
-# Install
-curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh
-```
+| Platform      | Command                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------- |
+| Linux/macOS   | `curl -sSL <https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh> \| sh` |
+| Windows       | `irm <https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1> \| iex`     |
 
-### Windows (PowerShell)
-
-```powershell
-# Install
-irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex
-```
+[Manual Installation](docs/guides/user-guide.md#manual-installation) | [Build from Source](docs/guides/development-guide.md#building)
 
 ### Setup
 
 ```bash
+# Interactive setup
 kairo setup
 
 # Configure a provider
@@ -77,113 +73,138 @@ kairo switch zai "Help me write a function"
 kairo -- "Quick question"
 ```
 
-### PATH Configuration
+## System Architecture
 
-After installation, add the binary to your PATH:
+```mermaid
+flowchart TB
+    subgraph User[User]
+        CLI[kairo CLI]
+    end
 
-**Linux/macOS:**
+    subgraph Kairo
+        Config[config/] --> Providers[providers/]
+        Config --> Crypto[crypto/]
+        Config --> Audit[audit/]
+        Crypto --> Age[age X25519]
+        Audit --> Log[audit.log]
+    end
 
-```bash
-export PATH="$HOME/.local/bin:$PATH"
+    subgraph Storage[~/.config/kairo/]
+        YAML[config.yaml]
+        AGE[secrets.age]
+        KEY[age.key]
+        LOG[audit.log]
+    end
+
+    CLI --> Config
+    CLI --> Providers
+    CLI --> Crypto
+    CLI --> Audit
+    Crypto --> AGE
+    Crypto --> KEY
+    Age --> KEY
 ```
-
-**Windows (PowerShell):**
-
-```powershell
-# Current session:
-$env:PATH += ";$env:LOCALAPPDATA\Programs\kairo"
-
-# Permanent:
-[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$env:LOCALAPPDATA\Programs\kairo", [EnvironmentVariableTarget]::User)
-```
-
-### Manual Installation
-
-Download the latest release from [GitHub Releases](https://github.com/dkmnx/kairo/releases), extract the archive, and
-place the binary in your PATH.
-
-## Commands
-
-| Command                       | Description                        |
-| ----------------------------- | ---------------------------------- |
-| `kairo setup`                 | Interactive setup wizard           |
-| `kairo config <provider>`     | Configure a provider               |
-| `kairo list`                  | List configured providers          |
-| `kairo status`                | Test all providers                 |
-| `kairo test <provider>`       | Test specific provider             |
-| `kairo switch <provider>`     | Switch and exec Claude             |
-| `kairo default <provider>`    | Get/set default provider           |
-| `kairo reset <provider\|all>` | Remove provider config             |
-| `kairo rotate`                | Rotate encryption key              |
-| `kairo audit <list\|export>`  | View/export audit logs             |
-| `kairo -- "query"`            | Query mode (default provider)      |
-| `kairo version`               | Show version info                  |
-| `kairo update`                | Check for updates                  |
 
 ## Features
 
-| Feature                  | Description                                                              |
-| ------------------------ | ------------------------------------------------------------------------ |
-| **Multi-Provider**       | Native Anthropic, Z.AI, MiniMax, Kimi, DeepSeek, custom                  |
-| **Secure Encryption**    | Age (X25519) encryption for all API keys                                 |
-| **Key Rotation**         | Regenerate encryption keys periodically                                  |
-| **Audit Logging**        | Track all configuration changes                                          |
-| **Interactive Setup**    | Guided configuration wizard                                              |
-| **Provider Testing**     | Test connectivity and configuration                                      |
-| **Auto-Update**          | Notifications for new versions                                           |
+| Feature                | Description                                                |
+| ---------------------- | ---------------------------------------------------------- |
+| **Multi-Provider**     | Native Anthropic, Z.AI, MiniMax, Kimi, DeepSeek, custom    |
+| **Secure Encryption**  | Age (X25519) encryption for all API keys                   |
+| **Key Rotation**       | Regenerate encryption keys periodically                    |
+| **Audit Logging**      | Track all configuration changes                            |
+| **Cross-Platform**     | Linux, macOS, Windows support                              |
 
-## Documentation
+## Commands
 
-**User Guides:**
+### Provider Management
 
-- [User Guide](docs/guides/user-guide.md) - Installation and usage
-- [Audit Guide](docs/guides/audit-guide.md) - Audit log usage
-- [Integration Examples](docs/guides/claude-integration-examples.md) - Practical workflows
+| Command                          | Description                          |
+| -------------------------------- | ------------------------------------ |
+| `kairo setup`                    | Interactive setup wizard             |
+| `kairo config <provider>`        | Configure a provider                 |
+| `kairo list`                     | List configured providers            |
+| `kairo status`                   | Test all providers                   |
+| `kairo test <provider>`          | Test specific provider               |
+| `kairo default <provider>`       | Get/set default provider             |
+| `kairo reset <provider\|all>`    | Remove provider config               |
 
-**Developer Resources:**
+### Execution
 
-- [Development Guide](docs/guides/development-guide.md) - Setup and contribution
-- [Architecture](docs/architecture/README.md) - System design and diagrams
-- [Contributing](docs/contributing/README.md) - Contribution workflow
+| Command                      | Description                                |
+| ---------------------------- | ------------------------------------------ |
+| `kairo switch <provider>`    | Switch and exec Claude                     |
+| `kairo <provider> [args]`    | Shorthand for switch                       |
+| `kairo -- "query"`           | Query mode (default provider)              |
 
-**Reference:**
+### Maintenance
 
-- [Troubleshooting](docs/troubleshooting/README.md) - Common issues and solutions
-- [Changelog](CHANGELOG.md) - Version history
+| Command                         | Description                        |
+| ------------------------------- | ---------------------------------- |
+| `kairo rotate`                  | Rotate encryption key              |
+| `kairo audit <list\|export>`    | View/export audit logs             |
+| `kairo update`                  | Check for updates                  |
+| `kairo completion <shell>`      | Shell completion                   |
+| `kairo version`                 | Show version info                  |
 
-## Modules
-
-```text
-kairo/
-├── cmd/           # CLI commands (Cobra) → [cmd/README.md](cmd/README.md)
-├── internal/      # Business logic
-│   ├── audit/     # Audit logging
-│   ├── config/    # Configuration loading
-│   ├── crypto/    # Age encryption
-│   ├── providers/ # Provider registry
-│   ├── validate/  # Input validation
-│   └── ui/        # Terminal output
-└── pkg/           # Reusable utilities → [pkg/README.md](pkg/README.md)
-```
+[Full Command Reference](cmd/README.md)
 
 ## Configuration
 
-Location: `~/.config/kairo/`
+| OS         | Location                                     |
+| ---------- | -------------------------------------------- |
+| Linux      | `~/.config/kairo/`                           |
+| macOS      | `~/Library/Application Support/kairo/`       |
+| Windows    | `%APPDATA%\kairo\`                           |
 
-| File          | Purpose                           | Permissions |
-| ------------- | --------------------------------- | ----------- |
-| `config`      | Provider configurations (YAML)    | 0600        |
-| `secrets.age` | Encrypted API keys                | 0600        |
-| `age.key`     | Encryption private key            | 0600        |
-| `audit.log`   | Configuration change history      | 0600        |
+| File          | Purpose                            | Permissions   |
+| ------------- | ---------------------------------- | ------------- |
+| `config`      | Provider configurations (YAML)     | 0600          |
+| `secrets.age` | Encrypted API keys                 | 0600          |
+| `age.key`     | Encryption private key             | 0600          |
+| `audit.log`   | Configuration change history       | 0600          |
+
+## Documentation
+
+### User Guides
+
+| Guide                                                           | Description                  |
+| --------------------------------------------------------------- | ---------------------------- |
+| [User Guide](docs/guides/user-guide.md)                         | Installation and basic usage |
+| [Audit Guide](docs/guides/audit-guide.md)                       | Audit log usage              |
+| [Advanced Configuration](docs/guides/advanced-configuration.md) | Complex scenarios            |
+
+### Developer Resources
+
+| Resource                                              | Description                    |
+| ----------------------------------------------------- | ------------------------------ |
+| [Development Guide](docs/guides/development-guide.md) | Setup and contribution         |
+| [Architecture](docs/architecture/README.md)           | System design and diagrams     |
+| [Contributing](docs/contributing/README.md)           | Contribution workflow          |
+
+### Reference
+
+| Resource                                            | Description                          |
+| --------------------------------------------------- | ------------------------------------ |
+| [Command Reference](cmd/README.md)                  | CLI command details                  |
+| [Internal Packages](internal/README.md)             | Core modules reference               |
+| [Troubleshooting](docs/troubleshooting/README.md)   | Common issues and solutions          |
+| [Changelog](CHANGELOG.md)                           | Version history                      |
 
 ## Building
 
 ```bash
-make build    # Build to dist/kairo
-make test     # Run tests with race detection
-make lint     # Run code quality checks
-make format   # Format code with gofmt
+# Build
+task build        # or: go build -o dist/kairo .
+
+# Test
+task test         # or: go test -race ./...
+
+# Lint
+task lint         # or: gofmt -w . && go vet ./...
+
+# Format
+task format       # or: gofmt -w .
 ```
 
 ## Security
@@ -194,11 +215,30 @@ make format   # Format code with gofmt
 - Key generation on first run
 - Use `kairo rotate` for periodic key rotation
 
-## License
+## Project Structure
 
-[MIT](LICENSE) (c) 2025 [dkmnx](https://github.com/dkmnx)
+```text
+kairo/
+├── cmd/           # CLI commands (Cobra)
+│   ├── setup.go   # Interactive wizard
+│   ├── config.go  # Provider configuration
+│   ├── switch.go  # Provider switching
+│   └── ...
+├── internal/      # Business logic
+│   ├── audit/     # Audit logging
+│   ├── config/    # YAML loading
+│   ├── crypto/    # Age encryption
+│   ├── providers/ # Provider registry
+│   └── ...
+└── pkg/           # Reusable utilities
+    └── env/       # Cross-platform config dir
+```
 
 ## Resources
 
 - [GitHub](https://github.com/dkmnx/kairo)
 - [Report Issues](https://github.com/dkmnx/kairo/issues)
+
+---
+
+**License:** [MIT](LICENSE) | **Author:** [dkmnx](https://github.com/dkmnx)
