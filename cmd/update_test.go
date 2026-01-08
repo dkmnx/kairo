@@ -397,3 +397,57 @@ func TestGetLatestReleaseURL(t *testing.T) {
 		}
 	})
 }
+
+func TestIsWindows(t *testing.T) {
+	tests := []struct {
+		name     string
+		goos     string
+		expected bool
+	}{
+		{"windows", "windows", true},
+		{"linux", "linux", false},
+		{"darwin", "darwin", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isWindows(tt.goos)
+			if result != tt.expected {
+				t.Errorf("isWindows(%q) = %v, want %v", tt.goos, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetInstallScriptURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		goos     string
+		expected string
+	}{
+		{
+			name:     "windows returns ps1 script",
+			goos:     "windows",
+			expected: "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1",
+		},
+		{
+			name:     "linux returns sh script",
+			goos:     "linux",
+			expected: "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh",
+		},
+		{
+			name:     "darwin returns sh script",
+			goos:     "darwin",
+			expected: "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getInstallScriptURL(tt.goos)
+			if result != tt.expected {
+				t.Errorf("getInstallScriptURL(%q) = %q, want %q", tt.goos, result, tt.expected)
+			}
+		})
+	}
+}

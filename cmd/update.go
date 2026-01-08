@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -90,6 +91,19 @@ func versionGreaterThan(current, latest string) bool {
 	return c.LessThan(l)
 }
 
+// isWindows checks if the given OS is Windows
+func isWindows(goos string) bool {
+	return goos == "windows"
+}
+
+// getInstallScriptURL returns the appropriate install script URL based on OS
+func getInstallScriptURL(goos string) string {
+	if isWindows(goos) {
+		return "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1"
+	}
+	return "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh"
+}
+
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update kairo to the latest version",
@@ -118,26 +132,40 @@ This command will:
 
 		cmd.Printf("Updating to %s...\n", latest.TagName)
 
-		installScript := "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh"
-		curlCmd := exec.Command("curl", "-fsSL", installScript)
-		curlCmd.Stderr = os.Stderr
+		installScriptURL := getInstallScriptURL(runtime.GOOS)
 
-		shCmd := exec.Command("sh")
-		shCmd.Stdin, _ = curlCmd.StdoutPipe()
-		shCmd.Stdout = os.Stdout
-		shCmd.Stderr = os.Stderr
+		if isWindows(runtime.GOOS) {
+			// On Windows, use PowerShell to download and execute the install script
+			pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-Command", "irm "+installScriptURL+" | iex")
+			pwshCmd.Stdout = os.Stdout
+			pwshCmd.Stderr = os.Stderr
 
-		if err := shCmd.Start(); err != nil {
-			cmd.Printf("Error starting update: %v\n", err)
-			return
-		}
-		if err := curlCmd.Run(); err != nil {
-			cmd.Printf("Error downloading update: %v\n", err)
-			return
-		}
-		if err := shCmd.Wait(); err != nil {
-			cmd.Printf("Error during installation: %v\n", err)
-			return
+			if err := pwshCmd.Run(); err != nil {
+				cmd.Printf("Error during installation: %v\n", err)
+				return
+			}
+		} else {
+			// On Unix-like systems, use curl | sh
+			curlCmd := exec.Command("curl", "-fsSL", installScriptURL)
+			curlCmd.Stderr = os.Stderr
+
+			shCmd := exec.Command("sh")
+			shCmd.Stdin, _ = curlCmd.StdoutPipe()
+			shCmd.Stdout = os.Stdout
+			shCmd.Stderr = os.Stderr
+
+			if err := shCmd.Start(); err != nil {
+				cmd.Printf("Error starting update: %v\n", err)
+				return
+			}
+			if err := curlCmd.Run(); err != nil {
+				cmd.Printf("Error downloading update: %v\n", err)
+				return
+			}
+			if err := shCmd.Wait(); err != nil {
+				cmd.Printf("Error during installation: %v\n", err)
+				return
+			}
 		}
 	},
 }

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-01-08
+
+### Added
+
+- **Self-update command**: New `kairo update` command to check for and install the latest version
+  - Fetches latest release from GitHub API with configurable URL via `KAIRO_UPDATE_URL` environment variable
+  - Cross-platform support: PowerShell installer for Windows, curl|sh for Unix
+  - Version comparison using semver library with proper pre-release handling (alpha, beta, rc)
+  - Timeout protection (10s) for API requests with context cancellation
+  - Comprehensive error handling for network failures, timeouts, and invalid responses
+
+### Test
+
+- **Update command coverage**: Added 2 unit tests for update functionality
+  - OS detection and install script URL selection
+
 ## [1.3.0] - 2026-01-07
 
 ### Added
@@ -431,6 +447,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.4.0]: https://github.com/dkmnx/kairo/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/dkmnx/kairo/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/dkmnx/kairo/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/dkmnx/kairo/compare/v1.2.1...v1.2.2
