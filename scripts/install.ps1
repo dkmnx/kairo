@@ -93,21 +93,26 @@ function Get-Checksum {
 }
 
 function Test-Checksum {
-    param([string]$FilePath, [string]$ChecksumData, [string]$BinaryName)
+    param([string]$FilePath, [string]$ChecksumData, [string]$BinaryName, [string]$Arch)
 
     if (-not $ChecksumData) {
         return $true
     }
 
     Write-Log "Verifying checksum..."
-    $hash = Get-FileHash -Path $FilePath -Algorithm SHA256
+
+    # Use .NET for SHA256 hash (works with PowerShell 2.0+)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $fileBytes = [System.IO.File]::ReadAllBytes($FilePath)
+    $hashBytes = $sha256.ComputeHash($fileBytes)
+    $hash = [System.BitConverter]::ToString($hashBytes) -replace '-', ''
 
     # Parse checksums.txt to find the matching hash
     $lines = $ChecksumData -split "`n"
     foreach ($line in $lines) {
-        if ($line -match "^([a-f0-9]+)\s+\*$($BinaryName)_windows_") {
+        if ($line -match "^([a-f0-9]+)\s+$($BinaryName)_windows_${Arch}\.zip") {
             $expectedHash = $matches[1].ToLower()
-            $actualHash = $hash.Hash.ToLower()
+            $actualHash = $hash.ToLower()
 
             if ($expectedHash -eq $actualHash) {
                 Write-Log "Checksum verified successfully"
@@ -156,7 +161,7 @@ function Install-Binary {
     $checksumData = Get-Checksum -Repo $Repo -Version $Version -BinaryName $BinaryName
 
     # Verify checksum
-    if (-not (Test-Checksum -FilePath $archivePath -ChecksumData $checksumData -BinaryName $BinaryName)) {
+    if (-not (Test-Checksum -FilePath $archivePath -ChecksumData $checksumData -BinaryName $BinaryName -Arch $Arch)) {
         Remove-Item -Path $archivePath -Force
         exit 1
     }

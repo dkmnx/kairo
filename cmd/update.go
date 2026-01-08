@@ -136,7 +136,8 @@ This command will:
 
 		if isWindows(runtime.GOOS) {
 			// On Windows, use PowerShell to download and execute the install script
-			pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-Command", "irm "+installScriptURL+" | iex")
+			// Use -Version 2 to ensure compatibility, but prefer PowerShell 5+ if available
+			pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-Command", "if ($PSVersionTable.PSVersion.Major -ge 3) { irm "+installScriptURL+" | iex } else { Write-Host 'ERROR: kairo requires PowerShell 3.0 or later'; Write-Host 'Please update PowerShell or install manually from https://github.com/dkmnx/kairo/releases'; exit 1 }")
 			pwshCmd.Stdout = os.Stdout
 			pwshCmd.Stderr = os.Stderr
 
