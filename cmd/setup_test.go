@@ -544,7 +544,12 @@ func TestGetConfigDirWithEnv(t *testing.T) {
 	defer setConfigDir(originalConfigDir)
 	setConfigDir("")
 
-	expectedDir := filepath.Join(tmpDir, ".config", "kairo")
+	var expectedDir string
+	if runtime.GOOS == "windows" {
+		expectedDir = filepath.Join(tmpDir, "AppData", "Roaming", "kairo")
+	} else {
+		expectedDir = filepath.Join(tmpDir, ".config", "kairo")
+	}
 	dir := getConfigDir()
 	if dir != expectedDir {
 		t.Errorf("getConfigDir() = %q, want %q", dir, expectedDir)
@@ -590,7 +595,12 @@ func TestGetConfigDirEmptyConfigDir(t *testing.T) {
 		t.Skip("cannot find home directory")
 	}
 
-	expectedDir := filepath.Join(home, ".config", "kairo")
+	var expectedDir string
+	if runtime.GOOS == "windows" {
+		expectedDir = filepath.Join(home, "AppData", "Roaming", "kairo")
+	} else {
+		expectedDir = filepath.Join(home, ".config", "kairo")
+	}
 	dir := getConfigDir()
 	if dir != expectedDir {
 		t.Errorf("getConfigDir() = %q, want %q", dir, expectedDir)

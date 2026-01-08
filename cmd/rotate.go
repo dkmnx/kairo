@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 
 	"github.com/dkmnx/kairo/internal/audit"
@@ -43,7 +44,11 @@ Examples:
 				ui.PrintError("Cannot find home directory")
 				return
 			}
-			dir = filepath.Join(home, ".config", "kairo")
+			if runtime.GOOS == "windows" {
+				dir = filepath.Join(home, "AppData", "Roaming", "kairo")
+			} else {
+				dir = filepath.Join(home, ".config", "kairo")
+			}
 		}
 
 		if !rotateYes.Load() {

@@ -149,7 +149,7 @@ func init() {
 	// 2. In normal CLI execution, there is no concurrent access to flags
 	// 3. Tests should use setVerbose() to avoid potential race conditions
 	// 4. Thread-safe access is guaranteed through getVerbose() which uses configLock.RLock()
-	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default ~/.config/kairo)")
+	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 }
 
