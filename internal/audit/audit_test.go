@@ -433,3 +433,239 @@ func splitLinesForTest(s string) []string {
 	}
 	return lines
 }
+
+// NEW TESTS: Status and Error fields
+
+func TestAuditEntryHasStatusField(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+
+	err = logger.LogSwitch("test-provider")
+	if err != nil {
+		t.Fatalf("LogSwitch() error = %v", err)
+	}
+
+	data, err := os.ReadFile(logger.path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var entry AuditEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if entry.Status == "" {
+		t.Error("Status field should be present")
+	}
+
+	if entry.Status != "success" {
+		t.Errorf("Status = %q, want %q", entry.Status, "success")
+	}
+}
+
+func TestAuditEntryHasErrorField(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+
+	err = logger.LogSwitch("test-provider")
+	if err != nil {
+		t.Fatalf("LogSwitch() error = %v", err)
+	}
+
+	data, err := os.ReadFile(logger.path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var entry AuditEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	// Error field should exist but be empty for successful operations
+	if entry.Error != "" {
+		t.Errorf("Error = %q, want empty string for successful operation", entry.Error)
+	}
+}
+
+func TestLogSuccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+
+	details := map[string]interface{}{
+		"previous_provider": "old-provider",
+		"cli_version":       "1.0.0",
+	}
+
+	err = logger.LogSuccess("switch", "new-provider", details)
+	if err != nil {
+		t.Fatalf("LogSuccess() error = %v", err)
+	}
+
+	data, err := os.ReadFile(logger.path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var entry AuditEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if entry.Event != "switch" {
+		t.Errorf("Event = %q, want %q", entry.Event, "switch")
+	}
+
+	if entry.Provider != "new-provider" {
+		t.Errorf("Provider = %q, want %q", entry.Provider, "new-provider")
+	}
+
+	if entry.Status != "success" {
+		t.Errorf("Status = %q, want %q", entry.Status, "success")
+	}
+
+	if entry.Error != "" {
+		t.Errorf("Error = %q, want empty string", entry.Error)
+	}
+
+	if len(entry.Details) == 0 {
+		t.Error("Details should not be empty")
+	}
+
+	if entry.Details["previous_provider"] != "old-provider" {
+		t.Errorf("Details[previous_provider] = %v, want %v", entry.Details["previous_provider"], "old-provider")
+	}
+
+	if entry.Details["cli_version"] != "1.0.0" {
+		t.Errorf("Details[cli_version] = %v, want %v", entry.Details["cli_version"], "1.0.0")
+	}
+}
+
+func TestLogFailure(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+
+	details := map[string]interface{}{
+		"attempted_provider": "broken-provider",
+		"reason":             "connection timeout",
+	}
+
+	err = logger.LogFailure("switch", "broken-provider", "failed to connect: timeout", details)
+	if err != nil {
+		t.Fatalf("LogFailure() error = %v", err)
+	}
+
+	data, err := os.ReadFile(logger.path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var entry AuditEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if entry.Event != "switch" {
+		t.Errorf("Event = %q, want %q", entry.Event, "switch")
+	}
+
+	if entry.Provider != "broken-provider" {
+		t.Errorf("Provider = %q, want %q", entry.Provider, "broken-provider")
+	}
+
+	if entry.Status != "failure" {
+		t.Errorf("Status = %q, want %q", entry.Status, "failure")
+	}
+
+	if entry.Error == "" {
+		t.Error("Error should not be empty for failed operation")
+	}
+
+	if entry.Error != "failed to connect: timeout" {
+		t.Errorf("Error = %q, want %q", entry.Error, "failed to connect: timeout")
+	}
+
+	if len(entry.Details) == 0 {
+		t.Error("Details should not be empty")
+	}
+
+	if entry.Details["attempted_provider"] != "broken-provider" {
+		t.Errorf("Details[attempted_provider] = %v, want %v", entry.Details["attempted_provider"], "broken-provider")
+	}
+}
+
+func TestLogSuccessWithNilDetails(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+
+	err = logger.LogSuccess("setup", "test-provider", nil)
+	if err != nil {
+		t.Fatalf("LogSuccess() error = %v", err)
+	}
+
+	data, err := os.ReadFile(logger.path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var entry AuditEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if entry.Status != "success" {
+		t.Errorf("Status = %q, want %q", entry.Status, "success")
+	}
+
+	// Details should be nil or empty map when nil is passed
+	if len(entry.Details) > 0 {
+		t.Errorf("Details = %v, want empty or nil", entry.Details)
+	}
+}
+
+func TestLogFailureWithNilDetails(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+
+	err = logger.LogFailure("setup", "test-provider", "setup failed", nil)
+	if err != nil {
+		t.Fatalf("LogFailure() error = %v", err)
+	}
+
+	data, err := os.ReadFile(logger.path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var entry AuditEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if entry.Status != "failure" {
+		t.Errorf("Status = %q, want %q", entry.Status, "failure")
+	}
+
+	if entry.Error != "setup failed" {
+		t.Errorf("Error = %q, want %q", entry.Error, "setup failed")
+	}
+}

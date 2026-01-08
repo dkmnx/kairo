@@ -198,13 +198,13 @@ func configureAnthropic(dir string, cfg *config.Config, providerName string) err
 	return nil
 }
 
-func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string) error {
+func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string) (string, map[string]interface{}, error) {
 	// Handle custom provider name
 	if providerName == "custom" {
 		customName := ui.Prompt("Provider name")
 		validatedName, err := validateCustomProviderName(customName)
 		if err != nil {
-			return err
+			return "", nil, err
 		}
 		providerName = validatedName
 	}
@@ -220,12 +220,12 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 
 	apiKey, err := promptForAPIKey(def.Name)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 
 	baseURL, err := promptForBaseURL(def.BaseURL, def.Name)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 
 	model := ui.PromptWithDefault("Model", def.Model)
@@ -234,19 +234,30 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	provider := buildProviderConfig(def, baseURL, model)
 	setAsDefault := cfg.DefaultProvider == ""
 	if err := saveProviderConfigFile(dir, cfg, providerName, provider, setAsDefault); err != nil {
-		return err
+		return "", nil, err
 	}
 
 	// Save secrets
 	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
 	secretsContent := formatSecretsFileContent(secrets)
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
-		return fmt.Errorf("saving API key: %w", err)
+		return "", nil, fmt.Errorf("saving API key: %w", err)
+	}
+
+	// Prepare audit details
+	details := map[string]interface{}{
+		"display_name": def.Name,
+		"base_url":     baseURL,
+		"model":        model,
+		"api_key":      truncateKey(apiKey),
+	}
+	if setAsDefault {
+		details["set_as_default"] = "true"
 	}
 
 	ui.PrintSuccess(fmt.Sprintf("%s configured successfully", def.Name))
 	ui.PrintInfo(fmt.Sprintf("Run 'kairo %s' to use this provider", providerName))
-	return nil
+	return providerName, details, nil
 }
 
 // promptForAPIKey prompts user for an API key and validates it.
@@ -305,29 +316,33 @@ var setupCmd = &cobra.Command{
 		}
 
 		var configuredProvider string
+		var auditDetails map[string]interface{}
 		if !providers.RequiresAPIKey(providerName) {
 			if err := configureAnthropic(dir, cfg, providerName); err != nil {
 				ui.PrintError(fmt.Sprintf("Error: %v", err))
 				return
 			}
 			configuredProvider = providerName
+			auditDetails = map[string]interface{}{
+				"display_name": "Native Anthropic",
+				"type":         "builtin_no_api_key",
+			}
+			if cfg.DefaultProvider == providerName {
+				auditDetails["set_as_default"] = "true"
+			}
 		} else {
-			if err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath); err != nil {
+			provider, details, err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath)
+			if err != nil {
 				ui.PrintError(fmt.Sprintf("Error: %v", err))
 				return
 			}
-			if providerName == "custom" {
-				customName := ui.Prompt("Provider name")
-				validatedName, _ := validateCustomProviderName(customName)
-				configuredProvider = validatedName
-			} else {
-				configuredProvider = providerName
-			}
+			configuredProvider = provider
+			auditDetails = details
 		}
 
 		if configuredProvider != "" {
 			logAuditEvent(dir, func(logger *audit.Logger) error {
-				return logger.LogSetup(configuredProvider)
+				return logger.LogSuccess("setup", configuredProvider, auditDetails)
 			})
 		}
 	},

@@ -1262,6 +1262,79 @@ func TestPromptForBaseURL(t *testing.T) {
 	})
 }
 
+func TestSetupAuditDetails(t *testing.T) {
+	t.Run("truncateKey masks API key correctly", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			input    string
+			expected string
+		}{
+			{
+				name:     "short key returns all asterisks",
+				input:    "short",
+				expected: "***",
+			},
+			{
+				name:     "9 chars returns all asterisks",
+				input:    "123456789",
+				expected: "***",
+			},
+			{
+				name:     "normal API key is masked",
+				input:    "sk-ant-api03-abcdefghijklmnop",
+				expected: "sk-an********mnop",
+			},
+			{
+				name:     "exact 9 chars returns asterisks",
+				input:    "sk-12345",
+				expected: "***",
+			},
+			{
+				name:     "Claude key format",
+				input:    "sk-ant-api03-1234567890abcdef",
+				expected: "sk-an********cdef",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := truncateKey(tt.input)
+				if result != tt.expected {
+					t.Errorf("truncateKey(%q) = %q, want %q", tt.input, result, tt.expected)
+				}
+			})
+		}
+	})
+
+	t.Run("details map contains all required fields", func(t *testing.T) {
+		// Simulate what configureProvider creates
+		apiKey := "sk-ant-api03-abcdefghijklmnop"
+		details := map[string]interface{}{
+			"display_name": "Test Provider",
+			"base_url":     "https://api.test.com",
+			"model":        "test-model",
+			"api_key":      truncateKey(apiKey),
+		}
+
+		// Verify all required fields exist
+		requiredFields := []string{"display_name", "base_url", "model", "api_key"}
+		for _, field := range requiredFields {
+			if details[field] == nil {
+				t.Errorf("details should contain %s field", field)
+			}
+		}
+
+		// Verify API key is masked
+		if strings.Contains(details["api_key"].(string), "abcdefghijklmnop") {
+			t.Error("API key should not be fully exposed in details")
+		}
+
+		if !strings.Contains(details["api_key"].(string), "********") {
+			t.Error("API key should contain masking asterisks")
+		}
+	})
+}
+
 func TestConfigureProvider(t *testing.T) {
 	// Skip on Windows - os.Pipe() doesn't work properly with term.ReadPassword
 	if runtime.GOOS == "windows" {
@@ -1312,7 +1385,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
+		providerName, details, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1325,6 +1398,38 @@ func TestConfigureProvider(t *testing.T) {
 
 		if err != nil {
 			t.Errorf("configureProvider() error = %v", err)
+		}
+
+		if providerName != "zai" {
+			t.Errorf("configureProvider() returned %q, want 'zai'", providerName)
+		}
+
+		if details == nil {
+			t.Error("configureProvider() details should not be nil")
+		} else {
+			// Check that details contain expected fields
+			if details["display_name"] == nil {
+				t.Error("configureProvider() details should contain display_name")
+			}
+			if details["base_url"] == nil {
+				t.Error("configureProvider() details should contain base_url")
+			}
+			if details["model"] == nil {
+				t.Error("configureProvider() details should contain model")
+			}
+			if details["api_key"] == nil {
+				t.Error("configureProvider() details should contain api_key")
+			} else {
+				// Verify API key is masked
+				apiKey := details["api_key"].(string)
+				if !strings.Contains(apiKey, "********") {
+					t.Errorf("API key should be masked with asterisks, got %q", apiKey)
+				}
+				// Verify full API key is not exposed
+				if apiKey == "sk-test123456789" {
+					t.Error("API key should be masked, not exposed in plain text")
+				}
+			}
 		}
 
 		// Check that provider was saved
@@ -1400,7 +1505,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
+		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1413,6 +1518,10 @@ func TestConfigureProvider(t *testing.T) {
 
 		if err != nil {
 			t.Errorf("configureProvider() error = %v", err)
+		}
+
+		if providerName != "my-custom-provider" {
+			t.Errorf("configureProvider() returned %q, want 'my-custom-provider'", providerName)
 		}
 
 		// Check that provider was saved
@@ -1489,7 +1598,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
+		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1502,6 +1611,10 @@ func TestConfigureProvider(t *testing.T) {
 
 		if err == nil {
 			t.Error("configureProvider() should return error for invalid custom provider name")
+		}
+
+		if providerName != "" {
+			t.Errorf("configureProvider() returned %q, want empty string on error", providerName)
 		}
 	})
 
@@ -1544,7 +1657,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
+		providerName, _, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1557,6 +1670,10 @@ func TestConfigureProvider(t *testing.T) {
 
 		if err == nil {
 			t.Error("configureProvider() should return error for short API key")
+		}
+
+		if providerName != "" {
+			t.Errorf("configureProvider() returned %q, want empty string on error", providerName)
 		}
 	})
 }

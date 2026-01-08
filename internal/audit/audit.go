@@ -12,6 +12,8 @@ type AuditEntry struct {
 	Event     string                 `json:"event"`
 	Provider  string                 `json:"provider,omitempty"`
 	Action    string                 `json:"action,omitempty"`
+	Status    string                 `json:"status,omitempty"`
+	Error     string                 `json:"error,omitempty"`
 	Details   map[string]interface{} `json:"details,omitempty"`
 	Changes   []Change               `json:"changes,omitempty"`
 }
@@ -41,6 +43,7 @@ func (l *Logger) LogSwitch(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "switch",
 		Provider:  provider,
+		Status:    "success",
 	}
 	return l.writeEntry(entry)
 }
@@ -51,6 +54,7 @@ func (l *Logger) LogConfig(provider, action string, changes []Change) error {
 		Event:     "config",
 		Provider:  provider,
 		Action:    action,
+		Status:    "success",
 		Changes:   changes,
 	}
 	return l.writeEntry(entry)
@@ -61,6 +65,7 @@ func (l *Logger) LogRotate(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "rotate",
 		Provider:  provider,
+		Status:    "success",
 	}
 	return l.writeEntry(entry)
 }
@@ -70,6 +75,7 @@ func (l *Logger) LogDefault(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "default",
 		Provider:  provider,
+		Status:    "success",
 	}
 	return l.writeEntry(entry)
 }
@@ -79,6 +85,7 @@ func (l *Logger) LogReset(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "reset",
 		Provider:  provider,
+		Status:    "success",
 	}
 	return l.writeEntry(entry)
 }
@@ -88,6 +95,32 @@ func (l *Logger) LogSetup(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "setup",
 		Provider:  provider,
+		Status:    "success",
+	}
+	return l.writeEntry(entry)
+}
+
+// LogSuccess logs a successful operation with optional details
+func (l *Logger) LogSuccess(event, provider string, details map[string]interface{}) error {
+	entry := AuditEntry{
+		Timestamp: time.Now().UTC(),
+		Event:     event,
+		Provider:  provider,
+		Status:    "success",
+		Details:   details,
+	}
+	return l.writeEntry(entry)
+}
+
+// LogFailure logs a failed operation with error details
+func (l *Logger) LogFailure(event, provider, errMsg string, details map[string]interface{}) error {
+	entry := AuditEntry{
+		Timestamp: time.Now().UTC(),
+		Event:     event,
+		Provider:  provider,
+		Status:    "failure",
+		Error:     errMsg,
+		Details:   details,
 	}
 	return l.writeEntry(entry)
 }
