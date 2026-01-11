@@ -310,3 +310,28 @@ func TestParseSecretsEmptyValue(t *testing.T) {
 		t.Errorf("ParseSecrets()[%q] = %q, want empty string", "KEY", value)
 	}
 }
+
+func TestParseSecretsNewlines(t *testing.T) {
+	result := ParseSecrets("KEY1=value1\nKEY2=value\nwith\nnewline\nKEY3=value3")
+
+	// Valid entries should be parsed correctly
+	if result["KEY1"] != "value1" {
+		t.Errorf("ParseSecrets()[KEY1] = %q, want %q", result["KEY1"], "value1")
+	}
+	if result["KEY3"] != "value3" {
+		t.Errorf("ParseSecrets()[KEY3] = %q, want %q", result["KEY3"], "value3")
+	}
+
+	// KEY2 value gets split by newline during parsing, so "value" is stored
+	if result["KEY2"] != "value" {
+		t.Errorf("ParseSecrets()[KEY2] = %q, want %q", result["KEY2"], "value")
+	}
+
+	// Lines without = are skipped
+	if _, exists := result["with"]; exists {
+		t.Error("ParseSecrets() should skip line 'with' (no =)")
+	}
+	if _, exists := result["newline"]; exists {
+		t.Error("ParseSecrets() should skip line 'newline' (no =)")
+	}
+}
