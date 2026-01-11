@@ -312,8 +312,12 @@ func TestParseSecretsEmptyKey(t *testing.T) {
 
 func TestParseSecretsEmptyValue(t *testing.T) {
 	result := ParseSecrets("KEY=")
-	if value, ok := result["KEY"]; !ok || value != "" {
-		t.Errorf("ParseSecrets()[%q] = %q, want empty string", "KEY", value)
+	// Empty values should be skipped
+	if _, ok := result["KEY"]; ok {
+		t.Errorf("ParseSecrets() should skip entries with empty values, got entry for KEY")
+	}
+	if len(result) != 0 {
+		t.Errorf("ParseSecrets() length = %d, want 0 (empty values should be skipped)", len(result))
 	}
 }
 

@@ -20,8 +20,8 @@ import (
 )
 
 // validProviderName validates custom provider names to ensure they start with
-// a letter and contain only alphanumeric characters, underscores, or hyphens.
-var validProviderName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
+// a letter and contain only alphanumeric characters.
+var validProviderName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9]*$`)
 
 // validateCustomProviderName validates a custom provider name and returns the validated name or an error.
 func validateCustomProviderName(name string) (string, error) {
@@ -29,7 +29,7 @@ func validateCustomProviderName(name string) (string, error) {
 		return "", fmt.Errorf("provider name is required")
 	}
 	if !validProviderName.MatchString(name) {
-		return "", fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters, underscores, or hyphens")
+		return "", fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters")
 	}
 	if providers.IsBuiltInProvider(name) {
 		return "", fmt.Errorf("reserved provider name")

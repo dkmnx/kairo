@@ -1436,7 +1436,7 @@ func TestConfigureProvider(t *testing.T) {
 
 		go func() {
 			// Custom provider name
-			_, _ = pw.WriteString("my-custom-provider\n")
+			_, _ = pw.WriteString("mycustomprovider\n")
 			// API key
 			_, _ = pw.WriteString("sk-custom-key-789\n")
 			// Base URL
@@ -1473,8 +1473,8 @@ func TestConfigureProvider(t *testing.T) {
 			t.Errorf("configureProvider() error = %v", err)
 		}
 
-		if providerName != "my-custom-provider" {
-			t.Errorf("configureProvider() returned %q, want 'my-custom-provider'", providerName)
+		if providerName != "mycustomprovider" {
+			t.Errorf("configureProvider() returned %q, want 'mycustomprovider'", providerName)
 		}
 
 		// Check that provider was saved
@@ -1483,9 +1483,9 @@ func TestConfigureProvider(t *testing.T) {
 			t.Fatalf("LoadConfig() error = %v", err)
 		}
 
-		provider, ok := loadedCfg.Providers["my-custom-provider"]
+		provider, ok := loadedCfg.Providers["mycustomprovider"]
 		if !ok {
-			t.Error("my-custom-provider not found in config")
+			t.Error("mycustomprovider not found in config")
 		}
 
 		if provider.Name != "My Custom Provider" {

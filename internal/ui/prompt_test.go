@@ -552,7 +552,7 @@ func TestPrintBanner(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("2.0.0", "my-custom-provider")
+		PrintBanner("2.0.0", "mycustomprovider")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -564,7 +564,7 @@ func TestPrintBanner(t *testing.T) {
 			t.Error("PrintBanner should display custom version")
 		}
 
-		if !strings.Contains(output, "my-custom-provider") {
+		if !strings.Contains(output, "mycustomprovider") {
 			t.Error("PrintBanner should display custom provider name")
 		}
 	})
