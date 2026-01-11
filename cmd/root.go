@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"sync"
 
 	"github.com/dkmnx/kairo/internal/config"
 	kairoversion "github.com/dkmnx/kairo/internal/version"
@@ -12,27 +11,20 @@ import (
 )
 
 var (
-	configDir  string
-	verbose    bool
-	configLock sync.RWMutex
+	configDir string
+	verbose   bool
 )
 
 func getVerbose() bool {
-	configLock.RLock()
-	defer configLock.RUnlock()
 	return verbose
 }
 
 func setVerbose(v bool) {
-	configLock.Lock()
 	verbose = v
-	configLock.Unlock()
 }
 
 func setConfigDir(dir string) {
-	configLock.Lock()
 	configDir = dir
-	configLock.Unlock()
 }
 
 var rootCmd = &cobra.Command{
@@ -143,23 +135,13 @@ func isKnownSubcommand(name string) bool {
 }
 
 func init() {
-	// NOTE: Cobra's BoolVarP writes directly to verbose variable during flag parsing.
-	// This is acceptable because:
-	// 1. Flag parsing happens in the main thread before any concurrent access
-	// 2. In normal CLI execution, there is no concurrent access to flags
-	// 3. Tests should use setVerbose() to avoid potential race conditions
-	// 4. Thread-safe access is guaranteed through getVerbose() which uses configLock.RLock()
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 }
 
 func getConfigDir() string {
-	configLock.RLock()
-	dir := configDir
-	configLock.RUnlock()
-
-	if dir != "" {
-		return dir
+	if configDir != "" {
+		return configDir
 	}
 	return env.GetConfigDir()
 }
