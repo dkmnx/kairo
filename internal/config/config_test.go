@@ -73,6 +73,29 @@ func TestLoadConfigInvalidYAML(t *testing.T) {
 	}
 }
 
+func TestLoadConfigUnknownFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config")
+
+	unknownFieldsYAML := `default_provider: zai
+unknown_field: should_be_rejected
+providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai/api/anthropic
+    model: glm-4.7
+    unknown_provider_field: should_also_be_rejected
+`
+	if err := os.WriteFile(configPath, []byte(unknownFieldsYAML), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadConfig(tmpDir)
+	if err == nil {
+		t.Error("LoadConfig() should error on unknown fields in YAML (strict mode)")
+	}
+}
+
 func TestLoadConfigEmptyProviders(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config")
