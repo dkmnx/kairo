@@ -107,7 +107,9 @@ var configCmd = &cobra.Command{
 			provider.Model = ui.PromptWithDefault("Model", currentModel)
 		}
 
-		if len(builtinDef.EnvVars) > 0 && len(provider.EnvVars) == 0 {
+		// Always refresh EnvVars from provider definition
+		// This ensures new env vars from updated definitions are merged
+		if len(builtinDef.EnvVars) > 0 {
 			provider.EnvVars = builtinDef.EnvVars
 		}
 
