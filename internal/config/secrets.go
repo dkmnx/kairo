@@ -18,8 +18,8 @@ func ParseSecrets(secrets string) map[string]string {
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) == 2 {
 			key, value := parts[0], parts[1]
-			// Skip entries with newlines in key or value (malformed input)
-			if strings.Contains(key, "\n") || strings.Contains(value, "\n") {
+			// Skip entries with empty keys or newlines in key or value (malformed input)
+			if key == "" || strings.Contains(key, "\n") || strings.Contains(value, "\n") {
 				continue
 			}
 			result[key] = value
