@@ -2,48 +2,54 @@
 
 ## Project Overview
 
-Kairo is a Go CLI tool for managing Claude Code API providers with encrypted secrets management using age
-(X25519) encryption. It provides a secure, interactive interface for switching between multiple API
-providers.
+Kairo is a Go CLI tool for managing Claude Code API providers with encrypted secrets
+management using age (X25519) encryption. It provides a secure, interactive interface
+for switching between multiple API providers.
 
 ## Guardrails
 
-- **No unapproved actions**: Require user confirmation for destructive operations (config reset, provider deletion)
-- **Protect sensitives**: Never log API keys, encryption keys, or secrets. Use 0600 permissions for sensitive files
-- **Admit limits/redirect**: When encountering unsupported features, guide users to appropriate commands or alternatives
-- **Suggest enhancements**: For features beyond current scope, propose them with clear value propositions
-- **Decline harm**: Refuse to implement features that compromise security (e.g., plaintext key storage, disabled encryption)
+- **No unapproved actions**: Require user confirmation for destructive operations
+  (config reset, provider deletion)
+- **Protect sensitives**: Never log API keys, encryption keys, or secrets. Use 0600
+  permissions for sensitive files
+- **Admit limits/redirect**: When encountering unsupported features, guide users to
+  appropriate commands or alternatives
+- **Suggest enhancements**: For features beyond current scope, propose them with clear
+  value propositions
+- **Decline harm**: Refuse to implement features that compromise security (e.g.,
+  plaintext key storage, disabled encryption)
 
 ## Best Practices
 
-### Code Quality
-
 - **YAGNI**: Implement features based on actual user requirements, not speculation
-- **SOLID**: Single responsibility per package, open/closed for provider registry, dependency injection
+- **SOLID**: Single responsibility per package, open/closed for provider registry,
+  dependency injection
 - **DRY**: Extract duplicated logic into shared functions (e.g., config.ParseSecrets())
 - **KISS**: Prefer simple, readable Go code over complex abstractions
 
-### 1-3-1 Framework
+## 1-3-1 Framework
 
 For issues and new features:
 
-- **1 core problem/requirement**: Clearly state what needs to be solved
-- **3 solutions**: Brainstorm alternatives with pros/cons (performance, maintainability, security)
-- **1 best recommendation**: Select and justify the optimal approach
+1. **1 core problem/requirement**: Clearly state what needs to be solved
+2. **3 solutions**: Brainstorm alternatives with pros/cons (performance, maintainability,
+   security)
+3. **1 best recommendation**: Select and justify the optimal approach
 
-### Code Style
+## Code Style
 
 - **Imports**: Standard library first, then third-party (blank line between groups)
 - **Formatting**: Run `gofmt -w .` before committing (enforced by pre-commit)
 - **Naming**: PascalCase for exported, camelCase for unexported, ALL_CAPS for constants
 - **YAML tags**: Use snake_case (e.g., `yaml:"default_provider"`)
-- **Error handling**: Use `kairoerrors.WrapError()` for wrapping with context, custom KairoError types
-- **File operations**: Always specify 0600 permissions for sensitive files using `os.WriteFile(path, data, 0600)`
-- **Tests**: Use `t.TempDir()` for isolation, `t.Cleanup()` for cleanup, table-driven tests
+- **Error handling**: Use `kairoerrors.WrapError()` for wrapping with context, custom
+  KairoError types
+- **File operations**: Always specify 0600 permissions for sensitive files using
+  `os.WriteFile(path, data, 0600)`
+- **Tests**: Use `t.TempDir()` for isolation, `t.Cleanup()` for cleanup, table-driven
+  tests
 
 ### Error Handling Pattern
-
-Use the custom `internal/errors` package for structured error handling:
 
 ```go
 import kairoerrors "github.com/dkmnx/kairo/internal/errors"
@@ -58,16 +64,18 @@ return kairoerrors.WrapError(kairoerrors.ConfigError,
 return kairoerrors.NewError(kairoerrors.ValidationError, "invalid provider name")
 ```
 
-Available error types: ConfigError, CryptoError, ValidationError, ProviderError, FileSystemError, NetworkError
+Available error types: ConfigError, CryptoError, ValidationError, ProviderError,
+FileSystemError, NetworkError
 
-### Security
+## Security
 
 - **No secrets**: Never commit API keys, age keys, or encrypted secrets
 - **Threat modeling**: Consider XSS, path traversal, file permission escalation
-- Validation: Enforce HTTPS-only URLs, block localhost/private IPs, API key min 8 chars
-- File permissions: Sensitive files must use 0600 permissions
+- **Validation**: Enforce HTTPS-only URLs, block localhost/private IPs, API key min 8
+  chars
+- **File permissions**: Sensitive files must use 0600 permissions
 
-### Documentation
+## Documentation
 
 - Add godoc comments for all exported functions
 - Clean code with comments only for complex logic
@@ -87,12 +95,13 @@ ALL implementation must follow strict TDD:
 
 - **Arrange-Act-Assert**: Set up test state, perform action, verify outcomes
 - **Coverage**: 100% for critical paths, 90%+ overall
-- **Order**: unit → integration → e2e, never skip levels
+- **Order**: unit -> integration -> e2e, never skip levels
 
 ### Rules
 
 - **Forbidden**: Writing code before tests, skipping tests, "I'll test later"
-- **Test doubles**: Use mocks/stubs/spies only at boundaries (external APIs, file system, os.Exit)
+- **Test doubles**: Use mocks/stubs/spies only at boundaries (external APIs, file system,
+  os.Exit)
 - **Each test**: Independent, fast, readable, maintainable
 - **Naming**: `testShould_ExpectedBehavior_When_StateUnderTest`
 
@@ -127,7 +136,8 @@ For complex failures with multiple interacting components:
 
 ## CRITICAL: No Shortcuts Rule (Strictly Enforced)
 
-All code submitted will be rigorously reviewed by a separate, independent AI agent with zero tolerance for incomplete work.
+All code submitted will be rigorously reviewed by a separate, independent AI agent
+with zero tolerance for incomplete work.
 
 **Explicitly forbidden (immediate rejection + full rewrite):**
 
@@ -138,16 +148,10 @@ All code submitted will be rigorously reviewed by a separate, independent AI age
 - Fake APIs, simulated responses, or fallback behaviors
 - Any assumption that "this will be fixed later"
 
-**Every single line must be:**
-
-- Production-ready
-- Fully implemented
-- Conceptually tested
-- Defensible
-
-Partial submissions waste time — reviewing agent will reject them, and you will redo everything from scratch.
-
-**Submit only complete, correct, final code.**
+**Every single line must be:** production-ready, fully implemented, conceptually
+tested, and defensible. Partial submissions waste time - the reviewing agent will
+reject them, and you will redo everything from scratch. Submit only complete, correct,
+final code.
 
 ## Build & Release
 
@@ -157,7 +161,7 @@ Partial submissions waste time — reviewing agent will reject them, and you wil
 - `make test-coverage`: Generate HTML coverage report in dist/coverage.html
 - `make lint`: Run gofmt, go vet, golangci-lint
 - `make format`: Format all Go files with gofmt
-- `make pre-commit`: Run pre-commit hooks manually (gofmt, govet, go-test, go-mod-tidy)
+- `make pre-commit`: Run pre-commit hooks manually
 - `make verify-deps`: Verify dependency checksums (security)
 - `make ci-local`: Run GitHub Actions locally with act
 
@@ -167,7 +171,8 @@ Pre-commit hooks run automatically on commit: gofmt, govet, go-test (race), go-m
 
 ### Architecture
 
-- `cmd/`: CLI commands using Cobra framework. Keep logic minimal, delegate to internal packages
+- `cmd/`: CLI commands using Cobra framework. Keep logic minimal, delegate to internal
+  packages
 - `internal/`: Business logic, validation, encryption. No CLI dependencies
 - `pkg/`: Reusable utilities with minimal dependencies
 
@@ -181,7 +186,8 @@ Pre-commit hooks run automatically on commit: gofmt, govet, go-test (race), go-m
 
 - Storage keys: Lowercase in config YAML (zai, minimax, custom)
 - Environment variables: Uppercase for API keys (ZAI_API_KEY, MINIMAX_API_KEY)
-- Custom providers: Must start with letter, alphanumeric/underscore/hyphen only (regex: `^[a-zA-Z][a-zA-Z0-9_-]*$`)
+- Custom providers: Must start with letter, alphanumeric only
+  (regex: `^[a-zA-Z][a-zA-Z0-9]*$`)
 
 ### Security Checklist
 
