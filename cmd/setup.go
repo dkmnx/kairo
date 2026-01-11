@@ -249,7 +249,6 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		"display_name": def.Name,
 		"base_url":     baseURL,
 		"model":        model,
-		"api_key":      truncateKey(apiKey),
 	}
 	if setAsDefault {
 		details["set_as_default"] = "true"

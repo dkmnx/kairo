@@ -525,6 +525,11 @@ echo "ANTHROPIC_AUTH_TOKEN=$ANTHROPIC_AUTH_TOKEN"
 	if err := os.WriteFile(childScriptPath, []byte(childScriptContent), 0600); err != nil {
 		t.Fatalf("Failed to create child script: %v", err)
 	}
+	if !isWindows {
+		if err := os.Chmod(childScriptPath, 0700); err != nil {
+			t.Fatalf("Failed to set executable permission: %v", err)
+		}
+	}
 
 	// Create a token file with a test API key
 	tokenPath := filepath.Join(authDir, "token")

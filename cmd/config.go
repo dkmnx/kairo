@@ -124,7 +124,6 @@ var configCmd = &cobra.Command{
 			secrets = config.ParseSecrets(existingSecrets)
 		}
 
-		oldAPIKey := secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))]
 		oldProvider := cfg.Providers[providerName]
 		cfg.Providers[providerName] = provider
 		if cfg.DefaultProvider == "" {
@@ -158,15 +157,6 @@ var configCmd = &cobra.Command{
 		}
 
 		var changes []audit.Change
-		if apiKey != "" {
-			displayKey := truncateKey(apiKey)
-			oldDisplayKey := truncateKey(oldAPIKey)
-			if oldAPIKey != "" {
-				changes = append(changes, audit.Change{Field: "api_key", Old: oldDisplayKey, New: displayKey})
-			} else {
-				changes = append(changes, audit.Change{Field: "api_key", New: displayKey})
-			}
-		}
 		if provider.BaseURL != "" && provider.BaseURL != oldProvider.BaseURL {
 			old := oldProvider.BaseURL
 			if old == "" && builtinDef.BaseURL != "" {
