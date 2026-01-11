@@ -161,7 +161,7 @@ main() {
         VERSION=$(get_latest_version)
     fi
 
-    log "Installing $BINARY_NAME $version for $os/$arch..."
+    log "Installing $BINARY_NAME $VERSION for $os/$arch..."
     download_and_install "$os" "$arch" "$VERSION"
 }
 
