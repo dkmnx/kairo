@@ -178,13 +178,6 @@ var configCmd = &cobra.Command{
 	},
 }
 
-func truncateKey(key string) string {
-	if len(key) <= 9 {
-		return "***"
-	}
-	return key[:5] + "********" + key[len(key)-4:]
-}
-
 func init() {
 	rootCmd.AddCommand(configCmd)
 }

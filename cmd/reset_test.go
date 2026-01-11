@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/crypto"
 )
 
 func TestResetCommandNoConfig(t *testing.T) {
@@ -255,5 +256,101 @@ func TestResetCommandAllRequiresConfirmation(t *testing.T) {
 
 	if _, ok := cfg.Providers["zai"]; !ok {
 		t.Error("zai provider should still exist after cancellation")
+	}
+}
+
+func TestResetCommandRemovesSecretsFileWhenEmpty(t *testing.T) {
+	setupMockExec(t)
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
+
+	tmpDir := t.TempDir()
+	setConfigDir(tmpDir)
+
+	configPath := filepath.Join(tmpDir, "config")
+	configContent := `providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai/api/anthropic
+    model: glm-4.7
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a properly encrypted secrets file with only one provider's key
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	keyPath := filepath.Join(tmpDir, "age.key")
+
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsContent := "ZAI_API_KEY=test-key\n"
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.SetArgs([]string{"reset", "zai"})
+	err = rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	// Verify secrets file was removed since it became empty
+	_, err = os.Stat(secretsPath)
+	if !os.IsNotExist(err) {
+		t.Error("secrets file should be removed when empty")
+	}
+}
+
+func TestResetCommandAllRemovesSecretsFile(t *testing.T) {
+	setupMockExec(t)
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
+
+	tmpDir := t.TempDir()
+	setConfigDir(tmpDir)
+
+	configPath := filepath.Join(tmpDir, "config")
+	configContent := `providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai/api/anthropic
+    model: glm-4.7
+  minimax:
+    name: MiniMax
+    base_url: https://api.minimax.io/anthropic
+    model: Minimax-M2.1
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a properly encrypted secrets file
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	keyPath := filepath.Join(tmpDir, "age.key")
+
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	secretsContent := "ZAI_API_KEY=test-zai-key\nMINIMAX_API_KEY=test-minimax-key\n"
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.SetArgs([]string{"reset", "all", "--yes"})
+	err = rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	// Verify secrets file was removed
+	_, err = os.Stat(secretsPath)
+	if !os.IsNotExist(err) {
+		t.Error("secrets file should be removed when resetting all providers")
 	}
 }

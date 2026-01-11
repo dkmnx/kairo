@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 
 	"github.com/dkmnx/kairo/internal/audit"
@@ -107,7 +108,7 @@ var resetCmd = &cobra.Command{
 		existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
 		if err == nil {
 			secrets := config.ParseSecrets(existingSecrets)
-			delete(secrets, fmt.Sprintf("%s_API_KEY", target))
+			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(target)))
 
 			var secretsContent string
 			for key, value := range secrets {

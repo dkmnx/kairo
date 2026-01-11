@@ -1263,57 +1263,14 @@ func TestPromptForBaseURL(t *testing.T) {
 }
 
 func TestSetupAuditDetails(t *testing.T) {
-	t.Run("truncateKey masks API key correctly", func(t *testing.T) {
-		tests := []struct {
-			name     string
-			input    string
-			expected string
-		}{
-			{
-				name:     "short key returns all asterisks",
-				input:    "short",
-				expected: "***",
-			},
-			{
-				name:     "9 chars returns all asterisks",
-				input:    "123456789",
-				expected: "***",
-			},
-			{
-				name:     "normal API key is masked",
-				input:    "sk-ant-api03-abcdefghijklmnop",
-				expected: "sk-an********mnop",
-			},
-			{
-				name:     "exact 9 chars returns asterisks",
-				input:    "sk-12345",
-				expected: "***",
-			},
-			{
-				name:     "Claude key format",
-				input:    "sk-ant-api03-1234567890abcdef",
-				expected: "sk-an********cdef",
-			},
-		}
-
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				result := truncateKey(tt.input)
-				if result != tt.expected {
-					t.Errorf("truncateKey(%q) = %q, want %q", tt.input, result, tt.expected)
-				}
-			})
-		}
-	})
-
 	t.Run("details map contains all required fields", func(t *testing.T) {
 		// Simulate what configureProvider creates
-		apiKey := "sk-ant-api03-abcdefghijklmnop"
+		apiKey := "***masked***"
 		details := map[string]interface{}{
 			"display_name": "Test Provider",
 			"base_url":     "https://api.test.com",
 			"model":        "test-model",
-			"api_key":      truncateKey(apiKey),
+			"api_key":      apiKey,
 		}
 
 		// Verify all required fields exist
@@ -1325,12 +1282,8 @@ func TestSetupAuditDetails(t *testing.T) {
 		}
 
 		// Verify API key is masked
-		if strings.Contains(details["api_key"].(string), "abcdefghijklmnop") {
+		if strings.Contains(details["api_key"].(string), "sk-ant-api03") {
 			t.Error("API key should not be fully exposed in details")
-		}
-
-		if !strings.Contains(details["api_key"].(string), "********") {
-			t.Error("API key should contain masking asterisks")
 		}
 	})
 }
