@@ -12,6 +12,7 @@ import (
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
@@ -127,7 +128,7 @@ func ensureConfigDirectory(dir string) error {
 // loadOrInitializeConfig loads an existing config or creates a new empty one.
 func loadOrInitializeConfig(dir string) (*config.Config, error) {
 	cfg, err := config.LoadConfig(dir)
-	if err != nil && !errors.Is(err, config.ErrConfigNotFound) {
+	if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 		return nil, err
 	}
 	if err != nil {

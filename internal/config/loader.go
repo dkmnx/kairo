@@ -29,7 +29,7 @@ func LoadConfig(configDir string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, ErrConfigNotFound
+			return nil, kairoerrors.ErrConfigNotFound
 		}
 		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to read configuration file", err).

@@ -1,10 +1,13 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -50,8 +53,8 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 	if err == nil {
 		t.Error("LoadConfig() should error when file not found")
 	}
-	if err != ErrConfigNotFound {
-		t.Errorf("LoadConfig() error = %v, want %v", err, ErrConfigNotFound)
+	if !errors.Is(err, kairoerrors.ErrConfigNotFound) {
+		t.Errorf("LoadConfig() error = %v, want %v", err, kairoerrors.ErrConfigNotFound)
 	}
 }
 

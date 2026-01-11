@@ -1,6 +1,9 @@
 package errors
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // ErrorType represents different categories of errors.
 type ErrorType string
@@ -19,6 +22,9 @@ const (
 	// NetworkError indicates network-related errors
 	NetworkError ErrorType = "network"
 )
+
+// ErrConfigNotFound is returned when the configuration file does not exist.
+var ErrConfigNotFound = errors.New("configuration file not found")
 
 // KairoError is a structured error type that provides context about what went wrong.
 type KairoError struct {
