@@ -451,3 +451,69 @@ func TestGetInstallScriptURL(t *testing.T) {
 		})
 	}
 }
+
+func TestDownloadToTempFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/install.sh" {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("#!/bin/bash\necho 'install script content'"))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	tempFile, err := downloadToTempFile(server.URL + "/install.sh")
+	if err != nil {
+		t.Fatalf("downloadToTempFile() error = %v", err)
+	}
+	defer os.Remove(tempFile)
+
+	content, err := os.ReadFile(tempFile)
+	if err != nil {
+		t.Fatalf("failed to read temp file: %v", err)
+	}
+
+	expectedContent := "#!/bin/bash\necho 'install script content'"
+	if string(content) != expectedContent {
+		t.Errorf("temp file content = %q, want %q", string(content), expectedContent)
+	}
+}
+
+func TestDownloadToTempFileCreatesTempFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("test content"))
+	}))
+	defer server.Close()
+
+	tempFile, err := downloadToTempFile(server.URL)
+	if err != nil {
+		t.Fatalf("downloadToTempFile() error = %v", err)
+	}
+	defer os.Remove(tempFile)
+
+	info, err := os.Stat(tempFile)
+	if err != nil {
+		t.Fatalf("failed to stat temp file: %v", err)
+	}
+
+	// Check it's a regular file
+	if info.Mode().IsDir() {
+		t.Error("downloadToTempFile() created a directory, not a file")
+	}
+}
+
+func TestDownloadToTempFileHTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	_, err := downloadToTempFile(server.URL)
+	if err == nil {
+		t.Error("downloadToTempFile() should return error on HTTP failure")
+	}
+}

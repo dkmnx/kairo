@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -106,6 +107,38 @@ func getInstallScriptURL(goos string) string {
 	return "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh"
 }
 
+// downloadToTempFile downloads a file from URL and saves to a temporary file
+func downloadToTempFile(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	tempFile, err := os.CreateTemp("", "kairo-install-*.sh")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+
+	_, err = io.Copy(tempFile, resp.Body)
+	if err != nil {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+		return "", fmt.Errorf("failed to write to temp file: %w", err)
+	}
+
+	if err := tempFile.Close(); err != nil {
+		os.Remove(tempFile.Name())
+		return "", fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	return tempFile.Name(), nil
+}
+
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update kairo to the latest version",
@@ -148,24 +181,34 @@ This command will:
 				return
 			}
 		} else {
-			// On Unix-like systems, use curl | sh
-			curlCmd := exec.Command("curl", "-fsSL", installScriptURL)
-			curlCmd.Stderr = os.Stderr
+			// On Unix-like systems, download to temp file first for security
+			tempFile, err := downloadToTempFile(installScriptURL)
+			if err != nil {
+				cmd.Printf("Error downloading install script: %v\n", err)
+				return
+			}
+			defer os.Remove(tempFile)
 
-			shCmd := exec.Command("sh")
-			shCmd.Stdin, _ = curlCmd.StdoutPipe()
+			// Show the script source and ask for confirmation
+			cmd.Printf("\nInstall script downloaded from: %s\n", installScriptURL)
+			cmd.Printf("Script will be executed from: %s\n\n", tempFile)
+
+			if !ui.Confirm("Do you want to proceed with installation?") {
+				cmd.Println("Installation cancelled.")
+				return
+			}
+
+			// Make script executable and execute
+			if err := os.Chmod(tempFile, 0755); err != nil {
+				cmd.Printf("Error making script executable: %v\n", err)
+				return
+			}
+
+			shCmd := exec.Command(tempFile)
 			shCmd.Stdout = os.Stdout
 			shCmd.Stderr = os.Stderr
 
-			if err := shCmd.Start(); err != nil {
-				cmd.Printf("Error starting update: %v\n", err)
-				return
-			}
-			if err := curlCmd.Run(); err != nil {
-				cmd.Printf("Error downloading update: %v\n", err)
-				return
-			}
-			if err := shCmd.Wait(); err != nil {
+			if err := shCmd.Run(); err != nil {
 				cmd.Printf("Error during installation: %v\n", err)
 				return
 			}
