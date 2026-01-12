@@ -85,28 +85,42 @@ func isEoferr(err error) bool {
 	return err != nil && (strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "interrupted"))
 }
 
-func Prompt(prompt string) string {
+// Prompt prompts the user for input and returns the input string.
+// Returns empty string and ErrUserCancelled if input cannot be read.
+func Prompt(prompt string) (string, error) {
 	fmt.Print(prompt)
 	fmt.Print(": ")
 	var input string
-	// Ignoring error - user can Ctrl+C/D to exit, or input is used as-is
-	_, _ = fmt.Scanln(&input)
-	return input
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		if isEoferr(err) {
+			return "", ErrUserCancelled
+		}
+		return "", err
+	}
+	return input, nil
 }
 
-func PromptWithDefault(prompt, defaultVal string) string {
+// PromptWithDefault prompts the user for input with a default value.
+// Returns the default value and ErrUserCancelled if input cannot be read.
+func PromptWithDefault(prompt, defaultVal string) (string, error) {
 	if defaultVal != "" {
 		prompt = fmt.Sprintf("%s [%s]", prompt, defaultVal)
 	}
 	fmt.Print(prompt)
 	fmt.Print(": ")
 	var input string
-	// Ignoring error - user can Ctrl+C/D to exit, or input is used as-is
-	_, _ = fmt.Scanln(&input)
-	if input == "" {
-		return defaultVal
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		if isEoferr(err) {
+			return defaultVal, ErrUserCancelled
+		}
+		return defaultVal, err
 	}
-	return input
+	if input == "" {
+		return defaultVal, nil
+	}
+	return input, nil
 }
 
 func PrintProviderOption(number int, name string, cfg *config.Config, secrets map[string]string, provider string) {
@@ -147,10 +161,16 @@ func PrintBanner(version, provider string) {
 
 // Confirm prompts the user for a yes/no confirmation.
 // Returns true if the user answers yes/y (case-insensitive), false otherwise.
-func Confirm(prompt string) bool {
+func Confirm(prompt string) (bool, error) {
 	fmt.Printf("%s [y/N]: ", prompt)
 	var input string
-	_, _ = fmt.Scanln(&input)
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		if isEoferr(err) {
+			return false, ErrUserCancelled
+		}
+		return false, err
+	}
 	input = strings.TrimSpace(strings.ToLower(input))
-	return input == "y" || input == "yes"
+	return input == "y" || input == "yes", nil
 }
