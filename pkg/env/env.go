@@ -8,9 +8,8 @@ import (
 )
 
 var (
-	configDir     string
-	configDirOnce sync.Once
-	configDirMu   sync.RWMutex
+	configDir   string
+	configDirMu sync.RWMutex
 )
 
 // GetConfigDir returns the configuration directory path.
