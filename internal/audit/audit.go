@@ -137,6 +137,9 @@ func (l *Logger) LogFailure(event, provider, errMsg string, details map[string]i
 	return l.writeEntry(entry)
 }
 
+// writeEntry writes an audit entry to the log file.
+// The entry is serialized to JSON, written to the file with a newline,
+// and then synced to disk to ensure durability even in crash scenarios.
 func (l *Logger) writeEntry(entry AuditEntry) error {
 	data, err := json.Marshal(entry)
 	if err != nil {
@@ -159,7 +162,14 @@ func (l *Logger) writeEntry(entry AuditEntry) error {
 		return err
 	}
 	_, err = l.f.WriteString("\n")
-	return err
+	if err != nil {
+		return err
+	}
+	// Sync to ensure data is written to disk
+	if err := l.f.Sync(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (l *Logger) LoadEntries() ([]AuditEntry, error) {

@@ -743,3 +743,44 @@ func TestLoggerConcurrentAccess(t *testing.T) {
 		t.Errorf("LoadEntries() returned %d entries, want %d", len(entries), expectedEntries)
 	}
 }
+
+func TestAudit_WriteDurability(t *testing.T) {
+	// This test verifies that data is flushed to disk after each write
+	// by calling Sync(). Without Sync(), data could be lost in crash scenarios.
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	// Write an entry
+	err = logger.LogSwitch("test-provider")
+	if err != nil {
+		t.Fatalf("LogSwitch() error = %v", err)
+	}
+
+	// Immediately close the logger
+	err = logger.Close()
+	if err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	// Verify the entry was written and persisted
+	entries, err := logger.LoadEntries()
+	if err != nil {
+		t.Fatalf("LoadEntries() error = %v", err)
+	}
+
+	if len(entries) != 1 {
+		t.Errorf("LoadEntries() returned %d entries, want 1 (data not persisted)", len(entries))
+	}
+
+	if entries[0].Event != "switch" {
+		t.Errorf("Event = %q, want %q", entries[0].Event, "switch")
+	}
+
+	if entries[0].Provider != "test-provider" {
+		t.Errorf("Provider = %q, want %q", entries[0].Provider, "test-provider")
+	}
+}
