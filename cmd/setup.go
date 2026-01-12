@@ -139,7 +139,10 @@ func loadOrInitializeConfig(dir string) (*config.Config, error) {
 	return cfg, nil
 }
 
-func loadSecrets(dir string) (map[string]string, string, string) {
+// LoadSecrets loads and decrypts secrets from the specified directory.
+// Returns the secrets map, secrets file path, and key file path.
+// Handles decryption errors gracefully based on verbose flag.
+func LoadSecrets(dir string) (map[string]string, string, string) {
 	secretsPath := filepath.Join(dir, "secrets.age")
 	keyPath := filepath.Join(dir, "age.key")
 
@@ -307,7 +310,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		secrets, secretsPath, keyPath := loadSecrets(dir)
+		secrets, secretsPath, keyPath := LoadSecrets(dir)
 
 		selection := promptForProvider()
 		providerName, ok := parseProviderSelection(selection)

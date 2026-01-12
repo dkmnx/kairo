@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/audit"
@@ -118,18 +117,7 @@ var configCmd = &cobra.Command{
 			provider.EnvVars = builtinDef.EnvVars
 		}
 
-		secretsPath := filepath.Join(dir, "secrets.age")
-		keyPath := filepath.Join(dir, "age.key")
-
-		secrets := make(map[string]string)
-		existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
-		if err != nil {
-			if getVerbose() {
-				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
-			}
-		} else {
-			secrets = config.ParseSecrets(existingSecrets)
-		}
+		secrets, secretsPath, keyPath := LoadSecrets(dir)
 
 		oldProvider := cfg.Providers[providerName]
 		cfg.Providers[providerName] = provider

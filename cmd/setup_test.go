@@ -853,7 +853,7 @@ func TestLoadSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsOut, keyOut := loadSecrets(tmpDir)
+	secrets, secretsOut, keyOut := LoadSecrets(tmpDir)
 	if secretsOut != secretsPath {
 		t.Errorf("secretsPath = %q, want %q", secretsOut, secretsPath)
 	}
@@ -873,7 +873,7 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsPath, keyPath := loadSecrets(tmpDir)
+	secrets, secretsPath, keyPath := LoadSecrets(tmpDir)
 	if len(secrets) != 0 {
 		t.Errorf("got %d secrets, want 0", len(secrets))
 	}
