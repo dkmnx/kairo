@@ -139,6 +139,38 @@ func downloadToTempFile(url string) (string, error) {
 	return tempFile.Name(), nil
 }
 
+// downloadPowerShellScript downloads a PowerShell script to a temporary file
+func downloadPowerShellScript(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	tempFile, err := os.CreateTemp("", "kairo-install-*.ps1")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+
+	_, err = io.Copy(tempFile, resp.Body)
+	if err != nil {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+		return "", fmt.Errorf("failed to write to temp file: %w", err)
+	}
+
+	if err := tempFile.Close(); err != nil {
+		os.Remove(tempFile.Name())
+		return "", fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	return tempFile.Name(), nil
+}
+
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update kairo to the latest version",
@@ -170,9 +202,25 @@ This command will:
 		installScriptURL := getInstallScriptURL(runtime.GOOS)
 
 		if isWindows(runtime.GOOS) {
-			// On Windows, use PowerShell to download and execute the install script
-			// Use -Version 2 to ensure compatibility, but prefer PowerShell 5+ if available
-			pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-Command", "if ($PSVersionTable.PSVersion.Major -ge 3) { irm "+installScriptURL+" | iex } else { Write-Host 'ERROR: kairo requires PowerShell 3.0 or later'; Write-Host 'Please update PowerShell or install manually from https://github.com/dkmnx/kairo/releases'; exit 1 }")
+			// On Windows, download to temp file first for security
+			tempFile, err := downloadPowerShellScript(installScriptURL)
+			if err != nil {
+				cmd.Printf("Error downloading install script: %v\n", err)
+				return
+			}
+			defer os.Remove(tempFile)
+
+			// Show the script source and ask for confirmation
+			cmd.Printf("\nInstall script downloaded from: %s\n", installScriptURL)
+			cmd.Printf("Script will be executed from: %s\n\n", tempFile)
+
+			if !ui.Confirm("Do you want to proceed with installation?") {
+				cmd.Println("Installation cancelled.")
+				return
+			}
+
+			// Execute PowerShell script from temp file
+			pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", tempFile)
 			pwshCmd.Stdout = os.Stdout
 			pwshCmd.Stderr = os.Stderr
 
