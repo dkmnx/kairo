@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -9,6 +10,9 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 	"golang.org/x/term"
 )
+
+// ErrUserCancelled is returned when the user cancels input (Ctrl+C or Ctrl+D)
+var ErrUserCancelled = errors.New("user cancelled input")
 
 const (
 	Green  = "\033[0;32m"
@@ -67,9 +71,18 @@ func PromptSecret(prompt string) (string, error) {
 	password, err := term.ReadPassword(fd)
 	fmt.Println()
 	if err != nil {
+		// Check if user cancelled (Ctrl+C or EOF)
+		if errors.Is(err, os.ErrClosed) || isEoferr(err) {
+			return "", ErrUserCancelled
+		}
 		return "", err
 	}
 	return string(password), nil
+}
+
+// isEoferr checks if the error is an EOF or interrupt error
+func isEoferr(err error) bool {
+	return err != nil && (strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "interrupted"))
 }
 
 func Prompt(prompt string) string {

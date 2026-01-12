@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -69,6 +70,10 @@ var configCmd = &cobra.Command{
 
 		apiKey, err := ui.PromptSecret("API Key")
 		if err != nil {
+			if errors.Is(err, ui.ErrUserCancelled) {
+				cmd.Println("\nConfiguration cancelled.")
+				return
+			}
 			ui.PrintError(fmt.Sprintf("Error reading API key: %v", err))
 			return
 		}

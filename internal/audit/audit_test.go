@@ -2,9 +2,11 @@ package audit
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -667,5 +669,77 @@ func TestLogFailureWithNilDetails(t *testing.T) {
 
 	if entry.Error != "setup failed" {
 		t.Errorf("Error = %q, want %q", entry.Error, "setup failed")
+	}
+}
+
+func TestLoggerClose(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+
+	// Log something before closing
+	err = logger.LogSwitch("test-before-close")
+	if err != nil {
+		t.Fatalf("LogSwitch() before close error = %v", err)
+	}
+
+	err = logger.Close()
+	if err != nil {
+		t.Errorf("Close() error = %v", err)
+	}
+
+	// Verify entries were written before close
+	entries, err := logger.LoadEntries()
+	if err != nil {
+		t.Fatalf("LoadEntries() error = %v", err)
+	}
+
+	if len(entries) != 1 {
+		t.Errorf("LoadEntries() returned %d entries, want 1", len(entries))
+	}
+
+	if entries[0].Event != "switch" {
+		t.Errorf("Event = %q, want %q", entries[0].Event, "switch")
+	}
+}
+
+func TestLoggerConcurrentAccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	var wg sync.WaitGroup
+	numGoroutines := 10
+	numEntriesPerGoroutine := 10
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < numEntriesPerGoroutine; j++ {
+				err := logger.LogSwitch(fmt.Sprintf("provider-%d-%d", id, j))
+				if err != nil {
+					t.Errorf("LogSwitch() error in goroutine %d: %v", id, err)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify all entries were written
+	entries, err := logger.LoadEntries()
+	if err != nil {
+		t.Fatalf("LoadEntries() error = %v", err)
+	}
+
+	expectedEntries := numGoroutines * numEntriesPerGoroutine
+	if len(entries) != expectedEntries {
+		t.Errorf("LoadEntries() returned %d entries, want %d", len(entries), expectedEntries)
 	}
 }

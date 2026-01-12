@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -26,6 +27,8 @@ type Change struct {
 
 type Logger struct {
 	path string
+	f    *os.File
+	mu   sync.Mutex
 }
 
 func NewLogger(configDir string) (*Logger, error) {
@@ -34,8 +37,17 @@ func NewLogger(configDir string) (*Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Close()
-	return &Logger{path: logPath}, nil
+	return &Logger{path: logPath, f: f}, nil
+}
+
+// Close closes the log file. Must be called when the logger is no longer needed.
+func (l *Logger) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.f != nil {
+		return l.f.Close()
+	}
+	return nil
 }
 
 func (l *Logger) LogSwitch(provider string) error {
@@ -130,16 +142,23 @@ func (l *Logger) writeEntry(entry AuditEntry) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(l.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// Reopen file if it was closed
+	if l.f == nil {
+		f, err := os.OpenFile(l.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		if err != nil {
+			return err
+		}
+		l.f = f
+	}
+
+	_, err = l.f.Write(data)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = f.Write(data)
-	if err != nil {
-		return err
-	}
-	_, err = f.WriteString("\n")
+	_, err = l.f.WriteString("\n")
 	return err
 }
 
