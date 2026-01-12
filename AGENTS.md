@@ -186,8 +186,8 @@ Pre-commit hooks run automatically on commit: gofmt, govet, go-test (race), go-m
 
 - Storage keys: Lowercase in config YAML (zai, minimax, custom)
 - Environment variables: Uppercase for API keys (ZAI_API_KEY, MINIMAX_API_KEY)
-- Custom providers: Must start with letter, alphanumeric only
-  (regex: `^[a-zA-Z][a-zA-Z0-9]*$`)
+- Custom providers: Must start with letter, alphanumeric with underscores and hyphens
+  (regex: `^[a-zA-Z][a-zA-Z0-9_-]*$`)
 
 ### Security Checklist
 

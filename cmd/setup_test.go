@@ -1630,3 +1630,61 @@ func TestConfigureProvider(t *testing.T) {
 		}
 	})
 }
+
+func TestSetup_ProviderNameValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{
+			name:    "simple",
+			wantErr: false,
+		},
+		{
+			name:    "provider123",
+			wantErr: false,
+		},
+		{
+			name:    "my_provider",
+			wantErr: false, // Should allow underscores
+		},
+		{
+			name:    "custom-provider",
+			wantErr: false, // Should allow hyphens
+		},
+		{
+			name:    "provider_with_underscores",
+			wantErr: false, // Should allow underscores
+		},
+		{
+			name:    "provider-with-hyphens",
+			wantErr: false, // Should allow hyphens
+		},
+		{
+			name:    "",
+			wantErr: true,
+		},
+		{
+			name:    "123invalid",
+			wantErr: true, // Must start with letter
+		},
+		{
+			name:    "_invalid",
+			wantErr: true, // Must start with letter
+		},
+		{
+			name:    "-invalid",
+			wantErr: true, // Must start with letter
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateCustomProviderName(tt.name)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+			}
+		})
+	}
+}

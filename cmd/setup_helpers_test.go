@@ -27,16 +27,14 @@ func TestValidateCustomProviderName(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:     "invalid name with hyphen",
+			name:     "valid name with hyphen",
 			provider: "my-provider",
-			wantErr:  true,
-			errMsg:   "alphanumeric characters",
+			wantErr:  false,
 		},
 		{
-			name:     "invalid name with underscore",
+			name:     "valid name with underscore",
 			provider: "my_provider",
-			wantErr:  true,
-			errMsg:   "alphanumeric characters",
+			wantErr:  false,
 		},
 		{
 			name:     "empty name",
