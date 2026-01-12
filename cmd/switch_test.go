@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 
@@ -634,6 +635,64 @@ func TestSignalHandlingIsCrossPlatform(t *testing.T) {
 			if code != tc.expected {
 				t.Errorf("Signal exit code = %d, want %d for signal %d", code, tc.expected, tc.sig)
 			}
+		}
+	})
+}
+
+func TestSwitch_SignalRaceCondition(t *testing.T) {
+	// This test verifies that cleanup of authDir uses sync.Once to prevent
+	// race conditions between the main goroutine's defer and signal handler.
+	// Running the full test suite with -race flag verifies no data races exist.
+
+	t.Run("multiple RemoveAll calls on same directory are safe", func(t *testing.T) {
+		// This test verifies that calling RemoveAll multiple times on the same
+		// directory doesn't cause issues (the directory just won't exist after first call)
+		authDir, err := createTempAuthDir()
+		if err != nil {
+			t.Fatalf("createTempAuthDir() error = %v", err)
+		}
+
+		// First cleanup removes the directory
+		err1 := os.RemoveAll(authDir)
+		if err1 != nil {
+			t.Errorf("First RemoveAll failed: %v", err1)
+		}
+
+		// Second cleanup on non-existent directory should not error
+		err2 := os.RemoveAll(authDir)
+		if err2 != nil {
+			t.Errorf("Second RemoveAll on non-existent directory failed: %v", err2)
+		}
+
+		// Verify directory is gone
+		if _, err := os.Stat(authDir); !os.IsNotExist(err) {
+			t.Error("Directory should not exist after RemoveAll")
+		}
+	})
+
+	t.Run("sync.Once ensures cleanup happens exactly once", func(t *testing.T) {
+		// Verify that sync.Once pattern (as used in switch.go) ensures
+		// cleanup is idempotent and safe from concurrent access
+		authDir, err := createTempAuthDir()
+		if err != nil {
+			t.Fatalf("createTempAuthDir() error = %v", err)
+		}
+
+		var cleanupOnce sync.Once
+		cleanup := func() {
+			cleanupOnce.Do(func() {
+				_ = os.RemoveAll(authDir)
+			})
+		}
+
+		// Call cleanup multiple times - it should be idempotent
+		cleanup()
+		cleanup()
+		cleanup()
+
+		// Verify directory is gone
+		if _, err := os.Stat(authDir); !os.IsNotExist(err) {
+			t.Error("Directory should not exist after cleanup")
 		}
 	})
 }

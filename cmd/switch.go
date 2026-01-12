@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/dkmnx/kairo/internal/audit"
@@ -228,7 +229,14 @@ var switchCmd = &cobra.Command{
 					cmd.Printf("Error creating auth directory: %v\n", err)
 					return
 				}
-				defer os.RemoveAll(authDir)
+
+				var cleanupOnce sync.Once
+				cleanup := func() {
+					cleanupOnce.Do(func() {
+						_ = os.RemoveAll(authDir)
+					})
+				}
+				defer cleanup()
 
 				tokenPath, err := writeTempTokenFile(authDir, apiKey)
 				if err != nil {
@@ -261,8 +269,7 @@ var switchCmd = &cobra.Command{
 
 				go func() {
 					sig := <-sigChan
-					// Clean up auth directory on signal
-					_ = os.RemoveAll(authDir)
+					cleanup()
 					// Exit with signal code (cross-platform)
 					code := 128
 					if s, ok := sig.(syscall.Signal); ok {
