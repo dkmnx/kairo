@@ -92,6 +92,21 @@ function Get-Checksum {
     }
 }
 
+function Get-FileHashCompat {
+    param([string]$Path)
+
+    if (Get-Command Get-FileHash -ErrorAction SilentlyContinue) {
+        return Get-FileHash -Path $Path -Algorithm SHA256
+    }
+
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $fileStream = [System.IO.File]::OpenRead($Path)
+    $hashBytes = $sha256.ComputeHash($fileStream)
+    $fileStream.Close()
+    $hashString = [System.BitConverter]::ToString($hashBytes).Replace("-", "")
+    return @{ Hash = $hashString.ToLower() }
+}
+
 function Test-Checksum {
     param([string]$FilePath, [string]$ChecksumData, [string]$BinaryName)
 
@@ -100,7 +115,7 @@ function Test-Checksum {
     }
 
     Write-Log "Verifying checksum..."
-    $hash = Get-FileHash -Path $FilePath -Algorithm SHA256
+    $hash = Get-FileHashCompat -Path $FilePath
 
     # Parse checksums.txt to find the matching hash
     $lines = $ChecksumData -split "`n"
