@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $BINARY_NAME = "kairo"
-$DEFAULT_INSTALL_DIR = "$env:USERPROFILE\.local\bin"
+$DEFAULT_INSTALL_DIR = Join-Path $env:USERPROFILE ".local\bin"
 
 function Write-Log {
     param([string]$Message)
