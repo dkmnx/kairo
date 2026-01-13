@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-01-13
+
+### Fixed
+
+- **Windows installer**: Added Get-FileHash compatibility for PowerShell 2.0+
+  - The Get-FileHash cmdlet is only available in PowerShell 4.0+
+  - Added Get-FileHashCompat function that falls back to .NET System.Security.Cryptography.SHA256 for older PowerShell versions
+  - Installer now works on Windows 7 and earlier versions with PowerShell 2.0/3.0
+- **Windows installer**: Fixed checksum regex to match GoReleaser format
+  - Changed pattern from `^([a-f0-9]+)\s+\*($($BinaryName)_windows_)` to `^([a-f0-9]+)\s+($($BinaryName)_windows_\S+)`
+  - GoReleaser generates checksums with two spaces instead of asterisk prefix
+  - Checksum verification now works correctly for Windows binaries
+
 ## [1.4.1] - 2026-01-11
 
 ### Fixed
@@ -457,6 +470,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.4.2]: https://github.com/dkmnx/kairo/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/dkmnx/kairo/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/dkmnx/kairo/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/dkmnx/kairo/compare/v1.2.3...v1.3.0
