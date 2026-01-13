@@ -4,23 +4,23 @@ version: '3'
 vars:
   BINARY_NAME: kairo
   DIST_DIR: dist
-  VERSION:
-    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
-  COMMIT:
-    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
-  LOCAL_BIN: '{{if eq OS "windows"}}{{.HOME}}\AppData\Local\kairo\bin{{else}}{{.HOME}}/.local/bin{{end}}'
+  LOCAL_BIN: '{{.HOME}}/.local/bin'
 
 tasks:
   default:
     desc: Build the binary
-    deps: [build]
+    cmds:
+      - cmd /c "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build.ps1"
 
   build:
-    desc: Build the binary
+    desc: Build the binary (uses sh/git bash commands)
     cmds:
-      - echo "Building {{.BINARY_NAME}}..."
+      - echo "Building {{.BINARY_NAME}} ..."
       - mkdir -p {{.DIST_DIR}}
-      - go build -ldflags="-X github.com/dkmnx/kairo/internal/version.Version={{.VERSION}} -X github.com/dkmnx/kairo/internal/version.Commit={{.COMMIT}}" -o {{.DIST_DIR}}/{{.BINARY_NAME}}{{if eq OS "windows"}}.exe{{end}} .
+      - VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+      - COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+      - DATE=$(date -u +%Y-%m-%d 2>/dev/null || echo "unknown")
+      - go build -ldflags="-X github.com/dkmnx/kairo/internal/version.Version=$VERSION -X github.com/dkmnx/kairo/internal/version.Commit=$COMMIT -X github.com/dkmnx/kairo/internal/version.Date=$DATE" -o {{.DIST_DIR}}/{{.BINARY_NAME}} .
 
   test:
     desc: Run all tests
@@ -76,7 +76,7 @@ tasks:
 
   run:
     desc: Build and run
-    deps: [build]
+    deps: [default]
     cmds:
       - echo "Running {{.BINARY_NAME}}..."
       - '{{.DIST_DIR}}/{{.BINARY_NAME}}{{if eq OS "windows"}}.exe{{end}}'

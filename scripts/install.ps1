@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $BINARY_NAME = "kairo"
-$DEFAULT_INSTALL_DIR = "$env:USERPROFILE\.local\bin"
+$DEFAULT_INSTALL_DIR = Join-Path $env:USERPROFILE ".local\bin"
 
 function Write-Log {
     param([string]$Message)
@@ -92,6 +92,21 @@ function Get-Checksum {
     }
 }
 
+function Get-FileHashCompat {
+    param([string]$Path)
+
+    if (Get-Command Get-FileHash -ErrorAction SilentlyContinue) {
+        return Get-FileHash -Path $Path -Algorithm SHA256
+    }
+
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $fileStream = [System.IO.File]::OpenRead($Path)
+    $hashBytes = $sha256.ComputeHash($fileStream)
+    $fileStream.Close()
+    $hashString = [System.BitConverter]::ToString($hashBytes).Replace("-", "")
+    return @{ Hash = $hashString.ToLower() }
+}
+
 function Test-Checksum {
     param([string]$FilePath, [string]$ChecksumData, [string]$BinaryName, [string]$Arch)
 
@@ -100,17 +115,12 @@ function Test-Checksum {
     }
 
     Write-Log "Verifying checksum..."
-
-    # Use .NET for SHA256 hash (works with PowerShell 2.0+)
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
-    $fileBytes = [System.IO.File]::ReadAllBytes($FilePath)
-    $hashBytes = $sha256.ComputeHash($fileBytes)
-    $hash = [System.BitConverter]::ToString($hashBytes) -replace '-', ''
+    $hash = Get-FileHashCompat -Path $FilePath
 
     # Parse checksums.txt to find the matching hash
     $lines = $ChecksumData -split "`n"
     foreach ($line in $lines) {
-        if ($line -match "^([a-f0-9]+)\s+$($BinaryName)_windows_${Arch}\.zip") {
+        if ($line -match "^([a-f0-9]+)\s+($($BinaryName)_windows_\S+)") {
             $expectedHash = $matches[1].ToLower()
             $actualHash = $hash.ToLower()
 
