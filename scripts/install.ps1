@@ -120,7 +120,7 @@ function Test-Checksum {
     # Parse checksums.txt to find the matching hash
     $lines = $ChecksumData -split "`n"
     foreach ($line in $lines) {
-        if ($line -match "^([a-f0-9]+)\s+\*$($BinaryName)_windows_") {
+        if ($line -match "^([a-f0-9]+)\s+($($BinaryName)_windows_\S+)") {
             $expectedHash = $matches[1].ToLower()
             $actualHash = $hash.Hash.ToLower()
 
