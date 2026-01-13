@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-01-13
+
+### Fixed
+
+- **Windows installer**: Fixed path escape character issue in default install directory
+  - Changed `"$env:USERPROFILE\.local\bin"` to `Join-Path $env:USERPROFILE ".local\bin"`
+  - Backslash before "local" was being interpreted as escape character, causing malformed paths
+  - Path now correctly resolves to `C:\Users\username\.local\bin`
+- **Update command**: Removed unused imports (`path/filepath`, `strings`) from cmd/update.go
+- **Build**: Added Windows-specific Taskfile configuration using PowerShell script
+  - Created `scripts/build.ps1` for proper git version detection on Windows
+  - Fixed `task build` to display correct version on Windows
+
 ## [1.4.2] - 2026-01-13
 
 ### Fixed
@@ -470,6 +483,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.4.3]: https://github.com/dkmnx/kairo/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/dkmnx/kairo/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/dkmnx/kairo/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/dkmnx/kairo/compare/v1.3.0...v1.4.0
