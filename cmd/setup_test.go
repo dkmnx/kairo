@@ -1692,7 +1692,7 @@ func TestSetup_ProviderNameValidation(t *testing.T) {
 func TestSetup_ProviderNameLength(t *testing.T) {
 	// Create strings of exact lengths for testing
 	maxValidName := strings.Repeat("a", 50) // Exactly 50 characters
-	invalidName := strings.Repeat("b", 51) // 51 characters - exceeds max
+	invalidName := strings.Repeat("b", 51)  // 51 characters - exceeds max
 
 	tests := []struct {
 		name    string

@@ -137,6 +137,53 @@ Built-in provider definitions and registry.
 | deepseek | api.deepseek.com/anthropic | deepseek-chat | Yes |
 | custom | user-defined | user-defined | Yes |
 
+### performance/
+
+Performance metrics collection (opt-in, privacy-aware).
+
+| Function | Purpose |
+|----------|---------|
+| `NewRegistry()` | Create metrics registry (disabled by default) |
+| `RecordOperation()` | Record operation duration and success |
+| `RecordDuration()` | Helper to wrap functions with timing |
+| `GetStats()` | Get snapshot of current metrics |
+| `Reset()` | Clear all recorded metrics |
+| `ToJSON()` | Export metrics as JSON |
+
+**Key Types:**
+- `Registry` - Metrics registry with enable/disable toggle
+- `OperationMetrics` - Metrics for a specific operation/provider pair (count, duration, failures)
+- `Stats` - Snapshot of all metrics for display/export
+
+**Usage:**
+```go
+registry := performance.NewRegistry()
+registry.Enable()
+
+// Record an operation
+registry.RecordOperation("api_call", "anthropic", 125*time.Millisecond, true)
+
+// Or use helper wrapper
+err := performance.RecordDuration(registry, "config_save", "anthropic", func() error {
+    return doConfigSave()
+})
+
+// Get stats
+stats := registry.GetStats()
+// stats["api_call"]["anthropic"].AvgDuration == 125ms
+
+// Export to JSON
+jsonData, _ := registry.ToJSON()
+```
+
+**Privacy Design:**
+- Disabled by default - must explicitly enable
+- In-memory only - no persistence
+- Session-bound - lost when process exits
+- Opt-in via `KAIRO_METRICS_ENABLED=true` env var
+
+**See:** [docs/guides/performance-metrics.md](../guides/performance-metrics.md)
+
 ### validate/
 
 Input validation for API keys, URLs, and provider names.
