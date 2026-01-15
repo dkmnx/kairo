@@ -314,7 +314,10 @@ func TestPrompt(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := Prompt("Enter value")
+		result, err := Prompt("Enter value")
+		if err != nil {
+			t.Fatalf("Prompt() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -354,7 +357,10 @@ func TestPrompt(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := Prompt("Enter name")
+		result, err := Prompt("Enter name")
+		if err != nil {
+			t.Fatalf("Prompt() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -386,7 +392,10 @@ func TestPrompt(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := Prompt("Enter text")
+		result, err := Prompt("Enter text")
+		if err != nil {
+			t.Fatalf("Prompt() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -421,7 +430,10 @@ func TestPromptWithDefault(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := PromptWithDefault("Enter API key", "default-key-123")
+		result, err := PromptWithDefault("Enter API key", "default-key-123")
+		if err != nil {
+			t.Fatalf("PromptWithDefault() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -461,7 +473,10 @@ func TestPromptWithDefault(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := PromptWithDefault("Enter URL", "https://api.example.com")
+		result, err := PromptWithDefault("Enter URL", "https://api.example.com")
+		if err != nil {
+			t.Fatalf("PromptWithDefault() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -493,7 +508,10 @@ func TestPromptWithDefault(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := PromptWithDefault("Enter value", "")
+		result, err := PromptWithDefault("Enter value", "")
+		if err != nil {
+			t.Fatalf("PromptWithDefault() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -857,7 +875,10 @@ func TestConfirm(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := Confirm("Are you sure?")
+		result, err := Confirm("Are you sure?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -889,7 +910,10 @@ func TestConfirm(t *testing.T) {
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		result := Confirm("Proceed?")
+		result, err := Confirm("Proceed?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
 		if !result {
 			t.Error("Confirm() should return true for 'y' input")
 		}
@@ -911,7 +935,10 @@ func TestConfirm(t *testing.T) {
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		result := Confirm("Continue?")
+		result, err := Confirm("Continue?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
 		if !result {
 			t.Error("Confirm() should return true for 'YES' (case-insensitive)")
 		}
@@ -933,7 +960,10 @@ func TestConfirm(t *testing.T) {
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		result := Confirm("Delete all?")
+		result, err := Confirm("Delete all?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
 		if result {
 			t.Error("Confirm() should return false for 'no' input")
 		}
@@ -955,7 +985,10 @@ func TestConfirm(t *testing.T) {
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		result := Confirm("Destroy data?")
+		result, err := Confirm("Destroy data?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
 		if result {
 			t.Error("Confirm() should return false for 'n' input")
 		}
@@ -977,7 +1010,10 @@ func TestConfirm(t *testing.T) {
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		result := Confirm("Confirm action?")
+		result, err := Confirm("Confirm action?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
 		if result {
 			t.Error("Confirm() should return false for non-yes/no input")
 		}
@@ -999,7 +1035,10 @@ func TestConfirm(t *testing.T) {
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		result := Confirm("Confirm?")
+		result, err := Confirm("Confirm?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
 		if result {
 			t.Error("Confirm() should return false for empty input")
 		}

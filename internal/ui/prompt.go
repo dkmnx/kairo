@@ -82,7 +82,21 @@ func PromptSecret(prompt string) (string, error) {
 
 // isEoferr checks if the error is an EOF or interrupt error
 func isEoferr(err error) bool {
-	return err != nil && (strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "interrupted"))
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	// "unexpected newline" is returned by fmt.Scanln when input is empty (just Enter)
+	// This is valid input (empty string), not an EOF condition
+	return strings.Contains(errStr, "EOF") || strings.Contains(errStr, "interrupted")
+}
+
+// isEmptyInput checks if the error indicates empty input (user just pressed Enter)
+func isEmptyInput(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "unexpected newline")
 }
 
 // Prompt prompts the user for input and returns the input string.
@@ -93,6 +107,10 @@ func Prompt(prompt string) (string, error) {
 	var input string
 	_, err := fmt.Scanln(&input)
 	if err != nil {
+		if isEmptyInput(err) {
+			// User just pressed Enter, return empty string (not an error)
+			return "", nil
+		}
 		if isEoferr(err) {
 			return "", ErrUserCancelled
 		}
@@ -112,6 +130,10 @@ func PromptWithDefault(prompt, defaultVal string) (string, error) {
 	var input string
 	_, err := fmt.Scanln(&input)
 	if err != nil {
+		if isEmptyInput(err) {
+			// User just pressed Enter, return default value (not an error)
+			return defaultVal, nil
+		}
 		if isEoferr(err) {
 			return defaultVal, ErrUserCancelled
 		}
@@ -166,6 +188,10 @@ func Confirm(prompt string) (bool, error) {
 	var input string
 	_, err := fmt.Scanln(&input)
 	if err != nil {
+		if isEmptyInput(err) {
+			// User just pressed Enter, default to No (false, not an error)
+			return false, nil
+		}
 		if isEoferr(err) {
 			return false, ErrUserCancelled
 		}

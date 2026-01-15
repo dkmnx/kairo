@@ -50,7 +50,12 @@ var resetCmd = &cobra.Command{
 		if target == "all" {
 			if !resetYes.Load() {
 				ui.PrintWarn("This will remove ALL provider configurations and secrets.")
-				if !ui.Confirm("Do you want to proceed?") {
+				confirmed, err := ui.Confirm("Do you want to proceed?")
+				if err != nil {
+					ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+					return
+				}
+				if !confirmed {
 					ui.PrintInfo("Operation cancelled")
 					return
 				}

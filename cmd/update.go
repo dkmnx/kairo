@@ -214,7 +214,12 @@ This command will:
 			cmd.Printf("\nInstall script downloaded from: %s\n", installScriptURL)
 			cmd.Printf("Script will be executed from: %s\n\n", tempFile)
 
-			if !ui.Confirm("Do you want to proceed with installation?") {
+			confirmed, err := ui.Confirm("Do you want to proceed with installation?")
+			if err != nil {
+				cmd.Printf("Error reading input: %v\n", err)
+				return
+			}
+			if !confirmed {
 				cmd.Println("Installation cancelled.")
 				return
 			}
@@ -241,7 +246,12 @@ This command will:
 			cmd.Printf("\nInstall script downloaded from: %s\n", installScriptURL)
 			cmd.Printf("Script will be executed from: %s\n\n", tempFile)
 
-			if !ui.Confirm("Do you want to proceed with installation?") {
+			confirmed, err := ui.Confirm("Do you want to proceed with installation?")
+			if err != nil {
+				cmd.Printf("Error reading input: %v\n", err)
+				return
+			}
+			if !confirmed {
 				cmd.Println("Installation cancelled.")
 				return
 			}

@@ -53,7 +53,12 @@ Examples:
 
 		if !rotateYes.Load() {
 			ui.PrintWarn("This will rotate your encryption key and re-encrypt all secrets.")
-			if !ui.Confirm("Do you want to proceed?") {
+			confirmed, err := ui.Confirm("Do you want to proceed?")
+			if err != nil {
+				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+				return
+			}
+			if !confirmed {
 				ui.PrintInfo("Operation cancelled")
 				return
 			}

@@ -167,7 +167,11 @@ func promptForProvider() string {
 	}
 	ui.PrintWhite("  q.   Exit\n")
 
-	selection := ui.PromptWithDefault("Select provider to configure", "")
+	selection, err := ui.PromptWithDefault("Select provider to configure", "")
+	if err != nil {
+		ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+		return ""
+	}
 	return strings.TrimSpace(selection)
 }
 
@@ -205,7 +209,10 @@ func configureAnthropic(dir string, cfg *config.Config, providerName string) err
 func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string) (string, map[string]interface{}, error) {
 	// Handle custom provider name
 	if providerName == "custom" {
-		customName := ui.Prompt("Provider name")
+		customName, err := ui.Prompt("Provider name")
+		if err != nil {
+			return "", nil, fmt.Errorf("reading provider name: %w", err)
+		}
 		validatedName, err := validateCustomProviderName(customName)
 		if err != nil {
 			return "", nil, err
@@ -232,7 +239,10 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		return "", nil, err
 	}
 
-	model := ui.PromptWithDefault("Model", def.Model)
+	model, err := ui.PromptWithDefault("Model", def.Model)
+	if err != nil {
+		return "", nil, fmt.Errorf("reading model: %w", err)
+	}
 
 	// Build and save provider configuration
 	provider := buildProviderConfig(def, baseURL, model)
@@ -277,7 +287,10 @@ func promptForAPIKey(providerName string) (string, error) {
 
 // promptForBaseURL prompts user for a base URL and validates it.
 func promptForBaseURL(defaultURL, providerName string) (string, error) {
-	baseURL := ui.PromptWithDefault("Base URL", defaultURL)
+	baseURL, err := ui.PromptWithDefault("Base URL", defaultURL)
+	if err != nil {
+		return "", fmt.Errorf("reading base URL: %w", err)
+	}
 	if err := validateBaseURL(baseURL, providerName); err != nil {
 		return "", err
 	}

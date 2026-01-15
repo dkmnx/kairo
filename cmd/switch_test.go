@@ -695,4 +695,49 @@ func TestSwitch_SignalRaceCondition(t *testing.T) {
 			t.Error("Directory should not exist after cleanup")
 		}
 	})
+
+	t.Run("concurrent cleanup calls are safe with sync.Once", func(t *testing.T) {
+		// This test simulates the race condition scenario where:
+		// 1. Main goroutine has a deferred cleanup call
+		// 2. Signal handler goroutine calls cleanup
+		// Both could happen concurrently, so sync.Once is required
+		authDir, err := createTempAuthDir()
+		if err != nil {
+			t.Fatalf("createTempAuthDir() error = %v", err)
+		}
+
+		var cleanupOnce sync.Once
+		var cleanupCalled bool
+		cleanup := func() {
+			cleanupOnce.Do(func() {
+				_ = os.RemoveAll(authDir)
+				cleanupCalled = true
+			})
+		}
+
+		// Simulate concurrent cleanup from multiple goroutines
+		// This mimics: defer cleanup() (main) + signal handler cleanup
+		done := make(chan struct{})
+		for i := 0; i < 10; i++ {
+			go func() {
+				cleanup()
+				done <- struct{}{}
+			}()
+		}
+
+		// Wait for all goroutines to complete
+		for i := 0; i < 10; i++ {
+			<-done
+		}
+
+		// Verify cleanup was called exactly once
+		if !cleanupCalled {
+			t.Error("Cleanup should have been called")
+		}
+
+		// Verify directory is gone (cleanup executed)
+		if _, err := os.Stat(authDir); !os.IsNotExist(err) {
+			t.Error("Directory should not exist after concurrent cleanup")
+		}
+	})
 }

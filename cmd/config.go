@@ -82,7 +82,11 @@ var configCmd = &cobra.Command{
 		}
 
 		if builtinDef.BaseURL == "" {
-			baseURL := ui.PromptWithDefault("Base URL", provider.BaseURL)
+			baseURL, err := ui.PromptWithDefault("Base URL", provider.BaseURL)
+			if err != nil {
+				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+				return
+			}
 			if err := validate.ValidateURL(baseURL, provider.Name); err != nil {
 				ui.PrintError(err.Error())
 				return
@@ -93,7 +97,11 @@ var configCmd = &cobra.Command{
 			if currentBaseURL == "" {
 				currentBaseURL = builtinDef.BaseURL
 			}
-			baseURL := ui.PromptWithDefault("Base URL", currentBaseURL)
+			baseURL, err := ui.PromptWithDefault("Base URL", currentBaseURL)
+			if err != nil {
+				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+				return
+			}
 			if err := validate.ValidateURL(baseURL, provider.Name); err != nil {
 				ui.PrintError(err.Error())
 				return
@@ -102,13 +110,23 @@ var configCmd = &cobra.Command{
 		}
 
 		if builtinDef.Model == "" {
-			provider.Model = ui.PromptWithDefault("Model", provider.Model)
+			model, err := ui.PromptWithDefault("Model", provider.Model)
+			if err != nil {
+				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+				return
+			}
+			provider.Model = model
 		} else {
 			currentModel := provider.Model
 			if currentModel == "" {
 				currentModel = builtinDef.Model
 			}
-			provider.Model = ui.PromptWithDefault("Model", currentModel)
+			model, err := ui.PromptWithDefault("Model", currentModel)
+			if err != nil {
+				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+				return
+			}
+			provider.Model = model
 		}
 
 		// Always refresh EnvVars from provider definition
