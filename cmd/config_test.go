@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -441,4 +442,84 @@ func TestConfig_TransactionBehavior(t *testing.T) {
 	if err := config.SaveConfig(tmpDir, originalCfg); err != nil {
 		t.Fatalf("Failed to restore original config: %v", err)
 	}
+}
+
+func TestConfig_CrossProviderValidation(t *testing.T) {
+	// Test environment variable collision detection
+	t.Run("EnvVarCollision", func(t *testing.T) {
+		// Create config with multiple providers that have conflicting env vars
+		cfg := &config.Config{
+			Providers: map[string]config.Provider{
+				"zai": {
+					Name:    "Z.AI",
+					BaseURL: "https://api.z.ai/api/anthropic",
+					Model:   "glm-4.7",
+					EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air"},
+				},
+				"minimax": {
+					Name:    "MiniMax",
+					BaseURL: "https://api.minimax.io/anthropic",
+					Model:   "Minimax-M2.1",
+					EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=different-model"},
+				},
+			},
+			DefaultProvider: "zai",
+		}
+
+		// This should detect the collision
+		err := validateCrossProviderConfig(cfg)
+		if err == nil {
+			t.Error("Expected error for env var collision, got nil")
+		}
+		if !strings.Contains(err.Error(), "ANTHROPIC_DEFAULT_HAIKU_MODEL") {
+			t.Errorf("Expected error to mention 'ANTHROPIC_DEFAULT_HAIKU_MODEL', got: %v", err)
+		}
+	})
+
+	// Test model validation against provider capabilities
+	t.Run("ModelValidation", func(t *testing.T) {
+		// Test with a provider that has a default model (zai has "glm-4.7")
+		// This should validate the model name
+		err := validateProviderModel("zai", "invalid@model#name!")
+		if err == nil {
+			t.Error("Expected error for invalid model with special characters, got nil")
+		}
+		// Test with a model that's too long
+		longModel := strings.Repeat("a", 101)
+		err = validateProviderModel("zai", longModel)
+		if err == nil {
+			t.Error("Expected error for model name that's too long, got nil")
+		}
+		// Test with a valid model - should not error
+		err = validateProviderModel("zai", "valid-model-name.123")
+		if err != nil {
+			t.Errorf("Expected valid model to pass validation, got error: %v", err)
+		}
+	})
+
+	// Test successful cross-provider validation
+	t.Run("ValidConfig", func(t *testing.T) {
+		cfg := &config.Config{
+			Providers: map[string]config.Provider{
+				"zai": {
+					Name:    "Z.AI",
+					BaseURL: "https://api.z.ai/api/anthropic",
+					Model:   "glm-4.7",
+					EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air"},
+				},
+				"deepseek": {
+					Name:    "DeepSeek AI",
+					BaseURL: "https://api.deepseek.com/anthropic",
+					Model:   "deepseek-chat",
+					EnvVars: []string{"API_TIMEOUT_MS=600000"},
+				},
+			},
+			DefaultProvider: "zai",
+		}
+
+		err := validateCrossProviderConfig(cfg)
+		if err != nil {
+			t.Errorf("Expected valid config to pass validation, got error: %v", err)
+		}
+	})
 }

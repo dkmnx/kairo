@@ -146,6 +146,8 @@ Input validation for API keys, URLs, and provider names.
 | `ValidateAPIKey()` | Validate API key format |
 | `ValidateURL()` | Validate HTTPS URL |
 | `ValidateCustomName()` | Validate custom provider name |
+| `validateCrossProviderConfig()` | Detect environment variable collisions across providers |
+| `validateProviderModel()` | Validate model names against provider capabilities |
 
 **Validation Rules:**
 - API key: Minimum 8 characters, no whitespace
@@ -154,6 +156,9 @@ Input validation for API keys, URLs, and provider names.
   - Length: 1-50 characters
   - Pattern: `^[a-zA-Z][a-zA-Z0-9_-]*$` (starts with letter, alphanumeric/underscore/hyphen)
   - Reserved: Cannot use built-in provider names (anthropic, zai, minimax, deepseek, kimi, custom) - case-insensitive
+- Cross-provider validation:
+  - Environment variable collisions: Detects when multiple providers set the same env var with different values
+  - Model name validation: For providers with default models, validates model names are reasonable (max 100 chars, valid characters: alphanumeric, hyphen, underscore, dot)
 
 ### ui/
 
