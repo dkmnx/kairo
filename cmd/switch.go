@@ -102,6 +102,14 @@ func escapePowerShellArg(arg string) string {
 // 4. Executes the claude command with the provided arguments
 // Returns the path to the wrapper script and whether to use shell execution.
 func generateWrapperScript(authDir, tokenPath, claudePath string, claudeArgs []string) (string, bool, error) {
+	// Validate inputs
+	if tokenPath == "" {
+		return "", false, fmt.Errorf("token path cannot be empty")
+	}
+	if claudePath == "" {
+		return "", false, fmt.Errorf("claude path cannot be empty")
+	}
+
 	isWindows := runtime.GOOS == "windows"
 
 	f, err := os.CreateTemp(authDir, "wrapper-")

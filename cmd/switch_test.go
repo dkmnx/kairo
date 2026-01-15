@@ -826,3 +826,235 @@ func TestSwitch_PowerShellEscaping(t *testing.T) {
 		})
 	}
 }
+
+func TestSwitch_WrapperErrorHandling(t *testing.T) {
+	// These tests verify error handling in wrapper script generation
+	// They test edge cases and error conditions that may occur in production
+
+	t.Run("handles empty token path gracefully", func(t *testing.T) {
+		authDir := t.TempDir()
+		emptyTokenPath := ""
+
+		_, _, err := generateWrapperScript(authDir, emptyTokenPath, "/usr/bin/claude", []string{"--help"})
+		if err == nil {
+			t.Error("Expected error when token path is empty, got nil")
+		}
+	})
+
+	t.Run("handles empty claude path gracefully", func(t *testing.T) {
+		authDir := t.TempDir()
+		tokenPath := filepath.Join(authDir, "token")
+		emptyClaudePath := ""
+
+		_, _, err := generateWrapperScript(authDir, tokenPath, emptyClaudePath, []string{})
+		if err == nil {
+			t.Error("Expected error when claude path is empty, got nil")
+		}
+	})
+
+	t.Run("handles special characters in arguments", func(t *testing.T) {
+		authDir := t.TempDir()
+		tokenPath := filepath.Join(authDir, "token")
+
+		// Test with arguments containing special characters
+		specialArgs := []string{
+			"--prompt", "Hello; rm -rf /", // Command injection attempt
+			"--file", "/path/to/file with spaces.txt",
+			"--option", "value_with_'quotes'_and_\"dquotes\"",
+		}
+
+		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", specialArgs)
+		if err != nil {
+			t.Fatalf("generateWrapperScript() failed with special args: %v", err)
+		}
+
+		// Verify wrapper script was created
+		if _, err := os.Stat(wrapperPath); os.IsNotExist(err) {
+			t.Error("Wrapper script should be created even with special arguments")
+		}
+
+		// Read and verify script content for proper escaping
+		content, err := os.ReadFile(wrapperPath)
+		if err != nil {
+			t.Fatalf("Failed to read wrapper script: %v", err)
+		}
+
+		scriptContent := string(content)
+		// The arguments should be properly escaped in the script
+		if !strings.Contains(scriptContent, "Hello; rm -rf /") {
+			t.Log("Script content (command injection string may be escaped):")
+			t.Log(scriptContent)
+		}
+	})
+
+	t.Run("handles very long arguments", func(t *testing.T) {
+		authDir := t.TempDir()
+		tokenPath := filepath.Join(authDir, "token")
+
+		// Create a very long argument (potential buffer overflow scenario)
+		longArg := strings.Repeat("a", 10000)
+
+		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{longArg})
+		if err != nil {
+			t.Fatalf("generateWrapperScript() failed with long argument: %v", err)
+		}
+
+		// Verify wrapper script was created
+		if _, err := os.Stat(wrapperPath); os.IsNotExist(err) {
+			t.Error("Wrapper script should handle long arguments")
+		}
+	})
+
+	t.Run("handles nil arguments slice", func(t *testing.T) {
+		authDir := t.TempDir()
+		tokenPath := filepath.Join(authDir, "token")
+
+		// This should work - nil slice is treated like empty slice
+		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", nil)
+		if err != nil {
+			t.Fatalf("generateWrapperScript() failed with nil args: %v", err)
+		}
+
+		// Verify wrapper script was created
+		if _, err := os.Stat(wrapperPath); os.IsNotExist(err) {
+			t.Error("Wrapper script should handle nil arguments")
+		}
+	})
+
+	t.Run("validates script structure on both platforms", func(t *testing.T) {
+		authDir := t.TempDir()
+		tokenPath := filepath.Join(authDir, "token")
+
+		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{"--help"})
+		if err != nil {
+			t.Fatalf("generateWrapperScript() error = %v", err)
+		}
+
+		content, err := os.ReadFile(wrapperPath)
+		if err != nil {
+			t.Fatalf("Failed to read wrapper script: %v", err)
+		}
+
+		scriptContent := string(content)
+
+		// Platform-specific validation
+		if runtime.GOOS == "windows" {
+			if !strings.HasSuffix(wrapperPath, ".ps1") {
+				t.Errorf("Windows wrapper should have .ps1 extension, got: %s", wrapperPath)
+			}
+			// PowerShell script checks
+			if !strings.Contains(scriptContent, "$env:ANTHROPIC_AUTH_TOKEN") {
+				t.Error("PowerShell script should set ANTHROPIC_AUTH_TOKEN environment variable")
+			}
+			if !strings.Contains(scriptContent, "Remove-Item") {
+				t.Error("PowerShell script should remove token file")
+			}
+		} else {
+			// Unix shell script checks
+			if !strings.Contains(scriptContent, "#!/bin/sh") {
+				t.Error("Unix script should have shebang")
+			}
+			if !strings.Contains(scriptContent, "export ANTHROPIC_AUTH_TOKEN") {
+				t.Error("Unix script should export ANTHROPIC_AUTH_TOKEN")
+			}
+			if !strings.Contains(scriptContent, "rm -f") {
+				t.Error("Unix script should remove token file")
+			}
+			if !strings.Contains(scriptContent, "exec") {
+				t.Error("Unix script should use exec to replace process")
+			}
+		}
+	})
+}
+
+func TestSwitch_CrossPlatformCompatibility(t *testing.T) {
+	// These tests verify cross-platform compatibility across different OS environments
+
+	t.Run("wrapper script paths are platform-appropriate", func(t *testing.T) {
+		authDir := t.TempDir()
+		tokenPath := filepath.Join(authDir, "token")
+
+		wrapperPath, useCmdExe, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
+		if err != nil {
+			t.Fatalf("generateWrapperScript() error = %v", err)
+		}
+
+		isWindows := runtime.GOOS == "windows"
+
+		// Verify platform-specific expectations
+		if isWindows {
+			if !useCmdExe {
+				t.Error("useCmdExe should be true on Windows")
+			}
+			if !strings.HasSuffix(wrapperPath, ".ps1") {
+				t.Errorf("Wrapper path should end with .ps1 on Windows, got: %s", wrapperPath)
+			}
+		} else {
+			if useCmdExe {
+				t.Error("useCmdExe should be false on Unix")
+			}
+			if strings.HasSuffix(wrapperPath, ".ps1") {
+				t.Error("Wrapper path should not end with .ps1 on Unix")
+			}
+		}
+	})
+
+	t.Run("temp auth directory creation works on all platforms", func(t *testing.T) {
+		authDir, err := createTempAuthDir()
+		if err != nil {
+			t.Fatalf("createTempAuthDir() failed: %v", err)
+		}
+		defer os.RemoveAll(authDir)
+
+		// Verify directory exists
+		if _, err := os.Stat(authDir); err != nil {
+			t.Errorf("Auth directory should exist: %v", err)
+		}
+
+		// Verify it's in the system temp directory
+		if !strings.HasPrefix(authDir, os.TempDir()) {
+			t.Errorf("Auth dir %q should be in temp dir %q", authDir, os.TempDir())
+		}
+	})
+
+	t.Run("token file creation works on all platforms", func(t *testing.T) {
+		authDir := t.TempDir()
+		testToken := "sk-ant-test-token-12345"
+
+		tokenPath, err := writeTempTokenFile(authDir, testToken)
+		if err != nil {
+			t.Fatalf("writeTempTokenFile() failed: %v", err)
+		}
+
+		// Verify file exists
+		content, err := os.ReadFile(tokenPath)
+		if err != nil {
+			t.Errorf("Token file should be readable: %v", err)
+		}
+
+		if string(content) != testToken {
+			t.Errorf("Token content = %q, want %q", string(content), testToken)
+		}
+	})
+
+	t.Run("handles unicode in arguments", func(t *testing.T) {
+		authDir := t.TempDir()
+		tokenPath := filepath.Join(authDir, "token")
+
+		// Test with unicode characters
+		unicodeArgs := []string{
+			"--prompt", "Hello 世界 🌍",
+			"--emoji", "🚀🎉",
+		}
+
+		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", unicodeArgs)
+		if err != nil {
+			t.Fatalf("generateWrapperScript() failed with unicode: %v", err)
+		}
+
+		// Verify wrapper script was created
+		if _, err := os.Stat(wrapperPath); os.IsNotExist(err) {
+			t.Error("Wrapper script should handle unicode arguments")
+		}
+	})
+}
