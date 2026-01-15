@@ -158,8 +158,9 @@ make test-coverage
 2. **Test:** `make test`
 3. **Build:** `make build`
 4. **Format:** `make format`
-5. **Update docs:** Ensure documentation is current
-6. **Clean commits:** Squash unnecessary commits
+5. **Vulnerability scan:** `make vuln-scan`
+6. **Update docs:** Ensure documentation is current
+7. **Clean commits:** Squash unnecessary commits
 
 ### PR Description
 
@@ -234,6 +235,23 @@ Closes #42
 
 ## Security
 
+### Vulnerability Scanning
+
+This project uses `govulncheck` to scan for known vulnerabilities in Go dependencies:
+
+```bash
+# Run vulnerability scan
+make vuln-scan
+
+# Install govulncheck if not present
+go install golang.org/x/vuln/cmd/govulncheck@latest
+```
+
+Vulnerability scanning is also run automatically in CI on:
+- Every push to main/master
+- Every pull request
+- Weekly schedule (Sundays at 00:00 UTC)
+
 ### Sensitive Data
 
 - Never commit API keys, tokens, or passwords
@@ -246,6 +264,7 @@ Closes #42
 - Use parameterized queries
 - Follow secure coding standards
 - Report security issues privately
+- Run `make vuln-scan` before submitting PRs
 
 ## Communication
 
