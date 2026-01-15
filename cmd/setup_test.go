@@ -1688,3 +1688,103 @@ func TestSetup_ProviderNameValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestSetup_ProviderNameLength(t *testing.T) {
+	// Create strings of exact lengths for testing
+	maxValidName := strings.Repeat("a", 50) // Exactly 50 characters
+	invalidName := strings.Repeat("b", 51) // 51 characters - exceeds max
+
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{
+			name:    "a",
+			wantErr: false, // Minimum 1 character
+		},
+		{
+			name:    "valid",
+			wantErr: false,
+		},
+		{
+			name:    maxValidName,
+			wantErr: false, // Exactly 50 characters - max allowed
+		},
+		{
+			name:    invalidName,
+			wantErr: true, // 51 characters - exceeds max length
+		},
+		{
+			name:    "this_provider_name_is_way_too_long_and_exceeds_the_maximum_allowed_length_of_fifty_characters",
+			wantErr: true, // Much longer than 50 characters
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateCustomProviderName(tt.name)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSetup_ProviderNameReservedWords(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{
+			name:    "anthropic",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "zai",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "minimax",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "deepseek",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "kimi",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "custom",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "Anthropic",
+			wantErr: true, // Reserved - case-insensitive
+		},
+		{
+			name:    "ZAI",
+			wantErr: true, // Reserved - case-insensitive
+		},
+		{
+			name:    "mycustom",
+			wantErr: false, // Not reserved
+		},
+		{
+			name:    "provider",
+			wantErr: false, // Not reserved
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateCustomProviderName(tt.name)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+			}
+		})
+	}
+}

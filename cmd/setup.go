@@ -24,15 +24,30 @@ import (
 var validProviderName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 
 // validateCustomProviderName validates a custom provider name and returns the validated name or an error.
+// Provider names must:
+// - Be 1-50 characters long
+// - Start with a letter
+// - Contain only alphanumeric characters, underscores, and hyphens
+// - Not be a reserved built-in provider name (case-insensitive)
 func validateCustomProviderName(name string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("provider name is required")
 	}
+	// Check minimum length (1 character)
+	if len(name) < 1 {
+		return "", fmt.Errorf("provider name must be at least 1 character")
+	}
+	// Check maximum length (50 characters)
+	if len(name) > 50 {
+		return "", fmt.Errorf("provider name must be at most 50 characters (got %d)", len(name))
+	}
 	if !validProviderName.MatchString(name) {
 		return "", fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters, underscores, and hyphens")
 	}
-	if providers.IsBuiltInProvider(name) {
-		return "", fmt.Errorf("reserved provider name")
+	// Check for reserved provider names (case-insensitive)
+	lowerName := strings.ToLower(name)
+	if providers.IsBuiltInProvider(lowerName) {
+		return "", fmt.Errorf("reserved provider name: %s", lowerName)
 	}
 	return name, nil
 }
