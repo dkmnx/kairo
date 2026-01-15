@@ -184,6 +184,17 @@ jsonData, _ := registry.ToJSON()
 
 **See:** [docs/guides/performance-metrics.md](../guides/performance-metrics.md)
 
+### Security: Wrapper Scripts
+
+See: [docs/architecture/wrapper-scripts.md](../architecture/wrapper-scripts.md)
+
+**Summary:**
+- Secure credential passing via temporary shell scripts
+- Token never in process environment (`/proc/<pid>/environ`)
+- Private temp directory (0700) + token file (0600)
+- Platform-specific (Unix shell, Windows PowerShell)
+- Auto-cleanup on exit/interrupt
+
 ### validate/
 
 Input validation for API keys, URLs, and provider names.

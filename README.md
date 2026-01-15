@@ -180,6 +180,7 @@ flowchart TB
 | ----------------------------------------------------- | ------------------------------ |
 | [Development Guide](docs/guides/development-guide.md) | Setup and contribution         |
 | [Architecture](docs/architecture/README.md)           | System design and diagrams     |
+| [Wrapper Scripts](docs/architecture/wrapper-scripts.md) | Security design and rationale  |
 | [Contributing](docs/contributing/README.md)           | Contribution workflow          |
 
 ### Reference
