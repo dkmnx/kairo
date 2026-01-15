@@ -272,3 +272,29 @@ flowchart LR
 | `filipko.io/age` | X25519 encryption |
 | `gopkg.in/yaml.v3` | YAML parsing |
 | `github.com/Masterminds/semver` | Version comparison |
+
+## Additional Documentation
+
+- **[Best Practices Guide](../docs/best-practices.md)** - Production deployment and operational best practices for enterprise environments
+  - Security best practices
+  - Configuration management
+  - High availability patterns
+  - Monitoring and observability
+  - Disaster recovery procedures
+  - Performance optimization
+  - Compliance and governance
+
+- **[Troubleshooting Guide](../docs/troubleshooting/README.md)** - Common issues and solutions
+  - Installation issues
+  - Configuration issues
+  - Provider issues
+  - Encryption issues
+  - Claude execution issues
+  - Advanced troubleshooting scenarios
+
+- **[Advanced Configuration](../docs/guides/advanced-configuration.md)** - Complex multi-provider scenarios
+  - Multi-provider setup strategies
+  - Custom provider configuration
+  - Environment variable integration
+  - Configuration management patterns
+  - Complex multi-provider scenarios (NEW)
