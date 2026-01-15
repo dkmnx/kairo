@@ -639,6 +639,198 @@ func TestSignalHandlingIsCrossPlatform(t *testing.T) {
 	})
 }
 
+func TestSwitch_ErrorHandling(t *testing.T) {
+	// These tests verify error handling in temp file/directory operations
+	// They test edge cases and error conditions that may occur in production
+
+	t.Run("writeTempTokenFile returns error for non-existent directory", func(t *testing.T) {
+		nonExistentDir := "/tmp/kairo-test-non-existent-" + strings.ReplaceAll(os.TempDir(), "/", "-")
+		token := "test-token"
+
+		_, err := writeTempTokenFile(nonExistentDir, token)
+		if err == nil {
+			t.Error("Expected error when writing to non-existent directory")
+		}
+	})
+
+	t.Run("writeTempTokenFile returns error for invalid directory path", func(t *testing.T) {
+		// Use a path that's too long to be valid
+		longPath := strings.Repeat("a", 10000)
+		token := "test-token"
+
+		_, err := writeTempTokenFile(longPath, token)
+		if err == nil {
+			t.Error("Expected error when writing to invalid directory path")
+		}
+	})
+
+	t.Run("writeTempTokenFile handles very long tokens", func(t *testing.T) {
+		authDir := t.TempDir()
+		// Create a very long token (potential buffer overflow scenario)
+		longToken := strings.Repeat("a", 100000)
+
+		tokenPath, err := writeTempTokenFile(authDir, longToken)
+		if err != nil {
+			t.Errorf("writeTempTokenFile() failed with long token: %v", err)
+		}
+
+		// Verify the token was written correctly
+		content, err := os.ReadFile(tokenPath)
+		if err != nil {
+			t.Fatalf("Failed to read token file: %v", err)
+		}
+
+		if string(content) != longToken {
+			t.Errorf("Token content length mismatch: got %d, want %d", len(content), len(longToken))
+		}
+	})
+
+	t.Run("writeTempTokenFile handles special characters in token", func(t *testing.T) {
+		authDir := t.TempDir()
+		// Test with special characters that might cause issues
+		specialToken := "sk-test-\"`$';\n\t\x00"
+
+		tokenPath, err := writeTempTokenFile(authDir, specialToken)
+		if err != nil {
+			t.Errorf("writeTempTokenFile() failed with special characters: %v", err)
+		}
+
+		// Verify the token was written correctly
+		content, err := os.ReadFile(tokenPath)
+		if err != nil {
+			t.Fatalf("Failed to read token file: %v", err)
+		}
+
+		if string(content) != specialToken {
+			t.Errorf("Token content = %q, want %q", string(content), specialToken)
+		}
+	})
+
+	t.Run("writeTempTokenFile handles unicode in token", func(t *testing.T) {
+		authDir := t.TempDir()
+		unicodeToken := "sk-test-世界-🌍-🚀"
+
+		tokenPath, err := writeTempTokenFile(authDir, unicodeToken)
+		if err != nil {
+			t.Errorf("writeTempTokenFile() failed with unicode: %v", err)
+		}
+
+		// Verify the token was written correctly
+		content, err := os.ReadFile(tokenPath)
+		if err != nil {
+			t.Fatalf("Failed to read token file: %v", err)
+		}
+
+		if string(content) != unicodeToken {
+			t.Errorf("Token content = %q, want %q", string(content), unicodeToken)
+		}
+	})
+
+	t.Run("writeTempTokenFile overwrites existing file", func(t *testing.T) {
+		authDir := t.TempDir()
+		token1 := "first-token"
+		token2 := "second-token"
+
+		// Write first token
+		path1, err := writeTempTokenFile(authDir, token1)
+		if err != nil {
+			t.Fatalf("writeTempTokenFile() failed: %v", err)
+		}
+
+		// Write second token (should create a different file)
+		path2, err := writeTempTokenFile(authDir, token2)
+		if err != nil {
+			t.Fatalf("writeTempTokenFile() failed: %v", err)
+		}
+
+		// Paths should be different (temp files are unique)
+		if path1 == path2 {
+			t.Error("writeTempTokenFile() should create unique files")
+		}
+
+		// Verify both files exist with correct content
+		content1, err := os.ReadFile(path1)
+		if err != nil {
+			t.Errorf("Failed to read first token file: %v", err)
+		}
+		if string(content1) != token1 {
+			t.Errorf("First token = %q, want %q", string(content1), token1)
+		}
+
+		content2, err := os.ReadFile(path2)
+		if err != nil {
+			t.Errorf("Failed to read second token file: %v", err)
+		}
+		if string(content2) != token2 {
+			t.Errorf("Second token = %q, want %q", string(content2), token2)
+		}
+	})
+
+	t.Run("createTempAuthDir handles temp directory exhaustion", func(t *testing.T) {
+		// This test verifies that createTempAuthDir returns a proper error
+		// when it cannot create a temp directory. We can't easily simulate
+		// actual temp directory exhaustion, but we can verify error handling.
+
+		authDir, err := createTempAuthDir()
+		if err != nil {
+			// If creation fails, verify error message is informative
+			if !strings.Contains(err.Error(), "failed to create temp auth directory") {
+				t.Errorf("Error message should mention directory creation failure: %v", err)
+			}
+			return
+		}
+		defer os.RemoveAll(authDir)
+
+		// Verify directory was created successfully
+		if authDir == "" {
+			t.Error("createTempAuthDir() returned empty path on success")
+		}
+	})
+
+	t.Run("createTempAuthDir creates multiple unique directories", func(t *testing.T) {
+		// Verify that multiple calls create unique directories
+		dirs := make(map[string]bool)
+		for i := 0; i < 10; i++ {
+			authDir, err := createTempAuthDir()
+			if err != nil {
+				t.Errorf("createTempAuthDir() failed on iteration %d: %v", i, err)
+			}
+			defer os.RemoveAll(authDir)
+
+			if dirs[authDir] {
+				t.Errorf("createTempAuthDir() returned duplicate path: %s", authDir)
+			}
+			dirs[authDir] = true
+		}
+
+		if len(dirs) != 10 {
+			t.Errorf("Expected 10 unique directories, got %d", len(dirs))
+		}
+	})
+
+	t.Run("writeTempTokenFile with read-only directory", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows does not support Unix-style permissions")
+		}
+
+		authDir := t.TempDir()
+		token := "test-token"
+
+		// Make directory read-only
+		if err := os.Chmod(authDir, 0500); err != nil {
+			t.Fatalf("Failed to change directory permissions: %v", err)
+		}
+
+		_, err := writeTempTokenFile(authDir, token)
+		if err == nil {
+			t.Error("Expected error when writing to read-only directory")
+		}
+
+		// Restore permissions for cleanup
+		_ = os.Chmod(authDir, 0700)
+	})
+}
+
 func TestSwitch_SignalRaceCondition(t *testing.T) {
 	// This test verifies that cleanup of authDir uses sync.Once to prevent
 	// race conditions between the main goroutine's defer and signal handler.
