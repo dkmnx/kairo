@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -264,5 +265,180 @@ func TestGetConfigDir(t *testing.T) {
 	dir := getConfigDir()
 	if dir != expectedDir {
 		t.Errorf("getConfigDir() = %q, want %q", dir, expectedDir)
+	}
+}
+
+func TestConfig_RollbackOnFailure(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create initial config
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"zai": {
+				Name:    "Z.AI",
+				BaseURL: "https://api.z.ai/api/anthropic",
+				Model:   "glm-4.7",
+			},
+		},
+		DefaultProvider: "zai",
+	}
+
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	// Create backup of config
+	backupPath, err := createConfigBackup(tmpDir)
+	if err != nil {
+		t.Fatalf("createConfigBackup() error = %v", err)
+	}
+	if backupPath == "" {
+		t.Fatal("createConfigBackup() returned empty path")
+	}
+
+	// Verify backup file exists
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		t.Errorf("Backup file was not created at %s", backupPath)
+	}
+
+	// Modify the config (simulating a failed operation)
+	modifiedCfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"zai": {
+				Name:    "Z.AI",
+				BaseURL: "https://modified.example.com/api",
+				Model:   "modified-model",
+			},
+		},
+		DefaultProvider: "zai",
+	}
+
+	if err := config.SaveConfig(tmpDir, modifiedCfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	// Verify config was modified
+	loadedCfg, err := config.LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if loadedCfg.Providers["zai"].BaseURL != "https://modified.example.com/api" {
+		t.Error("Config was not modified as expected")
+	}
+
+	// Rollback to backup
+	if err := rollbackConfig(tmpDir, backupPath); err != nil {
+		t.Fatalf("rollbackConfig() error = %v", err)
+	}
+
+	// Verify config was restored to original state
+	restoredCfg, err := config.LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() after rollback error = %v", err)
+	}
+	if restoredCfg.Providers["zai"].BaseURL != "https://api.z.ai/api/anthropic" {
+		t.Errorf("After rollback, BaseURL = %q, want %q", restoredCfg.Providers["zai"].BaseURL, "https://api.z.ai/api/anthropic")
+	}
+	if restoredCfg.Providers["zai"].Model != "glm-4.7" {
+		t.Errorf("After rollback, Model = %q, want %q", restoredCfg.Providers["zai"].Model, "glm-4.7")
+	}
+	if restoredCfg.DefaultProvider != "zai" {
+		t.Errorf("After rollback, DefaultProvider = %q, want %q", restoredCfg.DefaultProvider, "zai")
+	}
+}
+
+func TestConfig_TransactionBehavior(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create initial config
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"zai": {
+				Name:    "Z.AI",
+				BaseURL: "https://api.z.ai/api/anthropic",
+				Model:   "glm-4.7",
+			},
+		},
+		DefaultProvider: "zai",
+	}
+
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	originalCfg, err := config.LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	// Test 1: Successful transaction should commit changes
+	err = withConfigTransaction(tmpDir, func(txDir string) error {
+		txCfg := &config.Config{
+			Providers: map[string]config.Provider{
+				"zai": {
+					Name:    "Z.AI",
+					BaseURL: "https://transaction.example.com/api",
+					Model:   "transaction-model",
+				},
+			},
+			DefaultProvider: "zai",
+		}
+		return config.SaveConfig(txDir, txCfg)
+	})
+	if err != nil {
+		t.Fatalf("Transaction failed unexpectedly: %v", err)
+	}
+
+	// Verify changes were applied
+	finalCfg, err := config.LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() after successful transaction error = %v", err)
+	}
+	if finalCfg.Providers["zai"].BaseURL != "https://transaction.example.com/api" {
+		t.Errorf("Expected BaseURL to be updated to %q, got %q", "https://transaction.example.com/api", finalCfg.Providers["zai"].BaseURL)
+	}
+	if finalCfg.Providers["zai"].Model != "transaction-model" {
+		t.Errorf("Expected Model to be updated to %q, got %q", "transaction-model", finalCfg.Providers["zai"].Model)
+	}
+
+	// Test 2: Failed transaction should rollback changes
+	err = withConfigTransaction(tmpDir, func(txDir string) error {
+		// Modify config
+		txCfg := &config.Config{
+			Providers: map[string]config.Provider{
+				"zai": {
+					Name:    "Z.AI",
+					BaseURL: "https://should-rollback.example.com/api",
+					Model:   "rollback-model",
+				},
+			},
+			DefaultProvider: "zai",
+		}
+		// Save the change
+		if saveErr := config.SaveConfig(txDir, txCfg); saveErr != nil {
+			return saveErr
+		}
+		// Return an error to simulate transaction failure
+		return fmt.Errorf("simulated transaction failure")
+	})
+	if err == nil {
+		t.Fatal("Expected transaction to fail, but it succeeded")
+	}
+
+	// Verify changes were rolled back (config should remain as after Test 1)
+	rollbackCfg, err := config.LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() after failed transaction error = %v", err)
+	}
+	if rollbackCfg.Providers["zai"].BaseURL != "https://transaction.example.com/api" {
+		t.Errorf("Expected BaseURL to remain %q after rollback, got %q", "https://transaction.example.com/api", rollbackCfg.Providers["zai"].BaseURL)
+	}
+	if rollbackCfg.Providers["zai"].Model != "transaction-model" {
+		t.Errorf("Expected Model to remain %q after rollback, got %q", "transaction-model", rollbackCfg.Providers["zai"].Model)
+	}
+
+	// Restore original config for cleanup
+	if err := config.SaveConfig(tmpDir, originalCfg); err != nil {
+		t.Fatalf("Failed to restore original config: %v", err)
 	}
 }
