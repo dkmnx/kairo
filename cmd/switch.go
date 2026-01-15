@@ -76,8 +76,23 @@ func writeTempTokenFile(authDir, token string) (string, error) {
 }
 
 // escapePowerShellArg escapes a string for use as a PowerShell argument.
+// It wraps the argument in single quotes and escapes special characters to prevent
+// command injection. Special characters escaped:
+// - Single quotes (') -> escaped as ”
+// - Backticks (`) -> escaped as “
+// - Dollar signs ($) -> escaped as `$ (to prevent variable expansion)
+// - Double quotes (") -> escaped as \"
 func escapePowerShellArg(arg string) string {
-	return "'" + strings.ReplaceAll(arg, "'", "''") + "'"
+	// First, escape backticks (must be done before other replacements)
+	arg = strings.ReplaceAll(arg, "`", "``")
+	// Escape dollar signs to prevent variable expansion
+	arg = strings.ReplaceAll(arg, "$", "`$")
+	// Escape double quotes
+	arg = strings.ReplaceAll(arg, "\"", "\\\"")
+	// Finally, escape single quotes by doubling them
+	arg = strings.ReplaceAll(arg, "'", "''")
+	// Wrap in single quotes for safest passing
+	return "'" + arg + "'"
 }
 
 // generateWrapperScript creates a temporary script that:

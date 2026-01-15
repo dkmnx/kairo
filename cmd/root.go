@@ -73,6 +73,10 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 	},
 }
 
+// Execute runs the kairo CLI application.
+// It processes command-line arguments, handles provider name shortcuts,
+// and executes the appropriate Cobra command.
+// Returns an error if command execution fails.
 func Execute() error {
 	args := os.Args[1:]
 

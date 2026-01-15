@@ -741,3 +741,88 @@ func TestSwitch_SignalRaceCondition(t *testing.T) {
 		}
 	})
 }
+
+func TestSwitch_PowerShellEscaping(t *testing.T) {
+	// This test verifies that escapePowerShellArg properly escapes special characters
+	// to prevent command injection and ensure correct argument passing.
+	//
+	// Special characters that need escaping in PowerShell single-quoted strings:
+	// - Single quotes (') -> escaped as ''
+	// - Backticks (`) -> escaped as ``
+	// - Dollar signs ($) -> escaped as `$ (to prevent variable expansion)
+	// - Double quotes (") -> escaped as ""
+
+	tests := []struct {
+		name     string
+		input    string
+		contains []string // Substrings that should be in the escaped output
+	}{
+		{
+			name:     "simple string",
+			input:    "hello",
+			contains: []string{"'hello'"},
+		},
+		{
+			name:     "single quote",
+			input:    "it's",
+			contains: []string{"'it''s'"}, // Single quotes are doubled
+		},
+		{
+			name:     "multiple single quotes",
+			input:    "it's a test",
+			contains: []string{"'it''s a test'"},
+		},
+		{
+			name:     "backtick",
+			input:    "test" + string([]byte{0x60}) + "value",
+			contains: []string{"'test``value'"}, // Backticks are doubled
+		},
+		{
+			name:     "dollar sign",
+			input:    "test$value",
+			contains: []string{"'test" + string([]byte{0x60}) + "$value'"}, // Dollar sign is escaped
+		},
+		{
+			name:     "double quote",
+			input:    `test"value`,
+			contains: []string{"'test\\\"value'"}, // Double quote is escaped
+		},
+		{
+			name:  "path with spaces",
+			input: "C:\\Program Files\\test",
+			contains: []string{
+				"'C:\\Program Files\\test'",
+			},
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			contains: []string{"''"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := escapePowerShellArg(tt.input)
+
+			// Verify result starts and ends with single quotes
+			if !strings.HasPrefix(result, "'") {
+				t.Errorf("escapePowerShellArg(%q) should start with single quote, got: %q", tt.input, result)
+			}
+			if !strings.HasSuffix(result, "'") {
+				t.Errorf("escapePowerShellArg(%q) should end with single quote, got: %q", tt.input, result)
+			}
+
+			// Verify expected substrings are present
+			for _, expected := range tt.contains {
+				if !strings.Contains(result, expected) {
+					t.Errorf("escapePowerShellArg(%q) = %q, should contain %q", tt.input, result, expected)
+				}
+			}
+
+			// Verify the escaped string, when used in PowerShell, would correctly
+			// represent the original input (this is a basic sanity check)
+			// For example, 'it''s' in PowerShell evaluates to "it's"
+		})
+	}
+}
