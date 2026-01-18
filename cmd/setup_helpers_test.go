@@ -52,7 +52,7 @@ func TestValidateCustomProviderName(t *testing.T) {
 			name:     "contains special characters",
 			provider: "my@provider",
 			wantErr:  true,
-			errMsg:   "alphanumeric characters, underscores, or hyphens",
+			errMsg:   "alphanumeric characters",
 		},
 		{
 			name:     "reserved builtin name",

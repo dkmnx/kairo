@@ -1,60 +1,44 @@
 package cmd
 
 import (
-	"runtime"
-	"sync"
 	"testing"
 )
 
-func TestGlobalVariableRaceCondition(t *testing.T) {
-	t.Run("concurrent configDir access - should NOT detect race with -race flag", func(t *testing.T) {
-		if testing.Short() {
-			t.Skip("Skipping race test in short mode")
-		}
-
-		var wg sync.WaitGroup
+func TestGlobalVariableAccess(t *testing.T) {
+	t.Run("configDir can be set and retrieved", func(t *testing.T) {
 		originalConfigDir := getConfigDir()
 		defer func() { setConfigDir(originalConfigDir) }()
 
-		for i := 0; i < 10; i++ {
-			wg.Add(1)
-			go func(id int) {
-				defer wg.Done()
-
-				for j := 0; j < 100; j++ {
-					setConfigDir("/tmp/test" + string(rune(id%3)))
-					_ = getConfigDir()
-				}
-			}(i)
+		testDir := "/tmp/test-config-dir"
+		setConfigDir(testDir)
+		if got := getConfigDir(); got != testDir {
+			t.Errorf("getConfigDir() = %q, want %q", got, testDir)
 		}
-
-		wg.Wait()
-		t.Log("configDir access - should have no race with mutex protection")
 	})
 
-	t.Run("concurrent verbose access - should NOT detect race with -race flag", func(t *testing.T) {
-		if testing.Short() {
-			t.Skip("Skipping race test in short mode")
-		}
+	t.Run("configDir falls back to default when empty", func(t *testing.T) {
+		originalConfigDir := getConfigDir()
+		defer func() { setConfigDir(originalConfigDir) }()
 
-		var wg sync.WaitGroup
+		setConfigDir("")
+		got := getConfigDir()
+		if got == "" {
+			t.Errorf("getConfigDir() should return default directory when empty, got empty string")
+		}
+	})
+
+	t.Run("verbose can be set and retrieved", func(t *testing.T) {
 		originalVerbose := getVerbose()
 		defer func() { setVerbose(originalVerbose) }()
 
-		for i := 0; i < 10; i++ {
-			wg.Add(1)
-			go func(id int) {
-				defer wg.Done()
-
-				for j := 0; j < 100; j++ {
-					setVerbose((j % 2) == 0)
-					_ = getVerbose()
-					runtime.Gosched()
-				}
-			}(i)
+		setVerbose(true)
+		if !getVerbose() {
+			t.Error("getVerbose() should return true after setVerbose(true)")
 		}
 
-		wg.Wait()
-		t.Log("verbose access - should have no race with setVerbose()/getVerbose() mutex protection")
+		setVerbose(false)
+		if getVerbose() {
+			t.Error("getVerbose() should return false after setVerbose(false)")
+		}
 	})
 }

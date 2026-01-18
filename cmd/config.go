@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
@@ -69,6 +71,10 @@ var configCmd = &cobra.Command{
 
 		apiKey, err := ui.PromptSecret("API Key")
 		if err != nil {
+			if errors.Is(err, ui.ErrUserCancelled) {
+				cmd.Println("\nConfiguration cancelled.")
+				return
+			}
 			ui.PrintError(fmt.Sprintf("Error reading API key: %v", err))
 			return
 		}
@@ -78,7 +84,11 @@ var configCmd = &cobra.Command{
 		}
 
 		if builtinDef.BaseURL == "" {
-			baseURL := ui.PromptWithDefault("Base URL", provider.BaseURL)
+			baseURL, err := ui.PromptWithDefault("Base URL", provider.BaseURL)
+			if err != nil {
+				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+				return
+			}
 			if err := validate.ValidateURL(baseURL, provider.Name); err != nil {
 				ui.PrintError(err.Error())
 				return
@@ -89,7 +99,11 @@ var configCmd = &cobra.Command{
 			if currentBaseURL == "" {
 				currentBaseURL = builtinDef.BaseURL
 			}
-			baseURL := ui.PromptWithDefault("Base URL", currentBaseURL)
+			baseURL, err := ui.PromptWithDefault("Base URL", currentBaseURL)
+			if err != nil {
+				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+				return
+			}
 			if err := validate.ValidateURL(baseURL, provider.Name); err != nil {
 				ui.PrintError(err.Error())
 				return
@@ -98,33 +112,33 @@ var configCmd = &cobra.Command{
 		}
 
 		if builtinDef.Model == "" {
-			provider.Model = ui.PromptWithDefault("Model", provider.Model)
+			model, err := ui.PromptWithDefault("Model", provider.Model)
+			if err != nil {
+				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+				return
+			}
+			provider.Model = model
 		} else {
 			currentModel := provider.Model
 			if currentModel == "" {
 				currentModel = builtinDef.Model
 			}
-			provider.Model = ui.PromptWithDefault("Model", currentModel)
+			model, err := ui.PromptWithDefault("Model", currentModel)
+			if err != nil {
+				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+				return
+			}
+			provider.Model = model
 		}
 
-		if len(builtinDef.EnvVars) > 0 && len(provider.EnvVars) == 0 {
+		// Always refresh EnvVars from provider definition
+		// This ensures new env vars from updated definitions are merged
+		if len(builtinDef.EnvVars) > 0 {
 			provider.EnvVars = builtinDef.EnvVars
 		}
 
-		secretsPath := filepath.Join(dir, "secrets.age")
-		keyPath := filepath.Join(dir, "age.key")
+		secrets, secretsPath, keyPath := LoadSecrets(dir)
 
-		secrets := make(map[string]string)
-		existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
-		if err != nil {
-			if getVerbose() {
-				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
-			}
-		} else {
-			secrets = config.ParseSecrets(existingSecrets)
-		}
-
-		oldAPIKey := secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))]
 		oldProvider := cfg.Providers[providerName]
 		cfg.Providers[providerName] = provider
 		if cfg.DefaultProvider == "" {
@@ -158,15 +172,6 @@ var configCmd = &cobra.Command{
 		}
 
 		var changes []audit.Change
-		if apiKey != "" {
-			displayKey := truncateKey(apiKey)
-			oldDisplayKey := truncateKey(oldAPIKey)
-			if oldAPIKey != "" {
-				changes = append(changes, audit.Change{Field: "api_key", Old: oldDisplayKey, New: displayKey})
-			} else {
-				changes = append(changes, audit.Change{Field: "api_key", New: displayKey})
-			}
-		}
 		if provider.BaseURL != "" && provider.BaseURL != oldProvider.BaseURL {
 			old := oldProvider.BaseURL
 			if old == "" && builtinDef.BaseURL != "" {
@@ -188,13 +193,174 @@ var configCmd = &cobra.Command{
 	},
 }
 
-func truncateKey(key string) string {
-	if len(key) <= 9 {
-		return "***"
-	}
-	return key[:5] + "********" + key[len(key)-4:]
-}
-
 func init() {
 	rootCmd.AddCommand(configCmd)
+}
+
+// createConfigBackup creates a backup of the current configuration file.
+// Returns the path to the backup file or an error if the backup fails.
+// The backup file is named with a timestamp to allow for multiple backups.
+func createConfigBackup(configDir string) (string, error) {
+	configPath := getConfigPath(configDir)
+
+	// Read the current config file
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read config for backup: %w", err)
+	}
+
+	// Create backup filename with timestamp
+	backupPath := getBackupPath(configDir)
+
+	// Write the backup
+	if err := os.WriteFile(backupPath, data, 0600); err != nil {
+		return "", fmt.Errorf("failed to write backup file: %w", err)
+	}
+
+	return backupPath, nil
+}
+
+// rollbackConfig restores the configuration from a backup file.
+// If successful, the current config is replaced with the backup.
+// The backup file is preserved after rollback for safety.
+func rollbackConfig(configDir, backupPath string) error {
+	// Verify backup exists
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		return fmt.Errorf("backup file not found: %s", backupPath)
+	}
+
+	// Read backup data
+	data, err := os.ReadFile(backupPath)
+	if err != nil {
+		return fmt.Errorf("failed to read backup file: %w", err)
+	}
+
+	// Write to config file
+	configPath := getConfigPath(configDir)
+	if err := os.WriteFile(configPath, data, 0600); err != nil {
+		return fmt.Errorf("failed to restore config from backup: %w", err)
+	}
+
+	return nil
+}
+
+// withConfigTransaction executes a function within a transaction-like context.
+// If the function returns an error, changes are rolled back automatically.
+// This provides atomic-like behavior for configuration updates.
+func withConfigTransaction(configDir string, fn func(txDir string) error) error {
+	// Create backup before transaction
+	backupPath, err := createConfigBackup(configDir)
+	if err != nil {
+		return fmt.Errorf("failed to create transaction backup: %w", err)
+	}
+
+	// Execute the transaction function
+	err = fn(configDir)
+
+	// If transaction failed, rollback
+	if err != nil {
+		if rbErr := rollbackConfig(configDir, backupPath); rbErr != nil {
+			// Rollback failed - this is a critical situation
+			return fmt.Errorf("transaction failed and rollback also failed: tx_err=%w, rollback_err=%w", err, rbErr)
+		}
+		return fmt.Errorf("transaction failed, changes rolled back: %w", err)
+	}
+
+	return nil
+}
+
+// getConfigPath returns the full path to the config file.
+func getConfigPath(configDir string) string {
+	return filepath.Join(configDir, "config")
+}
+
+// getBackupPath returns a backup file path with timestamp.
+func getBackupPath(configDir string) string {
+	timestamp := time.Now().Format("20060102-150405")
+	return filepath.Join(configDir, fmt.Sprintf("config.backup.%s", timestamp))
+}
+
+// validateCrossProviderConfig validates configuration across all providers to detect conflicts.
+// Returns an error if environment variable collisions are detected.
+func validateCrossProviderConfig(cfg *config.Config) error {
+	// Build a map of env var names to their values and which providers set them
+	type envVarSource struct {
+		provider string
+		value    string
+	}
+	envVarMap := make(map[string][]envVarSource)
+
+	for providerName, provider := range cfg.Providers {
+		for _, envVar := range provider.EnvVars {
+			// Parse env var to get key and value
+			parts := strings.SplitN(envVar, "=", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+
+			envVarMap[key] = append(envVarMap[key], envVarSource{
+				provider: providerName,
+				value:    value,
+			})
+		}
+	}
+
+	// Check for collisions - env vars set by multiple providers with different values
+	for key, sources := range envVarMap {
+		if len(sources) > 1 {
+			// Check if all sources have the same value
+			firstValue := sources[0].value
+			allSame := true
+			for _, s := range sources {
+				if s.value != firstValue {
+					allSame = false
+					break
+				}
+			}
+			if !allSame {
+				return fmt.Errorf("environment variable collision: '%s' is set to different values by providers: %v",
+					key, sources)
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateProviderModel validates a model name against provider capabilities.
+// For built-in providers with default models, this ensures the model is reasonable.
+// Returns an error if the model name is invalid.
+func validateProviderModel(providerName, modelName string) error {
+	if modelName == "" {
+		return nil // Empty model is allowed (will use provider default)
+	}
+
+	// Check if this is a built-in provider
+	if def, ok := providers.GetBuiltInProvider(providerName); ok {
+		// If provider has a default model, do basic validation
+		if def.Model != "" {
+			// Check model name length (most LLM model names are reasonable length)
+			if len(modelName) > 100 {
+				return fmt.Errorf("model name '%s' for provider '%s' is too long (max 100 characters)", modelName, providerName)
+			}
+			// Check for valid characters (alphanumeric, hyphens, underscores, dots)
+			for _, r := range modelName {
+				if !isValidModelRune(r) {
+					return fmt.Errorf("model name '%s' for provider '%s' contains invalid characters", modelName, providerName)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// isValidModelRune returns true if the rune is valid in a model name.
+func isValidModelRune(r rune) bool {
+	return (r >= 'a' && r <= 'z') ||
+		(r >= 'A' && r <= 'Z') ||
+		(r >= '0' && r <= '9') ||
+		r == '-' || r == '_' || r == '.'
 }

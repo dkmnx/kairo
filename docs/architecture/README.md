@@ -88,7 +88,7 @@ sequenceDiagram
 
 ## Directory Structure
 
-```
+```text
 kairo/
 ├── cmd/                 # CLI commands (Cobra)
 │   ├── root.go          # Root command
@@ -227,14 +227,14 @@ providers:
 
 ## Provider Registry
 
-| Provider | Base URL | Model | API Key Required |
-|----------|----------|-------|------------------|
-| anthropic | - | - | No |
-| zai | api.z.ai/api/anthropic | glm-4.7 | Yes |
-| minimax | api.minimax.io/anthropic | Minimax-M2.1 | Yes |
-| kimi | api.kimi.com/coding | kimi-for-coding | Yes |
-| deepseek | api.deepseek.com/anthropic | deepseek-chat | Yes |
-| custom | user-defined | user-defined | Yes |
+| Provider   | Base URL                   | Model           | API Key Required   |
+| ---------- | -------------------------- | --------------- | ------------------ |
+| anthropic  | -                          | -               | No                 |
+| zai        | api.z.ai/api/anthropic     | glm-4.7         | Yes                |
+| minimax    | api.minimax.io/anthropic   | Minimax-M2.1    | Yes                |
+| kimi       | api.kimi.com/coding        | kimi-for-coding | Yes                |
+| deepseek   | api.deepseek.com/anthropic | deepseek-chat   | Yes                |
+| custom     | user-defined               | user-defined    | Yes                |
 
 ## Error Handling
 
@@ -266,18 +266,18 @@ flowchart TB
 
 ### Runtime Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `filippo.io/age` | X25519 encryption |
-| `github.com/spf13/cobra` | CLI framework |
-| `gopkg.in/yaml.v3` | YAML parsing |
+| Package                  | Purpose           |
+| ------------------------ | ----------------- |
+| `filippo.io/age`         | X25519 encryption |
+| `github.com/spf13/cobra` | CLI framework     |
+| `gopkg.in/yaml.v3`       | YAML parsing      |
 
 ### Development Dependencies
 
-| Package | Purpose |
-|---------|---------|
+| Package                         | Purpose            |
+| ------------------------------- | ------------------ |
 | `github.com/Masterminds/semver` | Version comparison |
-| `github.com/stretchr/testify` | Testing assertions |
+| `github.com/stretchr/testify`   | Testing assertions |
 
 ## Design Principles
 
@@ -308,3 +308,82 @@ flowchart TB
 - Configurable via environment
 - Exportable audit logs
 - Modular architecture
+
+## Cross-Platform Support
+
+```mermaid
+flowchart TB
+    subgraph Platforms
+        Linux[Linux]
+        macOS[macOS]
+        Windows[Windows]
+    end
+
+    subgraph Config Directories
+        Linux["~/.config/kairo/"]
+        macOS["~/Library/Application Support/kairo/"]
+        Windows["%APPDATA%/kairo/"]
+    end
+
+    subgraph Install Methods
+        Shell["install.sh (curl | sh)"]
+        PS["install.ps1 (PowerShell)"]
+    end
+
+    subgraph Token Passing
+        Unix["Shell wrapper script"]
+        Win["Batch script + cmd /c"]
+    end
+
+    Linux --> LinuxConfig
+    macOS --> macOSConfig
+    Windows --> WinConfig
+
+    Linux --> Shell
+    macOS --> Shell
+    Windows --> PS
+
+    Shell --> UnixWrapper
+    PS --> WinWrapper
+```
+
+### Platform-Specific Implementations
+
+| Feature          | Linux/macOS                 | Windows                    |
+| ---------------- | --------------------------- | -------------------------- |
+| Config Directory | `~/.config/kairo/`          | `%APPDATA%\kairo\`         |
+| Install Script   | `install.sh` (curl \| sh)   | `install.ps1` (PowerShell) |
+| Token Passing    | Shell wrapper (`#!/bin/sh`) | Batch script (`.bat`)      |
+| Shell Completion | bash, zsh, fish             | PowerShell                 |
+
+### Key Cross-Platform Code
+
+```go
+// Cross-platform config directory (pkg/env/env.go)
+if runtime.GOOS == "windows" {
+    return filepath.Join(home, "AppData", "Roaming", "kairo")
+}
+return filepath.Join(home, ".config", "kairo")
+
+// Cross-platform token passing (cmd/switch.go)
+if isWindows {
+    // Generate .bat file with batch syntax
+    scriptContent = "@echo off\r\n"
+    // ...
+} else {
+    // Generate shell script with sh syntax
+    scriptContent = "#!/bin/sh\n"
+    // ...
+}
+```
+
+### Testing on Windows
+
+```go
+// Skip Unix permission tests on Windows
+if runtime.GOOS == "windows" {
+    t.Skip("Windows does not support Unix-style permissions")
+}
+```
+
+See also: [pkg/env](../pkg/README.md), [cmd/switch.go](../../cmd/switch.go)

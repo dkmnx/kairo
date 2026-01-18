@@ -40,7 +40,6 @@ tasks:
       - echo "Running tests with coverage..."
       - mkdir -p {{.DIST_DIR}}
       - go test -coverprofile={{.DIST_DIR}}/coverage.out ./...
-      - echo "Coverage profile {{.DIST_DIR}}/coverage.out"
 
   lint:
     desc: Run linters
@@ -63,24 +62,24 @@ tasks:
       - rm -rf {{.DIST_DIR}}
 
   install:
-    desc: Install binary to {{.LOCAL_BIN}}
+    desc: Install binary
     cmds:
-      - echo "Installing {{.BINARY_NAME}} to {{.LOCAL_BIN}}..."
+      - echo "Installing to {{.LOCAL_BIN}}..."
       - mkdir -p {{.LOCAL_BIN}}
-      - cp {{.DIST_DIR}}/{{.BINARY_NAME}} {{.LOCAL_BIN}}/{{.BINARY_NAME}}
+      - cp {{.DIST_DIR}}/{{.BINARY_NAME}}{{if eq OS "windows"}}.exe{{end}} {{.LOCAL_BIN}}/{{.BINARY_NAME}}{{if eq OS "windows"}}.exe{{end}}
 
   uninstall:
-    desc: Remove binary from {{.LOCAL_BIN}}
+    desc: Remove binary
     cmds:
-      - echo "Removing {{.BINARY_NAME}} from {{.LOCAL_BIN}}..."
-      - rm -f {{.LOCAL_BIN}}/{{.BINARY_NAME}}
+      - echo "Removing from {{.LOCAL_BIN}}..."
+      - rm -f {{.LOCAL_BIN}}/{{.BINARY_NAME}}{{if eq OS "windows"}}.exe{{end}}
 
   run:
     desc: Build and run
     deps: [default]
     cmds:
       - echo "Running {{.BINARY_NAME}}..."
-      - "{{.DIST_DIR}}/{{.BINARY_NAME}}"
+      - '{{.DIST_DIR}}/{{.BINARY_NAME}}{{if eq OS "windows"}}.exe{{end}}'
 
   deps:
     desc: Download and tidy dependencies

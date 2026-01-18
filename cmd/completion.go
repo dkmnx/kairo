@@ -8,6 +8,60 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// powerShellCompletionScript is the Register-ArgumentCompleter script for PowerShell
+const powerShellCompletionScript = `# PowerShell completion script for kairo
+# Usage: . ./kairo-completion.ps1 (or add to your PowerShell profile)
+
+# Register the completer for the native kairo command
+Register-ArgumentCompleter -Native -CommandName kairo -ScriptBlock {
+    param(
+        $wordToComplete,
+        $commandAst,
+        $cursorPosition
+    )
+
+    # Call kairo __complete to get completion results from cobra
+    $commandElements = $commandAst.CommandElements
+    $commandString = $commandElements.ToString()
+
+    # Build arguments for __complete command
+    $completerArgs = @("__complete") + $commandElements[1..($commandElements.Count - 1)]
+    $completerArgs += @($wordToComplete, $cursorPosition.ToString())
+
+    # Run kairo __complete and capture output
+    $completionOutput = & kairo @completerArgs 2>&1
+
+    # Parse JSON output from cobra's __complete command
+    try {
+        $completions = $completionOutput | ConvertFrom-Json
+
+        # Must unroll results using pipeline (ForEach-Object)
+        $completions | ForEach-Object {
+            # Create CompletionResult with description if available
+            if ($_.Description) {
+                New-Object -Type System.Management.Automation.CompletionResult -ArgumentList @(
+                    $_.CompletionText,  # completionText
+                    $_.CompletionText,  # listItemText
+                    'ParameterValue',      # resultType
+                    $_.Description         # toolTip
+                )
+            } else {
+                New-Object -Type System.Management.Automation.CompletionResult -ArgumentList @(
+                    $_.CompletionText,
+                    $_.CompletionText,
+                    'ParameterValue',
+                    $_.CompletionText
+                )
+            }
+        }
+    }
+    catch {
+        # If JSON parsing fails, return empty array
+        @()
+    }
+}
+`
+
 var (
 	completionOutput string
 	completionSave   bool
@@ -45,6 +99,12 @@ PowerShell:
 
   # To load completions for every new session:
   PS> kairo completion powershell --save
+  # Then add this to your PowerShell profile ($PROFILE):
+  #     Register-ArgumentCompleter -Native -CommandName kairo -ScriptBlock {
+  #         param($wordToComplete, $commandAst, $cursorPosition)
+  #         kairo __complete $commandAst.ToString().Split()[1..$commandAst.Count] $wordToComplete $cursorPosition
+  #     }
+  #   }
 `,
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
@@ -70,6 +130,20 @@ PowerShell:
 				cmd.Printf("Error creating directory: %v\n", err)
 				return
 			}
+
+			// For PowerShell, copy the prepared script with Register-ArgumentCompleter
+			if args[0] == "powershell" {
+				if err := os.WriteFile(defaultPath, []byte(powerShellCompletionScript), 0644); err != nil {
+					cmd.Printf("Error writing completion file: %v\n", err)
+					return
+				}
+				cmd.Printf("Completion saved to: %s\n", defaultPath)
+				cmd.Printf("\nTo load completions, add this line to your PowerShell profile:\n")
+				cmd.Printf("  . %s\n", defaultPath)
+				cmd.Printf("\nTo edit your profile, run: notepad $PROFILE\n")
+				return
+			}
+
 			f, err := os.Create(defaultPath)
 			if err != nil {
 				cmd.Printf("Error creating output file: %v\n", err)
@@ -134,9 +208,9 @@ func getDefaultCompletionPath(shell string) string {
 	case "fish":
 		return filepath.Join(home, ".config", "fish", "completions", "kairo.fish")
 	case "powershell":
-		// Use PowerShell Modules directory for auto-loading.
-		// PowerShell auto-loads .psm1 files from $env:USERPROFILE\Documents\PowerShell\Modules.
-		return filepath.Join(home, "Documents", "PowerShell", "Modules", "kairo-completion", "kairo-completion.psm1")
+		// Save to home directory as a .ps1 script
+		// User needs to source this in their PowerShell profile
+		return filepath.Join(home, "kairo-completion.ps1")
 	default:
 		return "kairo-completion.sh"
 	}
