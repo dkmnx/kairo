@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
@@ -12,12 +14,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	// resetYesFlag is used by Cobra for flag binding
+	resetYesFlag bool
+	// resetYes provides atomic access for thread safety
+	resetYes atomic.Bool
+)
+
 var resetCmd = &cobra.Command{
 	Use:   "reset <provider | all>",
 	Short: "Reset provider configuration",
 	Long:  "Remove a provider's configuration. Use 'all' to reset all providers.",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// Sync flag value to atomic variable
+		resetYes.Store(resetYesFlag)
 		target := args[0]
 
 		dir := getConfigDir()
@@ -37,6 +48,19 @@ var resetCmd = &cobra.Command{
 		}
 
 		if target == "all" {
+			if !resetYes.Load() {
+				ui.PrintWarn("This will remove ALL provider configurations and secrets.")
+				confirmed, err := ui.Confirm("Do you want to proceed?")
+				if err != nil {
+					ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+					return
+				}
+				if !confirmed {
+					ui.PrintInfo("Operation cancelled")
+					return
+				}
+			}
+
 			for name := range cfg.Providers {
 				delete(cfg.Providers, name)
 			}
@@ -89,7 +113,7 @@ var resetCmd = &cobra.Command{
 		existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
 		if err == nil {
 			secrets := config.ParseSecrets(existingSecrets)
-			delete(secrets, fmt.Sprintf("%s_API_KEY", target))
+			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(target)))
 
 			var secretsContent string
 			for key, value := range secrets {
@@ -119,5 +143,6 @@ var resetCmd = &cobra.Command{
 }
 
 func init() {
+	resetCmd.Flags().BoolVar(&resetYesFlag, "yes", false, "Skip confirmation prompt")
 	rootCmd.AddCommand(resetCmd)
 }

@@ -108,7 +108,7 @@ function Get-FileHashCompat {
 }
 
 function Test-Checksum {
-    param([string]$FilePath, [string]$ChecksumData, [string]$BinaryName)
+    param([string]$FilePath, [string]$ChecksumData, [string]$BinaryName, [string]$Arch)
 
     if (-not $ChecksumData) {
         return $true
@@ -122,7 +122,7 @@ function Test-Checksum {
     foreach ($line in $lines) {
         if ($line -match "^([a-f0-9]+)\s+($($BinaryName)_windows_\S+)") {
             $expectedHash = $matches[1].ToLower()
-            $actualHash = $hash.Hash.ToLower()
+            $actualHash = $hash.ToLower()
 
             if ($expectedHash -eq $actualHash) {
                 Write-Log "Checksum verified successfully"
@@ -171,7 +171,7 @@ function Install-Binary {
     $checksumData = Get-Checksum -Repo $Repo -Version $Version -BinaryName $BinaryName
 
     # Verify checksum
-    if (-not (Test-Checksum -FilePath $archivePath -ChecksumData $checksumData -BinaryName $BinaryName)) {
+    if (-not (Test-Checksum -FilePath $archivePath -ChecksumData $checksumData -BinaryName $BinaryName -Arch $Arch)) {
         Remove-Item -Path $archivePath -Force
         exit 1
     }

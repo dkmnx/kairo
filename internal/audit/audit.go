@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -12,6 +13,8 @@ type AuditEntry struct {
 	Event     string                 `json:"event"`
 	Provider  string                 `json:"provider,omitempty"`
 	Action    string                 `json:"action,omitempty"`
+	Status    string                 `json:"status,omitempty"`
+	Error     string                 `json:"error,omitempty"`
 	Details   map[string]interface{} `json:"details,omitempty"`
 	Changes   []Change               `json:"changes,omitempty"`
 }
@@ -24,6 +27,8 @@ type Change struct {
 
 type Logger struct {
 	path string
+	f    *os.File
+	mu   sync.Mutex
 }
 
 func NewLogger(configDir string) (*Logger, error) {
@@ -32,8 +37,17 @@ func NewLogger(configDir string) (*Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Close()
-	return &Logger{path: logPath}, nil
+	return &Logger{path: logPath, f: f}, nil
+}
+
+// Close closes the log file. Must be called when the logger is no longer needed.
+func (l *Logger) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.f != nil {
+		return l.f.Close()
+	}
+	return nil
 }
 
 func (l *Logger) LogSwitch(provider string) error {
@@ -41,6 +55,7 @@ func (l *Logger) LogSwitch(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "switch",
 		Provider:  provider,
+		Status:    "success",
 	}
 	return l.writeEntry(entry)
 }
@@ -51,6 +66,7 @@ func (l *Logger) LogConfig(provider, action string, changes []Change) error {
 		Event:     "config",
 		Provider:  provider,
 		Action:    action,
+		Status:    "success",
 		Changes:   changes,
 	}
 	return l.writeEntry(entry)
@@ -61,6 +77,7 @@ func (l *Logger) LogRotate(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "rotate",
 		Provider:  provider,
+		Status:    "success",
 	}
 	return l.writeEntry(entry)
 }
@@ -70,6 +87,7 @@ func (l *Logger) LogDefault(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "default",
 		Provider:  provider,
+		Status:    "success",
 	}
 	return l.writeEntry(entry)
 }
@@ -79,6 +97,7 @@ func (l *Logger) LogReset(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "reset",
 		Provider:  provider,
+		Status:    "success",
 	}
 	return l.writeEntry(entry)
 }
@@ -88,26 +107,69 @@ func (l *Logger) LogSetup(provider string) error {
 		Timestamp: time.Now().UTC(),
 		Event:     "setup",
 		Provider:  provider,
+		Status:    "success",
 	}
 	return l.writeEntry(entry)
 }
 
+// LogSuccess logs a successful operation with optional details
+func (l *Logger) LogSuccess(event, provider string, details map[string]interface{}) error {
+	entry := AuditEntry{
+		Timestamp: time.Now().UTC(),
+		Event:     event,
+		Provider:  provider,
+		Status:    "success",
+		Details:   details,
+	}
+	return l.writeEntry(entry)
+}
+
+// LogFailure logs a failed operation with error details
+func (l *Logger) LogFailure(event, provider, errMsg string, details map[string]interface{}) error {
+	entry := AuditEntry{
+		Timestamp: time.Now().UTC(),
+		Event:     event,
+		Provider:  provider,
+		Status:    "failure",
+		Error:     errMsg,
+		Details:   details,
+	}
+	return l.writeEntry(entry)
+}
+
+// writeEntry writes an audit entry to the log file.
+// The entry is serialized to JSON, written to the file with a newline,
+// and then synced to disk to ensure durability even in crash scenarios.
 func (l *Logger) writeEntry(entry AuditEntry) error {
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(l.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// Reopen file if it was closed
+	if l.f == nil {
+		f, err := os.OpenFile(l.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		if err != nil {
+			return err
+		}
+		l.f = f
+	}
+
+	_, err = l.f.Write(data)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = f.Write(data)
+	_, err = l.f.WriteString("\n")
 	if err != nil {
 		return err
 	}
-	_, err = f.WriteString("\n")
-	return err
+	// Sync to ensure data is written to disk
+	if err := l.f.Sync(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (l *Logger) LoadEntries() ([]AuditEntry, error) {

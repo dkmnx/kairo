@@ -1,10 +1,13 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -50,8 +53,8 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 	if err == nil {
 		t.Error("LoadConfig() should error when file not found")
 	}
-	if err != ErrConfigNotFound {
-		t.Errorf("LoadConfig() error = %v, want %v", err, ErrConfigNotFound)
+	if !errors.Is(err, kairoerrors.ErrConfigNotFound) {
+		t.Errorf("LoadConfig() error = %v, want %v", err, kairoerrors.ErrConfigNotFound)
 	}
 }
 
@@ -67,6 +70,29 @@ func TestLoadConfigInvalidYAML(t *testing.T) {
 	_, err := LoadConfig(tmpDir)
 	if err == nil {
 		t.Error("LoadConfig() should error on invalid YAML")
+	}
+}
+
+func TestLoadConfigUnknownFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config")
+
+	unknownFieldsYAML := `default_provider: zai
+unknown_field: should_be_rejected
+providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai/api/anthropic
+    model: glm-4.7
+    unknown_provider_field: should_also_be_rejected
+`
+	if err := os.WriteFile(configPath, []byte(unknownFieldsYAML), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadConfig(tmpDir)
+	if err == nil {
+		t.Error("LoadConfig() should error on unknown fields in YAML (strict mode)")
 	}
 }
 
@@ -299,14 +325,46 @@ func TestParseSecrets(t *testing.T) {
 
 func TestParseSecretsEmptyKey(t *testing.T) {
 	result := ParseSecrets("=value")
-	if value, ok := result[""]; !ok || value != "value" {
-		t.Errorf("ParseSecrets()[empty key] = %q, want %q", value, "value")
+	if _, ok := result[""]; ok {
+		t.Errorf("ParseSecrets() should skip entries with empty keys, got entry for empty key")
+	}
+	if len(result) != 0 {
+		t.Errorf("ParseSecrets() length = %d, want 0 (empty keys should be skipped)", len(result))
 	}
 }
 
 func TestParseSecretsEmptyValue(t *testing.T) {
 	result := ParseSecrets("KEY=")
-	if value, ok := result["KEY"]; !ok || value != "" {
-		t.Errorf("ParseSecrets()[%q] = %q, want empty string", "KEY", value)
+	// Empty values should be skipped
+	if _, ok := result["KEY"]; ok {
+		t.Errorf("ParseSecrets() should skip entries with empty values, got entry for KEY")
+	}
+	if len(result) != 0 {
+		t.Errorf("ParseSecrets() length = %d, want 0 (empty values should be skipped)", len(result))
+	}
+}
+
+func TestParseSecretsNewlines(t *testing.T) {
+	result := ParseSecrets("KEY1=value1\nKEY2=value\nwith\nnewline\nKEY3=value3")
+
+	// Valid entries should be parsed correctly
+	if result["KEY1"] != "value1" {
+		t.Errorf("ParseSecrets()[KEY1] = %q, want %q", result["KEY1"], "value1")
+	}
+	if result["KEY3"] != "value3" {
+		t.Errorf("ParseSecrets()[KEY3] = %q, want %q", result["KEY3"], "value3")
+	}
+
+	// KEY2 value gets split by newline during parsing, so "value" is stored
+	if result["KEY2"] != "value" {
+		t.Errorf("ParseSecrets()[KEY2] = %q, want %q", result["KEY2"], "value")
+	}
+
+	// Lines without = are skipped
+	if _, exists := result["with"]; exists {
+		t.Error("ParseSecrets() should skip line 'with' (no =)")
+	}
+	if _, exists := result["newline"]; exists {
+		t.Error("ParseSecrets() should skip line 'newline' (no =)")
 	}
 }

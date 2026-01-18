@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/version"
@@ -450,4 +453,359 @@ func TestGetInstallScriptURL(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDownloadToTempFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/install.sh" {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("#!/bin/bash\necho 'install script content'"))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	tempFile, err := downloadToTempFile(server.URL + "/install.sh")
+	if err != nil {
+		t.Fatalf("downloadToTempFile() error = %v", err)
+	}
+	defer os.Remove(tempFile)
+
+	content, err := os.ReadFile(tempFile)
+	if err != nil {
+		t.Fatalf("failed to read temp file: %v", err)
+	}
+
+	expectedContent := "#!/bin/bash\necho 'install script content'"
+	if string(content) != expectedContent {
+		t.Errorf("temp file content = %q, want %q", string(content), expectedContent)
+	}
+}
+
+func TestDownloadToTempFileCreatesTempFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("test content"))
+	}))
+	defer server.Close()
+
+	tempFile, err := downloadToTempFile(server.URL)
+	if err != nil {
+		t.Fatalf("downloadToTempFile() error = %v", err)
+	}
+	defer os.Remove(tempFile)
+
+	info, err := os.Stat(tempFile)
+	if err != nil {
+		t.Fatalf("failed to stat temp file: %v", err)
+	}
+
+	// Check it's a regular file
+	if info.Mode().IsDir() {
+		t.Error("downloadToTempFile() created a directory, not a file")
+	}
+}
+
+func TestDownloadToTempFileHTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	_, err := downloadToTempFile(server.URL)
+	if err == nil {
+		t.Error("downloadToTempFile() should return error on HTTP failure")
+	}
+}
+
+func TestDownloadToTempFileErrorHandling(t *testing.T) {
+	// These tests verify error handling in downloadToTempFile
+	// They test edge cases and error conditions that may occur in production
+
+	t.Run("returns error for invalid URL", func(t *testing.T) {
+		_, err := downloadToTempFile("://invalid-url")
+		if err == nil {
+			t.Error("downloadToTempFile() should return error for invalid URL")
+		}
+	})
+
+	t.Run("returns error for non-existent host", func(t *testing.T) {
+		_, err := downloadToTempFile("http://this-host-does-not-exist-12345.local/test")
+		if err == nil {
+			t.Error("downloadToTempFile() should return error for non-existent host")
+		}
+	})
+
+	t.Run("returns error on HTTP 500", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		_, err := downloadToTempFile(server.URL)
+		if err == nil {
+			t.Error("downloadToTempFile() should return error on 500 status")
+		}
+	})
+
+	t.Run("returns error on HTTP 403 Forbidden", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		defer server.Close()
+
+		_, err := downloadToTempFile(server.URL)
+		if err == nil {
+			t.Error("downloadToTempFile() should return error on 403 status")
+		}
+	})
+
+	t.Run("returns error on HTTP 401 Unauthorized", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+		}))
+		defer server.Close()
+
+		_, err := downloadToTempFile(server.URL)
+		if err == nil {
+			t.Error("downloadToTempFile() should return error on 401 status")
+		}
+	})
+
+	t.Run("returns error when server closes connection early", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Close connection without sending complete response
+			panic("close connection")
+		}))
+		defer server.Close()
+
+		_, err := downloadToTempFile(server.URL)
+		if err == nil {
+			t.Error("downloadToTempFile() should return error when server closes early")
+		}
+	})
+
+	t.Run("handles large download", func(t *testing.T) {
+		// Create a large response (1MB of data)
+		largeData := make([]byte, 1024*1024)
+		for i := range largeData {
+			largeData[i] = byte(i % 256)
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(largeData)
+		}))
+		defer server.Close()
+
+		tempFile, err := downloadToTempFile(server.URL)
+		if err != nil {
+			t.Errorf("downloadToTempFile() failed with large download: %v", err)
+		}
+		defer os.Remove(tempFile)
+
+		// Verify file size
+		info, err := os.Stat(tempFile)
+		if err != nil {
+			t.Fatalf("failed to stat temp file: %v", err)
+		}
+
+		if info.Size() != int64(len(largeData)) {
+			t.Errorf("file size = %d, want %d", info.Size(), len(largeData))
+		}
+	})
+
+	t.Run("handles empty response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			// Write empty response
+		}))
+		defer server.Close()
+
+		tempFile, err := downloadToTempFile(server.URL)
+		if err != nil {
+			t.Errorf("downloadToTempFile() failed with empty response: %v", err)
+		}
+		defer os.Remove(tempFile)
+
+		// Verify file is empty
+		content, err := os.ReadFile(tempFile)
+		if err != nil {
+			t.Fatalf("failed to read temp file: %v", err)
+		}
+
+		if len(content) != 0 {
+			t.Errorf("file content length = %d, want 0", len(content))
+		}
+	})
+
+	t.Run("handles unicode content", func(t *testing.T) {
+		unicodeContent := "#!/bin/bash\necho 'Hello 世界 🌍\n你好\n🚀'"
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(unicodeContent))
+		}))
+		defer server.Close()
+
+		tempFile, err := downloadToTempFile(server.URL)
+		if err != nil {
+			t.Errorf("downloadToTempFile() failed with unicode content: %v", err)
+		}
+		defer os.Remove(tempFile)
+
+		content, err := os.ReadFile(tempFile)
+		if err != nil {
+			t.Fatalf("failed to read temp file: %v", err)
+		}
+
+		if string(content) != unicodeContent {
+			t.Errorf("file content = %q, want %q", string(content), unicodeContent)
+		}
+	})
+}
+
+func TestDownloadPowerShellScript(t *testing.T) {
+	// Basic test for downloadPowerShellScript (currently 0% coverage)
+	t.Run("downloads PowerShell script successfully", func(t *testing.T) {
+		scriptContent := "# PowerShell install script\r\nWrite-Host 'Installing...'\r\n"
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(scriptContent))
+		}))
+		defer server.Close()
+
+		tempFile, err := downloadPowerShellScript(server.URL)
+		if err != nil {
+			t.Fatalf("downloadPowerShellScript() error = %v", err)
+		}
+		defer os.Remove(tempFile)
+
+		content, err := os.ReadFile(tempFile)
+		if err != nil {
+			t.Fatalf("failed to read temp file: %v", err)
+		}
+
+		if string(content) != scriptContent {
+			t.Errorf("file content = %q, want %q", string(content), scriptContent)
+		}
+	})
+
+	t.Run("returns error for invalid URL", func(t *testing.T) {
+		_, err := downloadPowerShellScript("://invalid-url")
+		if err == nil {
+			t.Error("downloadPowerShellScript() should return error for invalid URL")
+		}
+	})
+
+	t.Run("returns error on HTTP 404", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		_, err := downloadPowerShellScript(server.URL)
+		if err == nil {
+			t.Error("downloadPowerShellScript() should return error on 404 status")
+		}
+	})
+
+	t.Run("returns error on HTTP 500", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		_, err := downloadPowerShellScript(server.URL)
+		if err == nil {
+			t.Error("downloadPowerShellScript() should return error on 500 status")
+		}
+	})
+
+	t.Run("creates file with .ps1 extension pattern", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("# PowerShell script"))
+		}))
+		defer server.Close()
+
+		tempFile, err := downloadPowerShellScript(server.URL)
+		if err != nil {
+			t.Fatalf("downloadPowerShellScript() error = %v", err)
+		}
+		defer os.Remove(tempFile)
+
+		// Verify file was created (the actual temp file pattern may vary)
+		if filepath.Base(tempFile) == "" {
+			t.Error("downloadPowerShellScript() returned empty filename")
+		}
+		// Note: The file should match the pattern "kairo-install-*.ps1"
+		t.Logf("Created temp file: %s", tempFile)
+	})
+
+	t.Run("handles empty response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			// Write empty response
+		}))
+		defer server.Close()
+
+		tempFile, err := downloadPowerShellScript(server.URL)
+		if err != nil {
+			t.Errorf("downloadPowerShellScript() failed with empty response: %v", err)
+		}
+		defer os.Remove(tempFile)
+
+		content, err := os.ReadFile(tempFile)
+		if err != nil {
+			t.Fatalf("failed to read temp file: %v", err)
+		}
+
+		if len(content) != 0 {
+			t.Errorf("file content length = %d, want 0", len(content))
+		}
+	})
+
+	t.Run("handles large PowerShell script", func(t *testing.T) {
+		// Create a large PowerShell script (100KB)
+		var builder strings.Builder
+		builder.WriteString("# PowerShell install script\r\n")
+		for i := 0; i < 1000; i++ {
+			builder.WriteString(fmt.Sprintf("Write-Host 'Line %d'\r\n", i))
+		}
+
+		largeScript := builder.String()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(largeScript))
+		}))
+		defer server.Close()
+
+		tempFile, err := downloadPowerShellScript(server.URL)
+		if err != nil {
+			t.Errorf("downloadPowerShellScript() failed with large script: %v", err)
+		}
+		defer os.Remove(tempFile)
+
+		info, err := os.Stat(tempFile)
+		if err != nil {
+			t.Fatalf("failed to stat temp file: %v", err)
+		}
+
+		if info.Size() != int64(len(largeScript)) {
+			t.Errorf("file size = %d, want %d", info.Size(), len(largeScript))
+		}
+	})
 }

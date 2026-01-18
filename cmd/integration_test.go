@@ -242,3 +242,124 @@ func containsSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+// TestE2ESetupToSwitchWorkflow tests the complete end-to-end workflow
+// from initial setup through provider switching.
+func TestE2ESetupToSwitchWorkflow(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Set up mock functions for testing
+	originalConfigDir := getConfigDir()
+	originalLookPath := lookPath
+	originalExecCommand := execCommand
+	defer func() {
+		setConfigDir(originalConfigDir)
+		lookPath = originalLookPath
+		execCommand = originalExecCommand
+	}()
+
+	setConfigDir(tmpDir)
+
+	// Mock lookPath to return a fake claude path
+	lookPath = func(file string) (string, error) {
+		if file == "claude" {
+			return "/usr/bin/claude", nil
+		}
+		return originalLookPath(file)
+	}
+
+	// Create initial config with anthropic provider (no API key needed)
+	cfg := &config.Config{
+		DefaultProvider: "anthropic",
+		Providers: map[string]config.Provider{
+			"anthropic": {
+				Name:    "Native Anthropic",
+				BaseURL: "",
+				Model:   "",
+			},
+		},
+	}
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create key file
+	keyPath := filepath.Join(tmpDir, "age.key")
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify initial state: anthropic is default provider
+	loadedCfg, err := config.LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if loadedCfg.DefaultProvider != "anthropic" {
+		t.Errorf("Default provider = %q, want 'anthropic'", loadedCfg.DefaultProvider)
+	}
+
+	// Test: Add zai provider with API key via direct config manipulation
+	// (In real workflow, user would run 'kairo config zai')
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+	secretsContent := "ZAI_API_KEY=sk-zai-test-key-12345\n"
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+		t.Fatal(err)
+	}
+
+	def, _ := providers.GetBuiltInProvider("zai")
+	cfg.Providers["zai"] = config.Provider{
+		Name:    def.Name,
+		BaseURL: def.BaseURL,
+		Model:   def.Model,
+	}
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify zai provider and secrets were saved
+	loadedCfg, err = config.LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() error after adding zai = %v", err)
+	}
+
+	if _, exists := loadedCfg.Providers["zai"]; !exists {
+		t.Error("zai provider should exist in config")
+	}
+
+	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() error = %v", err)
+	}
+
+	if !contains(decrypted, "ZAI_API_KEY") {
+		t.Error("secrets should contain ZAI_API_KEY")
+	}
+
+	if !contains(decrypted, "sk-zai-test-key-12345") {
+		t.Error("secrets should contain the API key")
+	}
+
+	// Test: Verify switch workflow can access both providers
+	// (In real workflow, running 'kairo zai' would switch to zai provider)
+	for _, provider := range []string{"anthropic", "zai"} {
+		if _, exists := loadedCfg.Providers[provider]; !exists {
+			t.Errorf("Provider %q should be configured", provider)
+		}
+	}
+
+	// Test: Default provider switching
+	cfg.DefaultProvider = "zai"
+	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	loadedCfg, err = config.LoadConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() error after changing default = %v", err)
+	}
+
+	if loadedCfg.DefaultProvider != "zai" {
+		t.Errorf("Default provider = %q, want 'zai'", loadedCfg.DefaultProvider)
+	}
+}

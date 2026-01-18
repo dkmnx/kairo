@@ -314,7 +314,10 @@ func TestPrompt(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := Prompt("Enter value")
+		result, err := Prompt("Enter value")
+		if err != nil {
+			t.Fatalf("Prompt() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -354,7 +357,10 @@ func TestPrompt(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := Prompt("Enter name")
+		result, err := Prompt("Enter name")
+		if err != nil {
+			t.Fatalf("Prompt() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -386,7 +392,10 @@ func TestPrompt(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := Prompt("Enter text")
+		result, err := Prompt("Enter text")
+		if err != nil {
+			t.Fatalf("Prompt() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -421,7 +430,10 @@ func TestPromptWithDefault(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := PromptWithDefault("Enter API key", "default-key-123")
+		result, err := PromptWithDefault("Enter API key", "default-key-123")
+		if err != nil {
+			t.Fatalf("PromptWithDefault() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -461,7 +473,10 @@ func TestPromptWithDefault(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := PromptWithDefault("Enter URL", "https://api.example.com")
+		result, err := PromptWithDefault("Enter URL", "https://api.example.com")
+		if err != nil {
+			t.Fatalf("PromptWithDefault() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -493,7 +508,10 @@ func TestPromptWithDefault(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		result := PromptWithDefault("Enter value", "")
+		result, err := PromptWithDefault("Enter value", "")
+		if err != nil {
+			t.Fatalf("PromptWithDefault() error = %v", err)
+		}
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -552,7 +570,7 @@ func TestPrintBanner(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("2.0.0", "my-custom-provider")
+		PrintBanner("2.0.0", "mycustomprovider")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -564,7 +582,7 @@ func TestPrintBanner(t *testing.T) {
 			t.Error("PrintBanner should display custom version")
 		}
 
-		if !strings.Contains(output, "my-custom-provider") {
+		if !strings.Contains(output, "mycustomprovider") {
 			t.Error("PrintBanner should display custom provider name")
 		}
 	})
@@ -831,6 +849,198 @@ func TestProviderRequirements(t *testing.T) {
 		requiresKey := providers.RequiresAPIKey("custom")
 		if !requiresKey {
 			t.Error("custom should require API key")
+		}
+	})
+}
+
+func TestConfirm(t *testing.T) {
+	t.Run("returns true for 'yes' input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("yes\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		buf := new(bytes.Buffer)
+		originalStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		result, err := Confirm("Are you sure?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
+
+		w.Close()
+		_, _ = buf.ReadFrom(r)
+		os.Stdout = originalStdout
+
+		if !result {
+			t.Error("Confirm() should return true for 'yes' input")
+		}
+
+		output := buf.String()
+		if !strings.Contains(output, "Are you sure?") {
+			t.Error("Confirm should display prompt message")
+		}
+	})
+
+	t.Run("returns true for 'y' input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("y\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result, err := Confirm("Proceed?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
+		if !result {
+			t.Error("Confirm() should return true for 'y' input")
+		}
+	})
+
+	t.Run("returns true for 'YES' (uppercase)", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("YES\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result, err := Confirm("Continue?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
+		if !result {
+			t.Error("Confirm() should return true for 'YES' (case-insensitive)")
+		}
+	})
+
+	t.Run("returns false for 'no' input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("no\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result, err := Confirm("Delete all?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
+		if result {
+			t.Error("Confirm() should return false for 'no' input")
+		}
+	})
+
+	t.Run("returns false for 'n' input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("n\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result, err := Confirm("Destroy data?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
+		if result {
+			t.Error("Confirm() should return false for 'n' input")
+		}
+	})
+
+	t.Run("returns false for arbitrary input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("maybe\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result, err := Confirm("Confirm action?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
+		if result {
+			t.Error("Confirm() should return false for non-yes/no input")
+		}
+	})
+
+	t.Run("returns false for empty input", func(t *testing.T) {
+		pr, pw, _ := os.Pipe()
+		defer pr.Close()
+		defer pw.Close()
+
+		go func() {
+			_, _ = pw.WriteString("\n")
+			pw.Close()
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		originalStdin := os.Stdin
+		os.Stdin = pr
+		defer func() { os.Stdin = originalStdin }()
+
+		result, err := Confirm("Confirm?")
+		if err != nil {
+			t.Fatalf("Confirm() error = %v", err)
+		}
+		if result {
+			t.Error("Confirm() should return false for empty input")
 		}
 	})
 }
