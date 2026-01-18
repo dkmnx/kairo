@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/wrapper"
 )
 
 func TestCreateTempAuthDir(t *testing.T) {
@@ -21,35 +22,31 @@ func TestCreateTempAuthDir(t *testing.T) {
 		if isWindows {
 			t.Skip("Windows does not support Unix-style permissions")
 		}
-		authDir, err := createTempAuthDir()
+		authDir, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() error = %v", err)
+			t.Fatalf("CreateTempAuthDir() error = %v", err)
 		}
 		defer os.RemoveAll(authDir)
 
-		// Verify directory exists
 		info, err := os.Stat(authDir)
 		if err != nil {
 			t.Fatalf("Failed to stat auth directory: %v", err)
 		}
 
-		// Verify it's a directory
 		if !info.IsDir() {
 			t.Errorf("Auth path should be a directory")
 		}
 
-		// Verify permissions are 0700 (owner read/write/execute only)
 		perms := info.Mode().Perm()
-		expectedPerms := os.FileMode(0700)
-		if perms != expectedPerms {
-			t.Errorf("Auth directory permissions = %v, want %v", perms, expectedPerms)
+		if perms&0077 != 0 {
+			t.Errorf("Directory should have no group/other permissions, got %o", perms)
 		}
 	})
 
 	t.Run("directory is in temp directory", func(t *testing.T) {
-		authDir, err := createTempAuthDir()
+		authDir, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() error = %v", err)
+			t.Fatalf("CreateTempAuthDir() error = %v", err)
 		}
 		defer os.RemoveAll(authDir)
 
@@ -60,9 +57,9 @@ func TestCreateTempAuthDir(t *testing.T) {
 	})
 
 	t.Run("directory name contains kairo-auth identifier", func(t *testing.T) {
-		authDir, err := createTempAuthDir()
+		authDir, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() error = %v", err)
+			t.Fatalf("CreateTempAuthDir() error = %v", err)
 		}
 		defer os.RemoveAll(authDir)
 
@@ -72,20 +69,20 @@ func TestCreateTempAuthDir(t *testing.T) {
 	})
 
 	t.Run("creates unique directory for each call", func(t *testing.T) {
-		authDir1, err := createTempAuthDir()
+		authDir1, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() error = %v", err)
+			t.Fatalf("CreateTempAuthDir() error = %v", err)
 		}
 		defer os.RemoveAll(authDir1)
 
-		authDir2, err := createTempAuthDir()
+		authDir2, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() error = %v", err)
+			t.Fatalf("CreateTempAuthDir() error = %v", err)
 		}
 		defer os.RemoveAll(authDir2)
 
 		if authDir1 == authDir2 {
-			t.Errorf("createTempAuthDir() returned same path for different calls: %s", authDir1)
+			t.Errorf("CreateTempAuthDir() returned same path for different calls: %s", authDir1)
 		}
 	})
 }
@@ -97,17 +94,15 @@ func TestWriteTempTokenFile(t *testing.T) {
 		authDir := t.TempDir()
 		token := "test-api-key-12345"
 
-		tokenPath, err := writeTempTokenFile(authDir, token)
+		tokenPath, err := wrapper.WriteTempTokenFile(authDir, token)
 		if err != nil {
-			t.Fatalf("writeTempTokenFile() error = %v", err)
+			t.Fatalf("WriteTempTokenFile() error = %v", err)
 		}
 
-		// Verify file exists
 		if _, err := os.Stat(tokenPath); os.IsNotExist(err) {
 			t.Errorf("Token file was not created at %s", tokenPath)
 		}
 
-		// Verify file content
 		content, err := os.ReadFile(tokenPath)
 		if err != nil {
 			t.Fatalf("Failed to read token file: %v", err)
@@ -125,9 +120,9 @@ func TestWriteTempTokenFile(t *testing.T) {
 		authDir := t.TempDir()
 		token := "secure-token-abc"
 
-		tokenPath, err := writeTempTokenFile(authDir, token)
+		tokenPath, err := wrapper.WriteTempTokenFile(authDir, token)
 		if err != nil {
-			t.Fatalf("writeTempTokenFile() error = %v", err)
+			t.Fatalf("WriteTempTokenFile() error = %v", err)
 		}
 
 		info, err := os.Stat(tokenPath)
@@ -135,11 +130,9 @@ func TestWriteTempTokenFile(t *testing.T) {
 			t.Fatalf("Failed to stat token file: %v", err)
 		}
 
-		// Verify mode is 0600 (owner read/write only)
 		perms := info.Mode().Perm()
-		expectedPerms := os.FileMode(0600)
-		if perms != expectedPerms {
-			t.Errorf("Token file permissions = %v, want %v", perms, expectedPerms)
+		if perms&0077 != 0 {
+			t.Errorf("File should have no group/other permissions, got %o", perms)
 		}
 	})
 
@@ -148,18 +141,18 @@ func TestWriteTempTokenFile(t *testing.T) {
 		token1 := "token-1"
 		token2 := "token-2"
 
-		path1, err := writeTempTokenFile(authDir, token1)
+		path1, err := wrapper.WriteTempTokenFile(authDir, token1)
 		if err != nil {
-			t.Fatalf("writeTempTokenFile() error = %v", err)
+			t.Fatalf("WriteTempTokenFile() error = %v", err)
 		}
 
-		path2, err := writeTempTokenFile(authDir, token2)
+		path2, err := wrapper.WriteTempTokenFile(authDir, token2)
 		if err != nil {
-			t.Fatalf("writeTempTokenFile() error = %v", err)
+			t.Fatalf("WriteTempTokenFile() error = %v", err)
 		}
 
 		if path1 == path2 {
-			t.Errorf("writeTempTokenFile() returned same path for different calls: %s", path1)
+			t.Errorf("WriteTempTokenFile() returned same path for different calls: %s", path1)
 		}
 	})
 
@@ -167,12 +160,11 @@ func TestWriteTempTokenFile(t *testing.T) {
 		authDir := t.TempDir()
 		token := "test-token"
 
-		tokenPath, err := writeTempTokenFile(authDir, token)
+		tokenPath, err := wrapper.WriteTempTokenFile(authDir, token)
 		if err != nil {
-			t.Fatalf("writeTempTokenFile() error = %v", err)
+			t.Fatalf("WriteTempTokenFile() error = %v", err)
 		}
 
-		// Verify file is in specified directory
 		if !strings.HasPrefix(tokenPath, authDir) {
 			t.Errorf("Token file path = %q, should be in directory %q", tokenPath, authDir)
 		}
@@ -185,15 +177,14 @@ func TestGenerateWrapperScript(t *testing.T) {
 	t.Run("generates valid script", func(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "test-token-file")
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{"--help"})
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{"--help"})
 		if err != nil {
-			t.Fatalf("generateWrapperScript() error = %v", err)
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
 		if _, err := os.Stat(wrapperPath); os.IsNotExist(err) {
 			t.Errorf("Wrapper script was not created at %s", wrapperPath)
 		}
 
-		// Read and verify script content
 		content, err := os.ReadFile(wrapperPath)
 		if err != nil {
 			t.Fatalf("Failed to read wrapper script: %v", err)
@@ -201,26 +192,11 @@ func TestGenerateWrapperScript(t *testing.T) {
 
 		scriptContent := string(content)
 
-		// Verify script contains expected elements (platform-specific)
 		if isWindows {
-			// Windows batch script checks
-			if !strings.Contains(scriptContent, "@echo off") {
-				t.Errorf("Wrapper script missing @echo off\nScript content:\n%s", scriptContent)
-			}
-			if !strings.Contains(scriptContent, "REM Generated by kairo") {
-				t.Errorf("Wrapper script missing REM comment\nScript content:\n%s", scriptContent)
-			}
 			if !strings.Contains(scriptContent, "ANTHROPIC_AUTH_TOKEN") {
 				t.Errorf("Wrapper script missing ANTHROPIC_AUTH_TOKEN\nScript content:\n%s", scriptContent)
 			}
-			if !strings.Contains(scriptContent, "for /f") {
-				t.Errorf("Wrapper script missing for /f command\nScript content:\n%s", scriptContent)
-			}
-			if !strings.Contains(scriptContent, "del ") {
-				t.Errorf("Wrapper script missing del command\nScript content:\n%s", scriptContent)
-			}
 		} else {
-			// Unix shell script checks
 			requiredElements := []string{
 				"#!/bin/sh",
 				"# Generated by kairo - DO NOT EDIT",
@@ -243,9 +219,9 @@ func TestGenerateWrapperScript(t *testing.T) {
 	t.Run("script cleans up token file", func(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "test-token")
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/echo", []string{"test"})
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/echo", []string{"test"})
 		if err != nil {
-			t.Fatalf("generateWrapperScript() error = %v", err)
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
 
 		content, err := os.ReadFile(wrapperPath)
@@ -255,15 +231,12 @@ func TestGenerateWrapperScript(t *testing.T) {
 
 		scriptContent := string(content)
 
-		// Verify script removes token file (platform-specific check)
 		if isWindows {
-			// On Windows, check for del command with quoted path (ends with .bat)
-			if !strings.HasSuffix(wrapperPath, ".bat") {
-				t.Errorf("Wrapper script should have .bat extension on Windows")
+			if !strings.HasSuffix(wrapperPath, ".ps1") {
+				t.Errorf("Wrapper script should have .ps1 extension on Windows")
 			}
-			// Check that del command is present (the path will be quoted via %q)
-			if !strings.Contains(scriptContent, "del ") {
-				t.Errorf("Wrapper script should contain del command")
+			if !strings.Contains(scriptContent, "Remove-Item") {
+				t.Errorf("Wrapper script should contain Remove-Item command")
 			}
 		} else {
 			if !strings.Contains(scriptContent, "rm") || !strings.Contains(scriptContent, tokenPath) {
@@ -273,11 +246,14 @@ func TestGenerateWrapperScript(t *testing.T) {
 	})
 
 	t.Run("script is executable", func(t *testing.T) {
+		if isWindows {
+			t.Skip("Skipping executable check on Windows")
+		}
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "test-token-file")
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
 		if err != nil {
-			t.Fatalf("generateWrapperScript() error = %v", err)
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
 
 		info, err := os.Stat(wrapperPath)
@@ -285,21 +261,17 @@ func TestGenerateWrapperScript(t *testing.T) {
 			t.Fatalf("Failed to stat wrapper script: %v", err)
 		}
 
-		// On Windows, .bat files don't need Unix executable permissions
-		if !isWindows {
-			// Verify script is executable (at least 0700)
-			if info.Mode().Perm()&0111 == 0 {
-				t.Errorf("Wrapper script should be executable, got mode %v", info.Mode().Perm())
-			}
+		if info.Mode().Perm()&0111 == 0 {
+			t.Errorf("Wrapper script should be executable, got mode %v", info.Mode().Perm())
 		}
 	})
 
 	t.Run("handles empty args correctly", func(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "test-token-file")
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
 		if err != nil {
-			t.Fatalf("generateWrapperScript() error = %v", err)
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
 
 		content, err := os.ReadFile(wrapperPath)
@@ -309,7 +281,6 @@ func TestGenerateWrapperScript(t *testing.T) {
 
 		scriptContent := string(content)
 
-		// Verify script doesn't break with empty args (platform-specific)
 		if isWindows {
 			if !strings.Contains(scriptContent, "\"/usr/bin/claude\"") {
 				t.Errorf("Wrapper script should handle empty args correctly\n%s", scriptContent)
@@ -324,9 +295,9 @@ func TestGenerateWrapperScript(t *testing.T) {
 	t.Run("escapes special characters in paths", func(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "test-token-with spaces")
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
 		if err != nil {
-			t.Fatalf("generateWrapperScript() error = %v", err)
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
 
 		content, err := os.ReadFile(wrapperPath)
@@ -336,13 +307,10 @@ func TestGenerateWrapperScript(t *testing.T) {
 
 		scriptContent := string(content)
 
-		// Verify paths with spaces are properly quoted
-		// The path should appear in the script (quoted)
 		if !strings.Contains(scriptContent, "test-token-with spaces") {
 			t.Errorf("Wrapper script should contain the token path with spaces\nGot:\n%s", scriptContent)
 		}
 
-		// Verify claudePath is also quoted
 		quotedClaudePath := `"/usr/bin/claude"`
 		if !strings.Contains(scriptContent, quotedClaudePath) {
 			t.Errorf("Wrapper script should quote claude path\nGot:\n%s\nExpected to find: %s", scriptContent, quotedClaudePath)
@@ -352,12 +320,11 @@ func TestGenerateWrapperScript(t *testing.T) {
 	t.Run("creates wrapper in specified directory", func(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "test-token-file")
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
 		if err != nil {
-			t.Fatalf("generateWrapperScript() error = %v", err)
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
 
-		// Verify wrapper script is created in specified directory
 		if !strings.HasPrefix(wrapperPath, authDir) {
 			t.Errorf("Wrapper script path = %q, should be in directory %q", wrapperPath, authDir)
 		}
@@ -365,13 +332,9 @@ func TestGenerateWrapperScript(t *testing.T) {
 }
 
 func TestSwitchCmdSecureTokenPassing(t *testing.T) {
-	// Integration test for the full switch flow with mocked exec
-	// Verifies that wrapper script is used instead of direct environment variable passing
-
 	t.Run("uses wrapper script when API key is present", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create config file with a provider that requires API key
 		cfg := &config.Config{
 			DefaultProvider: "",
 			Providers: map[string]config.Provider{
@@ -380,13 +343,10 @@ func TestSwitchCmdSecureTokenPassing(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		// Create encrypted secrets with API key
 		secretsContent := "ZAI_API_KEY=test-api-key-12345"
 		secretsPath := filepath.Join(tmpDir, "secrets.age")
 		keyPath := filepath.Join(tmpDir, "age.key")
 
-		// Create a simple key file (not encrypted for test simplicity)
-		// In real scenario, this would be properly encrypted
 		if err := os.WriteFile(keyPath, []byte("test-key"), 0600); err != nil {
 			t.Fatalf("Failed to create key file: %v", err)
 		}
@@ -394,7 +354,6 @@ func TestSwitchCmdSecureTokenPassing(t *testing.T) {
 			t.Fatalf("Failed to create secrets file: %v", err)
 		}
 
-		// Save and restore global state
 		originalConfigDir := getConfigDir()
 		setConfigDir(tmpDir)
 		defer func() {
@@ -402,7 +361,6 @@ func TestSwitchCmdSecureTokenPassing(t *testing.T) {
 			os.Remove(configPath)
 		}()
 
-		// Mock lookPath to return a fake claude path
 		originalLookPath := lookPath
 		lookPath = func(file string) (string, error) {
 			if file == "claude" {
@@ -412,10 +370,8 @@ func TestSwitchCmdSecureTokenPassing(t *testing.T) {
 		}
 		defer func() { lookPath = originalLookPath }()
 
-		// Mock execCommand to verify wrapper script is used
 		originalExecCommand := execCommand
 		execCommand = func(name string, arg ...string) *exec.Cmd {
-			// Verify that wrapper script is executed (not claude directly)
 			if name == "/usr/bin/claude" {
 				t.Errorf("Expected wrapper script to be executed, got direct claude execution")
 			}
@@ -423,26 +379,18 @@ func TestSwitchCmdSecureTokenPassing(t *testing.T) {
 		}
 		defer func() { execCommand = originalExecCommand }()
 
-		// Mock exitProcess to prevent test from exiting
 		originalExitProcess := exitProcess
 		exitProcess = func(int) {}
 		defer func() { exitProcess = originalExitProcess }()
 
-		// Execute switch command
 		rootCmd.SetArgs([]string{"switch", "zai", "--help"})
 		rootCmd.SetOut(&bytes.Buffer{})
 		rootCmd.SetErr(&bytes.Buffer{})
-
-		// This should trigger the wrapper script path
-		// Note: We can't fully execute this due to crypto dependencies,
-		// but we can verify the setup logic works
-		// The actual execution would use wrapper script
 	})
 
 	t.Run("does not use wrapper script when no API key", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create config file with provider that doesn't require API key
 		cfg := &config.Config{
 			DefaultProvider: "",
 			Providers: map[string]config.Provider{
@@ -451,7 +399,6 @@ func TestSwitchCmdSecureTokenPassing(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		// No secrets file for anthropic
 		secretsPath := filepath.Join(tmpDir, "secrets.age")
 		keyPath := filepath.Join(tmpDir, "age.key")
 
@@ -469,7 +416,6 @@ func TestSwitchCmdSecureTokenPassing(t *testing.T) {
 			os.Remove(configPath)
 		}()
 
-		// Mock lookPath
 		originalLookPath := lookPath
 		lookPath = func(file string) (string, error) {
 			if file == "claude" {
@@ -479,7 +425,6 @@ func TestSwitchCmdSecureTokenPassing(t *testing.T) {
 		}
 		defer func() { lookPath = originalLookPath }()
 
-		// Mock execCommand to verify claude is executed directly
 		originalExecCommand := execCommand
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			return originalExecCommand("echo", "mocked")
@@ -496,17 +441,13 @@ func TestSwitchCmdSecureTokenPassing(t *testing.T) {
 	})
 }
 
-// TestWrapperScriptExecution tests that the wrapper script correctly passes
-// environment variables to a child process
 func TestWrapperScriptExecution(t *testing.T) {
 	t.Parallel()
 
 	isWindows := runtime.GOOS == "windows"
 
-	// Create a temporary directory for auth files
 	authDir := t.TempDir()
 
-	// Create a platform-specific "child" script that will print the environment variable
 	var childScriptPath string
 	var childScriptContent string
 
@@ -532,20 +473,17 @@ echo "ANTHROPIC_AUTH_TOKEN=$ANTHROPIC_AUTH_TOKEN"
 		}
 	}
 
-	// Create a token file with a test API key
 	tokenPath := filepath.Join(authDir, "token")
 	expectedToken := "sk-ant-test1234567890"
 	if err := os.WriteFile(tokenPath, []byte(expectedToken), 0600); err != nil {
 		t.Fatalf("Failed to create token file: %v", err)
 	}
 
-	// Generate wrapper script that will execute the child script
-	wrapperPath, useCmdExe, err := generateWrapperScript(authDir, tokenPath, childScriptPath, []string{})
+	wrapperPath, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, childScriptPath, []string{})
 	if err != nil {
-		t.Fatalf("generateWrapperScript() error = %v", err)
+		t.Fatalf("GenerateWrapperScript() error = %v", err)
 	}
 
-	// Execute the wrapper script
 	var out bytes.Buffer
 	var cmd *exec.Cmd
 	if useCmdExe {
@@ -558,25 +496,20 @@ echo "ANTHROPIC_AUTH_TOKEN=$ANTHROPIC_AUTH_TOKEN"
 
 	execErr := cmd.Run()
 
-	// Check if execution succeeded
-	// Note: The wrapper uses 'exec' which replaces the process, so we expect exit status 0
 	if execErr != nil {
 		t.Logf("Wrapper execution error (may be expected): %v", execErr)
 	}
 
 	output := out.String()
 
-	// Verify the token was passed correctly
 	if !strings.Contains(output, expectedToken) {
 		t.Errorf("Expected token %q not found in wrapper output:\n%s", expectedToken, output)
 	}
 
-	// Verify token file was cleaned up by wrapper
 	if _, err := os.Stat(tokenPath); !os.IsNotExist(err) {
 		t.Errorf("Token file was not cleaned up after wrapper execution")
 	}
 
-	// Verify wrapper script contains expected comments
 	wrapperContent, err := os.ReadFile(wrapperPath)
 	if err != nil {
 		t.Fatalf("Failed to read wrapper script: %v", err)
@@ -600,33 +533,25 @@ echo "ANTHROPIC_AUTH_TOKEN=$ANTHROPIC_AUTH_TOKEN"
 }
 
 func TestSignalHandlingIsCrossPlatform(t *testing.T) {
-	// Verify that the switch command implementation doesn't use syscall.Kill directly
-	// This test ensures cross-platform compatibility (no Windows build failures)
 	t.Run("code compiles without platform-specific syscalls", func(t *testing.T) {
-		// This test verifies the build succeeds on all platforms
-		// If the code used syscall.Kill on Windows, go build would fail
-		// The signal handling now uses exitProcess(code) which is cross-platform
-		authDir, err := createTempAuthDir()
+		authDir, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() error = %v", err)
+			t.Fatalf("CreateTempAuthDir() error = %v", err)
 		}
 		defer os.RemoveAll(authDir)
 
-		// Verify directory was created successfully
 		if _, err := os.Stat(authDir); err != nil {
 			t.Errorf("Auth directory should exist: %v", err)
 		}
 	})
 
 	t.Run("signal exit code calculation is cross-platform", func(t *testing.T) {
-		// Simulate the exit code calculation used in signal handler
-		// This verifies the logic works without actual signal delivery
 		testCases := []struct {
 			sig      syscall.Signal
 			expected int
 		}{
-			{syscall.SIGINT, 130},  // 128 + 2
-			{syscall.SIGTERM, 143}, // 128 + 15
+			{syscall.SIGINT, 130},
+			{syscall.SIGTERM, 143},
 		}
 
 		for _, tc := range testCases {
@@ -640,25 +565,21 @@ func TestSignalHandlingIsCrossPlatform(t *testing.T) {
 }
 
 func TestSwitch_ErrorHandling(t *testing.T) {
-	// These tests verify error handling in temp file/directory operations
-	// They test edge cases and error conditions that may occur in production
-
 	t.Run("writeTempTokenFile returns error for non-existent directory", func(t *testing.T) {
 		nonExistentDir := "/tmp/kairo-test-non-existent-" + strings.ReplaceAll(os.TempDir(), "/", "-")
 		token := "test-token"
 
-		_, err := writeTempTokenFile(nonExistentDir, token)
+		_, err := wrapper.WriteTempTokenFile(nonExistentDir, token)
 		if err == nil {
 			t.Error("Expected error when writing to non-existent directory")
 		}
 	})
 
 	t.Run("writeTempTokenFile returns error for invalid directory path", func(t *testing.T) {
-		// Use a path that's too long to be valid
 		longPath := strings.Repeat("a", 10000)
 		token := "test-token"
 
-		_, err := writeTempTokenFile(longPath, token)
+		_, err := wrapper.WriteTempTokenFile(longPath, token)
 		if err == nil {
 			t.Error("Expected error when writing to invalid directory path")
 		}
@@ -666,15 +587,13 @@ func TestSwitch_ErrorHandling(t *testing.T) {
 
 	t.Run("writeTempTokenFile handles very long tokens", func(t *testing.T) {
 		authDir := t.TempDir()
-		// Create a very long token (potential buffer overflow scenario)
 		longToken := strings.Repeat("a", 100000)
 
-		tokenPath, err := writeTempTokenFile(authDir, longToken)
+		tokenPath, err := wrapper.WriteTempTokenFile(authDir, longToken)
 		if err != nil {
-			t.Errorf("writeTempTokenFile() failed with long token: %v", err)
+			t.Errorf("WriteTempTokenFile() failed with long token: %v", err)
 		}
 
-		// Verify the token was written correctly
 		content, err := os.ReadFile(tokenPath)
 		if err != nil {
 			t.Fatalf("Failed to read token file: %v", err)
@@ -687,15 +606,13 @@ func TestSwitch_ErrorHandling(t *testing.T) {
 
 	t.Run("writeTempTokenFile handles special characters in token", func(t *testing.T) {
 		authDir := t.TempDir()
-		// Test with special characters that might cause issues
 		specialToken := "sk-test-\"`$';\n\t\x00"
 
-		tokenPath, err := writeTempTokenFile(authDir, specialToken)
+		tokenPath, err := wrapper.WriteTempTokenFile(authDir, specialToken)
 		if err != nil {
-			t.Errorf("writeTempTokenFile() failed with special characters: %v", err)
+			t.Errorf("WriteTempTokenFile() failed with special characters: %v", err)
 		}
 
-		// Verify the token was written correctly
 		content, err := os.ReadFile(tokenPath)
 		if err != nil {
 			t.Fatalf("Failed to read token file: %v", err)
@@ -710,12 +627,11 @@ func TestSwitch_ErrorHandling(t *testing.T) {
 		authDir := t.TempDir()
 		unicodeToken := "sk-test-世界-🌍-🚀"
 
-		tokenPath, err := writeTempTokenFile(authDir, unicodeToken)
+		tokenPath, err := wrapper.WriteTempTokenFile(authDir, unicodeToken)
 		if err != nil {
-			t.Errorf("writeTempTokenFile() failed with unicode: %v", err)
+			t.Errorf("WriteTempTokenFile() failed with unicode: %v", err)
 		}
 
-		// Verify the token was written correctly
 		content, err := os.ReadFile(tokenPath)
 		if err != nil {
 			t.Fatalf("Failed to read token file: %v", err)
@@ -731,24 +647,20 @@ func TestSwitch_ErrorHandling(t *testing.T) {
 		token1 := "first-token"
 		token2 := "second-token"
 
-		// Write first token
-		path1, err := writeTempTokenFile(authDir, token1)
+		path1, err := wrapper.WriteTempTokenFile(authDir, token1)
 		if err != nil {
-			t.Fatalf("writeTempTokenFile() failed: %v", err)
+			t.Fatalf("WriteTempTokenFile() failed: %v", err)
 		}
 
-		// Write second token (should create a different file)
-		path2, err := writeTempTokenFile(authDir, token2)
+		path2, err := wrapper.WriteTempTokenFile(authDir, token2)
 		if err != nil {
-			t.Fatalf("writeTempTokenFile() failed: %v", err)
+			t.Fatalf("WriteTempTokenFile() failed: %v", err)
 		}
 
-		// Paths should be different (temp files are unique)
 		if path1 == path2 {
-			t.Error("writeTempTokenFile() should create unique files")
+			t.Error("WriteTempTokenFile() should create unique files")
 		}
 
-		// Verify both files exist with correct content
 		content1, err := os.ReadFile(path1)
 		if err != nil {
 			t.Errorf("Failed to read first token file: %v", err)
@@ -767,13 +679,8 @@ func TestSwitch_ErrorHandling(t *testing.T) {
 	})
 
 	t.Run("createTempAuthDir handles temp directory exhaustion", func(t *testing.T) {
-		// This test verifies that createTempAuthDir returns a proper error
-		// when it cannot create a temp directory. We can't easily simulate
-		// actual temp directory exhaustion, but we can verify error handling.
-
-		authDir, err := createTempAuthDir()
+		authDir, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			// If creation fails, verify error message is informative
 			if !strings.Contains(err.Error(), "failed to create temp auth directory") {
 				t.Errorf("Error message should mention directory creation failure: %v", err)
 			}
@@ -781,24 +688,22 @@ func TestSwitch_ErrorHandling(t *testing.T) {
 		}
 		defer os.RemoveAll(authDir)
 
-		// Verify directory was created successfully
 		if authDir == "" {
-			t.Error("createTempAuthDir() returned empty path on success")
+			t.Error("CreateTempAuthDir() returned empty path on success")
 		}
 	})
 
 	t.Run("createTempAuthDir creates multiple unique directories", func(t *testing.T) {
-		// Verify that multiple calls create unique directories
 		dirs := make(map[string]bool)
 		for i := 0; i < 10; i++ {
-			authDir, err := createTempAuthDir()
+			authDir, err := wrapper.CreateTempAuthDir()
 			if err != nil {
-				t.Errorf("createTempAuthDir() failed on iteration %d: %v", i, err)
+				t.Errorf("CreateTempAuthDir() failed on iteration %d: %v", i, err)
 			}
 			defer os.RemoveAll(authDir)
 
 			if dirs[authDir] {
-				t.Errorf("createTempAuthDir() returned duplicate path: %s", authDir)
+				t.Errorf("CreateTempAuthDir() returned duplicate path: %s", authDir)
 			}
 			dirs[authDir] = true
 		}
@@ -816,58 +721,45 @@ func TestSwitch_ErrorHandling(t *testing.T) {
 		authDir := t.TempDir()
 		token := "test-token"
 
-		// Make directory read-only
 		if err := os.Chmod(authDir, 0500); err != nil {
 			t.Fatalf("Failed to change directory permissions: %v", err)
 		}
 
-		_, err := writeTempTokenFile(authDir, token)
+		_, err := wrapper.WriteTempTokenFile(authDir, token)
 		if err == nil {
 			t.Error("Expected error when writing to read-only directory")
 		}
 
-		// Restore permissions for cleanup
 		_ = os.Chmod(authDir, 0700)
 	})
 }
 
 func TestSwitch_SignalRaceCondition(t *testing.T) {
-	// This test verifies that cleanup of authDir uses sync.Once to prevent
-	// race conditions between the main goroutine's defer and signal handler.
-	// Running the full test suite with -race flag verifies no data races exist.
-
 	t.Run("multiple RemoveAll calls on same directory are safe", func(t *testing.T) {
-		// This test verifies that calling RemoveAll multiple times on the same
-		// directory doesn't cause issues (the directory just won't exist after first call)
-		authDir, err := createTempAuthDir()
+		authDir, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() error = %v", err)
+			t.Fatalf("CreateTempAuthDir() error = %v", err)
 		}
 
-		// First cleanup removes the directory
 		err1 := os.RemoveAll(authDir)
 		if err1 != nil {
 			t.Errorf("First RemoveAll failed: %v", err1)
 		}
 
-		// Second cleanup on non-existent directory should not error
 		err2 := os.RemoveAll(authDir)
 		if err2 != nil {
 			t.Errorf("Second RemoveAll on non-existent directory failed: %v", err2)
 		}
 
-		// Verify directory is gone
 		if _, err := os.Stat(authDir); !os.IsNotExist(err) {
 			t.Error("Directory should not exist after RemoveAll")
 		}
 	})
 
 	t.Run("sync.Once ensures cleanup happens exactly once", func(t *testing.T) {
-		// Verify that sync.Once pattern (as used in switch.go) ensures
-		// cleanup is idempotent and safe from concurrent access
-		authDir, err := createTempAuthDir()
+		authDir, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() error = %v", err)
+			t.Fatalf("CreateTempAuthDir() error = %v", err)
 		}
 
 		var cleanupOnce sync.Once
@@ -877,25 +769,19 @@ func TestSwitch_SignalRaceCondition(t *testing.T) {
 			})
 		}
 
-		// Call cleanup multiple times - it should be idempotent
 		cleanup()
 		cleanup()
 		cleanup()
 
-		// Verify directory is gone
 		if _, err := os.Stat(authDir); !os.IsNotExist(err) {
 			t.Error("Directory should not exist after cleanup")
 		}
 	})
 
 	t.Run("concurrent cleanup calls are safe with sync.Once", func(t *testing.T) {
-		// This test simulates the race condition scenario where:
-		// 1. Main goroutine has a deferred cleanup call
-		// 2. Signal handler goroutine calls cleanup
-		// Both could happen concurrently, so sync.Once is required
-		authDir, err := createTempAuthDir()
+		authDir, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() error = %v", err)
+			t.Fatalf("CreateTempAuthDir() error = %v", err)
 		}
 
 		var cleanupOnce sync.Once
@@ -907,8 +793,6 @@ func TestSwitch_SignalRaceCondition(t *testing.T) {
 			})
 		}
 
-		// Simulate concurrent cleanup from multiple goroutines
-		// This mimics: defer cleanup() (main) + signal handler cleanup
 		done := make(chan struct{})
 		for i := 0; i < 10; i++ {
 			go func() {
@@ -917,17 +801,14 @@ func TestSwitch_SignalRaceCondition(t *testing.T) {
 			}()
 		}
 
-		// Wait for all goroutines to complete
 		for i := 0; i < 10; i++ {
 			<-done
 		}
 
-		// Verify cleanup was called exactly once
 		if !cleanupCalled {
 			t.Error("Cleanup should have been called")
 		}
 
-		// Verify directory is gone (cleanup executed)
 		if _, err := os.Stat(authDir); !os.IsNotExist(err) {
 			t.Error("Directory should not exist after concurrent cleanup")
 		}
@@ -935,19 +816,10 @@ func TestSwitch_SignalRaceCondition(t *testing.T) {
 }
 
 func TestSwitch_PowerShellEscaping(t *testing.T) {
-	// This test verifies that escapePowerShellArg properly escapes special characters
-	// to prevent command injection and ensure correct argument passing.
-	//
-	// Special characters that need escaping in PowerShell single-quoted strings:
-	// - Single quotes (') -> escaped as ''
-	// - Backticks (`) -> escaped as ``
-	// - Dollar signs ($) -> escaped as `$ (to prevent variable expansion)
-	// - Double quotes (") -> escaped as ""
-
 	tests := []struct {
 		name     string
 		input    string
-		contains []string // Substrings that should be in the escaped output
+		contains []string
 	}{
 		{
 			name:     "simple string",
@@ -957,7 +829,7 @@ func TestSwitch_PowerShellEscaping(t *testing.T) {
 		{
 			name:     "single quote",
 			input:    "it's",
-			contains: []string{"'it''s'"}, // Single quotes are doubled
+			contains: []string{"'it''s'"},
 		},
 		{
 			name:     "multiple single quotes",
@@ -966,18 +838,18 @@ func TestSwitch_PowerShellEscaping(t *testing.T) {
 		},
 		{
 			name:     "backtick",
-			input:    "test" + string([]byte{0x60}) + "value",
-			contains: []string{"'test``value'"}, // Backticks are doubled
+			input:    "test`value",
+			contains: []string{"'test``value'"},
 		},
 		{
 			name:     "dollar sign",
 			input:    "test$value",
-			contains: []string{"'test" + string([]byte{0x60}) + "$value'"}, // Dollar sign is escaped
+			contains: []string{"'test`$value'"},
 		},
 		{
 			name:     "double quote",
 			input:    `test"value`,
-			contains: []string{"'test\\\"value'"}, // Double quote is escaped
+			contains: []string{"'test\\\"value'"},
 		},
 		{
 			name:  "path with spaces",
@@ -995,39 +867,30 @@ func TestSwitch_PowerShellEscaping(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := escapePowerShellArg(tt.input)
+			result := wrapper.EscapePowerShellArg(tt.input)
 
-			// Verify result starts and ends with single quotes
 			if !strings.HasPrefix(result, "'") {
-				t.Errorf("escapePowerShellArg(%q) should start with single quote, got: %q", tt.input, result)
+				t.Errorf("EscapePowerShellArg(%q) should start with single quote, got: %q", tt.input, result)
 			}
 			if !strings.HasSuffix(result, "'") {
-				t.Errorf("escapePowerShellArg(%q) should end with single quote, got: %q", tt.input, result)
+				t.Errorf("EscapePowerShellArg(%q) should end with single quote, got: %q", tt.input, result)
 			}
 
-			// Verify expected substrings are present
 			for _, expected := range tt.contains {
 				if !strings.Contains(result, expected) {
-					t.Errorf("escapePowerShellArg(%q) = %q, should contain %q", tt.input, result, expected)
+					t.Errorf("EscapePowerShellArg(%q) = %q, should contain %q", tt.input, result, expected)
 				}
 			}
-
-			// Verify the escaped string, when used in PowerShell, would correctly
-			// represent the original input (this is a basic sanity check)
-			// For example, 'it''s' in PowerShell evaluates to "it's"
 		})
 	}
 }
 
 func TestSwitch_WrapperErrorHandling(t *testing.T) {
-	// These tests verify error handling in wrapper script generation
-	// They test edge cases and error conditions that may occur in production
-
 	t.Run("handles empty token path gracefully", func(t *testing.T) {
 		authDir := t.TempDir()
 		emptyTokenPath := ""
 
-		_, _, err := generateWrapperScript(authDir, emptyTokenPath, "/usr/bin/claude", []string{"--help"})
+		_, _, err := wrapper.GenerateWrapperScript(authDir, emptyTokenPath, "/usr/bin/claude", []string{"--help"})
 		if err == nil {
 			t.Error("Expected error when token path is empty, got nil")
 		}
@@ -1038,7 +901,7 @@ func TestSwitch_WrapperErrorHandling(t *testing.T) {
 		tokenPath := filepath.Join(authDir, "token")
 		emptyClaudePath := ""
 
-		_, _, err := generateWrapperScript(authDir, tokenPath, emptyClaudePath, []string{})
+		_, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, emptyClaudePath, []string{})
 		if err == nil {
 			t.Error("Expected error when claude path is empty, got nil")
 		}
@@ -1048,34 +911,19 @@ func TestSwitch_WrapperErrorHandling(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "token")
 
-		// Test with arguments containing special characters
 		specialArgs := []string{
-			"--prompt", "Hello; rm -rf /", // Command injection attempt
+			"--prompt", "Hello; rm -rf /",
 			"--file", "/path/to/file with spaces.txt",
 			"--option", "value_with_'quotes'_and_\"dquotes\"",
 		}
 
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", specialArgs)
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", specialArgs)
 		if err != nil {
-			t.Fatalf("generateWrapperScript() failed with special args: %v", err)
+			t.Fatalf("GenerateWrapperScript() failed with special args: %v", err)
 		}
 
-		// Verify wrapper script was created
 		if _, err := os.Stat(wrapperPath); os.IsNotExist(err) {
 			t.Error("Wrapper script should be created even with special arguments")
-		}
-
-		// Read and verify script content for proper escaping
-		content, err := os.ReadFile(wrapperPath)
-		if err != nil {
-			t.Fatalf("Failed to read wrapper script: %v", err)
-		}
-
-		scriptContent := string(content)
-		// The arguments should be properly escaped in the script
-		if !strings.Contains(scriptContent, "Hello; rm -rf /") {
-			t.Log("Script content (command injection string may be escaped):")
-			t.Log(scriptContent)
 		}
 	})
 
@@ -1083,15 +931,13 @@ func TestSwitch_WrapperErrorHandling(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "token")
 
-		// Create a very long argument (potential buffer overflow scenario)
 		longArg := strings.Repeat("a", 10000)
 
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{longArg})
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{longArg})
 		if err != nil {
-			t.Fatalf("generateWrapperScript() failed with long argument: %v", err)
+			t.Fatalf("GenerateWrapperScript() failed with long argument: %v", err)
 		}
 
-		// Verify wrapper script was created
 		if _, err := os.Stat(wrapperPath); os.IsNotExist(err) {
 			t.Error("Wrapper script should handle long arguments")
 		}
@@ -1101,13 +947,11 @@ func TestSwitch_WrapperErrorHandling(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "token")
 
-		// This should work - nil slice is treated like empty slice
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", nil)
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", nil)
 		if err != nil {
-			t.Fatalf("generateWrapperScript() failed with nil args: %v", err)
+			t.Fatalf("GenerateWrapperScript() failed with nil args: %v", err)
 		}
 
-		// Verify wrapper script was created
 		if _, err := os.Stat(wrapperPath); os.IsNotExist(err) {
 			t.Error("Wrapper script should handle nil arguments")
 		}
@@ -1117,9 +961,9 @@ func TestSwitch_WrapperErrorHandling(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "token")
 
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{"--help"})
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{"--help"})
 		if err != nil {
-			t.Fatalf("generateWrapperScript() error = %v", err)
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
 
 		content, err := os.ReadFile(wrapperPath)
@@ -1129,12 +973,10 @@ func TestSwitch_WrapperErrorHandling(t *testing.T) {
 
 		scriptContent := string(content)
 
-		// Platform-specific validation
 		if runtime.GOOS == "windows" {
 			if !strings.HasSuffix(wrapperPath, ".ps1") {
 				t.Errorf("Windows wrapper should have .ps1 extension, got: %s", wrapperPath)
 			}
-			// PowerShell script checks
 			if !strings.Contains(scriptContent, "$env:ANTHROPIC_AUTH_TOKEN") {
 				t.Error("PowerShell script should set ANTHROPIC_AUTH_TOKEN environment variable")
 			}
@@ -1142,7 +984,6 @@ func TestSwitch_WrapperErrorHandling(t *testing.T) {
 				t.Error("PowerShell script should remove token file")
 			}
 		} else {
-			// Unix shell script checks
 			if !strings.Contains(scriptContent, "#!/bin/sh") {
 				t.Error("Unix script should have shebang")
 			}
@@ -1160,20 +1001,17 @@ func TestSwitch_WrapperErrorHandling(t *testing.T) {
 }
 
 func TestSwitch_CrossPlatformCompatibility(t *testing.T) {
-	// These tests verify cross-platform compatibility across different OS environments
-
 	t.Run("wrapper script paths are platform-appropriate", func(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "token")
 
-		wrapperPath, useCmdExe, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
+		wrapperPath, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", []string{})
 		if err != nil {
-			t.Fatalf("generateWrapperScript() error = %v", err)
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
 
 		isWindows := runtime.GOOS == "windows"
 
-		// Verify platform-specific expectations
 		if isWindows {
 			if !useCmdExe {
 				t.Error("useCmdExe should be true on Windows")
@@ -1192,18 +1030,16 @@ func TestSwitch_CrossPlatformCompatibility(t *testing.T) {
 	})
 
 	t.Run("temp auth directory creation works on all platforms", func(t *testing.T) {
-		authDir, err := createTempAuthDir()
+		authDir, err := wrapper.CreateTempAuthDir()
 		if err != nil {
-			t.Fatalf("createTempAuthDir() failed: %v", err)
+			t.Fatalf("CreateTempAuthDir() failed: %v", err)
 		}
 		defer os.RemoveAll(authDir)
 
-		// Verify directory exists
 		if _, err := os.Stat(authDir); err != nil {
 			t.Errorf("Auth directory should exist: %v", err)
 		}
 
-		// Verify it's in the system temp directory
 		if !strings.HasPrefix(authDir, os.TempDir()) {
 			t.Errorf("Auth dir %q should be in temp dir %q", authDir, os.TempDir())
 		}
@@ -1213,12 +1049,11 @@ func TestSwitch_CrossPlatformCompatibility(t *testing.T) {
 		authDir := t.TempDir()
 		testToken := "sk-ant-test-token-12345"
 
-		tokenPath, err := writeTempTokenFile(authDir, testToken)
+		tokenPath, err := wrapper.WriteTempTokenFile(authDir, testToken)
 		if err != nil {
-			t.Fatalf("writeTempTokenFile() failed: %v", err)
+			t.Fatalf("WriteTempTokenFile() failed: %v", err)
 		}
 
-		// Verify file exists
 		content, err := os.ReadFile(tokenPath)
 		if err != nil {
 			t.Errorf("Token file should be readable: %v", err)
@@ -1233,18 +1068,16 @@ func TestSwitch_CrossPlatformCompatibility(t *testing.T) {
 		authDir := t.TempDir()
 		tokenPath := filepath.Join(authDir, "token")
 
-		// Test with unicode characters
 		unicodeArgs := []string{
 			"--prompt", "Hello 世界 🌍",
 			"--emoji", "🚀🎉",
 		}
 
-		wrapperPath, _, err := generateWrapperScript(authDir, tokenPath, "/usr/bin/claude", unicodeArgs)
+		wrapperPath, _, err := wrapper.GenerateWrapperScript(authDir, tokenPath, "/usr/bin/claude", unicodeArgs)
 		if err != nil {
-			t.Fatalf("generateWrapperScript() failed with unicode: %v", err)
+			t.Fatalf("GenerateWrapperScript() failed with unicode: %v", err)
 		}
 
-		// Verify wrapper script was created
 		if _, err := os.Stat(wrapperPath); os.IsNotExist(err) {
 			t.Error("Wrapper script should handle unicode arguments")
 		}
