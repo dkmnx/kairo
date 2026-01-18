@@ -88,6 +88,7 @@ func createTempAuthDir() (string, error) {
 ```
 
 **Security Properties:**
+
 - Directory created in system temp directory
 - Permissions set to `0700` (owner read/write/execute only)
 - Only the current user can access the directory
@@ -124,6 +125,7 @@ func writeTempTokenFile(authDir, token string) (string, error) {
 ```
 
 **Security Properties:**
+
 - File created within private directory
 - Permissions set to `0600` (owner read/write only)
 - File contains only the API token (plaintext in memory only)
@@ -161,6 +163,7 @@ scriptContent += "\r\n"
 ```
 
 **Security Properties:**
+
 - Token never appears in command-line arguments
 - Script reads token from private file
 - Script deletes token file immediately after reading
@@ -193,6 +196,7 @@ if err := execCmd.Run(); err != nil {
 ```
 
 **Security Properties:**
+
 - Wrapper script executed directly (not via shell)
 - Signal handling ensures cleanup on interruption
 - Deferred cleanup as safety net
@@ -209,6 +213,7 @@ execCmd.Run()
 ```
 
 **Rejected because:**
+
 - Token visible in `/proc/<pid>/environ`
 - Accessible to other users on shared systems
 - Captured in core dumps
@@ -222,6 +227,7 @@ execCmd.Run()
 ```
 
 **Rejected because:**
+
 - Visible in process listings (`ps`)
 - Stored in shell history
 - Visible in parent process environment
@@ -237,6 +243,7 @@ execCmd.Run()
 ```
 
 **Rejected because:**
+
 - Requires changes to Claude Code
 - Token still visible in pipe buffer
 - More complex error handling
@@ -249,6 +256,7 @@ execCmd.Run()
 ```
 
 **Rejected because:**
+
 - Significantly more complex
 - Still requires careful permission handling
 - Over-engineering for the problem
@@ -295,6 +303,7 @@ The wrapper script approach adds complexity:
 ### Mitigation Strategies
 
 1. **Comprehensive Testing**:
+
    ```go
    func TestGenerateWrapperScript(t *testing.T) {
        // Test both platforms
@@ -307,6 +316,7 @@ The wrapper script approach adds complexity:
 2. **Clear Documentation**: This file serves as the architecture decision record
 
 3. **Platform Guards**:
+
    ```go
    if runtime.GOOS == "windows" {
        // Windows-specific code
@@ -352,6 +362,7 @@ The wrapper script approach adds complexity:
 ### Recommendation
 
 **Current approach is optimal** for the threat model:
+
 - Simple enough to maintain
 - Secure enough for the threat model
 - Cross-platform compatible
@@ -372,6 +383,7 @@ The wrapper script approach adds complexity:
 **Decision**: Use temporary wrapper scripts that read from private token files, set environment variables, and immediately delete the token files.
 
 **Consequences**:
+
 - ✅ Secure credential passing
 - ✅ Cross-platform compatible
 - ✅ No modifications to Claude Code required
@@ -382,6 +394,7 @@ The wrapper script approach adds complexity:
 **Alternatives Rejected**: Direct env var, command-line args, stdin pipe, named pipes
 
 **Review Date**: This decision should be reviewed if:
+
 - New Claude Code authentication methods are introduced
 - Security requirements change
 - Platform-specific issues arise

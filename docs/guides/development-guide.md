@@ -10,21 +10,21 @@ Setup, testing, and contribution workflow for Kairo.
 
 ## Setup
 
-### 1. Clone Repository
+### Clone Repository
 
 ```bash
 git clone https://github.com/dkmnx/kairo.git
 cd kairo
 ```
 
-### 2. Install Dependencies
+### Install Dependencies
 
 ```bash
 go mod download
 go mod verify
 ```
 
-### 3. Verify Build
+### Verify Build
 
 ```bash
 make build
@@ -33,16 +33,16 @@ make build
 
 ## Development Commands
 
-| Command              | Purpose                               |
-| -------------------- | ------------------------------------- |
-| `make build`         | Build binary to `dist/kairo`          |
-| `make test`          | Run tests with race detection         |
-| `make test-coverage` | Generate coverage report              |
-| `make lint`          | Run gofmt, go vet, golangci-lint      |
-| `make format`        | Format code with gofmt                |
-| `make pre-commit`    | Run pre-commit hooks                  |
-| `make install`       | Install to `~/.local/bin`             |
-| `make clean`         | Remove build artifacts                |
+| Command              | Purpose                                 |
+| -------------------- | --------------------------------------- |
+| `make build`         | Build binary to `dist/kairo`            |
+| `make test`          | Run tests with race detection           |
+| `make test-coverage` | Generate coverage report                |
+| `make lint`          | Run gofmt, go vet, golangci-lint        |
+| `make format`        | Format code with gofmt                  |
+| `make pre-commit`    | Run pre-commit hooks                    |
+| `make install`       | Install to `~/.local/bin`               |
+| `make clean`         | Remove build artifacts                  |
 
 ### Manual Commands
 
@@ -80,7 +80,8 @@ kairo/
 │   ├── crypto/           # age encryption
 │   ├── providers/        # Provider registry
 │   ├── validate/         # Input validation
-│   └── ui/               # UI utilities
+│   ├── ui/               # UI utilities
+│   └── audit/            # Audit logging
 ├── pkg/                  # Reusable utilities
 │   └── env/              # Environment helpers
 ├── docs/                 # Documentation
@@ -130,7 +131,7 @@ kairo config newprovider
 kairo test newprovider
 ```
 
-## Adding Key Rotation Support
+## Key Rotation Support
 
 The `crypto.RotateKey()` function handles encryption key rotation:
 

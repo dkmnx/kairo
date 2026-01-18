@@ -176,21 +176,21 @@ flowchart TB
 
 ### Developer Resources
 
-| Resource                                              | Description                    |
-| ----------------------------------------------------- | ------------------------------ |
-| [Development Guide](docs/guides/development-guide.md) | Setup and contribution         |
-| [Architecture](docs/architecture/README.md)           | System design and diagrams     |
-| [Wrapper Scripts](docs/architecture/wrapper-scripts.md) | Security design and rationale  |
-| [Contributing](docs/contributing/README.md)           | Contribution workflow          |
+| Resource                                                      | Description                    |
+|---------------------------------------------------------------|--------------------------------|
+| [Development Guide](docs/guides/development-guide.md)         | Setup and contribution         |
+| [Architecture](docs/architecture/README.md)                   | System design and diagrams     |
+| [Wrapper Scripts](docs/architecture/wrapper-scripts.md)       | Security design and rationale  |
+| [Contributing](docs/contributing/README.md)                   | Contribution workflow          |
 
 ### Reference
 
-| Resource                                            | Description                          |
-| --------------------------------------------------- | ------------------------------------ |
-| [Command Reference](cmd/README.md)                  | CLI command details                  |
-| [Internal Packages](internal/README.md)             | Core modules reference               |
-| [Troubleshooting](docs/troubleshooting/README.md)   | Common issues and solutions          |
-| [Changelog](CHANGELOG.md)                           | Version history                      |
+| Resource                                                      | Description                          |
+|---------------------------------------------------------------|--------------------------------------|
+| [Command Reference](cmd/README.md)                            | CLI command details                  |
+| [Internal Packages](internal/README.md)                       | Core modules reference               |
+| [Troubleshooting](docs/troubleshooting/README.md)             | Common issues and solutions          |
+| [Changelog](CHANGELOG.md)                                     | Version history                      |
 
 ## Building
 
