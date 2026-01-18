@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -9,6 +10,9 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 	"golang.org/x/term"
 )
+
+// ErrUserCancelled is returned when the user cancels input (Ctrl+C or Ctrl+D)
+var ErrUserCancelled = errors.New("user cancelled input")
 
 const (
 	Green  = "\033[0;32m"
@@ -67,33 +71,78 @@ func PromptSecret(prompt string) (string, error) {
 	password, err := term.ReadPassword(fd)
 	fmt.Println()
 	if err != nil {
+		// Check if user cancelled (Ctrl+C or EOF)
+		if errors.Is(err, os.ErrClosed) || isEoferr(err) {
+			return "", ErrUserCancelled
+		}
 		return "", err
 	}
 	return string(password), nil
 }
 
-func Prompt(prompt string) string {
+// isEoferr checks if the error is an EOF or interrupt error
+func isEoferr(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	// "unexpected newline" is returned by fmt.Scanln when input is empty (just Enter)
+	// This is valid input (empty string), not an EOF condition
+	return strings.Contains(errStr, "EOF") || strings.Contains(errStr, "interrupted")
+}
+
+// isEmptyInput checks if the error indicates empty input (user just pressed Enter)
+func isEmptyInput(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "unexpected newline")
+}
+
+// Prompt prompts the user for input and returns the input string.
+// Returns empty string and ErrUserCancelled if input cannot be read.
+func Prompt(prompt string) (string, error) {
 	fmt.Print(prompt)
 	fmt.Print(": ")
 	var input string
-	// Ignoring error - user can Ctrl+C/D to exit, or input is used as-is
-	_, _ = fmt.Scanln(&input)
-	return input
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		if isEmptyInput(err) {
+			// User just pressed Enter, return empty string (not an error)
+			return "", nil
+		}
+		if isEoferr(err) {
+			return "", ErrUserCancelled
+		}
+		return "", err
+	}
+	return input, nil
 }
 
-func PromptWithDefault(prompt, defaultVal string) string {
+// PromptWithDefault prompts the user for input with a default value.
+// Returns the default value and ErrUserCancelled if input cannot be read.
+func PromptWithDefault(prompt, defaultVal string) (string, error) {
 	if defaultVal != "" {
 		prompt = fmt.Sprintf("%s [%s]", prompt, defaultVal)
 	}
 	fmt.Print(prompt)
 	fmt.Print(": ")
 	var input string
-	// Ignoring error - user can Ctrl+C/D to exit, or input is used as-is
-	_, _ = fmt.Scanln(&input)
-	if input == "" {
-		return defaultVal
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		if isEmptyInput(err) {
+			// User just pressed Enter, return default value (not an error)
+			return defaultVal, nil
+		}
+		if isEoferr(err) {
+			return defaultVal, ErrUserCancelled
+		}
+		return defaultVal, err
 	}
-	return input
+	if input == "" {
+		return defaultVal, nil
+	}
+	return input, nil
 }
 
 func PrintProviderOption(number int, name string, cfg *config.Config, secrets map[string]string, provider string) {
@@ -121,13 +170,33 @@ func isProviderConfigured(cfg *config.Config, secrets map[string]string, provide
 }
 
 func PrintBanner(version, provider string) {
-	banner := ` █████                 ███                    
-░░███                 ░░░                     
- ░███ █████  ██████   ████  ████████   ██████ 
+	banner := ` █████                 ███
+░░███                 ░░░
+ ░███ █████  ██████   ████  ████████   ██████
  ░███░░███  ░░░░░███ ░░███ ░░███░░███ ███░░███
  ░██████░    ███████  ░███  ░███ ░░░ ░███ ░███
  ░███░░███  ███░░███  ░███  ░███     ░███ ░███
- ████ █████░░████████ █████ █████    ░░██████ 
+ ████ █████░░████████ █████ █████    ░░██████
 ░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░      ░░░░░░   ` + version + ` - ` + provider
 	fmt.Printf("%s%s\n", Bold, banner)
+}
+
+// Confirm prompts the user for a yes/no confirmation.
+// Returns true if the user answers yes/y (case-insensitive), false otherwise.
+func Confirm(prompt string) (bool, error) {
+	fmt.Printf("%s [y/N]: ", prompt)
+	var input string
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		if isEmptyInput(err) {
+			// User just pressed Enter, default to No (false, not an error)
+			return false, nil
+		}
+		if isEoferr(err) {
+			return false, ErrUserCancelled
+		}
+		return false, err
+	}
+	input = strings.TrimSpace(strings.ToLower(input))
+	return input == "y" || input == "yes", nil
 }

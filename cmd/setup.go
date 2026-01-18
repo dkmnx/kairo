@@ -12,6 +12,7 @@ import (
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
@@ -19,19 +20,34 @@ import (
 )
 
 // validProviderName validates custom provider names to ensure they start with
-// a letter and contain only alphanumeric characters, underscores, or hyphens.
+// a letter and contain only alphanumeric characters, underscores, and hyphens.
 var validProviderName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 
 // validateCustomProviderName validates a custom provider name and returns the validated name or an error.
+// Provider names must:
+// - Be 1-50 characters long
+// - Start with a letter
+// - Contain only alphanumeric characters, underscores, and hyphens
+// - Not be a reserved built-in provider name (case-insensitive)
 func validateCustomProviderName(name string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("provider name is required")
 	}
-	if !validProviderName.MatchString(name) {
-		return "", fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters, underscores, or hyphens")
+	// Check minimum length (1 character)
+	if len(name) < 1 {
+		return "", fmt.Errorf("provider name must be at least 1 character")
 	}
-	if providers.IsBuiltInProvider(name) {
-		return "", fmt.Errorf("reserved provider name")
+	// Check maximum length (50 characters)
+	if len(name) > 50 {
+		return "", fmt.Errorf("provider name must be at most 50 characters (got %d)", len(name))
+	}
+	if !validProviderName.MatchString(name) {
+		return "", fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters, underscores, and hyphens")
+	}
+	// Check for reserved provider names (case-insensitive)
+	lowerName := strings.ToLower(name)
+	if providers.IsBuiltInProvider(lowerName) {
+		return "", fmt.Errorf("reserved provider name: %s", lowerName)
 	}
 	return name, nil
 }
@@ -127,7 +143,7 @@ func ensureConfigDirectory(dir string) error {
 // loadOrInitializeConfig loads an existing config or creates a new empty one.
 func loadOrInitializeConfig(dir string) (*config.Config, error) {
 	cfg, err := config.LoadConfig(dir)
-	if err != nil && !errors.Is(err, config.ErrConfigNotFound) {
+	if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 		return nil, err
 	}
 	if err != nil {
@@ -138,7 +154,10 @@ func loadOrInitializeConfig(dir string) (*config.Config, error) {
 	return cfg, nil
 }
 
-func loadSecrets(dir string) (map[string]string, string, string) {
+// LoadSecrets loads and decrypts secrets from the specified directory.
+// Returns the secrets map, secrets file path, and key file path.
+// Handles decryption errors gracefully based on verbose flag.
+func LoadSecrets(dir string) (map[string]string, string, string) {
 	secretsPath := filepath.Join(dir, "secrets.age")
 	keyPath := filepath.Join(dir, "age.key")
 
@@ -156,15 +175,18 @@ func loadSecrets(dir string) (map[string]string, string, string) {
 
 func promptForProvider() string {
 	providerList := providers.GetProviderList()
-	ui.PrintHeader("Kairo Setup Wizard")
-	ui.PrintInfo("Available providers:")
+	ui.PrintHeader("Kairo Setup Wizard\n")
+	ui.PrintWhite("Available providers:")
 	for i, name := range providerList {
-		ui.PrintInfo(fmt.Sprintf("  %d.   %s", i+1, name))
+		ui.PrintWhite(fmt.Sprintf("  %d.   %s", i+1, name))
 	}
-	ui.PrintInfo("  q.   Exit")
-	ui.PrintInfo("")
+	ui.PrintWhite("  q.   Exit\n")
 
-	selection := ui.PromptWithDefault("Select provider to configure", "")
+	selection, err := ui.PromptWithDefault("Select provider to configure", "")
+	if err != nil {
+		ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+		return ""
+	}
 	return strings.TrimSpace(selection)
 }
 
@@ -199,13 +221,16 @@ func configureAnthropic(dir string, cfg *config.Config, providerName string) err
 	return nil
 }
 
-func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string) error {
+func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string) (string, map[string]interface{}, error) {
 	// Handle custom provider name
 	if providerName == "custom" {
-		customName := ui.Prompt("Provider name")
+		customName, err := ui.Prompt("Provider name")
+		if err != nil {
+			return "", nil, fmt.Errorf("reading provider name: %w", err)
+		}
 		validatedName, err := validateCustomProviderName(customName)
 		if err != nil {
-			return err
+			return "", nil, err
 		}
 		providerName = validatedName
 	}
@@ -221,33 +246,46 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 
 	apiKey, err := promptForAPIKey(def.Name)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 
 	baseURL, err := promptForBaseURL(def.BaseURL, def.Name)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 
-	model := ui.PromptWithDefault("Model", def.Model)
+	model, err := ui.PromptWithDefault("Model", def.Model)
+	if err != nil {
+		return "", nil, fmt.Errorf("reading model: %w", err)
+	}
 
 	// Build and save provider configuration
 	provider := buildProviderConfig(def, baseURL, model)
 	setAsDefault := cfg.DefaultProvider == ""
 	if err := saveProviderConfigFile(dir, cfg, providerName, provider, setAsDefault); err != nil {
-		return err
+		return "", nil, err
 	}
 
 	// Save secrets
 	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
 	secretsContent := formatSecretsFileContent(secrets)
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
-		return fmt.Errorf("saving API key: %w", err)
+		return "", nil, fmt.Errorf("saving API key: %w", err)
+	}
+
+	// Prepare audit details
+	details := map[string]interface{}{
+		"display_name": def.Name,
+		"base_url":     baseURL,
+		"model":        model,
+	}
+	if setAsDefault {
+		details["set_as_default"] = "true"
 	}
 
 	ui.PrintSuccess(fmt.Sprintf("%s configured successfully", def.Name))
 	ui.PrintInfo(fmt.Sprintf("Run 'kairo %s' to use this provider", providerName))
-	return nil
+	return providerName, details, nil
 }
 
 // promptForAPIKey prompts user for an API key and validates it.
@@ -264,7 +302,10 @@ func promptForAPIKey(providerName string) (string, error) {
 
 // promptForBaseURL prompts user for a base URL and validates it.
 func promptForBaseURL(defaultURL, providerName string) (string, error) {
-	baseURL := ui.PromptWithDefault("Base URL", defaultURL)
+	baseURL, err := ui.PromptWithDefault("Base URL", defaultURL)
+	if err != nil {
+		return "", fmt.Errorf("reading base URL: %w", err)
+	}
 	if err := validateBaseURL(baseURL, providerName); err != nil {
 		return "", err
 	}
@@ -297,7 +338,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		secrets, secretsPath, keyPath := loadSecrets(dir)
+		secrets, secretsPath, keyPath := LoadSecrets(dir)
 
 		selection := promptForProvider()
 		providerName, ok := parseProviderSelection(selection)
@@ -306,29 +347,33 @@ var setupCmd = &cobra.Command{
 		}
 
 		var configuredProvider string
+		var auditDetails map[string]interface{}
 		if !providers.RequiresAPIKey(providerName) {
 			if err := configureAnthropic(dir, cfg, providerName); err != nil {
 				ui.PrintError(fmt.Sprintf("Error: %v", err))
 				return
 			}
 			configuredProvider = providerName
+			auditDetails = map[string]interface{}{
+				"display_name": "Native Anthropic",
+				"type":         "builtin_no_api_key",
+			}
+			if cfg.DefaultProvider == providerName {
+				auditDetails["set_as_default"] = "true"
+			}
 		} else {
-			if err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath); err != nil {
+			provider, details, err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath)
+			if err != nil {
 				ui.PrintError(fmt.Sprintf("Error: %v", err))
 				return
 			}
-			if providerName == "custom" {
-				customName := ui.Prompt("Provider name")
-				validatedName, _ := validateCustomProviderName(customName)
-				configuredProvider = validatedName
-			} else {
-				configuredProvider = providerName
-			}
+			configuredProvider = provider
+			auditDetails = details
 		}
 
 		if configuredProvider != "" {
 			logAuditEvent(dir, func(logger *audit.Logger) error {
-				return logger.LogSetup(configuredProvider)
+				return logger.LogSuccess("setup", configuredProvider, auditDetails)
 			})
 		}
 	},

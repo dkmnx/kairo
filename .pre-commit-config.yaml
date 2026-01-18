@@ -30,5 +30,12 @@ repos:
         files: go\.(mod|sum)$
         pass_filenames: false
 
+      - id: govulncheck
+        name: Run vulnerability scan
+        entry: bash -c "command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./..."
+        language: system
+        files: go\.(mod|sum)$
+        pass_filenames: false
+
 ci:
   autoupdate_commit_msg: "chore: update pre-commit hooks"

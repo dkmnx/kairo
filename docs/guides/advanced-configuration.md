@@ -530,3 +530,332 @@ git commit -m "Update provider configurations"
 - [Error Handling Examples](error-handling-examples.md)
 - [Configuration Architecture](../architecture/README.md#configuration)
 - [Security Guide](../architecture/README.md#security)
+
+---
+
+## Complex Multi-Provider Scenarios
+
+### Scenario: Provider Pooling for Load Distribution
+
+Configure multiple providers and distribute load across them:
+
+```bash
+# Setup provider pool
+kairo config provider-1  # Using zai endpoint
+kairo config provider-2  # Using minimax endpoint
+kairo config provider-3  # Using deepseek endpoint
+kairo config provider-4  # Using kimi endpoint
+
+# Create load distribution script
+cat > ~/bin/kairo-pool.sh << 'SCRIPT'
+#!/bin/bash
+PROVIDERS=("provider-1" "provider-2" "provider-3" "provider-4")
+INDEX=$((RANDOM % ${#PROVIDERS[@]}))
+kairo switch ${PROVIDERS[$INDEX]} "$@"
+SCRIPT
+chmod +x ~/bin/kairo-pool.sh
+
+# Use the pool
+kairo-pool.sh "Your query"
+```
+
+### Scenario: Provider Selection Based on Query Type
+
+Route different types of queries to specialized providers:
+
+```bash
+# Setup specialized providers
+kairo config code-gen      # Optimized for code generation
+kairo config creative      # Optimized for creative writing
+kairo config analytical    # Optimized for analysis tasks
+kairo config translation   # Optimized for translation
+
+# Create smart router
+cat > ~/bin/kairo-smart.sh << 'SCRIPT'
+#!/bin/bash
+QUERY="$1"
+
+if echo "$QUERY" | grep -qiE "(code|function|debug|programming|api)"; then
+  kairo switch code-gen "$QUERY"
+elif echo "$QUERY" | grep -qiE "(write|create|story|poem|creative)"; then
+  kairo switch creative "$QUERY"
+elif echo "$QUERY" | grep -qiE "(analyze|data|statistics|report)"; then
+  kairo switch analytical "$QUERY"
+elif echo "$QUERY" | grep -qiE "(translate|language|english|spanish)"; then
+  kairo switch translation "$QUERY"
+else
+  kairo switch code-gen "$QUERY"  # Default
+fi
+SCRIPT
+chmod +x ~/bin/kairo-smart.sh
+
+# Use smart router
+kairo-smart.sh "Debug this Python function"
+kairo-smart.sh "Write a poem about spring"
+kairo-smart.sh "Translate to Spanish"
+```
+
+### Scenario: Cost-Optimized Multi-Tier Strategy
+
+Use different providers based on query complexity and cost:
+
+```bash
+# Tier 1: Fast and cheap (simple queries)
+kairo config tier1-cheap
+# Use provider with lowest cost per token
+
+# Tier 2: Balanced (moderate complexity)
+kairo config tier2-balanced
+# Use provider with good performance/cost ratio
+
+# Tier 3: Premium (complex queries)
+kairo config tier3-premium
+# Use best provider regardless of cost
+
+# Create cost-optimized router
+cat > ~/bin/kairo-cost-opt.sh << 'SCRIPT'
+#!/bin/bash
+QUERY="$1"
+TOKEN_COUNT=$(echo "$QUERY" | wc -c)
+
+if [ $TOKEN_COUNT -lt 100 ]; then
+  # Simple query - use cheapest
+  kairo switch tier1-cheap "$QUERY"
+elif [ $TOKEN_COUNT -lt 500 ]; then
+  # Medium query - use balanced
+  kairo switch tier2-balanced "$QUERY"
+else
+  # Complex query - use best
+  kairo switch tier3-premium "$QUERY"
+fi
+SCRIPT
+chmod +x ~/bin/kairo-cost-opt.sh
+```
+
+### Scenario: Geographic Multi-Region Deployment
+
+Deploy providers across multiple regions for latency optimization:
+
+```bash
+# Configure regional providers
+kairo config us-east
+# Enter base URL: https://us-east.api.example.com/v1
+
+kairo config us-west
+# Enter base URL: https://us-west.api.example.com/v1
+
+kairo config eu-central
+# Enter base URL: https://eu-central.api.example.com/v1
+
+kairo config asia-pacific
+# Enter base URL: https://asia-pacific.api.example.com/v1
+
+# Detect user location and use nearest provider
+cat > ~/bin/kairo-geo.sh << 'SCRIPT'
+#!/bin/bash
+# Simple geo-detection based on timezone
+TIMEZONE=$(timedatectl | grep "Time zone" | awk '{print $3}')
+
+case "$TIMEZONE" in
+  America/*)
+    kairo switch us-east "$@"
+    ;;
+  Europe/*)
+    kairo switch eu-central "$@"
+    ;;
+  Asia/*)
+    kairo switch asia-pacific "$@"
+    ;;
+  *)
+    kairo switch us-east "$@"  # Default
+    ;;
+esac
+SCRIPT
+chmod +x ~/bin/kairo-geo.sh
+```
+
+### Scenario: High-Availability Provider Cluster
+
+Configure provider cluster with automatic health monitoring:
+
+```bash
+# Setup cluster
+kairo config primary-1
+kairo config primary-2
+kairo config backup-1
+kairo config backup-2
+
+# Health check script
+cat > ~/bin/kairo-ha.sh << 'SCRIPT'
+#!/bin/bash
+PROVIDERS=("primary-1" "primary-2" "backup-1" "backup-2")
+
+for provider in "${PROVIDERS[@]}"; do
+  if kairo test $provider --quiet --timeout 5; then
+    logger "Kairo: Using healthy provider $provider"
+    kairo switch $provider "$@"
+    exit $?
+  fi
+done
+
+logger "Kairo: All providers failed"
+echo "Error: All providers are unavailable" >&2
+exit 1
+SCRIPT
+chmod +x ~/bin/kairo-ha.sh
+
+# Continuous health monitoring
+cat > ~/bin/kairo-monitor.sh << 'SCRIPT'
+#!/bin/bash
+while true; do
+  for provider in primary-1 primary-2 backup-1 backup-2; do
+    if ! kairo test $provider --quiet --timeout 5; then
+      logger "Kairo Alert: Provider $provider is unhealthy"
+      notify-send "Kairo Alert" "Provider $provider is unhealthy"
+    fi
+  done
+  sleep 60
+done &
+SCRIPT
+chmod +x ~/bin/kairo-monitor.sh
+```
+
+### Scenario: A/B Testing Providers
+
+Compare provider performance for the same queries:
+
+```bash
+# Setup test providers
+kairo config test-provider-a
+kairo config test-provider-b
+
+# A/B test script
+cat > ~/bin/kairo-ab-test.sh << 'SCRIPT'
+#!/bin/bash
+QUERY="$1"
+RESULTS_DIR="$HOME/kairo-ab-results"
+mkdir -p "$RESULTS_DIR"
+
+for provider in test-provider-a test-provider-b; do
+  OUTPUT="$RESULTS_DIR/${provider}_$(date +%s).txt"
+  START=$(date +%s%N)
+  kairo switch $provider "$QUERY" | tee "$OUTPUT"
+  END=$(date +%s%N)
+  DURATION=$(( (END - START) / 1000000 ))
+  echo "Response time: ${DURATION}ms" >> "$OUTPUT"
+  echo "Provider: $provider" >> "$OUTPUT"
+done
+
+echo "A/B test complete. Results saved to $RESULTS_DIR"
+SCRIPT
+chmod +x ~/bin/kairo-ab-test.sh
+
+# Run A/B test
+kairo-ab-test.sh "Explain quantum computing"
+```
+
+### Scenario: Environment-Specific Provider Configurations
+
+Use different providers for different environments:
+
+```bash
+# Development environment
+kairo config dev-provider
+# Use cheaper/faster provider for development
+
+# Staging environment
+kairo config staging-provider
+# Use production-like provider for staging
+
+# Production environment
+kairo config prod-provider
+# Use most reliable provider for production
+
+# Environment-aware wrapper
+cat > ~/bin/kairo-env.sh << 'SCRIPT'
+#!/bin/bash
+ENV="${KAIRO_ENV:-development}"
+
+case "$ENV" in
+  development)
+    kairo switch dev-provider "$@"
+    ;;
+  staging)
+    kairo switch staging-provider "$@"
+    ;;
+  production)
+    kairo switch prod-provider "$@"
+    ;;
+  *)
+    echo "Unknown environment: $ENV" >&2
+    exit 1
+    ;;
+esac
+SCRIPT
+chmod +x ~/bin/kairo-env.sh
+
+# Usage
+export KAIRO_ENV=production
+kairo-env.sh "Production query"
+```
+
+### Scenario: Provider Configuration Validation
+
+Validate multi-provider configurations before deployment:
+
+```bash
+#!/bin/bash
+# kairo-validate-multi.sh - Validate multi-provider setup
+
+ERRORS=0
+
+# Check each provider
+for provider in $(kairo list --format json | jq -r '.[].name'); do
+  echo "Validating $provider..."
+  
+  # Test provider connectivity
+  if ! kairo test $provider --quiet; then
+    echo "ERROR: $provider connectivity test failed"
+    ERRORS=$((ERRORS + 1))
+  fi
+  
+  # Check provider has API key configured
+  if ! kairo status --provider $provider | grep -q "API key: configured"; then
+    echo "ERROR: $provider missing API key"
+    ERRORS=$((ERRORS + 1))
+  fi
+  
+  # Check provider configuration
+  if kairo validate --provider $provider 2>&1 | grep -q "ERROR"; then
+    echo "ERROR: $provider configuration invalid"
+    ERRORS=$((ERRORS + 1))
+  fi
+done
+
+# Check for environment variable collisions
+if kairo validate --cross-provider 2>&1 | grep -q "collision"; then
+  echo "ERROR: Environment variable collision detected"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# Check default provider is set
+if [ -z "$(kairo default)" ]; then
+  echo "WARNING: No default provider set"
+fi
+
+if [ $ERRORS -eq 0 ]; then
+  echo "Multi-provider configuration is valid"
+  exit 0
+else
+  echo "Found $ERRORS error(s) in multi-provider configuration"
+  exit 1
+fi
+```
+
+---
+
+## Additional Multi-Provider Resources
+
+- [Best Practices Guide](../best-practices.md) - Enterprise deployment patterns
+- [User Guide](user-guide.md) - Basic usage
+- [Error Handling Examples](error-handling-examples.md) - Error scenarios

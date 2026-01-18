@@ -1,6 +1,9 @@
 package errors
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // ErrorType represents different categories of errors.
 type ErrorType string
@@ -18,7 +21,12 @@ const (
 	FileSystemError ErrorType = "filesystem"
 	// NetworkError indicates network-related errors
 	NetworkError ErrorType = "network"
+	// RuntimeError indicates runtime/panic errors
+	RuntimeError ErrorType = "runtime"
 )
+
+// ErrConfigNotFound is returned when the configuration file does not exist.
+var ErrConfigNotFound = errors.New("configuration file not found")
 
 // KairoError is a structured error type that provides context about what went wrong.
 type KairoError struct {
@@ -119,4 +127,13 @@ func CryptoErrorWithHint(message, hint string, cause error) *KairoError {
 func ProviderErr(message, providerName string, cause error) *KairoError {
 	return WrapError(ProviderError, message, cause).
 		WithContext("provider", providerName)
+}
+
+// RuntimeErr creates a formatted runtime/panic error.
+// Uses "Err" suffix to avoid conflict with RuntimeError type constant (similar to ProviderErr).
+func RuntimeErr(message string, cause error) *KairoError {
+	if cause != nil {
+		return WrapError(RuntimeError, message, cause)
+	}
+	return NewError(RuntimeError, message)
 }

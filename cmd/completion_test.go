@@ -336,7 +336,7 @@ func TestGetDefaultCompletionPathPowerShell(t *testing.T) {
 
 	path := getDefaultCompletionPath("powershell")
 
-	expected := filepath.Join(home, "Documents", "PowerShell", "Modules", "kairo-completion", "kairo-completion.psm1")
+	expected := filepath.Join(home, "kairo-completion.ps1")
 	if path != expected {
 		t.Errorf("getDefaultCompletionPath(powershell) = %q, want %q", path, expected)
 	}
@@ -370,5 +370,81 @@ func TestGetDefaultCompletionPathNoHomeDir(t *testing.T) {
 
 	if path != "kairo-completion.sh" {
 		t.Errorf("getDefaultCompletionPath without HOME = %q, want %q", path, "kairo-completion.sh")
+	}
+}
+
+// TestCompletionPowerShellSaveWithRegisterArgumentCompleter verifies that PowerShell
+// --save flag writes the Register-ArgumentCompleter script instead of cobra's default
+func TestCompletionPowerShellSaveWithRegisterArgumentCompleter(t *testing.T) {
+	originalConfigDir := getConfigDir()
+	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
+	t.Cleanup(func() {
+		setConfigDir(originalConfigDir)
+		if originalHome != "" {
+			os.Setenv("HOME", originalHome)
+		} else {
+			os.Unsetenv("HOME")
+		}
+		if originalUserProfile != "" {
+			os.Setenv("USERPROFILE", originalUserProfile)
+		} else {
+			os.Unsetenv("USERPROFILE")
+		}
+		completionOutput = ""
+		completionSave = false
+	})
+
+	tmpDir := t.TempDir()
+	setConfigDir(tmpDir)
+	os.Setenv("HOME", tmpDir)
+	os.Setenv("USERPROFILE", tmpDir)
+
+	// Test PowerShell auto-save with --save flag
+	rootCmd.SetArgs([]string{"completion", "powershell", "--save"})
+
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	// Verify file was created in default location
+	defaultPath := filepath.Join(tmpDir, "kairo-completion.ps1")
+	content, err := os.ReadFile(defaultPath)
+	if err != nil {
+		t.Fatalf("Failed to read saved completion file: %v", err)
+	}
+
+	contentStr := string(content)
+
+	// Verify it contains Register-ArgumentCompleter (not cobra's default format)
+	if !strings.Contains(contentStr, "Register-ArgumentCompleter") {
+		t.Errorf("Saved PowerShell completion should contain Register-ArgumentCompleter, got: %s", contentStr[:min(200, len(contentStr))])
+	}
+
+	// Verify it has -Native parameter (required for proper native command completion)
+	if !strings.Contains(contentStr, "-Native") {
+		t.Error("Saved PowerShell completion should use -Native parameter")
+	}
+
+	// Verify it has the ScriptBlock with proper parameters
+	if !strings.Contains(contentStr, "$wordToComplete") {
+		t.Error("Saved PowerShell completion should have $wordToComplete parameter")
+	}
+	if !strings.Contains(contentStr, "$commandAst") {
+		t.Error("Saved PowerShell completion should have $commandAst parameter")
+	}
+	if !strings.Contains(contentStr, "$cursorPosition") {
+		t.Error("Saved PowerShell completion should have $cursorPosition parameter")
+	}
+
+	// Verify it calls kairo __complete
+	if !strings.Contains(contentStr, "__complete") {
+		t.Error("Saved PowerShell completion should call kairo __complete")
+	}
+
+	// Verify it creates CompletionResult objects
+	if !strings.Contains(contentStr, "CompletionResult") {
+		t.Error("Saved PowerShell completion should create CompletionResult objects")
 	}
 }

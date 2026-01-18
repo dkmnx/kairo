@@ -137,6 +137,64 @@ Built-in provider definitions and registry.
 | deepseek | api.deepseek.com/anthropic | deepseek-chat | Yes |
 | custom | user-defined | user-defined | Yes |
 
+### performance/
+
+Performance metrics collection (opt-in, privacy-aware).
+
+| Function | Purpose |
+|----------|---------|
+| `NewRegistry()` | Create metrics registry (disabled by default) |
+| `RecordOperation()` | Record operation duration and success |
+| `RecordDuration()` | Helper to wrap functions with timing |
+| `GetStats()` | Get snapshot of current metrics |
+| `Reset()` | Clear all recorded metrics |
+| `ToJSON()` | Export metrics as JSON |
+
+**Key Types:**
+- `Registry` - Metrics registry with enable/disable toggle
+- `OperationMetrics` - Metrics for a specific operation/provider pair (count, duration, failures)
+- `Stats` - Snapshot of all metrics for display/export
+
+**Usage:**
+```go
+registry := performance.NewRegistry()
+registry.Enable()
+
+// Record an operation
+registry.RecordOperation("api_call", "anthropic", 125*time.Millisecond, true)
+
+// Or use helper wrapper
+err := performance.RecordDuration(registry, "config_save", "anthropic", func() error {
+    return doConfigSave()
+})
+
+// Get stats
+stats := registry.GetStats()
+// stats["api_call"]["anthropic"].AvgDuration == 125ms
+
+// Export to JSON
+jsonData, _ := registry.ToJSON()
+```
+
+**Privacy Design:**
+- Disabled by default - must explicitly enable
+- In-memory only - no persistence
+- Session-bound - lost when process exits
+- Opt-in via `KAIRO_METRICS_ENABLED=true` env var
+
+**See:** [docs/guides/performance-metrics.md](../guides/performance-metrics.md)
+
+### Security: Wrapper Scripts
+
+See: [docs/architecture/wrapper-scripts.md](../architecture/wrapper-scripts.md)
+
+**Summary:**
+- Secure credential passing via temporary shell scripts
+- Token never in process environment (`/proc/<pid>/environ`)
+- Private temp directory (0700) + token file (0600)
+- Platform-specific (Unix shell, Windows PowerShell)
+- Auto-cleanup on exit/interrupt
+
 ### validate/
 
 Input validation for API keys, URLs, and provider names.
@@ -146,11 +204,19 @@ Input validation for API keys, URLs, and provider names.
 | `ValidateAPIKey()` | Validate API key format |
 | `ValidateURL()` | Validate HTTPS URL |
 | `ValidateCustomName()` | Validate custom provider name |
+| `validateCrossProviderConfig()` | Detect environment variable collisions across providers |
+| `validateProviderModel()` | Validate model names against provider capabilities |
 
 **Validation Rules:**
 - API key: Minimum 8 characters, no whitespace
 - URL: HTTPS required, no localhost/private IPs
-- Provider name: `^[a-zA-Z][a-zA-Z0-9_-]*$`
+- Provider name:
+  - Length: 1-50 characters
+  - Pattern: `^[a-zA-Z][a-zA-Z0-9_-]*$` (starts with letter, alphanumeric/underscore/hyphen)
+  - Reserved: Cannot use built-in provider names (anthropic, zai, minimax, deepseek, kimi, custom) - case-insensitive
+- Cross-provider validation:
+  - Environment variable collisions: Detects when multiple providers set the same env var with different values
+  - Model name validation: For providers with default models, validates model names are reasonable (max 100 chars, valid characters: alphanumeric, hyphen, underscore, dot)
 
 ### ui/
 
@@ -264,3 +330,29 @@ flowchart LR
 | `filipko.io/age` | X25519 encryption |
 | `gopkg.in/yaml.v3` | YAML parsing |
 | `github.com/Masterminds/semver` | Version comparison |
+
+## Additional Documentation
+
+- **[Best Practices Guide](../docs/best-practices.md)** - Production deployment and operational best practices for enterprise environments
+  - Security best practices
+  - Configuration management
+  - High availability patterns
+  - Monitoring and observability
+  - Disaster recovery procedures
+  - Performance optimization
+  - Compliance and governance
+
+- **[Troubleshooting Guide](../docs/troubleshooting/README.md)** - Common issues and solutions
+  - Installation issues
+  - Configuration issues
+  - Provider issues
+  - Encryption issues
+  - Claude execution issues
+  - Advanced troubleshooting scenarios
+
+- **[Advanced Configuration](../docs/guides/advanced-configuration.md)** - Complex multi-provider scenarios
+  - Multi-provider setup strategies
+  - Custom provider configuration
+  - Environment variable integration
+  - Configuration management patterns
+  - Complex multi-provider scenarios (NEW)

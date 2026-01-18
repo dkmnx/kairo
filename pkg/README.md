@@ -26,7 +26,7 @@ Cross-platform configuration directory resolution.
 | ------- | --------------------------------------------- |
 | Linux   | `$XDG_CONFIG_HOME/kairo` or `~/.config/kairo` |
 | macOS   | `~/Library/Application Support/kairo`         |
-| Windows | `%APPDATA%\kairo`                             |
+| Windows | `%APPDATA%\kairo` (`AppData\Roaming\kairo`)   |
 
 ### Environment Overrides
 

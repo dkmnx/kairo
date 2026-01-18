@@ -121,6 +121,34 @@ jobs:
           name: coverage-report-go${{ matrix.go-version }}
           path: coverage.txt
 
+  powershell-test:
+    name: PowerShell Integration Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check PowerShell availability
+        id: pwsh
+        run: |
+          if command -v pwsh &> /dev/null; then
+            echo "PowerShell found: $(which pwsh)"
+          else
+            echo "PowerShell not found on this runner"
+            exit 1
+          fi
+
+      - name: Run PowerShell integration test
+        if: steps.pwsh.outcome == 'success'
+        run: |
+          pwsh -File scripts/test-powershell-escaping.ps1
+
+      - name: Report PowerShell test status
+        if: steps.pwsh.outcome != 'success'
+        run: |
+          echo "PowerShell not available on this runner, skipping integration test"
+          echo "To run manually: pwsh -File scripts/test-powershell-escaping.ps1"
+
   platform:
     name: Build (${{ matrix.os }})
     runs-on: ubuntu-latest
@@ -199,7 +227,7 @@ jobs:
 
   summary:
     name: Summary
-    needs: [lint, security, build-test, platform, tidy]
+    needs: [lint, security, build-test, platform, powershell-test, tidy]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -212,7 +240,7 @@ jobs:
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
           FAILED=0
-          for job in lint security build-test platform tidy; do
+          for job in lint security build-test platform powershell-test tidy; do
             status="${{ needs[job].result }}"
             if [ "$status" = "failure" ]; then
               echo "| $job | :x: Failed |" >> $GITHUB_STEP_SUMMARY

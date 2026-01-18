@@ -32,6 +32,9 @@ vendor/
 .DS_Store
 Thumbs.db
 
+# AI documentation (should not be committed)
+ai_docs/
+
 # Config files (contain sensitive data)
 .age.key
 secrets.age

@@ -175,9 +175,18 @@ func printAuditList(entries []audit.AuditEntry, cmd *cobra.Command) {
 		event := entry.Event
 		provider := entry.Provider
 
+		// Add status indicator
+		statusIcon := ""
+		if entry.Status == "failure" {
+			statusIcon = ui.Red + "[FAILED]" + ui.Reset + " "
+		}
+
 		switch entry.Event {
 		case "switch":
-			fmt.Fprintf(out, "  %s  [%s] Switched to %s\n", ui.Gray, timestamp, ui.Green+provider+ui.Reset)
+			fmt.Fprintf(out, "  %s  [%s] %sSwitched to %s\n", ui.Gray, timestamp, statusIcon, ui.Green+provider+ui.Reset)
+			if entry.Error != "" {
+				fmt.Fprintf(out, "      %sError: %s%s\n", ui.Red, entry.Error, ui.Reset)
+			}
 		case "config":
 			changes := ""
 			if len(entry.Changes) > 0 {
@@ -191,17 +200,49 @@ func printAuditList(entries []audit.AuditEntry, cmd *cobra.Command) {
 				}
 				changes = " - " + strings.Join(changeParts, ", ")
 			}
-			fmt.Fprintf(out, "  %s  [%s] Configured %s (%s)%s\n", ui.Gray, timestamp, ui.Blue+provider+ui.Reset, entry.Action, changes)
+			fmt.Fprintf(out, "  %s  [%s] %sConfigured %s (%s)%s\n", ui.Gray, timestamp, statusIcon, ui.Blue+provider+ui.Reset, entry.Action, changes)
+			if entry.Error != "" {
+				fmt.Fprintf(out, "      %sError: %s%s\n", ui.Red, entry.Error, ui.Reset)
+			}
 		case "rotate":
-			fmt.Fprintf(out, "  %s  [%s] Rotated keys for %s\n", ui.Gray, timestamp, ui.Yellow+provider+ui.Reset)
+			fmt.Fprintf(out, "  %s  [%s] %sRotated keys for %s\n", ui.Gray, timestamp, statusIcon, ui.Yellow+provider+ui.Reset)
+			if entry.Error != "" {
+				fmt.Fprintf(out, "      %sError: %s%s\n", ui.Red, entry.Error, ui.Reset)
+			}
 		case "default":
-			fmt.Fprintf(out, "  %s  [%s] Set default provider to %s\n", ui.Gray, timestamp, ui.Green+provider+ui.Reset)
+			fmt.Fprintf(out, "  %s  [%s] %sSet default provider to %s\n", ui.Gray, timestamp, statusIcon, ui.Green+provider+ui.Reset)
+			if entry.Error != "" {
+				fmt.Fprintf(out, "      %sError: %s%s\n", ui.Red, entry.Error, ui.Reset)
+			}
 		case "reset":
-			fmt.Fprintf(out, "  %s  [%s] Reset configuration for %s\n", ui.Gray, timestamp, ui.Red+provider+ui.Reset)
+			fmt.Fprintf(out, "  %s  [%s] %sReset configuration for %s\n", ui.Gray, timestamp, statusIcon, ui.Red+provider+ui.Reset)
+			if entry.Error != "" {
+				fmt.Fprintf(out, "      %sError: %s%s\n", ui.Red, entry.Error, ui.Reset)
+			}
 		case "setup":
-			fmt.Fprintf(out, "  %s  [%s] Set up %s\n", ui.Gray, timestamp, ui.Blue+provider+ui.Reset)
+			// Display name from details if available
+			displayName := provider
+			if entry.Details["display_name"] != nil {
+				if dn, ok := entry.Details["display_name"].(string); ok {
+					displayName = dn
+				}
+			}
+			fmt.Fprintf(out, "  %s  [%s] %sSet up %s\n", ui.Gray, timestamp, statusIcon, ui.Blue+displayName+ui.Reset)
+			if entry.Error != "" {
+				fmt.Fprintf(out, "      %sError: %s%s\n", ui.Red, entry.Error, ui.Reset)
+			}
 		default:
-			fmt.Fprintf(out, "  %s  [%s] %s %s\n", ui.Gray, timestamp, event, provider)
+			fmt.Fprintf(out, "  %s  [%s] %s%s %s\n", ui.Gray, timestamp, statusIcon, event, provider)
+			if entry.Error != "" {
+				fmt.Fprintf(out, "      %sError: %s%s\n", ui.Red, entry.Error, ui.Reset)
+			}
+		}
+
+		// Show details if present
+		if len(entry.Details) > 0 {
+			for key, value := range entry.Details {
+				fmt.Fprintf(out, "      %s%s: %v%s\n", ui.Gray, key, value, ui.Reset)
+			}
 		}
 	}
 	fmt.Fprintln(out)
@@ -228,7 +269,7 @@ func exportAuditLog(entries []audit.AuditEntry, outputPath, format string) error
 		writer := csv.NewWriter(f)
 		defer writer.Flush()
 
-		if err := writer.Write([]string{"timestamp", "event", "provider", "action", "changes"}); err != nil {
+		if err := writer.Write([]string{"timestamp", "event", "provider", "action", "status", "error", "details", "changes"}); err != nil {
 			return err
 		}
 
@@ -245,11 +286,25 @@ func exportAuditLog(entries []audit.AuditEntry, outputPath, format string) error
 				}
 				changes = strings.Join(changeParts, ", ")
 			}
+
+			// Format details as key:value pairs for readability
+			details := ""
+			if len(entry.Details) > 0 {
+				var detailParts []string
+				for key, value := range entry.Details {
+					detailParts = append(detailParts, fmt.Sprintf("%s:%v", key, value))
+				}
+				details = strings.Join(detailParts, ", ")
+			}
+
 			record := []string{
 				entry.Timestamp.Format("2006-01-02T15:04:05Z"),
 				entry.Event,
 				entry.Provider,
 				entry.Action,
+				entry.Status,
+				entry.Error,
+				details,
 				changes,
 			}
 			if err := writer.Write(record); err != nil {

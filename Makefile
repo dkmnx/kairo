@@ -1,4 +1,4 @@
-.PHONY: all build test clean lint format run install uninstall goreleaser ci-local
+.PHONY: all build test clean lint format run install uninstall goreleaser ci-local vuln-scan
 
 BINARY_NAME := kairo
 DIST_DIR := dist
@@ -94,6 +94,16 @@ verify-deps:
 	@echo "Verifying dependencies..."
 	go mod verify
 
+vuln-scan:
+	@echo "Running vulnerability scan..."
+	@if command -v govulncheck >/dev/null 2>&1; then \
+		govulncheck ./...; \
+	else \
+		echo "govulncheck not installed. Install with:"; \
+		echo "  go install golang.org/x/vuln/cmd/govulncheck@latest"; \
+		exit 1; \
+	fi
+
 release:
 	@echo "Running goreleaser..."
 	@if command -v goreleaser >/dev/null 2>&1; then \
@@ -144,6 +154,7 @@ help:
 	@echo "  release-dry-run - Build without publishing"
 	@echo "  deps          - Download and tidy dependencies"
 	@echo "  verify-deps   - Verify dependency checksums"
+	@echo "  vuln-scan     - Run vulnerability scan with govulncheck"
 	@echo "  ci-local      - Run GitHub Actions locally with act"
 	@echo "  ci-local-list - List all CI jobs"
 	@echo "  help          - Show this help message"

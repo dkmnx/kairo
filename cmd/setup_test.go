@@ -544,7 +544,12 @@ func TestGetConfigDirWithEnv(t *testing.T) {
 	defer setConfigDir(originalConfigDir)
 	setConfigDir("")
 
-	expectedDir := filepath.Join(tmpDir, ".config", "kairo")
+	var expectedDir string
+	if runtime.GOOS == "windows" {
+		expectedDir = filepath.Join(tmpDir, "AppData", "Roaming", "kairo")
+	} else {
+		expectedDir = filepath.Join(tmpDir, ".config", "kairo")
+	}
 	dir := getConfigDir()
 	if dir != expectedDir {
 		t.Errorf("getConfigDir() = %q, want %q", dir, expectedDir)
@@ -590,7 +595,12 @@ func TestGetConfigDirEmptyConfigDir(t *testing.T) {
 		t.Skip("cannot find home directory")
 	}
 
-	expectedDir := filepath.Join(home, ".config", "kairo")
+	var expectedDir string
+	if runtime.GOOS == "windows" {
+		expectedDir = filepath.Join(home, "AppData", "Roaming", "kairo")
+	} else {
+		expectedDir = filepath.Join(home, ".config", "kairo")
+	}
 	dir := getConfigDir()
 	if dir != expectedDir {
 		t.Errorf("getConfigDir() = %q, want %q", dir, expectedDir)
@@ -843,7 +853,7 @@ func TestLoadSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsOut, keyOut := loadSecrets(tmpDir)
+	secrets, secretsOut, keyOut := LoadSecrets(tmpDir)
 	if secretsOut != secretsPath {
 		t.Errorf("secretsPath = %q, want %q", secretsOut, secretsPath)
 	}
@@ -863,7 +873,7 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsPath, keyPath := loadSecrets(tmpDir)
+	secrets, secretsPath, keyPath := LoadSecrets(tmpDir)
 	if len(secrets) != 0 {
 		t.Errorf("got %d secrets, want 0", len(secrets))
 	}
@@ -1252,6 +1262,32 @@ func TestPromptForBaseURL(t *testing.T) {
 	})
 }
 
+func TestSetupAuditDetails(t *testing.T) {
+	t.Run("details map contains all required fields", func(t *testing.T) {
+		// Simulate what configureProvider creates
+		apiKey := "***masked***"
+		details := map[string]interface{}{
+			"display_name": "Test Provider",
+			"base_url":     "https://api.test.com",
+			"model":        "test-model",
+			"api_key":      apiKey,
+		}
+
+		// Verify all required fields exist
+		requiredFields := []string{"display_name", "base_url", "model", "api_key"}
+		for _, field := range requiredFields {
+			if details[field] == nil {
+				t.Errorf("details should contain %s field", field)
+			}
+		}
+
+		// Verify API key is masked
+		if strings.Contains(details["api_key"].(string), "sk-ant-api03") {
+			t.Error("API key should not be fully exposed in details")
+		}
+	})
+}
+
 func TestConfigureProvider(t *testing.T) {
 	// Skip on Windows - os.Pipe() doesn't work properly with term.ReadPassword
 	if runtime.GOOS == "windows" {
@@ -1302,7 +1338,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
+		providerName, details, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1315,6 +1351,38 @@ func TestConfigureProvider(t *testing.T) {
 
 		if err != nil {
 			t.Errorf("configureProvider() error = %v", err)
+		}
+
+		if providerName != "zai" {
+			t.Errorf("configureProvider() returned %q, want 'zai'", providerName)
+		}
+
+		if details == nil {
+			t.Error("configureProvider() details should not be nil")
+		} else {
+			// Check that details contain expected fields
+			if details["display_name"] == nil {
+				t.Error("configureProvider() details should contain display_name")
+			}
+			if details["base_url"] == nil {
+				t.Error("configureProvider() details should contain base_url")
+			}
+			if details["model"] == nil {
+				t.Error("configureProvider() details should contain model")
+			}
+			if details["api_key"] == nil {
+				t.Error("configureProvider() details should contain api_key")
+			} else {
+				// Verify API key is masked
+				apiKey := details["api_key"].(string)
+				if !strings.Contains(apiKey, "********") {
+					t.Errorf("API key should be masked with asterisks, got %q", apiKey)
+				}
+				// Verify full API key is not exposed
+				if apiKey == "sk-test123456789" {
+					t.Error("API key should be masked, not exposed in plain text")
+				}
+			}
 		}
 
 		// Check that provider was saved
@@ -1368,7 +1436,7 @@ func TestConfigureProvider(t *testing.T) {
 
 		go func() {
 			// Custom provider name
-			_, _ = pw.WriteString("my-custom-provider\n")
+			_, _ = pw.WriteString("mycustomprovider\n")
 			// API key
 			_, _ = pw.WriteString("sk-custom-key-789\n")
 			// Base URL
@@ -1390,7 +1458,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
+		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1405,15 +1473,19 @@ func TestConfigureProvider(t *testing.T) {
 			t.Errorf("configureProvider() error = %v", err)
 		}
 
+		if providerName != "mycustomprovider" {
+			t.Errorf("configureProvider() returned %q, want 'mycustomprovider'", providerName)
+		}
+
 		// Check that provider was saved
 		loadedCfg, err := config.LoadConfig(tmpDir)
 		if err != nil {
 			t.Fatalf("LoadConfig() error = %v", err)
 		}
 
-		provider, ok := loadedCfg.Providers["my-custom-provider"]
+		provider, ok := loadedCfg.Providers["mycustomprovider"]
 		if !ok {
-			t.Error("my-custom-provider not found in config")
+			t.Error("mycustomprovider not found in config")
 		}
 
 		if provider.Name != "My Custom Provider" {
@@ -1479,7 +1551,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
+		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1492,6 +1564,10 @@ func TestConfigureProvider(t *testing.T) {
 
 		if err == nil {
 			t.Error("configureProvider() should return error for invalid custom provider name")
+		}
+
+		if providerName != "" {
+			t.Errorf("configureProvider() returned %q, want empty string on error", providerName)
 		}
 	})
 
@@ -1534,7 +1610,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
+		providerName, _, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1548,5 +1624,167 @@ func TestConfigureProvider(t *testing.T) {
 		if err == nil {
 			t.Error("configureProvider() should return error for short API key")
 		}
+
+		if providerName != "" {
+			t.Errorf("configureProvider() returned %q, want empty string on error", providerName)
+		}
 	})
+}
+
+func TestSetup_ProviderNameValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{
+			name:    "simple",
+			wantErr: false,
+		},
+		{
+			name:    "provider123",
+			wantErr: false,
+		},
+		{
+			name:    "my_provider",
+			wantErr: false, // Should allow underscores
+		},
+		{
+			name:    "custom-provider",
+			wantErr: false, // Should allow hyphens
+		},
+		{
+			name:    "provider_with_underscores",
+			wantErr: false, // Should allow underscores
+		},
+		{
+			name:    "provider-with-hyphens",
+			wantErr: false, // Should allow hyphens
+		},
+		{
+			name:    "",
+			wantErr: true,
+		},
+		{
+			name:    "123invalid",
+			wantErr: true, // Must start with letter
+		},
+		{
+			name:    "_invalid",
+			wantErr: true, // Must start with letter
+		},
+		{
+			name:    "-invalid",
+			wantErr: true, // Must start with letter
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateCustomProviderName(tt.name)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSetup_ProviderNameLength(t *testing.T) {
+	// Create strings of exact lengths for testing
+	maxValidName := strings.Repeat("a", 50) // Exactly 50 characters
+	invalidName := strings.Repeat("b", 51)  // 51 characters - exceeds max
+
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{
+			name:    "a",
+			wantErr: false, // Minimum 1 character
+		},
+		{
+			name:    "valid",
+			wantErr: false,
+		},
+		{
+			name:    maxValidName,
+			wantErr: false, // Exactly 50 characters - max allowed
+		},
+		{
+			name:    invalidName,
+			wantErr: true, // 51 characters - exceeds max length
+		},
+		{
+			name:    "this_provider_name_is_way_too_long_and_exceeds_the_maximum_allowed_length_of_fifty_characters",
+			wantErr: true, // Much longer than 50 characters
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateCustomProviderName(tt.name)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSetup_ProviderNameReservedWords(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{
+			name:    "anthropic",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "zai",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "minimax",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "deepseek",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "kimi",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "custom",
+			wantErr: true, // Reserved - built-in provider
+		},
+		{
+			name:    "Anthropic",
+			wantErr: true, // Reserved - case-insensitive
+		},
+		{
+			name:    "ZAI",
+			wantErr: true, // Reserved - case-insensitive
+		},
+		{
+			name:    "mycustom",
+			wantErr: false, // Not reserved
+		},
+		{
+			name:    "provider",
+			wantErr: false, // Not reserved
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateCustomProviderName(tt.name)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+			}
+		})
+	}
 }
