@@ -5,6 +5,150 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-01-18
+
+### Added
+
+- **Performance metrics**: New `kairo metrics` command for monitoring CLI operations
+  - Track execution time, memory usage, and operation counts
+  - Export metrics in JSON or CSV format for analysis
+  - `internal/performance` package with comprehensive metrics collection
+  - Detailed guide in `docs/guides/performance-metrics.md`
+- **Retry and panic recovery**: New `internal/recovery` package for resilient error handling
+  - Retry utility with configurable attempts, exponential backoff, and jitter
+  - Panic recovery with optional stack trace logging
+  - Context-aware timeouts with automatic cancellation
+  - Comprehensive test coverage (800+ lines)
+- **Cross-provider validation**: New `kairo config --validate-all` command
+  - Validates all configured providers in a single run
+  - Returns structured validation report with per-provider status
+  - Useful for pre-flight checks before critical operations
+- **Error recovery and rollback**: Automatic transaction rollback on config failures
+  - Atomic config updates that preserve previous state on error
+  - Rollback mechanism for `kairo config` and `kairo setup` commands
+  - Improved error messages with recovery hints
+- **Secure token passing**: Wrapper script for secure API key delivery
+  - Replaces insecure pipe-based token passing
+  - `internal/wrapper` package with platform-specific script generation
+  - Tokens written to temp file with 0600 permissions, auto-cleaned
+  - Comprehensive security documentation in `docs/architecture/wrapper-scripts.md`
+- **Confirmation prompts**: Destructive operations now require user confirmation
+  - `kairo reset` prompts before removing provider configuration
+  - `kairo rotate` prompts before regenerating encryption keys
+  - Can be bypassed with `--yes` flag for automation
+- **Dependency vulnerability scanning**: New GitHub Actions workflow
+  - Automated security scanning on every pull request
+  - Uses `govulncheck` with SARIF output for GitHub integration
+  - Replaced deprecated `deny-licenses` with `allow-licenses` policy
+
+### Changed
+
+- **Provider name validation**: Enhanced with length limits and reserved words
+  - Maximum length: 32 characters
+  - Reserved words: `default`, `all`, `config`, `reset`, `rotate`, `setup`, `switch`, `test`, `status`, `list`, `version`, `update`, `audit`, `completion`, `metrics`
+  - Prevents conflicts with built-in commands
+- **YAML strict mode**: Config parser now rejects unknown fields
+  - Prevents typos from being silently ignored
+  - Explicit error messages for unrecognized configuration keys
+- **Error handling consolidation**: Merged duplicate errors packages
+  - Consolidated `internal/config/errors`, `internal/crypto/errors` into `internal/errors`
+  - Single source of truth for typed errors and error context
+- **PowerShell completion**: Simplified deployment process
+  - New `scripts/kairo-completion.ps1` standalone completion script
+  - Can be sourced directly or installed via `kairo completion --save`
+  - Improved Windows developer experience
+- **Windows special character handling**: Replaced batch scripts with PowerShell
+  - Better support for spaces, Unicode, and special characters in paths
+  - Consistent behavior across all platforms
+
+### Security
+
+- **Secure token passing**: Replaced insecure `curl | sh` and `irm | iex` patterns
+  - Update command now downloads to temp file with checksum verification
+  - Windows installer uses temp file instead of direct execution
+  - Wrapper script securely passes tokens via file descriptors
+- **Audit log sanitization**: API keys now completely masked in audit logs
+  - Previous implementation showed partial keys; now fully redacted
+  - Format: `sk-***` instead of `sk-an***mnop`
+
+### Fixed
+
+- **Thread safety**: Fixed race conditions in signal handling
+  - Used `sync.Once` to ensure single signal handler registration
+  - Confirmation flag handling made thread-safe with RWMutex
+  - All global state access now uses mutex-protected accessors
+- **Config directory**: Improved Windows support and thread safety
+  - Added mutex-protected `configDir` with proper RWMutex
+  - Removed unused `configDirOnce` variable
+  - Better handling of Windows paths with forward/backward slashes
+- **Provider name regex**: Fixed to allow underscores and hyphens
+  - Previous regex only allowed alphanumeric characters
+  - Custom providers can now use `my-provider` or `my_provider` style names
+- **Audit logging**: Added file `Sync()` for write durability
+  - Prevents data loss on crashes or power failures
+  - Ensures audit entries are flushed to disk
+- **Secrets parsing**: Skip entries with empty keys
+  - Prevents crashes on malformed environment variable entries
+  - Graceful handling of edge cases in ParseSecrets
+- **UI prompt functions**: Now return errors for proper error handling
+  - `Prompt()`, `PromptWithDefault()`, `Confirm()` return error
+  - Allows callers to handle user cancellation (Ctrl+C)
+  - Improved test signal handling safety
+- **Remove hardcoded /tmp paths**: Tests now use temp directories
+  - Cross-platform compatibility (Windows uses different temp location)
+  - Better isolation between test runs
+
+### Test
+
+- **Integration tests**: Added `cmd/integration_test.go` with end-to-end scenarios
+  - Tests complete workflows (setup, config, switch, reset)
+  - Validates cross-provider functionality
+- **PowerShell escaping**: Added edge case tests for special characters
+  - `scripts/test-powershell-escaping.ps1` for validation
+  - Covers quotes, backticks, Unicode, and other special characters
+- **Expanded coverage**: Significant test coverage improvements
+  - `cmd/switch_test.go`: 1000+ lines of comprehensive tests
+  - `cmd/metrics_test.go`: 200+ lines for metrics command
+  - `cmd/update_test.go`: 350+ lines for update functionality
+  - `internal/audit`: 350+ lines of audit logging tests
+  - `internal/recovery`: 800+ lines of recovery utility tests
+  - `internal/wrapper`: 400+ lines of wrapper script tests
+
+### Documentation
+
+- **Best practices guide**: New `docs/best-practices.md` with 600+ lines
+  - Security guidelines for API key management
+  - Multi-provider configuration examples
+  - Performance optimization tips
+  - Error handling patterns
+- **Wrapper script architecture**: New `docs/architecture/wrapper-scripts.md`
+  - Security design rationale
+  - Platform-specific implementation details
+  - Threat model and mitigation strategies
+- **Advanced configuration**: Expanded `docs/guides/advanced-configuration.md`
+  - Multi-provider setup examples
+  - Custom provider configuration
+  - Environment variable integration
+- **Performance metrics guide**: New `docs/guides/performance-metrics.md`
+  - Metrics collection overview
+  - Export and analysis workflows
+  - Integration with monitoring tools
+- **Updated documentation**:
+  - README with new features and examples
+  - Architecture documentation with wrapper script details
+  - AGENTS.md with updated provider name regex
+  - Contributing guide with new test patterns
+
+### Build
+
+- **Taskfile**: Added Windows support for all build tasks
+  - Cross-platform build, test, and lint commands
+  - PowerShell scripts for Windows-specific operations
+- **CI/CD improvements**:
+  - Enhanced vulnerability scanning workflow
+  - Better caching strategies for faster builds
+  - Improved error reporting in CI logs
+
 ## [1.4.3] - 2026-01-13
 
 ### Fixed
@@ -483,6 +627,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.5.0]: https://github.com/dkmnx/kairo/compare/v1.4.3...v1.5.0
 [1.4.3]: https://github.com/dkmnx/kairo/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/dkmnx/kairo/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/dkmnx/kairo/compare/v1.4.0...v1.4.1
