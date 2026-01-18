@@ -1,10 +1,13 @@
 # Performance Metrics
 
-Kairo includes optional performance metrics collection for tracking API call durations, configuration operations, and other performance-related data.
+Kairo includes optional performance metrics collection for tracking API call
+durations, configuration operations, and other performance-related data.
 
 ## Privacy-First Design
 
-Metrics collection is **opt-in and disabled by default**. You must explicitly enable metrics to begin recording. This ensures privacy by default - no performance data is collected unless you choose to enable it.
+Metrics collection is **opt-in and disabled by default**. You must explicitly
+enable metrics to begin recording. This ensures privacy by default - no
+performance data is collected unless you choose to enable it.
 
 ## Enabling Metrics
 
@@ -40,7 +43,7 @@ kairo metrics
 
 Example output:
 
-```
+```text
 Performance Metrics
 
   api_call
