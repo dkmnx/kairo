@@ -248,6 +248,7 @@ go install golang.org/x/vuln/cmd/govulncheck@latest
 ```
 
 Vulnerability scanning is also run automatically in CI on:
+
 - Every push to main/master
 - Every pull request
 - Weekly schedule (Sundays at 00:00 UTC)

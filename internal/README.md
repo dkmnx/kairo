@@ -46,20 +46,21 @@ flowchart TB
 
 Audit logging for configuration changes.
 
-| Function | Purpose |
-|----------|---------|
-| `NewLogger()` | Create audit logger |
-| `LogConfig()` | Log provider config changes |
-| `LogDefault()` | Log default provider changes |
-| `LogReset()` | Log provider resets |
-| `LogRotate()` | Log key rotations |
-| `LogSetup()` | Log provider setup |
-| `LogSwitch()` | Log provider switches |
-| `ListEntries()` | Read audit entries |
-| `ExportCSV()` | Export to CSV format |
-| `ExportJSON()` | Export to JSON format |
+| Function           | Purpose                    |
+| ------------------ | -------------------------- |
+| `NewLogger()`      | Create audit logger        |
+| `LogConfig()`      | Log config changes         |
+| `LogDefault()`     | Log default changes        |
+| `LogReset()`       | Log provider resets        |
+| `LogRotate()`      | Log key rotations          |
+| `LogSetup()`       | Log provider setup         |
+| `LogSwitch()`      | Log provider switches      |
+| `ListEntries()`    | Read audit entries         |
+| `ExportCSV()`      | Export to CSV format       |
+| `ExportJSON()`     | Export to JSON format      |
 
 **Key Types:**
+
 - `AuditEntry` - Individual log entry with timestamp, event, provider, action
 - `Change` - Field-level change tracking (field, old, new values)
 
@@ -69,17 +70,19 @@ Audit logging for configuration changes.
 
 Configuration loading and saving with YAML support.
 
-| Function | Purpose |
-|----------|---------|
-| `LoadConfig()` | Load YAML configuration |
-| `SaveConfig()` | Save YAML configuration |
-| `ParseSecrets()` | Parse secrets file content |
+| Function             | Purpose                    |
+| -------------------- | -------------------------- |
+| `LoadConfig()`       | Load YAML configuration    |
+| `SaveConfig()`       | Save YAML configuration    |
+| `ParseSecrets()`     | Parse secrets file         |
 
 **Key Types:**
+
 - `Config` - Root configuration with default provider and providers map
 - `Provider` - Provider configuration (name, base_url, model, env_vars)
 
 **Configuration Schema:**
+
 ```yaml
 default_provider: zai
 providers:
@@ -95,21 +98,23 @@ providers:
 
 Age (X25519) encryption for secrets management.
 
-| Function | Purpose |
-|----------|---------|
-| `EnsureKeyExists()` | Generate key if missing |
-| `EncryptSecrets()` | Encrypt API keys to file |
-| `DecryptSecrets()` | Decrypt secrets from file |
-| `RotateKey()` | Regenerate key and re-encrypt |
+| Function                | Purpose                       |
+| ----------------------- | ----------------------------- |
+| `EnsureKeyExists()`     | Generate key if missing       |
+| `EncryptSecrets()`      | Encrypt API keys to file      |
+| `DecryptSecrets()`      | Decrypt secrets from file     |
+| `RotateKey()`           | Regenerate key/re-encrypt     |
 
 **Security Model:**
+
 - X25519 key pair generated on first run
 - Private key stored in `age.key` (0600)
 - Secrets encrypted with recipient public key
 - All decryption happens in-memory only
 
 **File Structure:**
-```
+
+```text
 ~/.config/kairo/
 ├── age.key       # Private key (0600)
 └── secrets.age   # Encrypted API keys (0600)
@@ -119,76 +124,30 @@ Age (X25519) encryption for secrets management.
 
 Built-in provider definitions and registry.
 
-| Function | Purpose |
-|----------|---------|
-| `GetBuiltInProvider()` | Get provider definition |
-| `IsBuiltInProvider()` | Check if provider exists |
-| `GetProviderList()` | List all built-in providers |
-| `RequiresAPIKey()` | Check if API key required |
+| Function                  | Purpose                         |
+| ------------------------- | ------------------------------- |
+| `GetBuiltInProvider()`    | Get provider definition         |
+| `IsBuiltInProvider()`     | Check if provider exists        |
+| `GetProviderList()`       | List all built-in providers     |
+| `RequiresAPIKey()`        | Check if API key required       |
 
 **Built-in Providers:**
 
-| Provider | Base URL | Model | API Key |
-|----------|----------|-------|---------|
-| anthropic | - | - | No |
-| zai | api.z.ai/api/anthropic | glm-4.7 | Yes |
-| minimax | api.minimax.io/anthropic | Minimax-M2.1 | Yes |
-| kimi | api.kimi.com/coding | kimi-for-coding | Yes |
-| deepseek | api.deepseek.com/anthropic | deepseek-chat | Yes |
-| custom | user-defined | user-defined | Yes |
-
-### performance/
-
-Performance metrics collection (opt-in, privacy-aware).
-
-| Function | Purpose |
-|----------|---------|
-| `NewRegistry()` | Create metrics registry (disabled by default) |
-| `RecordOperation()` | Record operation duration and success |
-| `RecordDuration()` | Helper to wrap functions with timing |
-| `GetStats()` | Get snapshot of current metrics |
-| `Reset()` | Clear all recorded metrics |
-| `ToJSON()` | Export metrics as JSON |
-
-**Key Types:**
-- `Registry` - Metrics registry with enable/disable toggle
-- `OperationMetrics` - Metrics for a specific operation/provider pair (count, duration, failures)
-- `Stats` - Snapshot of all metrics for display/export
-
-**Usage:**
-```go
-registry := performance.NewRegistry()
-registry.Enable()
-
-// Record an operation
-registry.RecordOperation("api_call", "anthropic", 125*time.Millisecond, true)
-
-// Or use helper wrapper
-err := performance.RecordDuration(registry, "config_save", "anthropic", func() error {
-    return doConfigSave()
-})
-
-// Get stats
-stats := registry.GetStats()
-// stats["api_call"]["anthropic"].AvgDuration == 125ms
-
-// Export to JSON
-jsonData, _ := registry.ToJSON()
-```
-
-**Privacy Design:**
-- Disabled by default - must explicitly enable
-- In-memory only - no persistence
-- Session-bound - lost when process exits
-- Opt-in via `KAIRO_METRICS_ENABLED=true` env var
-
-**See:** [docs/guides/performance-metrics.md](../guides/performance-metrics.md)
+| Provider    | Base URL                       | Model             | API Key   |
+| ----------- | ------------------------------ | ----------------- | --------- |
+| anthropic   | -                              | -                 | No        |
+| zai         | api.z.ai/api/anthropic         | glm-4.7           | Yes       |
+| minimax     | api.minimax.io/anthropic       | Minimax-M2.1      | Yes       |
+| kimi        | api.kimi.com/coding            | kimi-for-coding   | Yes       |
+| deepseek    | api.deepseek.com/anthropic     | deepseek-chat     | Yes       |
+| custom      | user-defined                   | user-defined      | Yes       |
 
 ### Security: Wrapper Scripts
 
 See: [docs/architecture/wrapper-scripts.md](../architecture/wrapper-scripts.md)
 
 **Summary:**
+
 - Secure credential passing via temporary shell scripts
 - Token never in process environment (`/proc/<pid>/environ`)
 - Private temp directory (0700) + token file (0600)
@@ -199,40 +158,42 @@ See: [docs/architecture/wrapper-scripts.md](../architecture/wrapper-scripts.md)
 
 Input validation for API keys, URLs, and provider names.
 
-| Function | Purpose |
-|----------|---------|
-| `ValidateAPIKey()` | Validate API key format |
-| `ValidateURL()` | Validate HTTPS URL |
-| `ValidateCustomName()` | Validate custom provider name |
-| `validateCrossProviderConfig()` | Detect environment variable collisions across providers |
-| `validateProviderModel()` | Validate model names against provider capabilities |
+| Function                        | Purpose                                      |
+| ------------------------------- | -------------------------------------------- |
+| `ValidateAPIKey()`              | Validate API key format                      |
+| `ValidateURL()`                 | Validate HTTPS URL                           |
+| `ValidateCustomName()`          | Validate custom provider name                |
+| `validateCrossProviderConfig()` | Detect environment variable collisions       |
+| `validateProviderModel()`       | Validate model names                         |
 
 **Validation Rules:**
+
 - API key: Minimum 8 characters, no whitespace
 - URL: HTTPS required, no localhost/private IPs
 - Provider name:
   - Length: 1-50 characters
-  - Pattern: `^[a-zA-Z][a-zA-Z0-9_-]*$` (starts with letter, alphanumeric/underscore/hyphen)
-  - Reserved: Cannot use built-in provider names (anthropic, zai, minimax, deepseek, kimi, custom) - case-insensitive
+  - Pattern: `^[a-zA-Z][a-zA-Z0-9_-]*$` (starts with letter)
+  - Reserved: Cannot use built-in provider names (case-insensitive)
 - Cross-provider validation:
-  - Environment variable collisions: Detects when multiple providers set the same env var with different values
-  - Model name validation: For providers with default models, validates model names are reasonable (max 100 chars, valid characters: alphanumeric, hyphen, underscore, dot)
+  - Environment variable collisions detection
+  - Model name validation (max 100 chars)
 
 ### ui/
 
 Terminal UI utilities with colored formatting.
 
-| Function | Purpose |
-|----------|---------|
-| `PrintHeader()` | Section header |
-| `PrintSuccess()` | Green success message |
-| `PrintWarn()` | Yellow warning message |
-| `PrintError()` | Red error message |
-| `PrintInfo()` | Gray info message |
-| `PromptSecret()` | Password-style input |
-| `PromptWithDefault()` | Input with default value |
+| Function                | Purpose                           |
+| ----------------------- | --------------------------------- |
+| `PrintHeader()`         | Section header                    |
+| `PrintSuccess()`        | Green success message             |
+| `PrintWarn()`           | Yellow warning message            |
+| `PrintError()`          | Red error message                 |
+| `PrintInfo()`           | Gray info message                 |
+| `PromptSecret()`        | Password-style input              |
+| `PromptWithDefault()`   | Input with default value          |
 
 **Colors:**
+
 - Success: Green
 - Warning: Yellow
 - Error: Red
@@ -260,6 +221,7 @@ go tool cover -func=coverage.out
 ## Adding a New Provider
 
 1. **Define in `providers/registry.go`:**
+
 ```go
 var BuiltInProviders = map[string]ProviderDefinition{
     "newprovider": {
@@ -272,10 +234,11 @@ var BuiltInProviders = map[string]ProviderDefinition{
 }
 ```
 
-2. **Add validation (if needed):**
+1. **Add validation (if needed):**
 Update `internal/validate/api_key.go` for provider-specific validation.
 
-3. **Test:**
+2. **Test:**
+
 ```bash
 go test ./internal/providers/...
 kairo config newprovider
@@ -295,10 +258,12 @@ return kairoerrors.WrapError(kairoerrors.ConfigError,
     WithContext("path", configPath)
 
 // Create new error
-return kairoerrors.NewError(kairoerrors.ValidationError, "invalid provider name")
+return kairoerrors.NewError(kairoerrors.ValidationError,
+    "invalid provider name")
 ```
 
 **Error Types:**
+
 - `ConfigError` - Configuration loading/saving
 - `CryptoError` - Encryption/decryption
 - `ValidationError` - Input validation
@@ -325,34 +290,17 @@ flowchart LR
 
 ## Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `filipko.io/age` | X25519 encryption |
-| `gopkg.in/yaml.v3` | YAML parsing |
-| `github.com/Masterminds/semver` | Version comparison |
+| Package                          | Purpose                    |
+| -------------------------------- | -------------------------- |
+| `filippo.io/age`                 | X25519 encryption          |
+| `gopkg.in/yaml.v3`               | YAML parsing               |
+| `github.com/Masterminds/semver`  | Version comparison         |
 
 ## Additional Documentation
 
-- **[Best Practices Guide](../docs/best-practices.md)** - Production deployment and operational best practices for enterprise environments
-  - Security best practices
-  - Configuration management
-  - High availability patterns
-  - Monitoring and observability
-  - Disaster recovery procedures
-  - Performance optimization
-  - Compliance and governance
-
-- **[Troubleshooting Guide](../docs/troubleshooting/README.md)** - Common issues and solutions
-  - Installation issues
-  - Configuration issues
-  - Provider issues
-  - Encryption issues
-  - Claude execution issues
-  - Advanced troubleshooting scenarios
-
-- **[Advanced Configuration](../docs/guides/advanced-configuration.md)** - Complex multi-provider scenarios
-  - Multi-provider setup strategies
-  - Custom provider configuration
-  - Environment variable integration
-  - Configuration management patterns
-  - Complex multi-provider scenarios (NEW)
+- **[Best Practices Guide](../../docs/best-practices.md)** - Production deployment
+  and operational best practices for enterprise environments
+- **[Troubleshooting Guide](../../docs/troubleshooting/README.md)** - Common issues
+  and solutions
+- **[Advanced Configuration](../../docs/guides/advanced-configuration.md)** -
+  Complex multi-provider scenarios

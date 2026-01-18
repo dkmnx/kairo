@@ -27,35 +27,39 @@ brew install dkmnx/tap/kairo
 
 ## System Requirements
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| Go version  | 1.25    | 1.25+       |
-| OS          | Linux, macOS, Windows | Latest |
-| Architecture| amd64, arm64 | amd64 |
-| Disk space  | 10 MB   | 50 MB       |
+| Requirement    | Minimum               | Recommended   |
+| -------------- | --------------------- | ------------- |
+| Go version     | 1.25                  | 1.25+         |
+| OS             | Linux, macOS, Windows | Latest        |
+| Architecture   | amd64, arm64          | amd64         |
+| Disk space     | 10 MB                 | 50 MB         |
 
 ## Path Configuration
 
 Add to PATH:
 
 **Linux/macOS (bash):**
+
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
 **Linux/macOS (fish):**
+
 ```bash
 fish_add_path -g $HOME/.local/bin
 ```
 
 **Windows:**
+
 ```powershell
 # Add to User PATH via System Properties > Environment Variables
 %USERPROFILE%\.local\bin
 ```
 
 Verify installation:
+
 ```bash
 kairo version
 ```
@@ -64,40 +68,42 @@ kairo version
 
 ### Default Location
 
-| OS | Path |
-|---|------|
-| Linux | `$XDG_CONFIG_HOME/kairo` or `~/.config/kairo` |
-| macOS | `~/Library/Application Support/kairo` |
-| Windows | `%APPDATA%\kairo` |
+| OS        | Path                                                |
+| --------- | --------------------------------------------------- |
+| Linux     | `$XDG_CONFIG_HOME/kairo` or `~/.config/kairo`       |
+| macOS     | `~/Library/Application Support/kairo`               |
+| Windows   | `%APPDATA%\kairo`                                   |
 
 ### File Permissions
 
 All sensitive files use 0600 permissions:
 
-| File | Purpose |
-|------|---------|
-| `config` | Provider configurations (YAML) |
-| `secrets.age` | Encrypted API keys |
-| `age.key` | Encryption private key |
+| File          | Purpose                              |
+|---------------|--------------------------------------|
+| `config`      | Provider configurations (YAML)       |
+| `secrets.age` | Encrypted API keys                   |
+| `age.key`     | Encryption private key               |
 
 ### Environment Variables
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `KAIRO_CONFIG_DIR` | Override config directory | Platform default |
-| `KAIRO_UPDATE_URL` | Custom update check URL | GitHub Releases API |
+| Variable           | Purpose                         | Default             |
+|--------------------|---------------------------------|---------------------|
+| `KAIRO_CONFIG_DIR` | Override config directory       | Platform default    |
+| `KAIRO_UPDATE_URL` | Custom update check URL         | GitHub Releases API |
 
 ## Shell Completion
 
 Enable shell completion for better UX:
 
 **Bash:**
+
 ```bash
 kairo completion bash >> ~/.bashrc
 source ~/.bashrc
 ```
 
 **Zsh:**
+
 ```bash
 kairo completion zsh > ~/.zsh/completion/_kairo
 # Add to ~/.zshrc:
@@ -107,6 +113,7 @@ compinit
 ```
 
 **Fish:**
+
 ```bash
 kairo completion fish > ~/.config/fish/completions/kairo.fish
 ```
