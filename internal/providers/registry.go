@@ -13,7 +13,7 @@ var BuiltInProviders = map[string]ProviderDefinition{
 		BaseURL:        "https://api.z.ai/api/anthropic",
 		Model:          "glm-4.7",
 		RequiresAPIKey: true,
-		EnvVars:        []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air"},
+		EnvVars:        []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash"},
 	},
 	"minimax": {
 		Name:           "MiniMax",

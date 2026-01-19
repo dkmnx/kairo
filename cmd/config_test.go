@@ -207,7 +207,7 @@ func TestProviderConfigSaveLoad(t *testing.T) {
 				Name:    "Z.AI",
 				BaseURL: "https://api.z.ai/api/anthropic",
 				Model:   "glm-4.7",
-				EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air"},
+				EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash"},
 			},
 			"minimax": {
 				Name:    "MiniMax",
@@ -454,7 +454,7 @@ func TestConfig_CrossProviderValidation(t *testing.T) {
 					Name:    "Z.AI",
 					BaseURL: "https://api.z.ai/api/anthropic",
 					Model:   "glm-4.7",
-					EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air"},
+					EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash"},
 				},
 				"minimax": {
 					Name:    "MiniMax",
@@ -505,7 +505,7 @@ func TestConfig_CrossProviderValidation(t *testing.T) {
 					Name:    "Z.AI",
 					BaseURL: "https://api.z.ai/api/anthropic",
 					Model:   "glm-4.7",
-					EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air"},
+					EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash"},
 				},
 				"deepseek": {
 					Name:    "DeepSeek AI",
