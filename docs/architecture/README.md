@@ -218,7 +218,7 @@ providers:
     base_url: https://api.z.ai/api/anthropic
     model: glm-4.7
     env_vars:
-      - ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air
+      - ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash
   anthropic:
     name: Native Anthropic
     base_url: ""
