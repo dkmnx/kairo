@@ -159,7 +159,7 @@ flowchart TB
 
 | File          | Purpose                            | Permissions   |
 | ------------- | ---------------------------------- | ------------- |
-| `config`      | Provider configurations (YAML)     | 0600          |
+| `config.yaml` | Provider configurations (YAML)     | 0600          |
 | `secrets.age` | Encrypted API keys                 | 0600          |
 | `age.key`     | Encryption private key             | 0600          |
 | `audit.log`   | Configuration change history       | 0600          |

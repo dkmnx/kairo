@@ -33,7 +33,7 @@ func TestResetCommandSingleProvider(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `providers:
   zai:
     name: Z.AI
@@ -77,7 +77,7 @@ func TestResetCommandAllProviders(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `providers:
   zai:
     name: Z.AI
@@ -117,7 +117,7 @@ func TestResetCommandNonexistentProvider(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `providers:
   zai:
     name: Z.AI
@@ -153,7 +153,7 @@ func TestResetCommandSingleProviderWithYesFlag(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `providers:
   zai:
     name: Z.AI
@@ -202,7 +202,7 @@ func TestResetCommandAllRequiresConfirmation(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `providers:
   zai:
     name: Z.AI
@@ -267,7 +267,7 @@ func TestResetCommandRemovesSecretsFileWhenEmpty(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `providers:
   zai:
     name: Z.AI
@@ -313,7 +313,7 @@ func TestResetCommandAllRemovesSecretsFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `providers:
   zai:
     name: Z.AI

@@ -15,7 +15,7 @@ func TestDefaultCommandNoArgs(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: zai
 providers:
   zai:
@@ -44,7 +44,7 @@ func TestDefaultCommandSetProvider(t *testing.T) {
 
 	t.Logf("tmpDir: %s", tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
 providers:
   anthropic:
@@ -77,7 +77,7 @@ providers:
 		t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "zai")
 	}
 
-	content, err := os.ReadFile(filepath.Join(tmpDir, "config"))
+	content, err := os.ReadFile(filepath.Join(tmpDir, "config.yaml"))
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
@@ -91,7 +91,7 @@ func TestDefaultCommandProviderNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
 providers:
   anthropic:
@@ -118,7 +118,7 @@ func TestDefaultCommandUpdatesConfigFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
 providers:
   anthropic:

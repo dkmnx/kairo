@@ -21,7 +21,7 @@ func TestStatusCommandUppercaseKeyFormat(t *testing.T) {
 	setConfigDir(tmpDir)
 
 	// Create config with lowercase provider name "zai"
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `providers:
   zai:
     name: Z.AI
@@ -97,7 +97,7 @@ func TestStatusCommandLowercaseKeyNotSeen(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `providers:
   zai:
     name: Z.AI

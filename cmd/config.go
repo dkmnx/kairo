@@ -271,13 +271,13 @@ func withConfigTransaction(configDir string, fn func(txDir string) error) error 
 
 // getConfigPath returns the full path to the config file.
 func getConfigPath(configDir string) string {
-	return filepath.Join(configDir, "config")
+	return filepath.Join(configDir, "config.yaml")
 }
 
 // getBackupPath returns a backup file path with timestamp.
 func getBackupPath(configDir string) string {
 	timestamp := time.Now().Format("20060102-150405")
-	return filepath.Join(configDir, fmt.Sprintf("config.backup.%s", timestamp))
+	return filepath.Join(configDir, fmt.Sprintf("config.yaml.backup.%s", timestamp))
 }
 
 // validateCrossProviderConfig validates configuration across all providers to detect conflicts.
