@@ -122,7 +122,7 @@ function Test-Checksum {
     foreach ($line in $lines) {
         if ($line -match "^([a-f0-9]+)\s+($($BinaryName)_windows_\S+)") {
             $expectedHash = $matches[1].ToLower()
-            $actualHash = $hash.ToLower()
+            $actualHash = $hash.Hash.ToLower()
 
             if ($expectedHash -eq $actualHash) {
                 Write-Log "Checksum verified successfully"
