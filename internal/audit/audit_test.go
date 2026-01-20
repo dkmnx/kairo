@@ -19,6 +19,7 @@ func TestNewLogger(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	if logger == nil {
 		t.Fatal("NewLogger() returned nil")
@@ -37,10 +38,11 @@ func TestNewLoggerCreatesFileWithPermissions(t *testing.T) {
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "audit.log")
 
-	_, err := NewLogger(tmpDir)
+	logger, err := NewLogger(tmpDir)
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	info, err := os.Stat(logPath)
 	if err != nil {
@@ -62,6 +64,7 @@ func TestLogSwitch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogSwitch("anthropic")
 	if err != nil {
@@ -101,6 +104,7 @@ func TestLogConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	changes := []Change{
 		{Field: "api_key", Old: "", New: "***"},
@@ -162,6 +166,7 @@ func TestLogRotate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogRotate("all")
 	if err != nil {
@@ -193,6 +198,7 @@ func TestLogDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogDefault("minimax")
 	if err != nil {
@@ -224,6 +230,7 @@ func TestLogReset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogReset("kimi")
 	if err != nil {
@@ -255,6 +262,7 @@ func TestLogSetup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogSetup("deepseek")
 	if err != nil {
@@ -286,6 +294,7 @@ func TestLoggerAppendsEntries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogSwitch("anthropic")
 	if err != nil {
@@ -314,6 +323,7 @@ func TestAuditEntryTimestampFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	before := time.Now().UTC()
 	err = logger.LogSwitch("test")
@@ -343,6 +353,7 @@ func TestLoadEntries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogSwitch("anthropic")
 	if err != nil {
@@ -387,6 +398,7 @@ func TestLoadEntriesEmptyLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	entries, err := logger.LoadEntries()
 	if err != nil {
@@ -444,6 +456,7 @@ func TestAuditEntryHasStatusField(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogSwitch("test-provider")
 	if err != nil {
@@ -475,6 +488,7 @@ func TestAuditEntryHasErrorField(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogSwitch("test-provider")
 	if err != nil {
@@ -503,6 +517,7 @@ func TestLogSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	details := map[string]interface{}{
 		"previous_provider": "old-provider",
@@ -559,6 +574,7 @@ func TestLogFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	details := map[string]interface{}{
 		"attempted_provider": "broken-provider",
@@ -615,6 +631,7 @@ func TestLogSuccessWithNilDetails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogSuccess("setup", "test-provider", nil)
 	if err != nil {
@@ -647,6 +664,7 @@ func TestLogFailureWithNilDetails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogFailure("setup", "test-provider", "setup failed", nil)
 	if err != nil {
@@ -678,6 +696,7 @@ func TestLoggerClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close() // Close again at test end for cleanup
 
 	// Log something before closing
 	err = logger.LogSwitch("test-before-close")
