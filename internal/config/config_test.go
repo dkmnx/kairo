@@ -12,7 +12,7 @@ import (
 
 func TestLoadConfig(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: zai
 providers:
@@ -60,7 +60,7 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 
 func TestLoadConfigInvalidYAML(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	invalidYAML := `invalid: yaml: content: [`
 	if err := os.WriteFile(configPath, []byte(invalidYAML), 0600); err != nil {
@@ -75,7 +75,7 @@ func TestLoadConfigInvalidYAML(t *testing.T) {
 
 func TestLoadConfigUnknownFields(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	unknownFieldsYAML := `default_provider: zai
 unknown_field: should_be_rejected
@@ -98,7 +98,7 @@ providers:
 
 func TestLoadConfigEmptyProviders(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: zai
 providers: {}
@@ -122,7 +122,7 @@ providers: {}
 
 func TestLoadConfigNoProviders(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: zai
 `
@@ -142,7 +142,7 @@ func TestLoadConfigNoProviders(t *testing.T) {
 
 func TestSaveConfig(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	cfg := &Config{
 		DefaultProvider: "anthropic",
@@ -172,7 +172,7 @@ func TestSaveConfig(t *testing.T) {
 
 func TestSaveConfigCreatesFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	cfg := &Config{
 		DefaultProvider: "test",
@@ -191,7 +191,7 @@ func TestSaveConfigCreatesFile(t *testing.T) {
 
 func TestSaveConfigPermissions(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	cfg := &Config{
 		DefaultProvider: "test",
@@ -321,6 +321,260 @@ func TestParseSecrets(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMigrateConfigFile(t *testing.T) {
+	t.Run("NoMigrationWhenNoOldConfig", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		migrated, err := migrateConfigFile(tmpDir)
+		if err != nil {
+			t.Fatalf("migrateConfigFile() error = %v", err)
+		}
+		if migrated {
+			t.Error("Expected no migration when old config doesn't exist")
+		}
+
+		// Verify no files were created
+		oldPath := filepath.Join(tmpDir, "config")
+		newPath := filepath.Join(tmpDir, "config.yaml")
+		if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
+			t.Error("Old config file should not exist")
+		}
+		if _, err := os.Stat(newPath); !os.IsNotExist(err) {
+			t.Error("New config file should not exist")
+		}
+	})
+
+	t.Run("SuccessfulMigration", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		oldConfigPath := filepath.Join(tmpDir, "config")
+
+		configContent := `default_provider: zai
+providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai/api/anthropic
+    model: glm-4.7
+`
+		if err := os.WriteFile(oldConfigPath, []byte(configContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		migrated, err := migrateConfigFile(tmpDir)
+		if err != nil {
+			t.Fatalf("migrateConfigFile() error = %v", err)
+		}
+		if !migrated {
+			t.Error("Expected migration to occur")
+		}
+
+		// Verify new file exists
+		newConfigPath := filepath.Join(tmpDir, "config.yaml")
+		data, err := os.ReadFile(newConfigPath)
+		if err != nil {
+			t.Fatalf("Failed to read new config file: %v", err)
+		}
+
+		// Verify content is identical
+		if string(data) != configContent {
+			t.Errorf("Migrated content mismatch.\nGot:\n%s\nWant:\n%s", string(data), configContent)
+		}
+
+		// Verify old file was backed up
+		backupPath := oldConfigPath + ".backup"
+		if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+			t.Error("Old config file should be backed up, not deleted")
+		}
+
+		// Verify old config no longer exists at original path
+		if _, err := os.Stat(oldConfigPath); !os.IsNotExist(err) {
+			t.Error("Old config file should be renamed to backup")
+		}
+	})
+
+	t.Run("NoMigrationWhenNewConfigExists", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		oldConfigPath := filepath.Join(tmpDir, "config")
+		newConfigPath := filepath.Join(tmpDir, "config.yaml")
+
+		// Create both old and new config files
+		oldContent := `default_provider: zai
+providers:
+  zai:
+    name: Z.AI
+`
+		newContent := `default_provider: anthropic
+providers:
+  anthropic:
+    name: Native Anthropic
+`
+
+		if err := os.WriteFile(oldConfigPath, []byte(oldContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(newConfigPath, []byte(newContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		migrated, err := migrateConfigFile(tmpDir)
+		if err != nil {
+			t.Fatalf("migrateConfigFile() error = %v", err)
+		}
+		if migrated {
+			t.Error("Should not migrate when new config already exists")
+		}
+
+		// Verify new config is unchanged
+		data, err := os.ReadFile(newConfigPath)
+		if err != nil {
+			t.Fatalf("Failed to read new config: %v", err)
+		}
+		if string(data) != newContent {
+			t.Error("New config file should not be overwritten")
+		}
+
+		// Verify old config still exists
+		if _, err := os.Stat(oldConfigPath); os.IsNotExist(err) {
+			t.Error("Old config file should still exist")
+		}
+	})
+
+	t.Run("MigrationFailsWithInvalidYAML", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		oldConfigPath := filepath.Join(tmpDir, "config")
+
+		// Write invalid YAML
+		invalidYAML := `invalid: yaml: content: [`
+		if err := os.WriteFile(oldConfigPath, []byte(invalidYAML), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		migrated, err := migrateConfigFile(tmpDir)
+		if err == nil {
+			t.Error("Expected error when migrating invalid YAML")
+		}
+		if migrated {
+			t.Error("Should not report migration on error")
+		}
+
+		// Verify no new file was created
+		newConfigPath := filepath.Join(tmpDir, "config.yaml")
+		if _, err := os.Stat(newConfigPath); !os.IsNotExist(err) {
+			t.Error("New config file should not be created when old has invalid YAML")
+		}
+
+		// Verify old file still exists
+		if _, err := os.Stat(oldConfigPath); os.IsNotExist(err) {
+			t.Error("Old config file should still exist after failed migration")
+		}
+	})
+
+	t.Run("MigrationPreservesPermissions", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping permission test on Windows")
+		}
+
+		tmpDir := t.TempDir()
+		oldConfigPath := filepath.Join(tmpDir, "config")
+
+		configContent := `default_provider: zai
+providers:
+  zai:
+    name: Z.AI
+`
+		// Create with specific permissions
+		if err := os.WriteFile(oldConfigPath, []byte(configContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		migrated, err := migrateConfigFile(tmpDir)
+		if err != nil {
+			t.Fatalf("migrateConfigFile() error = %v", err)
+		}
+		if !migrated {
+			t.Error("Expected migration to occur")
+		}
+
+		// Check new file has same permissions
+		newConfigPath := filepath.Join(tmpDir, "config.yaml")
+		info, err := os.Stat(newConfigPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0644 {
+			t.Errorf("Permissions not preserved: got %o, want %o", info.Mode().Perm(), 0644)
+		}
+	})
+}
+
+func TestLoadConfigWithMigration(t *testing.T) {
+	t.Run("LoadConfigMigratesOldFormat", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		oldConfigPath := filepath.Join(tmpDir, "config")
+
+		configContent := `default_provider: zai
+providers:
+  zai:
+    name: Z.AI
+    base_url: https://api.z.ai/api/anthropic
+    model: glm-4.7
+`
+		if err := os.WriteFile(oldConfigPath, []byte(configContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := LoadConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
+
+		if cfg.DefaultProvider != "zai" {
+			t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "zai")
+		}
+
+		provider, ok := cfg.Providers["zai"]
+		if !ok {
+			t.Fatal("zai provider not found")
+		}
+		if provider.Name != "Z.AI" {
+			t.Errorf("Provider name = %q, want %q", provider.Name, "Z.AI")
+		}
+
+		// Verify migration happened
+		newConfigPath := filepath.Join(tmpDir, "config.yaml")
+		if _, err := os.Stat(newConfigPath); os.IsNotExist(err) {
+			t.Error("New config.yaml should exist after LoadConfig with migration")
+		}
+
+		backupPath := oldConfigPath + ".backup"
+		if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+			t.Error("Old config should be backed up")
+		}
+	})
+
+	t.Run("LoadConfigWorksWhenAlreadyMigrated", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		newConfigPath := filepath.Join(tmpDir, "config.yaml")
+
+		configContent := `default_provider: anthropic
+providers:
+  anthropic:
+    name: Native Anthropic
+`
+		if err := os.WriteFile(newConfigPath, []byte(configContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := LoadConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
+
+		if cfg.DefaultProvider != "anthropic" {
+			t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "anthropic")
+		}
+	})
 }
 
 func TestParseSecretsEmptyKey(t *testing.T) {
