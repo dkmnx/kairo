@@ -179,9 +179,15 @@ func TestGenerateWrapperScript_WindowsPath(t *testing.T) {
 		t.Error("Wrapper script should not be empty")
 	}
 
-	// Verify token path is in script
-	if !contains(string(content), tokenPath) {
-		t.Error("Wrapper script should contain token path")
+	// Verify token path is in script (Windows paths are escaped with \\ in scripts)
+	// The script uses %q formatting which escapes backslashes on Windows
+	expectedPath := tokenPath
+	if runtime.GOOS == "windows" {
+		// On Windows, the script will have escaped backslashes
+		expectedPath = strings.ReplaceAll(tokenPath, `\`, `\\`)
+	}
+	if !contains(string(content), expectedPath) {
+		t.Errorf("Wrapper script should contain token path\nscript:\n%s\n\nexpected path: %s", string(content), expectedPath)
 	}
 }
 
