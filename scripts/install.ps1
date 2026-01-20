@@ -141,6 +141,50 @@ function Test-Checksum {
     return $true # Continue anyway
 }
 
+function Stop-KairoProcess {
+    <#
+    .SYNOPSIS
+        Stops all running kairo.exe processes to allow binary replacement.
+    .DESCRIPTION
+        This function attempts to gracefully stop running kairo processes,
+        then forcefully terminates any remaining processes. This is necessary
+        during self-update scenarios where the binary cannot be replaced while
+        the process is active.
+    .OUTPUTS
+        System.Boolean. Returns $true if processes were stopped, $false if none were running.
+    #>
+    $processes = Get-Process -Name "kairo" -ErrorAction SilentlyContinue
+
+    if ($null -eq $processes) {
+        return $false
+    }
+
+    Write-Log "Stopping running kairo processes..."
+
+    foreach ($process in $processes) {
+        try {
+            # Try graceful shutdown first
+            Stop-Process -Id $process.Id -Force -ErrorAction Stop
+            Write-Log "  Stopped process $($process.Id) (Path: $($process.Path))"
+        }
+        catch {
+            Write-Error-Log "  Failed to stop process $($process.Id): $_"
+        }
+    }
+
+    # Wait a moment for processes to fully terminate
+    Start-Sleep -Milliseconds 500
+
+    # Verify all processes are stopped
+    $remaining = Get-Process -Name "kairo" -ErrorAction SilentlyContinue
+    if ($remaining) {
+        Write-Error-Log "Some kairo processes are still running. Installation may fail."
+        return $false
+    }
+
+    return $true
+}
+
 function Install-Binary {
     param(
         [string]$Version,
@@ -206,6 +250,9 @@ function Install-Binary {
 
     # Move binary (remove existing first to avoid "file already exists" error)
     if (Test-Path $destBinaryPath) {
+        # Stop any running kairo processes to release file locks
+        Stop-KairoProcess
+
         try {
             Remove-Item -Path $destBinaryPath -Force -ErrorAction Stop
         }
