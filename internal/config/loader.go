@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -23,10 +24,78 @@ type Provider struct {
 	EnvVars []string `yaml:"env_vars"`
 }
 
+// migrateConfigFile migrates an old config file to the new config.yaml format.
+// Returns true if migration was performed, false if not needed.
+// Preserves the original file permissions and only migrates if:
+// - Old config file exists
+// - New config.yaml does not exist
+// - Migration succeeds
+func migrateConfigFile(configDir string) (bool, error) {
+	oldConfigPath := filepath.Join(configDir, "config")
+	newConfigPath := filepath.Join(configDir, "config.yaml")
+
+	// Check if old config exists
+	oldInfo, err := os.Stat(oldConfigPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// No old config to migrate
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check old config file: %w", err)
+	}
+
+	// Check if new config already exists
+	if _, err := os.Stat(newConfigPath); err == nil {
+		// New config exists, don't overwrite - keep both for safety
+		return false, nil
+	} else if !os.IsNotExist(err) {
+		return false, fmt.Errorf("failed to check new config file: %w", err)
+	}
+
+	// Read the old config file to verify it's valid YAML before migrating
+	data, err := os.ReadFile(oldConfigPath)
+	if err != nil {
+		return false, fmt.Errorf("failed to read old config file: %w", err)
+	}
+
+	// Verify it's valid YAML
+	var testCfg Config
+	if err := yaml.Unmarshal(data, &testCfg); err != nil {
+		return false, fmt.Errorf("old config file is not valid YAML, cannot migrate: %w", err)
+	}
+
+	// Write to new location with same permissions
+	if err := os.WriteFile(newConfigPath, data, oldInfo.Mode()); err != nil {
+		return false, fmt.Errorf("failed to write migrated config file: %w", err)
+	}
+
+	// Rename old file to .backup instead of deleting
+	backupPath := oldConfigPath + ".backup"
+	if err := os.Rename(oldConfigPath, backupPath); err != nil {
+		// If rename fails, try to remove the new file and report error
+		os.Remove(newConfigPath)
+		return false, fmt.Errorf("failed to backup old config file: %w", err)
+	}
+
+	return true, nil
+}
+
 // LoadConfig reads and parses the configuration file from the specified directory.
 // Returns ErrConfigNotFound if the file doesn't exist.
+// Automatically migrates old "config" file to "config.yaml" if needed.
 func LoadConfig(configDir string) (*Config, error) {
-	configPath := filepath.Join(configDir, "config")
+	configPath := filepath.Join(configDir, "config.yaml")
+
+	// Attempt migration if old config exists
+	_, migrateErr := migrateConfigFile(configDir)
+	if migrateErr != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
+			"failed to migrate configuration file", migrateErr).
+			WithContext("old_path", filepath.Join(configDir, "config")).
+			WithContext("new_path", configPath).
+			WithContext("hint", "ensure you have write permissions in the config directory")
+	}
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -56,7 +125,7 @@ func LoadConfig(configDir string) (*Config, error) {
 
 // SaveConfig writes the configuration to the specified directory.
 func SaveConfig(configDir string, cfg *Config) error {
-	configPath := filepath.Join(configDir, "config")
+	configPath := filepath.Join(configDir, "config.yaml")
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.ConfigError,

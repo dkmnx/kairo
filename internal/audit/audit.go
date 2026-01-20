@@ -124,6 +124,17 @@ func (l *Logger) LogSuccess(event, provider string, details map[string]interface
 	return l.writeEntry(entry)
 }
 
+// LogMigration logs a configuration file migration event
+func (l *Logger) LogMigration(details map[string]interface{}) error {
+	entry := AuditEntry{
+		Timestamp: time.Now().UTC(),
+		Event:     "migration",
+		Status:    "success",
+		Details:   details,
+	}
+	return l.writeEntry(entry)
+}
+
 // LogFailure logs a failed operation with error details
 func (l *Logger) LogFailure(event, provider, errMsg string, details map[string]interface{}) error {
 	entry := AuditEntry{
