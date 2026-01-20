@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-01-20
+
+### Added
+
+- **Config file extension**: Changed config filename from `config` to `config.yaml`
+  - Better format recognition and editor support with YAML extension
+  - Automatic migration from old format on first run
+  - Original file backed up as `config.backup` (never deleted)
+  - Migration includes YAML validation before conversion
+  - Permission preservation during migration
+  - Atomic operation with rollback on failure
+  - Comprehensive test coverage (7 new migration tests)
+- **Audit logging**: Added `LogMigration()` method for future migration event tracking
+
+### Fixed
+
+- **Windows installer**: Fixed hashtable access for checksum hash validation
+- **Windows self-update**: Implemented binary swap-after-exit pattern for reliable updates
+
 ## [1.5.1] - 2026-01-19
 
 ### Changed
