@@ -40,7 +40,7 @@ func TestTestCommandProviderNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
 providers:
   anthropic:
@@ -83,7 +83,7 @@ func TestSwitchCommandProviderNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
 providers:
   anthropic:

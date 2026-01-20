@@ -368,7 +368,7 @@ func TestRotateKeyWithEmptySecrets(t *testing.T) {
 func TestRotateKeyPreservesConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	configPath := filepath.Join(tmpDir, "config")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: zai
 providers:
   zai:
