@@ -353,7 +353,6 @@ func downloadToTempFile(url string) (string, error) {
 	return tempFile.Name(), nil
 }
 
-
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update kairo to the latest version",
