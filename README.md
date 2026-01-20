@@ -49,8 +49,8 @@ claude --version
 
 | Platform      | Command                                                                                   |
 | ------------- | ----------------------------------------------------------------------------------------- |
-| Linux/macOS   | `curl -sSL <https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh> \| sh` |
-| Windows       | `irm <https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1> \| iex`     |
+| Linux/macOS   | `curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh \| sh`   |
+| Windows       | `irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 \| iex`       |
 
 [Manual Installation](docs/guides/user-guide.md#manual-installation) | [Build from Source](docs/guides/development-guide.md#building)
 
