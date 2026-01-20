@@ -1,12 +1,9 @@
 package cmd
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/version"
@@ -671,141 +668,24 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 	})
 }
 
-func TestDownloadPowerShellScript(t *testing.T) {
-	// Basic test for downloadPowerShellScript (currently 0% coverage)
-	t.Run("downloads PowerShell script successfully", func(t *testing.T) {
-		scriptContent := "# PowerShell install script\r\nWrite-Host 'Installing...'\r\n"
+func TestGetArch(t *testing.T) {
+	tests := []struct {
+		name     string
+		goarch   string
+		expected string
+	}{
+		{"amd64", "amd64", "amd64"},
+		{"arm64", "arm64", "arm64"},
+		{"arm", "arm", "arm7"},
+		{"unknown", "riscv64", "riscv64"},
+	}
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(scriptContent))
-		}))
-		defer server.Close()
-
-		tempFile, err := downloadPowerShellScript(server.URL)
-		if err != nil {
-			t.Fatalf("downloadPowerShellScript() error = %v", err)
-		}
-		defer os.Remove(tempFile)
-
-		content, err := os.ReadFile(tempFile)
-		if err != nil {
-			t.Fatalf("failed to read temp file: %v", err)
-		}
-
-		if string(content) != scriptContent {
-			t.Errorf("file content = %q, want %q", string(content), scriptContent)
-		}
-	})
-
-	t.Run("returns error for invalid URL", func(t *testing.T) {
-		_, err := downloadPowerShellScript("://invalid-url")
-		if err == nil {
-			t.Error("downloadPowerShellScript() should return error for invalid URL")
-		}
-	})
-
-	t.Run("returns error on HTTP 404", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusNotFound)
-		}))
-		defer server.Close()
-
-		_, err := downloadPowerShellScript(server.URL)
-		if err == nil {
-			t.Error("downloadPowerShellScript() should return error on 404 status")
-		}
-	})
-
-	t.Run("returns error on HTTP 500", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-		}))
-		defer server.Close()
-
-		_, err := downloadPowerShellScript(server.URL)
-		if err == nil {
-			t.Error("downloadPowerShellScript() should return error on 500 status")
-		}
-	})
-
-	t.Run("creates file with .ps1 extension pattern", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("# PowerShell script"))
-		}))
-		defer server.Close()
-
-		tempFile, err := downloadPowerShellScript(server.URL)
-		if err != nil {
-			t.Fatalf("downloadPowerShellScript() error = %v", err)
-		}
-		defer os.Remove(tempFile)
-
-		// Verify file was created (the actual temp file pattern may vary)
-		if filepath.Base(tempFile) == "" {
-			t.Error("downloadPowerShellScript() returned empty filename")
-		}
-		// Note: The file should match the pattern "kairo-install-*.ps1"
-		t.Logf("Created temp file: %s", tempFile)
-	})
-
-	t.Run("handles empty response", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			// Write empty response
-		}))
-		defer server.Close()
-
-		tempFile, err := downloadPowerShellScript(server.URL)
-		if err != nil {
-			t.Errorf("downloadPowerShellScript() failed with empty response: %v", err)
-		}
-		defer os.Remove(tempFile)
-
-		content, err := os.ReadFile(tempFile)
-		if err != nil {
-			t.Fatalf("failed to read temp file: %v", err)
-		}
-
-		if len(content) != 0 {
-			t.Errorf("file content length = %d, want 0", len(content))
-		}
-	})
-
-	t.Run("handles large PowerShell script", func(t *testing.T) {
-		// Create a large PowerShell script (100KB)
-		var builder strings.Builder
-		builder.WriteString("# PowerShell install script\r\n")
-		for i := 0; i < 1000; i++ {
-			builder.WriteString(fmt.Sprintf("Write-Host 'Line %d'\r\n", i))
-		}
-
-		largeScript := builder.String()
-
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(largeScript))
-		}))
-		defer server.Close()
-
-		tempFile, err := downloadPowerShellScript(server.URL)
-		if err != nil {
-			t.Errorf("downloadPowerShellScript() failed with large script: %v", err)
-		}
-		defer os.Remove(tempFile)
-
-		info, err := os.Stat(tempFile)
-		if err != nil {
-			t.Fatalf("failed to stat temp file: %v", err)
-		}
-
-		if info.Size() != int64(len(largeScript)) {
-			t.Errorf("file size = %d, want %d", info.Size(), len(largeScript))
-		}
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getArch(tt.goarch)
+			if result != tt.expected {
+				t.Errorf("getArch(%q) = %q, want %q", tt.goarch, result, tt.expected)
+			}
+		})
+	}
 }
