@@ -853,7 +853,10 @@ func TestLoadSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsOut, keyOut := LoadSecrets(tmpDir)
+	secrets, secretsOut, keyOut, err := LoadSecrets(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadSecrets() error = %v", err)
+	}
 	if secretsOut != secretsPath {
 		t.Errorf("secretsPath = %q, want %q", secretsOut, secretsPath)
 	}
@@ -873,7 +876,10 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsPath, keyPath := LoadSecrets(tmpDir)
+	secrets, secretsPath, keyPath, err := LoadSecrets(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadSecrets() error = %v", err)
+	}
 	if len(secrets) != 0 {
 		t.Errorf("got %d secrets, want 0", len(secrets))
 	}
@@ -882,6 +888,58 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 	}
 	if !strings.HasSuffix(keyPath, "age.key") {
 		t.Errorf("keyPath = %q, expected to end with age.key", keyPath)
+	}
+}
+
+func TestLoadSecretsWithCorruptedFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(secretsPath, []byte("corrupted invalid encrypted data"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	secrets, _, _, err := LoadSecrets(tmpDir)
+
+	if err == nil {
+		t.Fatal("Expected error for corrupted secrets file, got nil")
+	}
+	if secrets != nil {
+		t.Errorf("Expected nil secrets on error, got %v", secrets)
+	}
+}
+
+func TestLoadSecretsWithCorruptedKey(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	secretsPath := filepath.Join(tmpDir, "secrets.age")
+
+	if err := crypto.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, "ZAI_API_KEY=test-key\n"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(keyPath, []byte("invalid-key-content"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	secrets, _, _, err := LoadSecrets(tmpDir)
+
+	if err == nil {
+		t.Fatal("Expected error for corrupted key file, got nil")
+	}
+	if secrets != nil {
+		t.Errorf("Expected nil secrets on error, got %v", secrets)
 	}
 }
 

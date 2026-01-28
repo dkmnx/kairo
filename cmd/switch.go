@@ -13,6 +13,7 @@ import (
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
+	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/dkmnx/kairo/internal/wrapper"
@@ -84,99 +85,106 @@ var switchCmd = &cobra.Command{
 
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
+
+		var secrets map[string]string
 		secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
 		if err != nil {
-			if getVerbose() {
-				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt secrets: %v", err))
-			}
-		} else {
-			secrets := config.ParseSecrets(secretsContent)
-			for key, value := range secrets {
-				providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", key, value))
-			}
-			apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
-			if apiKey, ok := secrets[apiKeyKey]; ok {
-				// SECURE: Create private auth directory and use wrapper script
-				// This prevents API key from being visible in /proc/<pid>/environ
-				// and ensures files are only accessible to the current user
-				authDir, err := wrapper.CreateTempAuthDir()
-				if err != nil {
-					cmd.Printf("Error creating auth directory: %v\n", err)
-					return
-				}
-
-				var cleanupOnce sync.Once
-				cleanup := func() {
-					cleanupOnce.Do(func() {
-						_ = os.RemoveAll(authDir)
-					})
-				}
-				defer cleanup()
-
-				tokenPath, err := wrapper.WriteTempTokenFile(authDir, apiKey)
-				if err != nil {
-					cmd.Printf("Error creating secure token file: %v\n", err)
-					return
-				}
-
-				claudeArgs := args[1:]
-				claudePath, err := lookPath("claude")
-				if err != nil {
-					cmd.Println("Error: 'claude' command not found in PATH")
-					return
-				}
-
-				wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, claudePath, claudeArgs)
-				if err != nil {
-					cmd.Printf("Error generating wrapper script: %v\n", err)
-					return
-				}
-
-				ui.PrintBanner(version.Version, provider.Name)
-
-				// Set up signal handling for cleanup on SIGINT/SIGTERM
-				sigChan := make(chan os.Signal, 1)
-				defer func() {
-					signal.Stop(sigChan)
-					close(sigChan)
-				}()
-				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-				go func() {
-					sig := <-sigChan
-					cleanup()
-					// Exit with signal code (cross-platform)
-					code := 128
-					if s, ok := sig.(syscall.Signal); ok {
-						code += int(s)
-					}
-					exitProcess(code)
-				}()
-
-				// Execute the wrapper script instead of claude directly
-				// The wrapper script will:
-				// 1. Read the API key from the temp file
-				// 2. Set ANTHROPIC_AUTH_TOKEN environment variable
-				// 3. Delete the temp file
-				// 4. Execute claude with the proper arguments
-				var execCmd *exec.Cmd
-				if useCmdExe {
-					// On Windows, use cmd /c to execute the batch file
-					execCmd = execCommand("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
-				} else {
-					execCmd = execCommand(wrapperScript)
-				}
-				execCmd.Env = providerEnv
-				execCmd.Stdin = os.Stdin
-				execCmd.Stdout = os.Stdout
-				execCmd.Stderr = os.Stderr
-
-				if err := execCmd.Run(); err != nil {
-					cmd.Printf("Error running Claude: %v\n", err)
-					exitProcess(1)
-				}
+			if providers.RequiresAPIKey(providerName) {
+				ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
+				ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
+				ui.PrintInfo("Use --verbose for more details.")
 				return
 			}
+			secrets = make(map[string]string)
+		} else {
+			secrets = config.ParseSecrets(secretsContent)
+		}
+
+		for key, value := range secrets {
+			providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", key, value))
+		}
+		apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
+		if apiKey, ok := secrets[apiKeyKey]; ok {
+			// SECURE: Create private auth directory and use wrapper script
+			// This prevents API key from being visible in /proc/<pid>/environ
+			// and ensures files are only accessible to the current user
+			authDir, err := wrapper.CreateTempAuthDir()
+			if err != nil {
+				cmd.Printf("Error creating auth directory: %v\n", err)
+				return
+			}
+
+			var cleanupOnce sync.Once
+			cleanup := func() {
+				cleanupOnce.Do(func() {
+					_ = os.RemoveAll(authDir)
+				})
+			}
+			defer cleanup()
+
+			tokenPath, err := wrapper.WriteTempTokenFile(authDir, apiKey)
+			if err != nil {
+				cmd.Printf("Error creating secure token file: %v\n", err)
+				return
+			}
+
+			claudeArgs := args[1:]
+			claudePath, err := lookPath("claude")
+			if err != nil {
+				cmd.Println("Error: 'claude' command not found in PATH")
+				return
+			}
+
+			wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, claudePath, claudeArgs)
+			if err != nil {
+				cmd.Printf("Error generating wrapper script: %v\n", err)
+				return
+			}
+
+			ui.PrintBanner(version.Version, provider.Name)
+
+			// Set up signal handling for cleanup on SIGINT/SIGTERM
+			sigChan := make(chan os.Signal, 1)
+			defer func() {
+				signal.Stop(sigChan)
+				close(sigChan)
+			}()
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+			go func() {
+				sig := <-sigChan
+				cleanup()
+				// Exit with signal code (cross-platform)
+				code := 128
+				if s, ok := sig.(syscall.Signal); ok {
+					code += int(s)
+				}
+				exitProcess(code)
+			}()
+
+			// Execute the wrapper script instead of claude directly
+			// The wrapper script will:
+			// 1. Read the API key from the temp file
+			// 2. Set ANTHROPIC_AUTH_TOKEN environment variable
+			// 3. Delete the temp file
+			// 4. Execute claude with the proper arguments
+			var execCmd *exec.Cmd
+			if useCmdExe {
+				// On Windows, use cmd /c to execute the batch file
+				execCmd = execCommand("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
+			} else {
+				execCmd = execCommand(wrapperScript)
+			}
+			execCmd.Env = providerEnv
+			execCmd.Stdin = os.Stdin
+			execCmd.Stdout = os.Stdout
+			execCmd.Stderr = os.Stderr
+
+			if err := execCmd.Run(); err != nil {
+				cmd.Printf("Error running Claude: %v\n", err)
+				exitProcess(1)
+			}
+			return
 		}
 
 		// No API key found, run claude directly without auth token
