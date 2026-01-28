@@ -654,6 +654,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.6.0]: https://github.com/dkmnx/kairo/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/dkmnx/kairo/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/dkmnx/kairo/compare/v1.4.3...v1.5.0
 [1.4.3]: https://github.com/dkmnx/kairo/compare/v1.4.2...v1.4.3
