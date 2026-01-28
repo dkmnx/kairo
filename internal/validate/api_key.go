@@ -4,15 +4,58 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"regexp"
 	"slices"
+	"strings"
 )
 
+type KeyFormat struct {
+	MinLength int
+	Prefix    string
+	Pattern   string
+}
+
+var providerKeyFormats = map[string]KeyFormat{
+	"zai":      {MinLength: 32},
+	"minimax":  {MinLength: 32},
+	"kimi":     {MinLength: 32},
+	"deepseek": {MinLength: 32},
+	"custom":   {MinLength: 20},
+}
+
 func ValidateAPIKey(key string, providerName string) error {
-	if len(key) < 8 {
+	if strings.TrimSpace(key) == "" {
 		return &ValidationError{
-			msg: fmt.Sprintf("%s API key must be at least 8 characters (current: %d)", providerName, len(key)),
+			msg: fmt.Sprintf("%s API key cannot be empty or whitespace", providerName),
 		}
 	}
+
+	format, knownProvider := providerKeyFormats[providerName]
+	if !knownProvider {
+		format = KeyFormat{MinLength: 20}
+	}
+
+	if len(key) < format.MinLength {
+		return &ValidationError{
+			msg: fmt.Sprintf("%s API key too short (minimum %d characters, got %d)", providerName, format.MinLength, len(key)),
+		}
+	}
+
+	if format.Prefix != "" && !strings.HasPrefix(key, format.Prefix) {
+		return &ValidationError{
+			msg: fmt.Sprintf("%s API key must start with '%s'", providerName, format.Prefix),
+		}
+	}
+
+	if format.Pattern != "" {
+		matched, err := regexp.MatchString(format.Pattern, key)
+		if err != nil || !matched {
+			return &ValidationError{
+				msg: fmt.Sprintf("%s API key format is invalid", providerName),
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -89,7 +132,7 @@ func isPrivateIP(ip net.IP) bool {
 }
 
 var (
-	ErrInvalidAPIKey = &ValidationError{msg: "API key must be at least 8 characters"}
+	ErrInvalidAPIKey = &ValidationError{msg: "API key validation failed"}
 	ErrInvalidURL    = &ValidationError{msg: "invalid URL: must be HTTPS and not use blocked hosts"}
 )
 
