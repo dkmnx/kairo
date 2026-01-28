@@ -154,13 +154,14 @@ make test-coverage
 
 ### Before Submitting
 
-1. **Lint:** `make lint`
-2. **Test:** `make test`
-3. **Build:** `make build`
-4. **Format:** `make format`
-5. **Vulnerability scan:** `make vuln-scan`
-6. **Update docs:** Ensure documentation is current
-7. **Clean commits:** Squash unnecessary commits
+1. **Pre-commit:** `make pre-commit` (runs format, vet, test, go.mod tidy, vuln-scan)
+2. **Lint:** `make lint`
+3. **Test:** `make test`
+4. **Build:** `make build`
+5. **Format:** `make format`
+6. **Vulnerability scan:** `make vuln-scan`
+7. **Update docs:** Ensure documentation is current
+8. **Clean commits:** Squash unnecessary commits
 
 ### PR Description
 
