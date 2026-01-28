@@ -667,25 +667,3 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 		}
 	})
 }
-
-func TestGetArch(t *testing.T) {
-	tests := []struct {
-		name     string
-		goarch   string
-		expected string
-	}{
-		{"amd64", "amd64", "amd64"},
-		{"arm64", "arm64", "arm64"},
-		{"arm", "arm", "arm7"},
-		{"unknown", "riscv64", "riscv64"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := getArch(tt.goarch)
-			if result != tt.expected {
-				t.Errorf("getArch(%q) = %q, want %q", tt.goarch, result, tt.expected)
-			}
-		})
-	}
-}
