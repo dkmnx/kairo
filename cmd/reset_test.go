@@ -305,7 +305,7 @@ func TestResetCommandRemovesSecretsFileWhenEmpty(t *testing.T) {
 	}
 }
 
-func TestResetCommandAllRemovesSecretsFile(t *testing.T) {
+func TestResetCommandAllRemovesSecretsAndKeyFiles(t *testing.T) {
 	setupMockExec(t)
 	originalConfigDir := getConfigDir()
 	defer func() { setConfigDir(originalConfigDir) }()
@@ -352,5 +352,11 @@ func TestResetCommandAllRemovesSecretsFile(t *testing.T) {
 	_, err = os.Stat(secretsPath)
 	if !os.IsNotExist(err) {
 		t.Error("secrets file should be removed when resetting all providers")
+	}
+
+	// Verify key file was also removed
+	_, err = os.Stat(keyPath)
+	if !os.IsNotExist(err) {
+		t.Error("key file should be removed when resetting all providers")
 	}
 }
