@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"bytes"
+	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -363,3 +366,28 @@ func TestE2ESetupToSwitchWorkflow(t *testing.T) {
 		t.Errorf("Default provider = %q, want 'zai'", loadedCfg.DefaultProvider)
 	}
 }
+
+func captureStdout(fn func()) string {
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	done := make(chan struct{})
+	var buf bytes.Buffer
+
+	go func() {
+		io.Copy(&buf, r)
+		r.Close()
+		close(done)
+	}()
+
+	fn()
+
+	w.Close()
+	<-done
+
+	os.Stdout = oldStdout
+	return buf.String()
+}
+
+
