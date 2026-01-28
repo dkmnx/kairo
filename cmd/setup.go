@@ -155,22 +155,26 @@ func loadOrInitializeConfig(dir string) (*config.Config, error) {
 }
 
 // LoadSecrets loads and decrypts secrets from the specified directory.
-// Returns the secrets map, secrets file path, and key file path.
-// Handles decryption errors gracefully based on verbose flag.
-func LoadSecrets(dir string) (map[string]string, string, string) {
+// Returns the secrets map, secrets file path, key file path, and any error.
+// Returns nil map with error if secrets file cannot be decrypted.
+// Returns empty map with nil error if secrets file doesn't exist (first-time setup).
+func LoadSecrets(dir string) (map[string]string, string, string, error) {
 	secretsPath := filepath.Join(dir, "secrets.age")
 	keyPath := filepath.Join(dir, "age.key")
 
 	secrets := make(map[string]string)
+
+	if _, err := os.Stat(secretsPath); os.IsNotExist(err) {
+		return secrets, secretsPath, keyPath, nil
+	}
+
 	existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
 	if err != nil {
-		if getVerbose() {
-			ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
-		}
-	} else {
-		secrets = config.ParseSecrets(existingSecrets)
+		return nil, secretsPath, keyPath, err
 	}
-	return secrets, secretsPath, keyPath
+
+	secrets = config.ParseSecrets(existingSecrets)
+	return secrets, secretsPath, keyPath, nil
 }
 
 func promptForProvider() string {
@@ -338,7 +342,13 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		secrets, secretsPath, keyPath := LoadSecrets(dir)
+		secrets, secretsPath, keyPath, err := LoadSecrets(dir)
+		if err != nil {
+			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
+			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
+			ui.PrintInfo("Use --verbose for more details.")
+			return
+		}
 
 		selection := promptForProvider()
 		providerName, ok := parseProviderSelection(selection)

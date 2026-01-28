@@ -137,7 +137,13 @@ var configCmd = &cobra.Command{
 			provider.EnvVars = builtinDef.EnvVars
 		}
 
-		secrets, secretsPath, keyPath := LoadSecrets(dir)
+		secrets, secretsPath, keyPath, err := LoadSecrets(dir)
+		if err != nil {
+			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
+			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
+			ui.PrintInfo("Use --verbose for more details.")
+			return
+		}
 
 		oldProvider := cfg.Providers[providerName]
 		cfg.Providers[providerName] = provider
