@@ -2,14 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
 	"sync/atomic"
 
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
+	"github.com/dkmnx/kairo/pkg/env"
 	"github.com/spf13/cobra"
 )
 
@@ -37,18 +35,10 @@ Examples:
 		// Sync flag value to atomic variable
 		rotateYes.Store(rotateYesFlag)
 
-		dir := getConfigDir()
+		dir := env.GetConfigDir()
 		if dir == "" {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				ui.PrintError("Cannot find home directory")
-				return
-			}
-			if runtime.GOOS == "windows" {
-				dir = filepath.Join(home, "AppData", "Roaming", "kairo")
-			} else {
-				dir = filepath.Join(home, ".config", "kairo")
-			}
+			ui.PrintError("Cannot determine config directory")
+			return
 		}
 
 		if !rotateYes.Load() {
