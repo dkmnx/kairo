@@ -72,12 +72,21 @@ var resetCmd = &cobra.Command{
 			}
 
 			secretsPath := filepath.Join(dir, "secrets.age")
+			keyPath := filepath.Join(dir, "age.key")
 
 			_, err := os.Stat(secretsPath)
 			if err == nil {
 				err := os.Remove(secretsPath)
 				if err != nil {
 					ui.PrintWarn(fmt.Sprintf("Warning: Could not remove secrets file: %v", err))
+				}
+			}
+
+			_, err = os.Stat(keyPath)
+			if err == nil {
+				err := os.Remove(keyPath)
+				if err != nil {
+					ui.PrintWarn(fmt.Sprintf("Warning: Could not remove key file: %v", err))
 				}
 			}
 
