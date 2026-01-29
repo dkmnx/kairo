@@ -77,6 +77,23 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 }
 
+// sortProviderNames sorts provider names with default provider first.
+//
+// This function extracts provider names and sorts them alphabetically, except
+// the default provider which is always placed at the beginning of the list.
+// This ensures the default provider is prominently displayed in list output.
+//
+// Parameters:
+//   - providers: Map of provider names to provider configurations
+//   - defaultProvider: Name of the default provider (will be sorted first)
+//
+// Returns:
+//   - []string: Sorted slice of provider names, with default provider first
+//
+// Error conditions: None (no error returns)
+//
+// Thread Safety: Thread-safe (no shared state, read-only access to parameters)
+// Performance Notes: Uses sort.Slice which has O(n log n) complexity
 func sortProviderNames(providers map[string]config.Provider, defaultProvider string) []string {
 	names := make([]string, 0, len(providers))
 	for name := range providers {

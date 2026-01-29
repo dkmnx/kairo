@@ -50,6 +50,21 @@ func (l *Logger) Close() error {
 	return nil
 }
 
+// LogSwitch logs a provider switch event to the audit log.
+//
+// This method creates an audit entry recording when a user switches to a
+// different provider. The entry includes the provider name and timestamp.
+//
+// Parameters:
+//   - provider: Name of the provider being switched to
+//
+// Returns:
+//   - error: Returns error if unable to write to audit log
+//
+// Error conditions:
+//   - Returns error when audit log file cannot be written (e.g., permissions, disk full)
+//
+// Thread Safety: Thread-safe (uses mutex in writeEntry)
 func (l *Logger) LogSwitch(provider string) error {
 	entry := AuditEntry{
 		Timestamp: time.Now().UTC(),
@@ -60,6 +75,25 @@ func (l *Logger) LogSwitch(provider string) error {
 	return l.writeEntry(entry)
 }
 
+// LogConfig logs a configuration change event to the audit log.
+//
+// This method creates an audit entry recording when a provider's configuration
+// is modified (added, updated, or changed). The entry includes provider
+// name, action type (add/update), and list of changed fields with
+// old and new values.
+//
+// Parameters:
+//   - provider: Name of the provider being configured
+//   - action: Type of configuration action (e.g., "add", "update", "change")
+//   - changes: List of fields that were changed with old/new values
+//
+// Returns:
+//   - error: Returns error if unable to write to audit log
+//
+// Error conditions:
+//   - Returns error when audit log file cannot be written (e.g., permissions, disk full)
+//
+// Thread Safety: Thread-safe (uses mutex in writeEntry)
 func (l *Logger) LogConfig(provider, action string, changes []Change) error {
 	entry := AuditEntry{
 		Timestamp: time.Now().UTC(),
@@ -183,6 +217,25 @@ func (l *Logger) writeEntry(entry AuditEntry) error {
 	return nil
 }
 
+// LoadEntries reads and parses all audit entries from the log file.
+//
+// This method reads the entire audit log, parses each JSON line, and returns
+// all entries as a slice. Empty lines are skipped. The log file is
+// opened in read-only mode.
+//
+// Parameters:
+//   - none (method receiver only)
+//
+// Returns:
+//   - []AuditEntry: Slice of all audit entries in chronological order
+//   - error: Returns error if unable to read or parse audit log
+//
+// Error conditions:
+//   - Returns error when audit log file cannot be read (e.g., permissions, file not found)
+//   - Returns error if any JSON line cannot be parsed (e.g., corrupted log file)
+//
+// Thread Safety: Not thread-safe (log file may be modified concurrently by writes)
+// Security Notes: Returns all audit entries including potentially sensitive data
 func (l *Logger) LoadEntries() ([]AuditEntry, error) {
 	data, err := os.ReadFile(l.path)
 	if err != nil {
