@@ -23,6 +23,21 @@ var providerKeyFormats = map[string]KeyFormat{
 	"custom":   {MinLength: 20},
 }
 
+var (
+	private10  = mustParseCIDR("10.0.0.0/8")
+	private172 = mustParseCIDR("172.16.0.0/12")
+	private192 = mustParseCIDR("192.168.0.0/16")
+	linkLocal  = mustParseCIDR("169.254.0.0/16")
+)
+
+func mustParseCIDR(s string) net.IPNet {
+	_, ipnet, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(fmt.Sprintf("invalid CIDR %s: %v", s, err))
+	}
+	return *ipnet
+}
+
 func ValidateAPIKey(key string, providerName string) error {
 	if strings.TrimSpace(key) == "" {
 		return &ValidationError{
@@ -115,20 +130,10 @@ func isBlockedHost(host string) bool {
 }
 
 func isPrivateIP(ip net.IP) bool {
-	privateRanges := []net.IPNet{
-		{IP: net.ParseIP("10.0.0.0"), Mask: net.CIDRMask(8, 32)},
-		{IP: net.ParseIP("172.16.0.0"), Mask: net.CIDRMask(12, 32)},
-		{IP: net.ParseIP("192.168.0.0"), Mask: net.CIDRMask(16, 32)},
-		{IP: net.ParseIP("169.254.0.0"), Mask: net.CIDRMask(16, 32)},
-	}
-
-	for _, r := range privateRanges {
-		if r.Contains(ip) {
-			return true
-		}
-	}
-
-	return false
+	return private10.Contains(ip) ||
+		private172.Contains(ip) ||
+		private192.Contains(ip) ||
+		linkLocal.Contains(ip)
 }
 
 var (
