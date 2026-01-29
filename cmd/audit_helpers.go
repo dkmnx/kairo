@@ -2,19 +2,19 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/dkmnx/kairo/internal/audit"
 )
 
-func logAuditEvent(configDir string, logFunc func(*audit.Logger) error) {
+func logAuditEvent(configDir string, logFunc func(*audit.Logger) error) error {
 	logger, err := audit.NewLogger(configDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to create audit logger: %v\n", err)
-		return
+		return fmt.Errorf("failed to create audit logger: %w", err)
 	}
+	defer logger.Close()
 
 	if err := logFunc(logger); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to log audit event: %v\n", err)
+		return fmt.Errorf("failed to log audit event: %w", err)
 	}
+	return nil
 }
