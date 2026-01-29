@@ -92,9 +92,11 @@ var resetCmd = &cobra.Command{
 
 			ui.PrintSuccess("All providers reset successfully")
 
-			logAuditEvent(dir, func(logger *audit.Logger) error {
+			if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 				return logger.LogReset("all")
-			})
+			}); err != nil {
+				ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+			}
 			return
 		}
 
@@ -145,9 +147,11 @@ var resetCmd = &cobra.Command{
 
 		ui.PrintSuccess(fmt.Sprintf("Provider '%s' reset successfully", target))
 
-		logAuditEvent(dir, func(logger *audit.Logger) error {
+		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogReset(target)
-		})
+		}); err != nil {
+			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+		}
 	},
 }
 

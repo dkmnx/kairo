@@ -378,9 +378,11 @@ var setupCmd = &cobra.Command{
 		}
 
 		if configuredProvider != "" {
-			logAuditEvent(dir, func(logger *audit.Logger) error {
+			if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 				return logger.LogSuccess("setup", configuredProvider, auditDetails)
-			})
+			}); err != nil {
+				ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+			}
 		}
 	},
 }
