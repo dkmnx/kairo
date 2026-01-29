@@ -58,9 +58,11 @@ var switchCmd = &cobra.Command{
 			return
 		}
 
-		logAuditEvent(dir, func(logger *audit.Logger) error {
+		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogSwitch(providerName)
-		})
+		}); err != nil {
+			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+		}
 
 		providerEnv := os.Environ()
 		// Environment variable name constants for model configuration

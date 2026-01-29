@@ -61,9 +61,11 @@ var defaultCmd = &cobra.Command{
 
 		ui.PrintSuccess(fmt.Sprintf("Default provider set to: %s", providerName))
 
-		logAuditEvent(dir, func(logger *audit.Logger) error {
+		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogDefault(providerName)
-		})
+		}); err != nil {
+			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+		}
 	},
 }
 

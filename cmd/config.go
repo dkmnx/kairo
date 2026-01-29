@@ -193,9 +193,11 @@ var configCmd = &cobra.Command{
 			changes = append(changes, audit.Change{Field: "model", Old: old, New: provider.Model})
 		}
 
-		logAuditEvent(dir, func(logger *audit.Logger) error {
+		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogConfig(providerName, action, changes)
-		})
+		}); err != nil {
+			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+		}
 	},
 }
 

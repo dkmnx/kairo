@@ -63,9 +63,11 @@ Examples:
 
 		ui.PrintSuccess("Encryption key rotated successfully")
 
-		logAuditEvent(dir, func(logger *audit.Logger) error {
+		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogRotate("all")
-		})
+		}); err != nil {
+			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+		}
 	},
 }
 
