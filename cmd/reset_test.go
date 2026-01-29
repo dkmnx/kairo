@@ -171,7 +171,6 @@ func TestResetCommandSingleProviderWithYesFlag(t *testing.T) {
 
 	// Reset the --yes flag to ensure test isolation
 	resetYesFlag = false
-	resetYes.Store(false)
 
 	rootCmd.SetArgs([]string{"reset", "zai", "--yes"})
 	err = rootCmd.Execute()
@@ -216,7 +215,6 @@ func TestResetCommandAllRequiresConfirmation(t *testing.T) {
 
 	// Reset the --yes flag to ensure test isolation
 	resetYesFlag = false
-	resetYes.Store(false)
 
 	// Simulate user input "n" for no confirmation
 	originalStdin := os.Stdin

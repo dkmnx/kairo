@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"sync/atomic"
 
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/crypto"
@@ -12,10 +11,7 @@ import (
 )
 
 var (
-	// rotateYesFlag is used by Cobra for flag binding
 	rotateYesFlag bool
-	// rotateYes provides atomic access for thread safety
-	rotateYes atomic.Bool
 )
 
 var rotateCmd = &cobra.Command{
@@ -32,16 +28,13 @@ after the rotation completes.
 Examples:
   kairo rotate`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Sync flag value to atomic variable
-		rotateYes.Store(rotateYesFlag)
-
 		dir := env.GetConfigDir()
 		if dir == "" {
 			ui.PrintError("Cannot determine config directory")
 			return
 		}
 
-		if !rotateYes.Load() {
+		if !rotateYesFlag {
 			ui.PrintWarn("This will rotate your encryption key and re-encrypt all secrets.")
 			confirmed, err := ui.Confirm("Do you want to proceed?")
 			if err != nil {
