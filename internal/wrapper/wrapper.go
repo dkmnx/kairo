@@ -1,3 +1,26 @@
+// Package wrapper provides secure wrapper script generation for Claude Code execution.
+//
+// This package handles:
+//   - Temporary authentication directory creation with secure permissions
+//   - Temporary token file writing for secure API key passing
+//   - Cross-platform wrapper script generation (PowerShell for Windows, shell for Unix)
+//   - Argument escaping to prevent command injection
+//
+// Security:
+//   - Temporary directories use 0700 permissions (owner only)
+//   - Token files use 0600 permissions (owner only)
+//   - Wrapper scripts immediately delete token files after use
+//   - PowerShell argument escaping prevents command injection attacks
+//   - API keys never appear in /proc/<pid>/environ
+//
+// Thread Safety:
+//   - Temp directory creation uses os.MkdirTemp (thread-safe)
+//   - Not thread-safe for concurrent script generation in same directory
+//
+// Platform Support:
+//   - Windows: PowerShell (.ps1) scripts with cmd.exe execution
+//   - Unix/Linux/macOS: Shell scripts with sh execution
+//   - Cross-platform argument escaping (platform-specific special characters)
 package wrapper
 
 import (

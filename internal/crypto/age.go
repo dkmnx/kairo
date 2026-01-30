@@ -1,3 +1,25 @@
+// Package crypto provides encryption and key management operations using the age library.
+//
+// This package handles:
+//   - X25519 key generation (public/private key pairs)
+//   - Secret encryption/decryption for secure API key storage
+//   - Key rotation for periodic security best practices
+//   - Atomic key replacement to prevent partial state
+//
+// Thread Safety:
+//   - Key file operations are not thread-safe (file I/O)
+//   - Functions should not be called concurrently on same key files
+//
+// Security:
+//   - All key files use 0600 permissions (owner only)
+//   - Temporary files are created with secure defaults
+//   - Key rotation uses atomic operations to prevent data loss
+//   - Private key material is never logged or printed
+//
+// Performance:
+//   - Key generation uses X25519 (fast, secure curve)
+//   - Encryption uses age's efficient streaming API
+//   - Temporary key files are cleaned up on failure
 package crypto
 
 import (

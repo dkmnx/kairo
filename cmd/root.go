@@ -1,3 +1,24 @@
+// Package cmd implements the Kairo CLI application using the Cobra framework.
+//
+// Architecture:
+//   - Commands are defined in individual files (root.go, setup.go, switch.go, etc.)
+//   - Global state (configDir, verbose) is managed via getter/setter functions
+//   - Command execution is orchestrated by rootCmd.Execute()
+//
+// Testing:
+//   - Most commands have corresponding *_test.go files
+//   - Integration tests verify end-to-end workflows
+//   - External process execution can be mocked via execCommand variable
+//
+// Design principles:
+//   - Minimal business logic in command handlers
+//   - Delegation to internal packages for core functionality
+//   - Consistent error handling with user-friendly messages
+//
+// Security:
+//   - All user input is read securely using ui package
+//   - No secrets are logged to stdout/stderr
+//   - API keys are managed via encrypted secrets file
 package cmd
 
 import (
