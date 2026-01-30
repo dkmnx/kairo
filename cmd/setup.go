@@ -173,6 +173,22 @@ func LoadSecrets(dir string) (map[string]string, string, string, error) {
 	return secrets, secretsPath, keyPath, nil
 }
 
+// promptForProvider displays interactive provider selection menu and reads user choice.
+//
+// This function presents a numbered list of available providers to the user,
+// prompts for selection, and returns the trimmed provider name.
+// Special options 'q', 'exit', or 'done' return empty string.
+//
+// Parameters:
+//   - none (function uses providers.GetProviderList() internally)
+//
+// Returns:
+//   - string: Selected provider name, or empty string if user chose to exit
+//
+// Error conditions: None (returns empty string on input errors, but does not error)
+//
+// Thread Safety: Not thread-safe (uses ui.PromptWithDefault which reads from stdin)
+// Security Notes: This is a user-facing interactive function. Input is trimmed but not validated here (validation happens in caller).
 func promptForProvider() string {
 	providerList := providers.GetProviderList()
 	ui.PrintHeader("Kairo Setup Wizard\n")
@@ -206,6 +222,25 @@ func parseProviderSelection(selection string) (string, bool) {
 	return providerList[num-1], true
 }
 
+// configureAnthropic configures the Native Anthropic provider with default settings.
+//
+// This function sets up the Anthropic provider with empty base URL and model,
+// indicating it will use Anthropic's default endpoints. It saves the
+// configuration and displays a success message to the user.
+//
+// Parameters:
+//   - dir: Configuration directory where config.yaml should be saved
+//   - cfg: Existing configuration object to update
+//   - providerName: Name of provider to configure (should be "anthropic")
+//
+// Returns:
+//   - error: Returns error if configuration cannot be saved
+//
+// Error conditions:
+//   - Returns error when config file cannot be written (e.g., permissions, disk full)
+//
+// Thread Safety: Not thread-safe (modifies global config, file I/O)
+// Security Notes: No sensitive data handled. Uses default Anthropic endpoints (no custom URL needed).
 func configureAnthropic(dir string, cfg *config.Config, providerName string) error {
 	def, _ := providers.GetBuiltInProvider(providerName)
 	cfg.Providers[providerName] = config.Provider{
