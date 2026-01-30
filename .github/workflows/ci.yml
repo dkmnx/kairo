@@ -81,9 +81,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.25.5"]
+        go-version: ["1.25.6"]
         include:
-          - go-version: "1.25.5"
+          - go-version: "1.25.6"
             latest: true
     steps:
       - name: Checkout code
@@ -223,7 +223,11 @@ jobs:
           echo "# Coverage Report" > coverage-summary.md
           echo "" >> coverage-summary.md
           echo "All test runs completed." >> coverage-summary.md
-          ls -la coverage-reports/
+          if [ -d "coverage-reports" ]; then
+            ls -la coverage-reports/
+          else
+            echo "No coverage artifacts found (coverage-reports directory not created)"
+          fi
 
   summary:
     name: Summary

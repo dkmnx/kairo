@@ -33,10 +33,6 @@ func validateCustomProviderName(name string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("provider name is required")
 	}
-	// Check minimum length (1 character)
-	if len(name) < 1 {
-		return "", fmt.Errorf("provider name must be at least 1 character")
-	}
 	// Check maximum length (50 characters)
 	if len(name) > 50 {
 		return "", fmt.Errorf("provider name must be at most 50 characters (got %d)", len(name))
@@ -155,24 +151,44 @@ func loadOrInitializeConfig(dir string) (*config.Config, error) {
 }
 
 // LoadSecrets loads and decrypts secrets from the specified directory.
-// Returns the secrets map, secrets file path, and key file path.
-// Handles decryption errors gracefully based on verbose flag.
-func LoadSecrets(dir string) (map[string]string, string, string) {
+// Returns the secrets map, secrets file path, key file path, and any error.
+// Returns nil map with error if secrets file cannot be decrypted.
+// Returns empty map with nil error if secrets file doesn't exist (first-time setup).
+func LoadSecrets(dir string) (map[string]string, string, string, error) {
 	secretsPath := filepath.Join(dir, "secrets.age")
 	keyPath := filepath.Join(dir, "age.key")
 
 	secrets := make(map[string]string)
+
+	if _, err := os.Stat(secretsPath); os.IsNotExist(err) {
+		return secrets, secretsPath, keyPath, nil
+	}
+
 	existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
 	if err != nil {
-		if getVerbose() {
-			ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt existing secrets: %v", err))
-		}
-	} else {
-		secrets = config.ParseSecrets(existingSecrets)
+		return nil, secretsPath, keyPath, err
 	}
-	return secrets, secretsPath, keyPath
+
+	secrets = config.ParseSecrets(existingSecrets)
+	return secrets, secretsPath, keyPath, nil
 }
 
+// promptForProvider displays interactive provider selection menu and reads user choice.
+//
+// This function presents a numbered list of available providers to the user,
+// prompts for selection, and returns the trimmed provider name.
+// Special options 'q', 'exit', or 'done' return empty string.
+//
+// Parameters:
+//   - none (function uses providers.GetProviderList() internally)
+//
+// Returns:
+//   - string: Selected provider name, or empty string if user chose to exit
+//
+// Error conditions: None (returns empty string on input errors, but does not error)
+//
+// Thread Safety: Not thread-safe (uses ui.PromptWithDefault which reads from stdin)
+// Security Notes: This is a user-facing interactive function. Input is trimmed but not validated here (validation happens in caller).
 func promptForProvider() string {
 	providerList := providers.GetProviderList()
 	ui.PrintHeader("Kairo Setup Wizard\n")
@@ -206,6 +222,25 @@ func parseProviderSelection(selection string) (string, bool) {
 	return providerList[num-1], true
 }
 
+// configureAnthropic configures the Native Anthropic provider with default settings.
+//
+// This function sets up the Anthropic provider with empty base URL and model,
+// indicating it will use Anthropic's default endpoints. It saves the
+// configuration and displays a success message to the user.
+//
+// Parameters:
+//   - dir: Configuration directory where config.yaml should be saved
+//   - cfg: Existing configuration object to update
+//   - providerName: Name of provider to configure (should be "anthropic")
+//
+// Returns:
+//   - error: Returns error if configuration cannot be saved
+//
+// Error conditions:
+//   - Returns error when config file cannot be written (e.g., permissions, disk full)
+//
+// Thread Safety: Not thread-safe (modifies global config, file I/O)
+// Security Notes: No sensitive data handled. Uses default Anthropic endpoints (no custom URL needed).
 func configureAnthropic(dir string, cfg *config.Config, providerName string) error {
 	def, _ := providers.GetBuiltInProvider(providerName)
 	cfg.Providers[providerName] = config.Provider{
@@ -338,7 +373,13 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		secrets, secretsPath, keyPath := LoadSecrets(dir)
+		secrets, secretsPath, keyPath, err := LoadSecrets(dir)
+		if err != nil {
+			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
+			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
+			ui.PrintInfo("Use --verbose for more details.")
+			return
+		}
 
 		selection := promptForProvider()
 		providerName, ok := parseProviderSelection(selection)
@@ -372,14 +413,32 @@ var setupCmd = &cobra.Command{
 		}
 
 		if configuredProvider != "" {
-			logAuditEvent(dir, func(logger *audit.Logger) error {
+			if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 				return logger.LogSuccess("setup", configuredProvider, auditDetails)
-			})
+			}); err != nil {
+				ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+			}
 		}
 	},
 }
 
 // parseIntOrZero converts a string to an integer, returning 0 if invalid.
+//
+// This function parses a string character by character, building an integer
+// from ASCII digits. If any non-digit character is encountered, the
+// function immediately returns 0. Used for parsing user-provided
+// numeric selections in setup wizard.
+//
+// Parameters:
+//   - s: String to parse as integer
+//
+// Returns:
+//   - int: Parsed integer value, or 0 if string contains non-digit characters
+//
+// Error conditions: None (returns 0 for invalid input instead of error)
+//
+// Thread Safety: Thread-safe (pure function, no shared state)
+// Performance Notes: O(n) where n is string length, returns early on first invalid character
 func parseIntOrZero(s string) int {
 	var result int
 	for _, c := range s {

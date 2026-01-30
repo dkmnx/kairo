@@ -1,6 +1,6 @@
 module github.com/dkmnx/kairo
 
-go 1.25
+go 1.25.6
 
 require (
 	filippo.io/age v1.2.1
@@ -13,6 +13,6 @@ require (
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 )

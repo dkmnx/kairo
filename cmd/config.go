@@ -137,7 +137,13 @@ var configCmd = &cobra.Command{
 			provider.EnvVars = builtinDef.EnvVars
 		}
 
-		secrets, secretsPath, keyPath := LoadSecrets(dir)
+		secrets, secretsPath, keyPath, err := LoadSecrets(dir)
+		if err != nil {
+			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
+			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
+			ui.PrintInfo("Use --verbose for more details.")
+			return
+		}
 
 		oldProvider := cfg.Providers[providerName]
 		cfg.Providers[providerName] = provider
@@ -187,9 +193,11 @@ var configCmd = &cobra.Command{
 			changes = append(changes, audit.Change{Field: "model", Old: old, New: provider.Model})
 		}
 
-		logAuditEvent(dir, func(logger *audit.Logger) error {
+		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogConfig(providerName, action, changes)
-		})
+		}); err != nil {
+			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+		}
 	},
 }
 
@@ -245,8 +253,26 @@ func rollbackConfig(configDir, backupPath string) error {
 }
 
 // withConfigTransaction executes a function within a transaction-like context.
-// If the function returns an error, changes are rolled back automatically.
-// This provides atomic-like behavior for configuration updates.
+//
+// This function creates a backup of the configuration before executing the
+// provided function. If the function returns an error, the configuration
+// is automatically rolled back to the backup. This provides atomic-like
+// behavior for configuration updates.
+//
+// Parameters:
+//   - configDir: Directory containing the configuration file
+//   - fn: Function to execute within the transaction context
+//
+// Returns:
+//   - error: Returns error if transaction fails or rollback fails
+//
+// Error conditions:
+//   - Returns error when unable to create configuration backup
+//   - Returns error when fn returns an error (after attempting rollback)
+//   - Returns error if rollback fails after transaction failure (critical error)
+//
+// Thread Safety: Not thread-safe due to file I/O operations
+// Security Notes: Backup files retain same permissions as original config (0600)
 func withConfigTransaction(configDir string, fn func(txDir string) error) error {
 	// Create backup before transaction
 	backupPath, err := createConfigBackup(configDir)
@@ -281,7 +307,22 @@ func getBackupPath(configDir string) string {
 }
 
 // validateCrossProviderConfig validates configuration across all providers to detect conflicts.
-// Returns an error if environment variable collisions are detected.
+//
+// This function checks for environment variable collisions where multiple providers
+// attempt to set the same environment variable with different values. Collisions
+// with identical values are allowed (idempotent).
+//
+// Parameters:
+//   - cfg: Configuration object containing all provider definitions
+//
+// Returns:
+//   - error: Returns error if conflicting environment variables are detected
+//
+// Error conditions:
+//   - Returns error when same environment variable is set by multiple providers
+//     with different values (e.g., "API_KEY" set to "key1" by provider A and "key2" by provider B)
+//
+// Thread Safety: Thread-safe (no shared state, read-only access to config)
 func validateCrossProviderConfig(cfg *config.Config) error {
 	// Build a map of env var names to their values and which providers set them
 	type envVarSource struct {
