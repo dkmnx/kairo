@@ -112,6 +112,28 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 	return buf.String(), nil
 }
 
+// loadRecipient reads and parses the X25519 recipient from an age key file.
+//
+// This function opens the key file, skips the identity line (first line),
+// and parses the recipient line (second line) which contains the public
+// key used for encryption. The recipient is required for encrypting
+// secrets that only this identity can decrypt.
+//
+// Parameters:
+//   - keyPath: Path to the age.key file containing encryption keys
+//
+// Returns:
+//   - age.Recipient: Parsed X25519 recipient for encryption operations
+//   - error: Returns error if file cannot be read or parsed
+//
+// Error conditions:
+//   - Returns error when key file cannot be opened (e.g., permissions, not found)
+//   - Returns error when key file is empty
+//   - Returns error when key file is missing recipient line (second line)
+//   - Returns error when recipient line cannot be parsed (e.g., malformed, corrupted)
+//
+// Thread Safety: Not thread-safe (file I/O operations)
+// Security Notes: Key file should have 0600 permissions (owner only)
 func loadRecipient(keyPath string) (age.Recipient, error) {
 	file, err := os.Open(keyPath)
 	if err != nil {
@@ -145,6 +167,27 @@ func loadRecipient(keyPath string) (age.Recipient, error) {
 	return recipient, nil
 }
 
+// loadIdentity reads and parses the X25519 identity from an age key file.
+//
+// This function opens the key file and parses the identity line (first line)
+// which contains the private key used for decryption. The identity is
+// required for decrypting secrets that were encrypted with the corresponding
+// recipient public key.
+//
+// Parameters:
+//   - keyPath: Path to age.key file containing encryption keys
+//
+// Returns:
+//   - age.Identity: Parsed X25519 identity for decryption operations
+//   - error: Returns error if file cannot be read or parsed
+//
+// Error conditions:
+//   - Returns error when key file cannot be opened (e.g., permissions, not found)
+//   - Returns error when key file is empty
+//   - Returns error when identity line cannot be parsed (e.g., malformed, corrupted)
+//
+// Thread Safety: Not thread-safe (file I/O operations)
+// Security Notes: Key file should have 0600 permissions (owner only). Identity contains private key material.
 func loadIdentity(keyPath string) (age.Identity, error) {
 	file, err := os.Open(keyPath)
 	if err != nil {
@@ -228,6 +271,27 @@ func RotateKey(configDir string) error {
 	return nil
 }
 
+// generateNewKeyAndReplace generates a new X25519 key and atomically replaces the old key.
+//
+// This function generates a temporary new key file, then uses os.Rename
+// to atomically replace the old key with the new one. If the rename
+// fails, the temporary file is cleaned up. This ensures that key
+// replacement is atomic - either completely succeeds or fails without leaving
+// partial state.
+//
+// Parameters:
+//   - keyPath: Path to existing age.key file to be replaced
+//
+// Returns:
+//   - error: Returns error if key generation or replacement fails
+//
+// Error conditions:
+//   - Returns error when new key cannot be generated (e.g., disk full, permissions)
+//   - Returns error when temporary file cannot be renamed to target (e.g., permissions)
+//   - Note: If rename fails, temporary file is cleaned up before returning error
+//
+// Thread Safety: Not thread-safe (file I/O operations)
+// Security Notes: Uses atomic rename operation to prevent partial state. Both old and new key files should have 0600 permissions (owner only).
 func generateNewKeyAndReplace(keyPath string) error {
 	newKeyPath := keyPath + ".new"
 	if err := GenerateKey(newKeyPath); err != nil {
