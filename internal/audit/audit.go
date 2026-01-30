@@ -256,6 +256,23 @@ func (l *Logger) LoadEntries() ([]AuditEntry, error) {
 	return entries, nil
 }
 
+// splitLines splits a string by newline character into a slice of strings.
+//
+// This function scans the input string character by character, splitting on
+// newline characters ('\n'). Each line (including empty lines) is
+// added to the result slice. Used for parsing audit log files
+// where each JSON line represents a separate audit entry.
+//
+// Parameters:
+//   - s: String to split by newlines
+//
+// Returns:
+//   - []string: Slice of strings, one per line in original order
+//
+// Error conditions: None
+//
+// Thread Safety: Thread-safe (pure function, no shared state)
+// Performance Notes: O(n) where n is string length, creates one slice with capacity
 func splitLines(s string) []string {
 	var lines []string
 	start := 0

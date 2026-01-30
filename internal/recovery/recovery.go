@@ -66,6 +66,23 @@ func init() {
 
 // Helper functions for zero-allocation case-insensitive substring matching.
 
+// toLowerByte converts an uppercase ASCII byte to lowercase without allocation.
+//
+// This function performs a simple ASCII-only lowercase conversion for single
+// bytes. It only converts 'A'-'Z' to 'a'-'z', leaving
+// other characters unchanged. This is used by equalIgnoreCaseBytes
+// for case-insensitive comparison without allocating strings.
+//
+// Parameters:
+//   - c: ASCII byte to convert
+//
+// Returns:
+//   - byte: Lowercase byte if c is uppercase 'A'-'Z', otherwise returns c unchanged
+//
+// Error conditions: None
+//
+// Thread Safety: Thread-safe (pure function, no shared state)
+// Performance Notes: Zero-allocation, used for fast case-insensitive matching
 func toLowerByte(c byte) byte {
 	if c >= 'A' && c <= 'Z' {
 		return c + 32
@@ -73,6 +90,25 @@ func toLowerByte(c byte) byte {
 	return c
 }
 
+// containsIgnoreCaseBytes checks if pattern exists in data using case-insensitive matching.
+//
+// This function performs a case-insensitive substring search on byte slices.
+// It returns true immediately if pattern is empty (empty pattern matches
+// everything). Uses toLowerByte for ASCII-only conversion without string
+// allocations. Optimized for use in hot paths like error message
+// matching.
+//
+// Parameters:
+//   - data: Byte slice to search within
+//   - pattern: Byte slice pattern to search for
+//
+// Returns:
+//   - bool: true if pattern is found in data (case-insensitive), false otherwise
+//
+// Error conditions: None
+//
+// Thread Safety: Thread-safe (pure function, no shared state)
+// Performance Notes: Zero-allocation matching using byte slices, O(n*m) where n=len(data), m=len(pattern)
 func containsIgnoreCaseBytes(data []byte, pattern []byte) bool {
 	if len(pattern) == 0 {
 		return true
@@ -88,6 +124,24 @@ func containsIgnoreCaseBytes(data []byte, pattern []byte) bool {
 	return false
 }
 
+// equalIgnoreCaseBytes compares two byte slices for case-insensitive equality.
+//
+// This function checks if two byte slices are equal ignoring ASCII case
+// differences. It uses toLowerByte for zero-allocation ASCII-only
+// case conversion. This is used by containsIgnoreCaseBytes for substring
+// matching.
+//
+// Parameters:
+//   - a: First byte slice to compare
+//   - b: Second byte slice to compare
+//
+// Returns:
+//   - bool: true if slices have equal length and byte values (ignoring ASCII case)
+//
+// Error conditions: None
+//
+// Thread Safety: Thread-safe (pure function, no shared state)
+// Performance Notes: Zero-allocation, O(n) where n is slice length
 func equalIgnoreCaseBytes(a, b []byte) bool {
 	if len(a) != len(b) {
 		return false
