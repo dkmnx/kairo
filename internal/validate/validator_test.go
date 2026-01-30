@@ -14,9 +14,14 @@ func TestProviderValidation(t *testing.T) {
 		wantErr      bool
 	}{
 		{"empty key", "", "TestProvider", true},
+		{"whitespace only", "   ", "TestProvider", true},
 		{"short key (7 chars)", "sk-abc", "TestProvider", true},
-		{"valid key (8 chars)", "sk-abcde", "TestProvider", false},
+		{"valid key (20 chars)", "sk-ant-" + string(make([]byte, 14)), "TestProvider", false},
 		{"long valid key", "sk-ant-" + string(make([]byte, 50)), "TestProvider", false},
+		{"zai provider - short key", "short", "zai", true},
+		{"zai provider - valid key", "zai-api-key-" + string(make([]byte, 24)), "zai", false},
+		{"custom provider - short key", "short", "custom", true},
+		{"custom provider - valid key", "custom-key-" + string(make([]byte, 10)), "custom", false},
 	}
 
 	for _, tt := range tests {

@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
@@ -15,10 +14,7 @@ import (
 )
 
 var (
-	// resetYesFlag is used by Cobra for flag binding
 	resetYesFlag bool
-	// resetYes provides atomic access for thread safety
-	resetYes atomic.Bool
 )
 
 var resetCmd = &cobra.Command{
@@ -27,8 +23,6 @@ var resetCmd = &cobra.Command{
 	Long:  "Remove a provider's configuration. Use 'all' to reset all providers.",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		// Sync flag value to atomic variable
-		resetYes.Store(resetYesFlag)
 		target := args[0]
 
 		dir := getConfigDir()
@@ -48,7 +42,7 @@ var resetCmd = &cobra.Command{
 		}
 
 		if target == "all" {
-			if !resetYes.Load() {
+			if !resetYesFlag {
 				ui.PrintWarn("This will remove ALL provider configurations and secrets.")
 				confirmed, err := ui.Confirm("Do you want to proceed?")
 				if err != nil {
@@ -92,9 +86,11 @@ var resetCmd = &cobra.Command{
 
 			ui.PrintSuccess("All providers reset successfully")
 
-			logAuditEvent(dir, func(logger *audit.Logger) error {
+			if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 				return logger.LogReset("all")
-			})
+			}); err != nil {
+				ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+			}
 			return
 		}
 
@@ -145,9 +141,11 @@ var resetCmd = &cobra.Command{
 
 		ui.PrintSuccess(fmt.Sprintf("Provider '%s' reset successfully", target))
 
-		logAuditEvent(dir, func(logger *audit.Logger) error {
+		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogReset(target)
-		})
+		}); err != nil {
+			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+		}
 	},
 }
 

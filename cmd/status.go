@@ -8,7 +8,6 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
-	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -51,11 +50,12 @@ var statusCmd = &cobra.Command{
 		secrets := make(map[string]string)
 		if _, err := os.Stat(secretsPath); err == nil {
 			secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
-			if err != nil && getVerbose() {
-				ui.PrintInfo(fmt.Sprintf("Warning: Could not decrypt secrets: %v", err))
-			} else if err == nil {
-				secrets = config.ParseSecrets(secretsContent)
+			if err != nil {
+				ui.PrintWarn(fmt.Sprintf("Could not decrypt secrets file: %v", err))
+				ui.PrintInfo("API key status will not be shown. Use --verbose for more details.")
+				return
 			}
+			secrets = config.ParseSecrets(secretsContent)
 		}
 
 		names := sortProviderNames(cfg.Providers, cfg.DefaultProvider)
@@ -63,16 +63,6 @@ var statusCmd = &cobra.Command{
 		for _, name := range names {
 			provider := cfg.Providers[name]
 			isDefault := (name == cfg.DefaultProvider)
-
-			if !providers.RequiresAPIKey(name) {
-				def, _ := providers.GetBuiltInProvider(name)
-				if isDefault {
-					fmt.Printf("%s%s:%s: - %s(default)%s ✓ Good\n", ui.White, def.Name, provider.Model, ui.Gray, ui.Reset)
-				} else {
-					ui.PrintWhite(fmt.Sprintf("%s:%s: - ✓ Good", def.Name, provider.Model))
-				}
-				continue
-			}
 
 			if provider.BaseURL == "" {
 				ui.PrintWarn(fmt.Sprintf("%s - No base URL configured", name))

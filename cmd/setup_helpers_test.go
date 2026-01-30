@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -261,51 +258,42 @@ func TestValidateBaseURL(t *testing.T) {
 }
 
 func TestAuditLoggerErrorHandling(t *testing.T) {
-	t.Run("audit logger creation errors are logged to stderr", func(t *testing.T) {
-		oldStderr := os.Stderr
-		r, w, _ := os.Pipe()
-		os.Stderr = w
+	t.Run("logAuditEvent returns error on invalid directory", func(t *testing.T) {
+		nonExistentDir := "/this/directory/does/not/exist/xyz123"
 
-		tmpDir := t.TempDir()
-
-		logAuditEvent(tmpDir, func(l *audit.Logger) error {
+		err := logAuditEvent(nonExistentDir, func(l *audit.Logger) error {
 			return nil
 		})
 
-		w.Close()
-		os.Stderr = oldStderr
-
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, r); err != nil {
-			t.Logf("Warning: io.Copy failed: %v", err)
+		if err == nil {
+			t.Error("logAuditEvent should return error when directory doesn't exist")
 		}
-		r.Close()
-
-		t.Logf("Test passed - audit logger errors are now being logged to stderr")
 	})
 
-	t.Run("audit logging errors are logged to stderr", func(t *testing.T) {
-		oldStderr := os.Stderr
-		r, w, _ := os.Pipe()
-		os.Stderr = w
-
+	t.Run("logAuditEvent returns error on logging failure", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		logAuditEvent(tmpDir, func(l *audit.Logger) error {
+		err := logAuditEvent(tmpDir, func(l *audit.Logger) error {
 			return fmt.Errorf("test logging error")
 		})
 
-		w.Close()
-		os.Stderr = oldStderr
-
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, r); err != nil {
-			t.Logf("Warning: io.Copy failed: %v", err)
+		if err == nil {
+			t.Error("logAuditEvent should return error when logFunc returns error")
 		}
-		r.Close()
+		if !strings.Contains(err.Error(), "test logging error") {
+			t.Errorf("Error should contain original error message, got: %v", err)
+		}
+	})
 
-		if !strings.Contains(buf.String(), "Warning: Failed to log audit event") {
-			t.Error("Expected warning message in stderr, got:", buf.String())
+	t.Run("logAuditEvent succeeds with valid logger and logFunc", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		err := logAuditEvent(tmpDir, func(l *audit.Logger) error {
+			return l.LogSetup("test-provider")
+		})
+
+		if err != nil {
+			t.Errorf("logAuditEvent should succeed with valid input, got: %v", err)
 		}
 	})
 }

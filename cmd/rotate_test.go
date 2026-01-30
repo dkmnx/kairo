@@ -137,7 +137,6 @@ func TestRotateCommandRequiresConfirmation(t *testing.T) {
 
 	// Reset the --yes flag to ensure test isolation
 	rotateYesFlag = false
-	rotateYes.Store(false)
 
 	originalStdin := os.Stdin
 	defer func() { os.Stdin = originalStdin }()
@@ -200,7 +199,6 @@ func TestRotateCommandWithYesFlag(t *testing.T) {
 
 	// Reset the --yes flag to ensure test isolation
 	rotateYesFlag = false
-	rotateYes.Store(false)
 
 	originalConfigDir := getConfigDir()
 	defer func() { setConfigDir(originalConfigDir) }()
