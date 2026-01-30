@@ -2,22 +2,16 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
-	"sync/atomic"
 
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
+	"github.com/dkmnx/kairo/pkg/env"
 	"github.com/spf13/cobra"
 )
 
 var (
-	// rotateYesFlag is used by Cobra for flag binding
 	rotateYesFlag bool
-	// rotateYes provides atomic access for thread safety
-	rotateYes atomic.Bool
 )
 
 var rotateCmd = &cobra.Command{
@@ -34,24 +28,13 @@ after the rotation completes.
 Examples:
   kairo rotate`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Sync flag value to atomic variable
-		rotateYes.Store(rotateYesFlag)
-
-		dir := getConfigDir()
+		dir := env.GetConfigDir()
 		if dir == "" {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				ui.PrintError("Cannot find home directory")
-				return
-			}
-			if runtime.GOOS == "windows" {
-				dir = filepath.Join(home, "AppData", "Roaming", "kairo")
-			} else {
-				dir = filepath.Join(home, ".config", "kairo")
-			}
+			ui.PrintError("Cannot determine config directory")
+			return
 		}
 
-		if !rotateYes.Load() {
+		if !rotateYesFlag {
 			ui.PrintWarn("This will rotate your encryption key and re-encrypt all secrets.")
 			confirmed, err := ui.Confirm("Do you want to proceed?")
 			if err != nil {
@@ -73,9 +56,11 @@ Examples:
 
 		ui.PrintSuccess("Encryption key rotated successfully")
 
-		logAuditEvent(dir, func(logger *audit.Logger) error {
+		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogRotate("all")
-		})
+		}); err != nil {
+			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+		}
 	},
 }
 
