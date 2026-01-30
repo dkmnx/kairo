@@ -1,6 +1,6 @@
 module github.com/dkmnx/kairo
 
-go 1.25
+go 1.25.6
 
 require (
 	filippo.io/age v1.2.1
