@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-01-31
+
+### Added
+
+- **API key validation**: Strengthened validation with provider-specific formats
+  - Anthropic keys: Must start with `sk-ant-api0` followed by 76+ characters
+  - Z.AI keys: Must start with `sk-zaic-` followed by 32+ characters
+  - MiniMax keys: Must start with `eyJ` (JWT format) or custom validation
+  - DeepSeek keys: Must start with `sk-` followed by 52+ characters
+  - Kimi keys: Must start with `sk-` followed by 52+ characters
+  - Clear error messages indicating expected format for each provider
+- **Decryption error handling**: Fail early on decryption failures with actionable errors
+  - Clear guidance when identity file is missing or wrong
+  - Better error messages for malformed recipient files
+  - Integration tests for decryption failure scenarios
+
+### Fixed
+
+- **Go version**: Updated to 1.25.6 to fix crypto/tls vulnerability (CVE-2024-45338)
+- **Dependencies**: Updated golang.org/x/crypto to v0.45.0 for security fixes
+- **CI/CD**: Fixed coverage report step and updated dependency review for PATENTS
+- **Update command**: Simplified to use platform-appropriate install scripts
+
+### Refactored
+
+- **Audit logging**: Made audit logging errors visible to callers instead of silent failures
+- **Private IP validation**: Extracted CIDR blocks to package-level constants for maintainability
+- **State management**: Removed unnecessary dual state in reset and rotate commands
+- **Platform detection**: Consolidated in cmd/rotate with pkg/env for consistency
+- **Validation helpers**: Removed redundant nil check in validateCustomProviderName
+
+### Test
+
+- **Integration tests**: Added decryption failure scenario tests
+- **Audit helpers**: Added comprehensive test coverage
+- **Crypto package**: Added disk full error handling tests
+- **Switch command**: Increased test coverage with new run tests
+- **Race detection**: Fixed race conditions in integration tests
+
+### Documentation
+
+- **Package-level docs**: Added documentation to cmd, crypto, and wrapper packages
+- **Function docs**: Added documentation to utility helper and security-critical private functions
+- **Documentation standardization**: Standardized function documentation format
+
 ## [1.6.1] - 2026-01-28
 
 ### Fixed
@@ -668,6 +713,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.7.0]: https://github.com/dkmnx/kairo/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/dkmnx/kairo/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/dkmnx/kairo/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/dkmnx/kairo/compare/v1.5.0...v1.5.1
