@@ -119,7 +119,11 @@ func downloadToTempFile(url string) (string, error) {
 		return "", fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
 
-	tempFile, err := os.CreateTemp("", "kairo-install-*")
+	ext := ".sh"
+	if runtime.GOOS == "windows" {
+		ext = ".ps1"
+	}
+	tempFile, err := os.CreateTemp("", "kairo-install-*"+ext)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -145,7 +149,12 @@ func runInstallScript(scriptPath string) error {
 		pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 		pwshCmd.Stdout = os.Stdout
 		pwshCmd.Stderr = os.Stderr
-		return pwshCmd.Run()
+
+		if err := pwshCmd.Run(); err != nil {
+			return fmt.Errorf("powershell execution failed: %w", err)
+		}
+
+		return nil
 	}
 
 	if err := os.Chmod(scriptPath, 0755); err != nil {
@@ -155,7 +164,11 @@ func runInstallScript(scriptPath string) error {
 	shCmd := exec.Command("/bin/sh", scriptPath)
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
-	return shCmd.Run()
+	if err := shCmd.Run(); err != nil {
+		return fmt.Errorf("shell execution failed: %w", err)
+	}
+
+	return nil
 }
 
 var updateCmd = &cobra.Command{
