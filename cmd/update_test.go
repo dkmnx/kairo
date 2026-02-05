@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/version"
@@ -669,6 +671,32 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 
 		if string(content) != unicodeContent {
 			t.Errorf("file content = %q, want %q", string(content), unicodeContent)
+		}
+	})
+}
+
+func TestDownloadToTempFileExtension(t *testing.T) {
+	t.Run("uses platform-appropriate extension", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("test content"))
+		}))
+		defer server.Close()
+
+		tempFile, err := downloadToTempFile(server.URL)
+		if err != nil {
+			t.Fatalf("downloadToTempFile() error = %v", err)
+		}
+		defer os.Remove(tempFile)
+
+		expectedExt := ".sh"
+		if runtime.GOOS == "windows" {
+			expectedExt = ".ps1"
+		}
+
+		if !strings.HasSuffix(tempFile, expectedExt) {
+			t.Errorf("temp file %q should have %s extension on %s", tempFile, expectedExt, runtime.GOOS)
 		}
 	})
 }
