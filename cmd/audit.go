@@ -38,6 +38,7 @@ var auditCmd = &cobra.Command{
 			ui.PrintError(fmt.Sprintf("Failed to open audit log: %v", err))
 			return
 		}
+		defer logger.Close()
 
 		entries, err := logger.LoadEntries()
 		if err != nil {
@@ -88,6 +89,7 @@ var auditListCmd = &cobra.Command{
 			ui.PrintError(fmt.Sprintf("Failed to open audit log: %v", err))
 			return
 		}
+		defer logger.Close()
 
 		entries, err := logger.LoadEntries()
 		if err != nil {
@@ -136,6 +138,7 @@ var auditExportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer logger.Close()
 
 		entries, err := logger.LoadEntries()
 		if err != nil {
