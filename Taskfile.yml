@@ -111,3 +111,15 @@ tasks:
     cmds:
       - echo "Running goreleaser (dry-run, no publish)..."
       - goreleaser release --clean --snapshot --skip=publish
+
+  pre-commit:
+    desc: Run pre-commit hooks
+    cmds:
+      - python -m pre_commit run --all-files
+      - pre-commit run --all-files
+
+  pre-commit-install:
+    desc: Install pre-commit git hooks
+    cmds:
+      - python -m pre_commit install
+      - pre-commit install
