@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -24,6 +26,18 @@ const (
 	Bold   = "\033[1m"
 	Reset  = "\033[0m"
 )
+
+// ClearScreen clears the terminal screen using the appropriate command for the platform.
+func ClearScreen() {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", "cls")
+	} else {
+		cmd = exec.Command("clear")
+	}
+	cmd.Stdout = os.Stdout
+	_ = cmd.Run()
+}
 
 func PrintSuccess(msg string) {
 	fmt.Printf("%s✓%s %s%s\n", Green, Reset, msg, Reset)
