@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-02-06
+
+### Fixed
+
+- **Windows file locking**: Close audit logger to prevent file lock on Windows when running update command
+- **Update command**: Use platform-specific temp file extensions (.tmp on Windows, .tmp.XXXXXX on Unix) to avoid extension issues
+- **Wrapper script execution**: Fixed wrapper script execution on Windows by using correct directory and extension handling
+- **CI/CD**: Removed invalid deny-licenses configuration in dependency review workflow
+- **CI/CD**: Fixed coverage report step in CI pipeline
+
+### Changed
+
+- **Go version**: Updated to 1.25.7 to fix crypto/tls vulnerability (CVE-2024-45338)
+- **Pre-commit hooks**: Added Windows-compatible PowerShell pre-commit script for developers on Windows
+
+### Documentation
+
+- **AGENTS.md**: Updated with comprehensive AI agent context for better Claude Code integration
+
 ## [1.7.0] - 2026-01-31
 
 ### Added
@@ -713,6 +732,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.7.1]: https://github.com/dkmnx/kairo/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/dkmnx/kairo/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/dkmnx/kairo/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/dkmnx/kairo/compare/v1.5.1...v1.6.0
