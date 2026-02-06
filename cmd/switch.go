@@ -143,6 +143,7 @@ var switchCmd = &cobra.Command{
 				return
 			}
 
+			ui.ClearScreen()
 			ui.PrintBanner(version.Version, provider.Name)
 
 			// Set up signal handling for cleanup on SIGINT/SIGTERM
@@ -198,6 +199,7 @@ var switchCmd = &cobra.Command{
 			return
 		}
 
+		ui.ClearScreen()
 		ui.PrintBanner(version.Version, provider.Name)
 
 		execCmd := execCommand(claudePath, claudeArgs...)
