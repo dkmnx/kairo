@@ -25,14 +25,14 @@ repos:
 
       - id: go-mod-tidy
         name: Check go.mod tidy
-        entry: bash -c "go mod tidy && git diff --exit-code go.mod go.sum"
+        entry: cmd /c "go mod tidy && git diff --exit-code go.mod go.sum"
         language: system
         files: go\.(mod|sum)$
         pass_filenames: false
 
       - id: govulncheck
         name: Run vulnerability scan
-        entry: bash -c "command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./..."
+        entry: cmd /c "where govulncheck >nul 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./..."
         language: system
         files: go\.(mod|sum)$
         pass_filenames: false
