@@ -63,6 +63,7 @@ func TestAuditCommandListWithEntries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogSwitch("anthropic")
 	if err != nil {
@@ -107,6 +108,7 @@ func TestAuditCommandExportCSV(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	err = logger.LogSwitch("anthropic")
 	if err != nil {
@@ -163,6 +165,7 @@ func TestAuditCommandExportJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	details := []audit.Change{
 		{Field: "api_key", New: "***"},
@@ -216,10 +219,11 @@ func TestAuditCommandInvalidFormat(t *testing.T) {
 	}
 	setConfigDir(tmpDir)
 
-	_, err := audit.NewLogger(tmpDir)
+	logger, err := audit.NewLogger(tmpDir)
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	tmpOutput := filepath.Join(t.TempDir(), "audit.xml")
 	buf := new(bytes.Buffer)
@@ -243,10 +247,11 @@ func TestAuditCommandMissingOutput(t *testing.T) {
 	}
 	setConfigDir(tmpDir)
 
-	_, err := audit.NewLogger(tmpDir)
+	logger, err := audit.NewLogger(tmpDir)
 	if err != nil {
 		t.Fatalf("NewLogger() error = %v", err)
 	}
+	defer logger.Close()
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)

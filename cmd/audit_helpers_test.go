@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -123,6 +124,11 @@ func TestLogAuditEvent_LoggerCreationFailure(t *testing.T) {
 	})
 
 	t.Run("handles permission denied error", func(t *testing.T) {
+		// Skip this test on Windows as chmod behaves differently
+		if runtime.GOOS == "windows" {
+			t.Skip("chmod behaves differently on Windows, skipping permission test")
+		}
+
 		// Create a read-only directory
 		tmpDir := t.TempDir()
 		if err := os.Chmod(tmpDir, 0400); err != nil {
