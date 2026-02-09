@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-02-09
+
+### Added
+
+- **Key recovery commands**: New `kairo recover` commands for key restoration
+  - `kairo recover identity` - Recover identity file from passphrase
+  - `kairo recover key <provider>` - Recover provider-specific encryption keys
+  - `kairo recover all` - Recover all keys in batch
+- **Config caching**: Added file watcher for automatic cache invalidation when config files change
+  - Config caching layer integrated into commands for faster startup
+  - Automatic cache invalidation on file modifications
+- **Error recovery**: Improved error messages with actionable recovery suggestions
+- **UI enhancement**: Clear terminal screen before running Claude for cleaner output
+
+### Fixed
+
+- **Backup security**: Fixed Zip Slip vulnerability in archive extraction
+- **Backup resources**: Fixed resource leaks in backup operations
+  - Added proper deferred Close handling
+  - Added zip archive verification before extraction
+- **Test isolation**: Fixed configDir reset in TestGetConfigDir to avoid test pollution
+
+### Changed
+
+- **Build system**: Replaced Taskfile and Makefile with Justfile for command runner
+- **Pre-commit hooks**: Added staticcheck for Go static analysis
+- **Pre-commit hooks**: Changed Windows cmd to bash for Go hooks
+- **Development tools**: Added Just runner installation to deps target
+- **Documentation**: Added backup and recovery documentation
+- **Documentation**: Added metrics documentation to README
+- **Documentation**: Improved table formatting in README metrics section
+- **Tests**: Added integration tests for backup and recovery
+- **Tests**: Used filepath.Join for cross-platform temp paths in metrics tests
+- **Code style**: Fixed whitespace and handled ignored errors in tests
+
+### Security
+
+- **Backup extraction**: Fixed Zip Slip vulnerability preventing path traversal attacks
+
 ## [1.7.1] - 2026-02-06
 
 ### Fixed
@@ -732,6 +771,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.8.0]: https://github.com/dkmnx/kairo/compare/v1.7.1...v1.8.0
 [1.7.1]: https://github.com/dkmnx/kairo/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/dkmnx/kairo/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/dkmnx/kairo/compare/v1.6.0...v1.6.1
