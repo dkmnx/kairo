@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
 	kairoversion "github.com/dkmnx/kairo/internal/version"
@@ -32,8 +33,9 @@ import (
 )
 
 var (
-	configDir string
-	verbose   bool
+	configDir    string
+	verbose      bool
+	configCache  *config.ConfigCache
 )
 
 func getVerbose() bool {
@@ -63,7 +65,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			return
 		}
 
-		cfg, err := config.LoadConfig(dir)
+		cfg, err := configCache.Get(dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
@@ -160,8 +162,26 @@ func isKnownSubcommand(name string) bool {
 }
 
 func init() {
+	// Initialize cache with 5 minute TTL
+	configCache = config.NewConfigCache(5 * time.Minute)
+
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+
+	// Invalidate cache on config-modifying commands
+	setupCmd.PreRun = func(cmd *cobra.Command, args []string) {
+		dir := getConfigDir()
+		if dir != "" {
+			configCache.Invalidate(dir)
+		}
+	}
+
+	configCmd.PreRun = func(cmd *cobra.Command, args []string) {
+		dir := getConfigDir()
+		if dir != "" {
+			configCache.Invalidate(dir)
+		}
+	}
 }
 
 func getConfigDir() string {

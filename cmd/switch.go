@@ -46,7 +46,7 @@ var switchCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := config.LoadConfig(dir)
+		cfg, err := configCache.Get(dir)
 		if err != nil {
 			cmd.Printf("Error loading config: %v\n", err)
 			return

@@ -49,7 +49,7 @@ var configCmd = &cobra.Command{
 
 		builtinDef, _ := providers.GetBuiltInProvider(providerName)
 
-		cfg, err := config.LoadConfig(dir)
+		cfg, err := configCache.Get(dir)
 		if err != nil && !os.IsNotExist(err) {
 			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
