@@ -15,6 +15,13 @@ repos:
         files: \.go$
         pass_filenames: false
 
+      - id: staticcheck
+        name: Run static analysis
+        entry: bash -c "export PATH=\"$GOPATH/bin:$PATH\"; command -v staticcheck >/dev/null 2>&1 || go install honnef.co/go/tools/cmd/staticcheck@latest && staticcheck ./..."
+        language: system
+        files: \.go$
+        pass_filenames: false
+
       - id: go-test
         name: Run Go tests
         entry: go test -race ./...
