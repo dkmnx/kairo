@@ -58,3 +58,45 @@ func CreateBackup(configDir string) (string, error) {
 	}
 	return backupPath, nil
 }
+
+func RestoreBackup(configDir, backupPath string) error {
+	r, err := zip.OpenReader(backupPath)
+	if err != nil {
+		return fmt.Errorf("open backup: %w", err)
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		// Skip directory entries
+		if f.Mode().IsDir() {
+			continue
+		}
+
+		destPath := filepath.Join(configDir, f.Name)
+		if err := os.MkdirAll(filepath.Dir(destPath), 0700); err != nil {
+			return fmt.Errorf("create dir for %s: %w", f.Name, err)
+		}
+
+		outFile, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return fmt.Errorf("create %s: %w", f.Name, err)
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return fmt.Errorf("open %s in zip: %w", f.Name, err)
+		}
+
+		if _, err := io.Copy(outFile, rc); err != nil {
+			outFile.Close()
+			rc.Close()
+			return fmt.Errorf("extract %s: %w", f.Name, err)
+		}
+
+		outFile.Close()
+		rc.Close()
+	}
+
+	return nil
+}
