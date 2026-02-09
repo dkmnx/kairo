@@ -138,7 +138,7 @@ func ensureConfigDirectory(dir string) error {
 
 // loadOrInitializeConfig loads an existing config or creates a new empty one.
 func loadOrInitializeConfig(dir string) (*config.Config, error) {
-	cfg, err := config.LoadConfig(dir)
+	cfg, err := configCache.Get(dir)
 	if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 		return nil, err
 	}
