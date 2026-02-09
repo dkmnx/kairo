@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -167,7 +168,7 @@ func TestExportMetrics_InvalidFormat(t *testing.T) {
 
 	// Set invalid format
 	metricsFormat = "invalid"
-	metricsOutputPath = "/tmp/test_metrics_invalid.json"
+	metricsOutputPath = filepath.Join(os.TempDir(), "test_metrics_invalid.json")
 	defer os.Remove(metricsOutputPath)
 
 	err := exportMetrics(registry)
@@ -190,7 +191,7 @@ func TestExportMetrics_JSON(t *testing.T) {
 
 	// Set JSON format
 	metricsFormat = "json"
-	metricsOutputPath = "/tmp/test_metrics_export.json"
+	metricsOutputPath = filepath.Join(os.TempDir(), "test_metrics_export.json")
 	defer os.Remove(metricsOutputPath)
 
 	err := exportMetrics(registry)
