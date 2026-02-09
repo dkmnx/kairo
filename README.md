@@ -148,16 +148,16 @@ kairo metrics reset
 
 ### Metrics Reference
 
-| Metric | Description |
-|--------|-------------|
-| `operation` | Type of operation (switch, config, etc.) |
-| `provider` | Provider name |
-| `count` | Number of operations |
-| `total_duration` | Cumulative time spent |
-| `avg_duration` | Average operation time |
-| `min_duration` | Fastest operation |
-| `max_duration` | Slowest operation |
-| `failure_count` | Number of failures |
+| Metric            | Description                                |
+| ----------------- | ------------------------------------------ |
+| `operation`       | Type of operation (switch, config, etc.)   |
+| `provider`        | Provider name                              |
+| `count`           | Number of operations                       |
+| `total_duration`  | Cumulative time spent                      |
+| `avg_duration`    | Average operation time                     |
+| `min_duration`    | Fastest operation                          |
+| `max_duration`    | Slowest operation                          |
+| `failure_count`   | Number of failures                         |
 
 ## Commands
 
