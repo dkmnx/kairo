@@ -115,6 +115,50 @@ flowchart TB
 | **Audit Logging**      | Track all configuration changes                            |
 | **Cross-Platform**     | Linux, macOS, Windows support                              |
 
+## Metrics
+
+Performance metrics are opt-in for privacy. When enabled, kairo tracks:
+
+- API call durations per provider
+- Configuration operation timing
+- Success/failure rates
+
+### Enabling Metrics
+
+```bash
+# Enable for current session
+kairo metrics enable
+
+# Or set environment variable
+export KAIRO_METRICS_ENABLED=true
+```
+
+### Viewing Metrics
+
+```bash
+# Display metrics in terminal
+kairo metrics
+
+# Export to JSON file
+kairo metrics --output metrics.json
+
+# Reset all metrics
+kairo metrics reset
+```
+
+### Metrics Reference
+
+| Metric | Description |
+|--------|-------------|
+| `operation` | Type of operation (switch, config, etc.) |
+| `provider` | Provider name |
+| `count` | Number of operations |
+| `total_duration` | Cumulative time spent |
+| `avg_duration` | Average operation time |
+| `min_duration` | Fastest operation |
+| `max_duration` | Slowest operation |
+| `failure_count` | Number of failures |
+
 ## Commands
 
 ### Provider Management
