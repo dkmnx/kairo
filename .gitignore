@@ -34,6 +34,7 @@ Thumbs.db
 
 # AI documentation (should not be committed)
 ai_docs/
+.trae/
 
 # Config files (contain sensitive data)
 .age.key
