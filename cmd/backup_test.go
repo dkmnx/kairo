@@ -10,9 +10,9 @@ func TestBackupCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create minimal config structure
-	os.MkdirAll(filepath.Join(tmpDir, "backups"), 0755)
-	os.WriteFile(filepath.Join(tmpDir, "age.key"), []byte("test"), 0600)
-	os.WriteFile(filepath.Join(tmpDir, "secrets.age"), []byte("test"), 0600)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "backups"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "age.key"), []byte("test"), 0600)
+	_ = os.WriteFile(filepath.Join(tmpDir, "secrets.age"), []byte("test"), 0600)
 
 	rootCmd.SetArgs([]string{"--config", tmpDir, "backup"})
 	err := rootCmd.Execute()
@@ -26,9 +26,9 @@ func TestRestoreCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create minimal config structure
-	os.MkdirAll(filepath.Join(tmpDir, "backups"), 0755)
-	os.WriteFile(filepath.Join(tmpDir, "age.key"), []byte("test-key"), 0600)
-	os.WriteFile(filepath.Join(tmpDir, "secrets.age"), []byte("test-secrets"), 0600)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "backups"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "age.key"), []byte("test-key"), 0600)
+	_ = os.WriteFile(filepath.Join(tmpDir, "secrets.age"), []byte("test-secrets"), 0600)
 
 	// Create a backup first
 	rootCmd.SetArgs([]string{"--config", tmpDir, "backup"})

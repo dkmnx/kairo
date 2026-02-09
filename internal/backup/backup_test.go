@@ -15,8 +15,8 @@ func TestCreateBackup(t *testing.T) {
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 
 	// Create mock files
-	os.WriteFile(keyPath, []byte("test-key"), 0600)
-	os.WriteFile(secretsPath, []byte("test-secrets"), 0600)
+	_ = os.WriteFile(keyPath, []byte("test-key"), 0600)
+	_ = os.WriteFile(secretsPath, []byte("test-secrets"), 0600)
 
 	// Test backup creation
 	backupPath, err := CreateBackup(tmpDir)
@@ -49,8 +49,9 @@ func TestCreateBackup(t *testing.T) {
 		rc, err := f.Open()
 		if err != nil {
 			t.Errorf("Failed to open %s: %v", f.Name, err)
+			continue
 		}
-		io.ReadAll(rc)
+		_, _ = io.ReadAll(rc)
 		rc.Close()
 	}
 }
@@ -58,11 +59,11 @@ func TestCreateBackup(t *testing.T) {
 func TestRestoreBackup(t *testing.T) {
 	tmpDir := t.TempDir()
 	backupDir := filepath.Join(tmpDir, "backups")
-	os.MkdirAll(backupDir, 0755)
+	_ = os.MkdirAll(backupDir, 0755)
 
 	// Create files to backup
-	os.WriteFile(filepath.Join(tmpDir, "age.key"), []byte("test-key"), 0600)
-	os.WriteFile(filepath.Join(tmpDir, "secrets.age"), []byte("test-secrets"), 0600)
+	_ = os.WriteFile(filepath.Join(tmpDir, "age.key"), []byte("test-key"), 0600)
+	_ = os.WriteFile(filepath.Join(tmpDir, "secrets.age"), []byte("test-secrets"), 0600)
 
 	// Create a backup first
 	backupPath, err := CreateBackup(tmpDir)

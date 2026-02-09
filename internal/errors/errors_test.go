@@ -12,6 +12,11 @@ func TestNewError(t *testing.T) {
 			t.Fatal("NewError() returned nil")
 		}
 
+		// Defensive check for static analysis
+		if err == nil {
+			return
+		}
+
 		if err.Type != ConfigError {
 			t.Errorf("Type = %v, want %v", err.Type, ConfigError)
 		}
