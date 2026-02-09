@@ -54,3 +54,38 @@ func TestCreateBackup(t *testing.T) {
 		rc.Close()
 	}
 }
+
+func TestRestoreBackup(t *testing.T) {
+	tmpDir := t.TempDir()
+	backupDir := filepath.Join(tmpDir, "backups")
+	os.MkdirAll(backupDir, 0755)
+
+	// Create files to backup
+	os.WriteFile(filepath.Join(tmpDir, "age.key"), []byte("test-key"), 0600)
+	os.WriteFile(filepath.Join(tmpDir, "secrets.age"), []byte("test-secrets"), 0600)
+
+	// Create a backup first
+	backupPath, err := CreateBackup(tmpDir)
+	if err != nil {
+		t.Fatalf("CreateBackup failed: %v", err)
+	}
+
+	// Remove original files
+	os.Remove(filepath.Join(tmpDir, "age.key"))
+	os.Remove(filepath.Join(tmpDir, "secrets.age"))
+
+	// Restore
+	err = RestoreBackup(tmpDir, backupPath)
+	if err != nil {
+		t.Fatalf("RestoreBackup failed: %v", err)
+	}
+
+	// Verify files restored
+	if _, err := os.Stat(filepath.Join(tmpDir, "age.key")); os.IsNotExist(err) {
+		t.Error("age.key not restored")
+	}
+
+	if _, err := os.Stat(filepath.Join(tmpDir, "secrets.age")); os.IsNotExist(err) {
+		t.Error("secrets.age not restored")
+	}
+}
