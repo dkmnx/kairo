@@ -105,7 +105,8 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 	if err != nil {
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
-			WithContext("key_path", keyPath)
+			WithContext("key_path", keyPath).
+			WithContext("hint", "If your key is lost, use 'kairo recover restore <phrase>' if you have a recovery phrase, or 'kairo backup restore <backup-file>' if you have a backup")
 	}
 
 	file, err := os.Open(secretsPath)
@@ -121,7 +122,7 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets file", err).
 			WithContext("path", secretsPath).
-			WithContext("hint", "ensure key file matches the one used for encryption")
+			WithContext("hint", "Ensure your encryption key matches the one used for encryption. Try 'kairo recover restore' if you have a recovery phrase, or 'kairo backup restore' if you have a backup.")
 	}
 
 	var buf bytes.Buffer

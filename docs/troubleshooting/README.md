@@ -129,18 +129,32 @@ kairo config custom
 
 **Cause:** Wrong or corrupted encryption key
 
-**Solution:**
+**Solutions (in order of preference):**
 
+1. **Restore from backup** (recommended)
+   ```bash
+   kairo backup restore ~/.config/kairo/backups/kairo_backup_20240101_120000.zip
+   ```
+
+2. **Restore from recovery phrase**
+   ```bash
+   kairo recover restore word1-word2-word3...
+   ```
+
+3. **Reset everything** (last resort - loses all configured providers)
+   ```bash
+   kairo reset all
+   kairo setup
+   ```
+
+### Generating a Recovery Phrase
+
+If you haven't already, generate a recovery phrase now:
 ```bash
-# Check if age.key exists
-ls -la ~/.config/kairo/
-
-# If missing, reset and reconfigure
-kairo reset all
-kairo setup
+kairo recover generate
 ```
 
-**Warning:** Resetting will lose all configured API keys.
+Save this phrase securely. It can be used to restore your encryption key if lost.
 
 ### "failed to generate key"
 
