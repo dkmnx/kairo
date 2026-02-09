@@ -11,7 +11,7 @@ func TestCreateAndRecover(t *testing.T) {
 	keyPath := filepath.Join(tmpDir, "age.key")
 
 	// Create a test key
-	os.WriteFile(keyPath, []byte("test-key-content"), 0600)
+	_ = os.WriteFile(keyPath, []byte("test-key-content"), 0600)
 
 	// Generate phrase
 	phrase, err := CreateRecoveryPhrase(keyPath)

@@ -33,9 +33,9 @@ import (
 )
 
 var (
-	configDir    string
-	verbose      bool
-	configCache  *config.ConfigCache
+	configDir   string
+	verbose     bool
+	configCache *config.ConfigCache
 )
 
 func getVerbose() bool {

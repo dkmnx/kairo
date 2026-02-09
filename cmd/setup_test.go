@@ -807,6 +807,10 @@ func TestLoadOrInitializeConfigNew(t *testing.T) {
 	if loadedCfg == nil {
 		t.Fatal("loadOrInitializeConfig() returned nil for non-existent config, want empty config")
 	}
+	// Defensive check for static analysis
+	if loadedCfg == nil {
+		return
+	}
 	if loadedCfg.DefaultProvider != "" {
 		t.Errorf("DefaultProvider = %q, want empty string", loadedCfg.DefaultProvider)
 	}

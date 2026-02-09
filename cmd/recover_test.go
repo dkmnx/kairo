@@ -11,7 +11,7 @@ import (
 func TestRecoverGenerate(t *testing.T) {
 	tmpDir := t.TempDir()
 	keyPath := filepath.Join(tmpDir, "age.key")
-	os.WriteFile(keyPath, []byte("test-key-data-32-bytes-long!"), 0600)
+	_ = os.WriteFile(keyPath, []byte("test-key-data-32-bytes-long!"), 0600)
 
 	rootCmd.SetArgs([]string{"--config", tmpDir, "recover", "generate"})
 	err := rootCmd.Execute()
@@ -38,7 +38,7 @@ func TestRecoverRestore(t *testing.T) {
 
 	// First, generate a phrase from a known key
 	knownKey := []byte("test-key-for-recovery-32bytes!")
-	os.WriteFile(keyPath, knownKey, 0600)
+	_ = os.WriteFile(keyPath, knownKey, 0600)
 
 	// Create phrase using the actual recovery package
 	phrase, err := recoverpkg.CreateRecoveryPhrase(keyPath)

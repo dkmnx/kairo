@@ -16,7 +16,7 @@ func TestFileWatcher(t *testing.T) {
 
 	// Write config file
 	configPath := filepath.Join(dir, "config.yaml")
-	os.WriteFile(configPath, []byte("test: value"), 0644)
+	_ = os.WriteFile(configPath, []byte("test: value"), 0644)
 
 	// Wait for watcher to detect change
 	time.Sleep(200 * time.Millisecond)

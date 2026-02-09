@@ -10,12 +10,8 @@ import (
 func TestNewRegistry(t *testing.T) {
 	registry := NewRegistry()
 
-	if registry == nil {
-		t.Fatal("NewRegistry returned nil")
-	}
-
-	if registry.Metrics == nil {
-		t.Error("Metrics map is not initialized")
+	if registry == nil || registry.Metrics == nil {
+		t.Fatal("NewRegistry returned nil or Metrics not initialized")
 	}
 
 	if registry.Enabled {
