@@ -114,6 +114,47 @@ deps:
     @echo "Installing dependencies..."
     go mod download
     go mod tidy
+    
+    @echo "Installing development tools..."
+    @if command -v golangci-lint >/dev/null 2>&1; then \
+        echo "golangci-lint already installed"; \
+    else \
+        echo "Installing golangci-lint..."; \
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+    fi
+    
+    @if command -v pre-commit >/dev/null 2>&1; then \
+        echo "pre-commit already installed"; \
+    else \
+        echo "Installing pre-commit..."; \
+        pip install pre-commit; \
+    fi
+    
+    @if command -v govulncheck >/dev/null 2>&1; then \
+        echo "govulncheck already installed"; \
+    else \
+        echo "Installing govulncheck..."; \
+        go install golang.org/x/vuln/cmd/govulncheck@latest; \
+    fi
+    
+    @if command -v goreleaser >/dev/null 2>&1; then \
+        echo "goreleaser already installed"; \
+    else \
+        echo "Installing goreleaser..."; \
+        go install github.com/goreleaser/goreleaser@v1.26.0 2>&1 || \
+        echo "⚠️  goreleaser installation failed (requires Go 1.26+ for full installation)"; \
+        echo "   goreleaser is only needed for releases. Skipping for now."; \
+    fi
+    
+    @if command -v act >/dev/null 2>&1; then \
+        echo "act already installed"; \
+    else \
+        echo "Installing act..."; \
+        curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sh; \
+    fi
+    
+    @echo "Installing pre-commit hooks..."
+    pre-commit install
 
 # Verify dependencies
 verify-deps:
