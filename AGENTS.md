@@ -1,257 +1,233 @@
-# AI Agent Context for Kairo
+# Development Rules for Kairo
 
-> **Kairo** - Secure CLI for managing Claude Code API providers with age (X25519)
-> encryption, multi-provider support, and audit logging.
+## Project Overview
 
-## 1. Commands
+**Kairo** is a secure CLI tool for managing Claude Code API providers.
+It uses age (X25519) encryption, supports multiple providers, and includes
+audit logging. Written in Go.
 
-### Essential Commands
+## Tech Stack
 
-| Command                                              | Description                          |
-|------------------------------------------------------|--------------------------------------|
-| `make build`                                         | Build binary to `dist/kairo`         |
-| `make test`                                          | Run all tests with race detector     |
-| `go test -v ./cmd -run TestName`                     | Run specific test                    |
-| `make lint`                                          | Run gofmt, go vet, golangci-lint     |
-| `make format`                                        | Format code with gofmt               |
-| `make run ARGS="switch zai"`                         | Build and run with arguments         |
-| `make deps`                                          | Download and tidy dependencies       |
-| `task build`                                         | Alternative build using Task         |
-| `go test -race -coverprofile=coverage.txt ./...`     | CI test command                      |
+- **Language:** Go 1.25+
+- **Build Tool:** Go modules (`go.mod`)
+- **Command Runner:** Just (`justfile`)
+- **CLI Framework:** Cobra (`github.com/spf13/cobra`)
+- **Encryption:** Age/X25519 (`filippo.io/age`)
+- **Configuration:** YAML (`gopkg.in/yaml.v3`)
+- **Terminal UI:** `golang.org/x/term`
+- **Testing:** Go testing framework with race detector
 
-### Additional Commands
+## Commands
 
-- `make test-coverage` - Run tests with HTML coverage report
-- `make clean` - Remove build artifacts
-- `make install` - Install to `~/.local/bin`
-- `make vuln-scan` - Run govulncheck for vulnerabilities
-- `make release-local` - Create snapshot release with goreleaser
-- `make pre-commit` - Run pre-commit hooks
+### Build
 
-## 2. Tech Stack
+```bash
+# Build binary to dist/
+just build
+go build -o dist/kairo .
 
-### Core
-
-- **Language**: Go 1.25.6
-- **CLI Framework**: [Cobra](https://github.com/spf13/cobra) (v1.10.2)
-- **Encryption**: [age](https://filippo.io/age) (v1.2.1) - X25519 key encryption
-- **Configuration**: YAML (gopkg.in/yaml.v3)
-- **Versioning**: Masterminds/semver (v3.4.0)
-
-### Testing & Quality
-
-- **Testing**: Go standard testing + race detector
-- **Linting**: gofmt, go vet, golangci-lint (v1.62.0)
-- **Pre-commit**: Pre-commit hooks for code quality
-- **Vulnerability Scanning**: govulncheck
-
-### Build & Release
-
-- **Build**: Make, Task (Taskfile.yml), GoReleaser
-- **CI/CD**: GitHub Actions (`.github/workflows/ci.yml`)
-- **Target Platforms**: Linux, macOS, Windows (amd64, arm64)
-
-## 3. Code Style
-
-### Imports
-
-Group imports in this order with blank lines between:
-
-1. Standard library packages
-2. Third-party packages
-3. Internal project packages (use `kairoerrors` alias for errors package)
-
-Example:
-
-```go
-import (
-    "fmt"
-    "os"
-
-    "filippo.io/age"
-    "github.com/spf13/cobra"
-
-    kairoerrors "github.com/dkmnx/kairo/internal/errors"
-    "github.com/dkmnx/kairo/internal/config"
-)
+# Install to ~/.local/bin/
+just install
 ```
 
-### Types & Naming
+### Test
 
-- **Files**: snake_case (e.g., `audit_helpers.go`)
-- **Exported**: PascalCase (e.g., `LoadConfig`, `EncryptSecrets`)
-- **Unexported**: camelCase (e.g., `loadRecipient`, `getConfigDir`)
-- **YAML Tags**: snake_case with underscores (e.g., `default_provider`, `base_url`)
-- **Error Types**: Custom `KairoError` with typed categories (`ConfigError`, `CryptoError`, etc.)
+```bash
+# Run all tests
+just test
+go test -v ./...
+go test -race ./...
 
-### Error Handling
-
-Use the custom error wrapping system with context:
-
-```go
-// Wrap errors with type and context
-return kairoerrors.WrapError(kairoerrors.ConfigError,
-    "failed to load configuration", err).
-    WithContext("path", configPath).
-    WithContext("hint", "check file permissions")
-
-// Create new errors
-return kairoerrors.NewError(kairoerrors.CryptoError,
-    "key file is empty").
-    WithContext("path", keyPath)
+# Run with coverage
+just test-coverage
+go test -coverprofile=coverage.out ./...
 ```
 
-### Security Patterns
+### Lint
 
-- **File Permissions**: Always use `0600` for sensitive files (keys, secrets, config)
-- **Key Storage**: Never log or print private key material
-- **Atomic Operations**: Use `os.Rename` for atomic file replacements
-- **Input Handling**: Use `internal/ui` package for secure password prompts
+```bash
+# Format code
+just format
+gofmt -w .
 
-### Testing
-
-- **Table-Driven Tests**: Use `[]struct` pattern with `t.Run(tt.name, func(t *testing.T) {...})`
-- **Race Detection**: Always run with `-race` flag
-- **Coverage**: Aim for high coverage, generate HTML reports with `make test-coverage`
-- **Integration Tests**: Located in `cmd/integration_test.go`
-- **Test Naming**: `TestFunctionName` or `TestFile_Method` pattern
-
-### Documentation Standards
-
-- **Package Comments**: Include architecture, testing notes, security considerations
-- **Function Comments**: Document parameters, returns, error conditions
-- **Thread Safety**: Document when functions are not thread-safe
-- **Security Notes**: Add security context where relevant
-
-Example package comment:
-
-```go
-// Package crypto provides encryption using the age library.
-//
-// Thread Safety: Not thread-safe (file I/O)
-// Security: All key files use 0600 permissions
-// Performance: Uses X25519 for fast, secure operations
+# Run linters
+just lint
+gofmt -w .
+gofmt -l .
+go vet ./...
+golangci-lint run ./...
 ```
 
-## 4. Architecture
+### Dependency Management
 
-### Project Structure
+```bash
+# Install dependencies and tools
+just deps
+go mod download
+go mod tidy
+
+# Verify dependencies
+just verify-deps
+go mod verify
+
+# Vulnerability scan
+just vuln-scan
+govulncheck ./...
+```
+
+### Releases
+
+```bash
+# Create release (requires GITHUB_TOKEN)
+just release
+goreleaser release --clean
+
+# Local snapshot
+just release-local
+goreleaser release --clean --snapshot
+```
+
+### Pre-commit Hooks
+
+```bash
+# Run pre-commit hooks
+just pre-commit
+pre-commit run --all-files
+
+# Install hooks
+just pre-commit-install
+pre-commit install
+```
+
+### CI/CD
+
+```bash
+# Run GitHub Actions locally
+just ci-local
+act
+
+# List CI jobs
+just ci-local-list
+act -l
+```
+
+## Project Structure
 
 ```text
 kairo/
-├── cmd/              # CLI commands (Cobra framework)
-│   ├── root.go       # Entry point and command routing
-│   ├── setup.go      # Interactive setup wizard
-│   ├── config.go     # Provider configuration
-│   ├── switch.go     # Provider switching
-│   └── *_test.go     # Command tests
-├── internal/         # Internal business logic
-│   ├── audit/        # Audit logging (config changes)
-│   ├── config/       # YAML config loading/migration
-│   ├── crypto/       # Age encryption/decryption
-│   ├── errors/       # Custom error types and wrapping
-│   ├── performance/  # Metrics collection
-│   ├── providers/    # Provider registry (Anthropic, Z.AI, etc.)
-│   ├── recovery/     # Recovery mechanisms
-│   ├── ui/           # Terminal UI and prompts
-│   ├── validate/     # Input validation
-│   ├── version/      # Version information
-│   └── wrapper/      # Wrapper script generation
-├── pkg/              # Public reusable packages
-│   └── env/          # Cross-platform config directory
-├── scripts/          # Install scripts and helpers
-└── docs/             # Documentation
+├── cmd/                    # CLI commands (Cobra)
+│   ├── root.go            # Root command, entry point
+│   ├── setup.go           # Interactive setup wizard
+│   ├── config.go          # Provider configuration
+│   ├── switch.go          # Provider switching/execution
+│   ├── audit.go           # Audit logging
+│   ├── *_test.go          # Test files
+│   └── README.md          # Command documentation
+├── internal/               # Business logic (no CLI deps)
+│   ├── audit/             # Audit logging
+│   ├── config/            # YAML loading/saving
+│   ├── crypto/            # Age encryption
+│   ├── providers/         # Provider registry
+│   ├── validate/          # Input validation
+│   ├── ui/               # Terminal UI utilities
+│   ├── errors/           # Typed errors
+│   └── README.md         # Internal packages docs
+├── pkg/                   # Reusable utilities
+│   └── env/              # Cross-platform config dir
+├── docs/                  # Documentation
+├── scripts/              # Installation scripts
+├── dist/                 # Build output
+├── justfile              # Command runner
+├── go.mod/go.sum         # Dependencies
+├── .github/workflows/    # CI/CD
+└── .pre-commit-config.yaml  # Pre-commit hooks
 ```
 
-### Data Flow
+## Code Style
 
-1. User runs `kairo <provider>` or `kairo switch <provider>`
-2. Config loaded from `~/.config/kairo/config.yaml`
-3. Secrets decrypted from `~/.config/kairo/secrets.age` using `age.key`
-4. Provider environment variables injected
-5. Claude Code CLI executed with provider configuration
+- **Line Length:** 120 characters (MD013)
+- **Indentation:** Tabs (Go standard)
+- **Naming:** Go conventions (PascalCase for exported, camelCase for unexported)
+- **Error Handling:** Typed errors from `internal/errors` package
+- **Formatting:** `gofmt -w .` (run before committing)
+- **Vetting:** `go vet ./...` (run before committing)
 
-### Key Components
+### Error Handling Pattern
 
-- **Configuration**: YAML-based with automatic migration from old format
-- **Encryption**: Age X25519 keys, atomic key rotation support
-- **Audit**: All config changes logged to `audit.log`
-- **Providers**: Built-in support for Anthropic, Z.AI, MiniMax, Kimi, DeepSeek, custom
-- **Wrapper**: Shell/PowerShell scripts for environment variable injection
+```go
+import kairoerrors "github.com/dkmnx/kairo/internal/errors"
 
-## 5. Development Guidelines
+// Wrap with context
+return kairoerrors.WrapError(kairoerrors.ConfigError,
+    "failed to load configuration", err).
+    WithContext("path", configPath)
 
-### Commit Messages
+// Create new error
+return kairoerrors.NewError(kairoerrors.ValidationError,
+    "invalid provider name")
+```
 
-Follow Conventional Commits:
+**Error Types:**
 
-- `feat:` - New feature
-- `fix:` - Bug fix
-- `docs:` - Documentation
-- `style:` - Formatting (gofmt)
-- `refactor:` - Code restructuring
-- `test:` - Test additions/changes
-- `chore:` - Maintenance tasks
+- `ConfigError` - Configuration loading/saving
+- `CryptoError` - Encryption/decryption
+- `ValidationError` - Input validation
+- `ProviderError` - Provider operations
+- `FileSystemError` - File operations
+- `NetworkError` - Network operations
 
-> **Note**: Always check the full diff before committing to ensure the message accurately reflects all changes.
+### Command Handler Pattern
 
-### Debugging
+- Minimal business logic in command handlers
+- Delegate to internal packages for core functionality
+- Consistent error handling with user-friendly messages
+- All user input read securely using `ui` package
 
-Use the Scientific Method for debugging:
+## Git Rules
 
-1. **Hypothesis**: Form a clear theory about the issue
-2. **Test**: Create minimal reproduction or add logging
-3. **Analysis**: Evaluate results, refine hypothesis
+- **ONLY commit files YOU changed**
+- NEVER use `git add -A` or `git add .`
+- Use `git add <specific-files>` for your changes
+- Run `git status` before committing to verify
+- Commit message format: conventional commits
 
-**Logging Tools**:
+## Testing
 
-- Use `internal/ui` package for user-facing output (colored, formatted)
-- Use standard `log` package for operational logging
-- Audit log at `~/.config/kairo/audit.log` tracks all config changes
+- Run `go test -race ./...` before committing
+- Write tests for new commands (`*_test.go` files)
+- Integration tests verify end-to-end workflows
+- Mock external process execution via `execCommand` variable
 
-### Search
+## Adding a New Provider
 
-Use `mgrep` for codebase search:
+1. **Define in `internal/providers/registry.go`:**
+
+```go
+var BuiltInProviders = map[string]ProviderDefinition{
+    "newprovider": {
+        Name:           "New Provider",
+        BaseURL:        "https://api.newprovider.com/anthropic",
+        Model:          "new-model",
+        RequiresAPIKey: true,
+        EnvVars:        []string{},
+    },
+}
+```
+
+1. **Add validation if needed:** Update `internal/validate/` for provider-specific rules
+
+2. **Test:**
 
 ```bash
-# Search for patterns
-mgrep "func.*Encrypt" "*.go"
-
-# Search for specific error types
-mgrep "kairoerrors\.WrapError"
+go test ./internal/providers/...
+kairo config newprovider
+kairo test newprovider
 ```
 
-### Documentation
+## Key Files
 
-Use `context7` MCP to fetch latest library documentation:
-
-- Cobra: `/spf13/cobra`
-- Age encryption: Check `filippo.io/age`
-- Go standard library: Check official docs
-
-## 6. Configuration Files
-
-| File                           | Purpose                              |
-| ------------------------------ | ------------------------------------ |
-| `go.mod`                       | Go module definition                 |
-| `Makefile`                     | Build automation (primary)           |
-| `Taskfile.yml`                 | Alternative task runner              |
-| `.goreleaser.yaml`             | Release configuration                |
-| `.pre-commit-config.yaml`      | Pre-commit hooks                     |
-| `.github/workflows/ci.yml`     | CI/CD pipeline                       |
-| `.markdownlint-cli2.jsonc`     | Markdown linting rules               |
-
-## 7. Security Checklist
-
-- [ ] Sensitive files use `0600` permissions
-- [ ] No secrets logged to stdout/stderr
-- [ ] Private keys never exposed in error messages
-- [ ] Atomic file operations for key rotation
-- [ ] Input validation on all user-provided data
-- [ ] Secure password prompts via `term.ReadPassword`
-
----
-
-**Module**: `github.com/dkmnx/kairo`  
-**Go Version**: 1.25.6  
-**License**: MIT
+- `cmd/root.go` - Entry point, argument parsing
+- `internal/config/config.go` - YAML loading/saving
+- `internal/crypto/age.go` - Encryption operations
+- `internal/providers/registry.go` - Provider definitions
+- `justfile` - All build/test/lint commands
