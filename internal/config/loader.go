@@ -14,6 +14,8 @@ import (
 type Config struct {
 	DefaultProvider string              `yaml:"default_provider"`
 	Providers       map[string]Provider `yaml:"providers"`
+	DefaultModels   map[string]string   `yaml:"default_models"`
+	Version        string              `yaml:"version"`
 }
 
 // Provider represents a configured API provider.
@@ -118,6 +120,10 @@ func LoadConfig(configDir string) (*Config, error) {
 
 	if cfg.Providers == nil {
 		cfg.Providers = make(map[string]Provider)
+	}
+
+	if cfg.DefaultModels == nil {
+		cfg.DefaultModels = make(map[string]string)
 	}
 
 	return &cfg, nil
