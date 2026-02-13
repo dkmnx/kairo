@@ -151,6 +151,11 @@ var configCmd = &cobra.Command{
 			cfg.DefaultProvider = providerName
 		}
 
+		if cfg.DefaultModels == nil {
+			cfg.DefaultModels = make(map[string]string)
+		}
+		cfg.DefaultModels[providerName] = provider.Model
+
 		if err := config.SaveConfig(dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 			return

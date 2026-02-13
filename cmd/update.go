@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
@@ -225,6 +226,16 @@ This command will:
 		if err := runInstallScript(tempFile); err != nil {
 			cmd.Printf("Error during installation: %v\n", err)
 			return
+		}
+
+		dir := getConfigDir()
+		if dir != "" {
+			changes, err := config.MigrateConfigOnUpdate(dir)
+			if err != nil {
+				cmd.Printf("Warning: config migration failed: %v\n", err)
+			} else if len(changes) > 0 {
+				cmd.Printf("%s\n", config.FormatMigrationChanges(changes))
+			}
 		}
 	},
 }
