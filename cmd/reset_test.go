@@ -42,7 +42,7 @@ func TestResetCommandSingleProvider(t *testing.T) {
   minimax:
     name: MiniMax
     base_url: https://api.minimax.io/anthropic
-    model: Minimax-M2.1
+    model: MiniMax-M2.5
 `
 	err := os.WriteFile(configPath, []byte(configContent), 0600)
 	if err != nil {
@@ -86,7 +86,7 @@ func TestResetCommandAllProviders(t *testing.T) {
   minimax:
     name: MiniMax
     base_url: https://api.minimax.io/anthropic
-    model: Minimax-M2.1
+    model: MiniMax-M2.5
 `
 	err := os.WriteFile(configPath, []byte(configContent), 0600)
 	if err != nil {
@@ -162,7 +162,7 @@ func TestResetCommandSingleProviderWithYesFlag(t *testing.T) {
   minimax:
     name: MiniMax
     base_url: https://api.minimax.io/anthropic
-    model: Minimax-M2.1
+    model: MiniMax-M2.5
 `
 	err := os.WriteFile(configPath, []byte(configContent), 0600)
 	if err != nil {
@@ -320,7 +320,7 @@ func TestResetCommandAllRemovesSecretsAndKeyFiles(t *testing.T) {
   minimax:
     name: MiniMax
     base_url: https://api.minimax.io/anthropic
-    model: Minimax-M2.1
+    model: MiniMax-M2.5
 `
 	err := os.WriteFile(configPath, []byte(configContent), 0600)
 	if err != nil {

@@ -41,7 +41,7 @@ func TestProviderDefaults(t *testing.T) {
 			wantDefaultURL:   true,
 			wantURL:          "https://api.minimax.io/anthropic",
 			wantDefaultModel: true,
-			wantModel:        "Minimax-M2.1",
+			wantModel:        "MiniMax-M2.5",
 		},
 		{
 			name:             "kimi has default URL and model",
@@ -212,7 +212,7 @@ func TestProviderConfigSaveLoad(t *testing.T) {
 			"minimax": {
 				Name:    "MiniMax",
 				BaseURL: "https://api.minimax.io/anthropic",
-				Model:   "Minimax-M2.1",
+				Model:   "MiniMax-M2.5",
 			},
 		},
 		DefaultProvider: "zai",
@@ -462,7 +462,7 @@ func TestConfig_CrossProviderValidation(t *testing.T) {
 				"minimax": {
 					Name:    "MiniMax",
 					BaseURL: "https://api.minimax.io/anthropic",
-					Model:   "Minimax-M2.1",
+					Model:   "MiniMax-M2.5",
 					EnvVars: []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=different-model"},
 				},
 			},
