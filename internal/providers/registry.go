@@ -18,7 +18,7 @@ var BuiltInProviders = map[string]ProviderDefinition{
 	"minimax": {
 		Name:           "MiniMax",
 		BaseURL:        "https://api.minimax.io/anthropic",
-		Model:          "Minimax-M2.1",
+		Model:          "MiniMax-M2.5",
 		RequiresAPIKey: true,
 		EnvVars: []string{
 			"ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT=120",

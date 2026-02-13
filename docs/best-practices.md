@@ -160,7 +160,7 @@ providers:
   minimax:
     name: MiniMax
     base_url: https://api.minimax.io/anthropic
-    model: Minimax-M2.1
+    model: MiniMax-M2.5
 default_provider: zai
 ```
 
