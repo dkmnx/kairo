@@ -1080,7 +1080,9 @@ func TestAuditEntryContextInAllLogTypes(t *testing.T) {
 			}
 
 			// Clear log for next test
-			os.Truncate(logger.path, 0)
+			if err := os.Truncate(logger.path, 0); err != nil {
+				t.Fatalf("Failed to truncate log file: %v", err)
+			}
 		})
 	}
 }
@@ -1275,4 +1277,3 @@ func TestLoadEntriesConcurrentReadsAndWrites(t *testing.T) {
 		t.Errorf("Final entry count = %d, want %d", len(entries), expectedEntries)
 	}
 }
-
