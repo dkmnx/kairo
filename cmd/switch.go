@@ -32,6 +32,43 @@ var exitProcess = os.Exit
 // It can be replaced in tests to avoid requiring actual executables.
 var lookPath = exec.LookPath
 
+// mergeEnvVars merges environment variable slices, deduplicating by key.
+// If duplicate keys are found, the last value wins (preserves order of precedence).
+// Env vars should be in "KEY=VALUE" format.
+func mergeEnvVars(envs ...[]string) []string {
+	seen := make(map[string]bool)
+	var result []string
+
+	for _, envSlice := range envs {
+		for _, env := range envSlice {
+			// Extract the key (everything before the first '=')
+			idx := strings.IndexByte(env, '=')
+			if idx <= 0 {
+				// Invalid format, skip
+				continue
+			}
+			key := env[:idx]
+
+			// Remove any previous occurrence of this key
+			if seen[key] {
+				// Find and remove previous entry with this key
+				for i, e := range result {
+					if strings.HasPrefix(e, key+"=") {
+						result = append(result[:i], result[i+1:]...)
+						break
+					}
+				}
+			}
+
+			// Add the new entry
+			result = append(result, env)
+			seen[key] = true
+		}
+	}
+
+	return result
+}
+
 var switchCmd = &cobra.Command{
 	Use:   "switch <provider> [args]",
 	Short: "Switch to a provider and execute Claude",
@@ -64,7 +101,6 @@ var switchCmd = &cobra.Command{
 			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
 		}
 
-		providerEnv := os.Environ()
 		// Environment variable name constants for model configuration
 		const (
 			envBaseURL     = "ANTHROPIC_BASE_URL"
@@ -75,15 +111,20 @@ var switchCmd = &cobra.Command{
 			envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
 		)
 
-		providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL))
-		providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envModel, provider.Model))
-
-		providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envHaikuModel, provider.Model))
-		providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envSonnetModel, provider.Model))
-		providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envOpusModel, provider.Model))
-		providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", envSmallFast, provider.Model))
-
-		providerEnv = append(providerEnv, provider.EnvVars...)
+		// Build environment variables with proper deduplication
+		// Order of precedence (last wins):
+		// 1. System environment variables
+		// 2. Built-in Kairo environment variables
+		// 3. Provider custom EnvVars
+		// 4. Secrets (API keys, etc.)
+		builtInEnvVars := []string{
+			fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),
+			fmt.Sprintf("%s=%s", envModel, provider.Model),
+			fmt.Sprintf("%s=%s", envHaikuModel, provider.Model),
+			fmt.Sprintf("%s=%s", envSonnetModel, provider.Model),
+			fmt.Sprintf("%s=%s", envOpusModel, provider.Model),
+			fmt.Sprintf("%s=%s", envSmallFast, provider.Model),
+		}
 
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
@@ -102,9 +143,14 @@ var switchCmd = &cobra.Command{
 			secrets = config.ParseSecrets(secretsContent)
 		}
 
+		// Convert secrets to env var slice
+		secretsEnvVars := make([]string, 0, len(secrets))
 		for key, value := range secrets {
-			providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", key, value))
+			secretsEnvVars = append(secretsEnvVars, fmt.Sprintf("%s=%s", key, value))
 		}
+
+		// Merge all environment variables with deduplication
+		providerEnv := mergeEnvVars(os.Environ(), builtInEnvVars, provider.EnvVars, secretsEnvVars)
 		apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
 		if apiKey, ok := secrets[apiKeyKey]; ok {
 			// SECURE: Create private auth directory and use wrapper script

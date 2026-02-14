@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1082,4 +1083,245 @@ func TestSwitch_CrossPlatformCompatibility(t *testing.T) {
 			t.Error("Wrapper script should handle unicode arguments")
 		}
 	})
+}
+
+// TESTS: Environment variable deduplication
+
+func TestMergeEnvVars(t *testing.T) {
+	t.Run("merges empty slices", func(t *testing.T) {
+		result := mergeEnvVars()
+		if len(result) != 0 {
+			t.Errorf("mergeEnvVars() = %v, want empty slice", result)
+		}
+	})
+
+	t.Run("merges single slice", func(t *testing.T) {
+		envs := []string{"KEY1=value1", "KEY2=value2"}
+		result := mergeEnvVars(envs)
+		if len(result) != 2 {
+			t.Errorf("mergeEnvVars() length = %d, want 2", len(result))
+		}
+	})
+
+	t.Run("merges multiple slices", func(t *testing.T) {
+		slice1 := []string{"KEY1=value1"}
+		slice2 := []string{"KEY2=value2", "KEY3=value3"}
+		result := mergeEnvVars(slice1, slice2)
+		if len(result) != 3 {
+			t.Errorf("mergeEnvVars() length = %d, want 3", len(result))
+		}
+	})
+
+	t.Run("deduplicates across slices - last wins", func(t *testing.T) {
+		slice1 := []string{"KEY=old-value"}
+		slice2 := []string{"KEY=new-value"}
+		result := mergeEnvVars(slice1, slice2)
+		if len(result) != 1 {
+			t.Errorf("mergeEnvVars() length = %d, want 1", len(result))
+		}
+		if result[0] != "KEY=new-value" {
+			t.Errorf("mergeEnvVars()[0] = %q, want \"KEY=new-value\"", result[0])
+		}
+	})
+
+	t.Run("deduplicates within a slice - last wins", func(t *testing.T) {
+		envs := []string{"KEY=value1", "KEY=value2", "KEY=value3"}
+		result := mergeEnvVars(envs)
+		if len(result) != 1 {
+			t.Errorf("mergeEnvVars() length = %d, want 1", len(result))
+		}
+		if result[0] != "KEY=value3" {
+			t.Errorf("mergeEnvVars()[0] = %q, want \"KEY=value3\"", result[0])
+		}
+	})
+
+	t.Run("preserves order of non-duplicate entries", func(t *testing.T) {
+		slice1 := []string{"A=1", "B=2"}
+		slice2 := []string{"C=3", "D=4"}
+		result := mergeEnvVars(slice1, slice2)
+		expected := []string{"A=1", "B=2", "C=3", "D=4"}
+		if !stringSlicesEqual(result, expected) {
+			t.Errorf("mergeEnvVars() = %v, want %v", result, expected)
+		}
+	})
+
+	t.Run("handles complex deduplication scenario", func(t *testing.T) {
+		slice1 := []string{"PATH=/usr/bin", "HOME=/home/user"}
+		slice2 := []string{"PATH=/custom/bin", "EDITOR=vim"}
+		slice3 := []string{"HOME=/custom/home", "SHELL=/bin/bash"}
+		result := mergeEnvVars(slice1, slice2, slice3)
+
+		// Should have 4 unique keys: PATH, HOME, EDITOR, SHELL
+		if len(result) != 4 {
+			t.Errorf("mergeEnvVars() length = %d, want 4", len(result))
+		}
+
+		// Last values should win
+		envMap := sliceToMap(result)
+		if envMap["PATH"] != "/custom/bin" {
+			t.Errorf("PATH = %q, want \"/custom/bin\"", envMap["PATH"])
+		}
+		if envMap["HOME"] != "/custom/home" {
+			t.Errorf("HOME = %q, want \"/custom/home\"", envMap["HOME"])
+		}
+		if envMap["EDITOR"] != "vim" {
+			t.Errorf("EDITOR = %q, want \"vim\"", envMap["EDITOR"])
+		}
+		if envMap["SHELL"] != "/bin/bash" {
+			t.Errorf("SHELL = %q, want \"/bin/bash\"", envMap["SHELL"])
+		}
+	})
+
+	t.Run("skips invalid env var format (no equals sign)", func(t *testing.T) {
+		envs := []string{"KEY=value1", "invalid", "KEY=value2"}
+		result := mergeEnvVars(envs)
+		if len(result) != 1 {
+			t.Errorf("mergeEnvVars() length = %d, want 1", len(result))
+		}
+		if result[0] != "KEY=value2" {
+			t.Errorf("mergeEnvVars()[0] = %q, want \"KEY=value2\"", result[0])
+		}
+	})
+
+	t.Run("handles empty keys (equals at start)", func(t *testing.T) {
+		envs := []string{"=value1", "KEY=value2"}
+		result := mergeEnvVars(envs)
+		// Empty key entries are skipped
+		if len(result) != 1 {
+			t.Errorf("mergeEnvVars() length = %d, want 1", len(result))
+		}
+		if result[0] != "KEY=value2" {
+			t.Errorf("mergeEnvVars()[0] = %q, want \"KEY=value2\"", result[0])
+		}
+	})
+
+	t.Run("preserves values with special characters", func(t *testing.T) {
+		envs := []string{"PATH=/usr/bin:/usr/local/bin", "API_KEY=sk-ant-12345"}
+		result := mergeEnvVars(envs)
+		if len(result) != 2 {
+			t.Errorf("mergeEnvVars() length = %d, want 2", len(result))
+		}
+	})
+
+	t.Run("case-sensitive keys", func(t *testing.T) {
+		envs := []string{"Key=value1", "KEY=value2", "key=value3"}
+		result := mergeEnvVars(envs)
+		// All three are different keys (case-sensitive)
+		if len(result) != 3 {
+			t.Errorf("mergeEnvVars() length = %d, want 3", len(result))
+		}
+	})
+
+	t.Run("simulates provider environment building", func(t *testing.T) {
+		// Simulate the real scenario in switch.go
+		systemEnv := []string{
+			"PATH=/usr/bin:/usr/local/bin",
+			"HOME=/home/user",
+			"ANTHROPIC_MODEL=claude-3-sonnet",
+		}
+
+		builtInEnv := []string{
+			"ANTHROPIC_BASE_URL=https://api.anthropic.com",
+			"ANTHROPIC_MODEL=claude-3-opus", // Override system env
+			"ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-3-haiku",
+		}
+
+		providerEnv := []string{
+			"CUSTOM_VAR=custom-value",
+			"ANTHROPIC_MODEL=claude-3-custom", // Override built-in
+		}
+
+		secretsEnv := []string{
+			"API_KEY=sk-ant-12345",
+			"ANTHROPIC_BASE_URL=https://custom.api.com", // Override built-in
+		}
+
+		result := mergeEnvVars(systemEnv, builtInEnv, providerEnv, secretsEnv)
+
+		// Verify expected behavior
+		envMap := sliceToMap(result)
+
+		if envMap["PATH"] != "/usr/bin:/usr/local/bin" {
+			t.Errorf("PATH = %q, want \"/usr/bin:/usr/local/bin\"", envMap["PATH"])
+		}
+
+		if envMap["HOME"] != "/home/user" {
+			t.Errorf("HOME = %q, want \"/home/user\"", envMap["HOME"])
+		}
+
+		// Secrets override provider env
+		if envMap["ANTHROPIC_BASE_URL"] != "https://custom.api.com" {
+			t.Errorf("ANTHROPIC_BASE_URL = %q, want \"https://custom.api.com\"", envMap["ANTHROPIC_BASE_URL"])
+		}
+
+		// Provider overrides built-in
+		if envMap["ANTHROPIC_MODEL"] != "claude-3-custom" {
+			t.Errorf("ANTHROPIC_MODEL = %q, want \"claude-3-custom\"", envMap["ANTHROPIC_MODEL"])
+		}
+
+		if envMap["CUSTOM_VAR"] != "custom-value" {
+			t.Errorf("CUSTOM_VAR = %q, want \"custom-value\"", envMap["CUSTOM_VAR"])
+		}
+
+		if envMap["API_KEY"] != "sk-ant-12345" {
+			t.Errorf("API_KEY = %q, want \"sk-ant-12345\"", envMap["API_KEY"])
+		}
+	})
+}
+
+func TestMergeEnvVarsPerformance(t *testing.T) {
+	t.Run("handles large input efficiently", func(t *testing.T) {
+		// Create large slices to test performance
+		slice1 := make([]string, 1000)
+		slice2 := make([]string, 1000)
+
+		for i := 0; i < 1000; i++ {
+			slice1[i] = fmt.Sprintf("KEY%d=value%d", i, i)
+		}
+
+		for i := 500; i < 1500; i++ {
+			slice2[i-500] = fmt.Sprintf("KEY%d=newvalue%d", i, i)
+		}
+
+		result := mergeEnvVars(slice1, slice2)
+
+		// Should have 1500 unique keys
+		if len(result) != 1500 {
+			t.Errorf("mergeEnvVars() length = %d, want 1500", len(result))
+		}
+	})
+}
+
+// Helper functions for testing
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func sliceToMap(envs []string) map[string]string {
+	result := make(map[string]string)
+	for _, env := range envs {
+		idx := indexByte(env, '=')
+		if idx > 0 {
+			result[env[:idx]] = env[idx+1:]
+		}
+	}
+	return result
+}
+
+func indexByte(s string, c byte) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == c {
+			return i
+		}
+	}
+	return -1
 }
