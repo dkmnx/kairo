@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.4] - 2026-02-14
+
+### Added
+
+- **Audit context**: Added hostname, username, and session ID to audit entries
+  - Improves traceability across users, hosts, and sessions
+  - Context captured at logger creation and applied to all entries
+  - Session IDs generated as unique 16-character hex identifiers
+  - Backward compatible with existing audit logs (new fields use `omitempty`)
+  - 7 new tests for context field functionality
+
+### Fixed
+
+- **Environment variable deduplication**: Fixed duplicate environment variables in `switch` command
+  - Custom providers could create duplicate `ANTHROPIC_BASE_URL` and other built-in env vars
+  - Added `mergeEnvVars()` helper with proper deduplication (last occurrence wins)
+  - Order of precedence: system env vars → built-in Kairo env vars → provider EnvVars → secrets
+  - Invalid env var formats (no '=' or empty key) are skipped
+  - 13 new tests for mergeEnvVars functionality and performance
+- **Thread-safe audit reads**: Fixed race condition in `LoadEntries()` method
+  - Previous implementation could read log file while writes were in progress
+  - Changed from `sync.Mutex` to `sync.RWMutex` for concurrent read access
+  - Multiple goroutines can now read audit entries without blocking each other
+  - Updated documentation to reflect thread-safe status
+  - 2 new tests for concurrent read and read/write scenarios
+- **Model validation**: Fixed empty model names for custom providers
+  - Custom providers now require non-empty model names
+  - Built-in providers (like anthropic) can still use empty values
+  - Whitespace trimmed before validation
+  - URL validation already enforced via `validateBaseURL()` (HTTPS required, blocks localhost/private IPs)
+  - 22 new tests covering model and URL validation
+
 ## [1.8.3] - 2026-02-14
 
 ### Fixed
@@ -803,6 +835,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.8.4]: https://github.com/dkmnx/kairo/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/dkmnx/kairo/compare/v1.8.2...v1.8.3
 [1.8.2]: https://github.com/dkmnx/kairo/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/dkmnx/kairo/compare/v1.8.0...v1.8.1
