@@ -4,23 +4,23 @@ CLI command implementations using the Cobra framework.
 
 ## Structure
 
-| File                | Purpose                                        |
-| ------------------- | ---------------------------------------------- |
-| `root.go`           | Root command, banner display, global flags     |
-| `setup.go`          | Interactive configuration wizard               |
-| `config.go`         | Configure individual providers                 |
-| `list.go`           | List all configured providers                  |
-| `status.go`         | Test connectivity for all providers            |
-| `test.go`           | Test specific provider connectivity            |
+| File                | Purpose                                          |
+| ------------------- | ------------------------------------------------ |
+| `root.go`           | Root command, banner display, global flags       |
+| `setup.go`          | Interactive configuration wizard                 |
+| `config.go`         | Configure individual providers                   |
+| `list.go`           | List all configured providers                    |
+| `status.go`         | Test connectivity for all providers              |
+| `test.go`           | Test specific provider connectivity              |
 | `switch.go`         | Switch provider and execute CLI (Claude or Qwen) |
-| `harness.go`        | Manage CLI harness (claude or qwen)             |
-| `default.go`        | Get or set default provider                    |
-| `reset.go`          | Remove provider configurations                 |
-| `rotate.go`         | Rotate encryption key                          |
-| `version.go`        | Display version information                    |
-| `update.go`         | Check for and install updates                  |
-| `completion.go`     | Shell completion support                       |
-| `audit.go`          | View and export audit logs                     |
+| `harness.go`        | Manage CLI harness (claude or qwen)              |
+| `default.go`        | Get or set default provider                      |
+| `reset.go`          | Remove provider configurations                   |
+| `rotate.go`         | Rotate encryption key                            |
+| `version.go`        | Display version information                      |
+| `update.go`         | Check for and install updates                    |
+| `completion.go`     | Shell completion support                         |
+| `audit.go`          | View and export audit logs                       |
 
 ## Command Architecture
 
@@ -78,15 +78,15 @@ flowchart TB
 
 ### Execution
 
-| Command                       | Description                                        |
-| ----------------------------- | -------------------------------------------------- |
-| `kairo switch <provider>`     | Switch and execute CLI (claude or qwen)            |
-| `kairo switch <provider> --harness qwen` | Switch using Qwen CLI            |
-| `kairo switch <provider> --model <model>` | Override model (Qwen harness only) |
-| `kairo harness get`          | Get current default harness                       |
-| `kairo harness set <harness>` | Set default harness (claude or qwen)             |
-| `kairo <provider> [args]`     | Shorthand for switch (e.g., `kairo zai`)         |
-| `kairo -- "query"`            | Query mode using default provider                  |
+| Command                                   | Description                                        |
+| ----------------------------------------- | -------------------------------------------------- |
+| `kairo switch <provider>`                 | Switch and execute CLI (claude or qwen)            |
+| `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                              |
+| `kairo switch <provider> --model <model>` | Override model (Qwen harness only)                 |
+| `kairo harness get`                       | Get current default harness                        |
+| `kairo harness set <harness>`             | Set default harness (claude or qwen)               |
+| `kairo <provider> [args]`                 | Shorthand for switch (e.g., `kairo zai`)           |
+| `kairo -- "query"`                        | Query mode using default provider                  |
 
 ### Maintenance
 
@@ -184,10 +184,10 @@ This is rendered from `internal/version/version.go` and `providers` package.
 
 Kairo supports multiple CLI harnesses:
 
-| Harness | CLI Binary | Description |
-| -------- | --------- | ----------- |
-| `claude` | `claude` | Claude Code (default) |
-| `qwen`   | `qwen`   | Qwen Code |
+| Harness  | CLI Binary | Description           |
+| -------- | ---------- | --------------------- |
+| `claude` | `claude`   | Claude Code (default) |
+| `qwen`   | `qwen`     | Qwen Code             |
 
 ### Using Harnesses
 
