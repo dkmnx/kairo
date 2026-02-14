@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.3] - 2026-02-14
+
+### Fixed
+
+- **Config migration**: Fixed provider model not being updated during `kairo update` when builtin default model changes (e.g., MiniMax-M2 to MiniMax-M2.5)
+  - Migration now properly updates both `provider.Model` and `default_models` when builtin defaults change
+  - Added comprehensive test coverage for migration scenarios
+- **Pre-commit hooks**: Added auto-install of staticcheck in deps target to prevent hook failures
+
+### Changed
+
+- **Config version field**: Deprecated unused `version` field in config.yaml
+  - Marked with `omitempty` to allow omission from new configs
+  - Maintains backward compatibility with existing configs
+
 ## [1.8.2] - 2026-02-14
 
 ### Fixed
@@ -788,6 +803,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.8.3]: https://github.com/dkmnx/kairo/compare/v1.8.2...v1.8.3
 [1.8.2]: https://github.com/dkmnx/kairo/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/dkmnx/kairo/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/dkmnx/kairo/compare/v1.7.1...v1.8.0
