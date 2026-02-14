@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-02-15
+
+### Added
+
+- **Multi-harness support**: Added support for Qwen Code CLI harness alongside Claude Code
+  - New `kairo harness get` command to display current default harness
+  - New `kairo harness set <harness>` command to set default harness (claude or qwen)
+  - New `--harness` flag for `switch` command to override harness per invocation
+  - New `--model` flag for `switch` command to override model (passed to Qwen CLI)
+  - New `DefaultHarness` field in Config struct for persistent harness selection
+  - Harness names validated and case-insensitive (Claude/Qwen/claude/qwen all valid)
+  - Invalid harness names default to claude with warning message
+  - Order of precedence: `--harness` flag → config default → claude
+  - 286 new tests for harness functionality and wrapper environment variable support
+
+### Changed
+
+- **Wrapper script enhancement**: Enhanced wrapper script generation to support custom environment variable names
+  - Qwen harness uses `ANTHROPIC_API_KEY` instead of `ANTHROPIC_AUTH_TOKEN`
+  - Wrapper script now accepts optional `envVarName` parameter
+  - Maintains backward compatibility with existing Claude harness behavior
+  - Improved security for API key delivery across different CLI harnesses
+
+### Documentation
+
+- **README**: Updated with multi-harness support documentation and examples
+- **Command documentation**: Updated cmd/README.md with harness commands and usage examples
+- **User guide**: Updated docs/guides/user-guide.md with harness setup instructions
+
 ## [1.8.4] - 2026-02-14
 
 ### Added
@@ -835,6 +864,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.9.0]: https://github.com/dkmnx/kairo/compare/v1.8.4...v1.9.0
 [1.8.4]: https://github.com/dkmnx/kairo/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/dkmnx/kairo/compare/v1.8.2...v1.8.3
 [1.8.2]: https://github.com/dkmnx/kairo/compare/v1.8.1...v1.8.2
