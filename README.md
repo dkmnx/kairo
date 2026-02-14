@@ -16,13 +16,13 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/dkmnx/kairo/ci.yml?branch=main&style=flat-square)](https://github.com/dkmnx/kairo/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-**Secure CLI for managing Claude Code API providers** with age (X25519) encryption, multi-provider support, and audit logging.
+**Secure CLI for managing Claude Code and Qwen Code API providers** with age (X25519) encryption, multi-provider support, and audit logging.
 
 ## Prerequisites
 
-### Required: Claude Code CLI
+### Required: Claude Code CLI or Qwen Code CLI
 
-Kairo acts as a wrapper around Claude Code CLI to enable multi-provider support. You need to install Claude Code first.
+Kairo acts as a wrapper around Claude Code or Qwen Code CLI to enable multi-provider support. You need to install at least one of them.
 
 **Install Claude Code:**
 
@@ -37,10 +37,22 @@ Kairo acts as a wrapper around Claude Code CLI to enable multi-provider support.
   npm install -g @anthropic-ai/claude-code
   ```
 
+**Install Qwen Code:**
+
+- Visit: <https://qwenlm.github.io/qwen-code-docs/>
+- Or via package managers:
+
+  ```bash
+  # npm
+  npm install -g qwen-code
+  ```
+
 **Verify installation:**
 
 ```bash
 claude --version
+# or
+qwen --version
 ```
 
 ## Quick Start
@@ -178,7 +190,11 @@ kairo metrics reset
 
 | Command                      | Description                                |
 | ---------------------------- | ------------------------------------------ |
-| `kairo switch <provider>`    | Switch and exec Claude (with --model flag for Qwen)            |
+| `kairo switch <provider>`    | Switch and exec CLI (claude or qwen)       |
+| `kairo switch <provider> --harness qwen` | Switch using Qwen CLI         |
+| `kairo switch <provider> --model <model>` | Override model (Qwen only)    |
+| `kairo harness get`         | Get current default harness                |
+| `kairo harness set <harness>` | Set default harness (claude or qwen)    |
 | `kairo <provider> [args]`    | Shorthand for switch                       |
 | `kairo -- "query"`           | Query mode (default provider)              |
 
@@ -262,6 +278,7 @@ just format       # or: gofmt -w .
 - Age (X25519) encryption for all API keys
 - 0600 permissions on sensitive files
 - Secrets decrypted in-memory only
+- Secure wrapper scripts for both Claude and Qwen harnesses
 - Key generation on first run
 - Use `kairo rotate` for periodic key rotation
 
