@@ -116,6 +116,14 @@ func LoadConfig(configDir string) (*Config, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&cfg); err != nil {
+		// Check for unknown field errors and provide helpful guidance
+		errStr := err.Error()
+		if containsUnknownField(errStr) {
+			return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
+				"configuration file contains field(s) not recognized by this kairo version", err).
+				WithContext("path", configPath).
+				WithContext("hint", "your installed kairo binary is outdated - rebuild and reinstall from source")
+		}
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"failed to parse configuration file (invalid YAML)", err).
 			WithContext("path", configPath).
@@ -151,4 +159,22 @@ func SaveConfig(configDir string, cfg *Config) error {
 	}
 
 	return nil
+}
+
+// containsUnknownField checks if the error message indicates an unknown YAML field.
+// This pattern appears when the config file contains fields that don't exist
+// in the current Config struct, typically due to an outdated binary.
+func containsUnknownField(errStr string) bool {
+	return containsSubstring(errStr, "field") &&
+		containsSubstring(errStr, "not found in type")
+}
+
+// containsSubstring is a simple substring checker to avoid importing strings package.
+func containsSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

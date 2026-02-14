@@ -234,15 +234,6 @@ func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsSubstring(s, substr))
 }
 
-func containsSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
 // TestE2ESetupToSwitchWorkflow tests the complete end-to-end workflow
 // from initial setup through provider switching.
 func TestE2ESetupToSwitchWorkflow(t *testing.T) {

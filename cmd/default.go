@@ -32,7 +32,7 @@ var defaultCmd = &cobra.Command{
 				}
 				return
 			}
-			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+			handleConfigError(cmd, err)
 			return
 		}
 
