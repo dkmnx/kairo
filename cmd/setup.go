@@ -294,6 +294,15 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		return "", nil, fmt.Errorf("reading model: %w", err)
 	}
 
+	// Validate model is non-empty for custom providers
+	// Built-in providers like anthropic may use empty values
+	if !providers.IsBuiltInProvider(providerName) {
+		model = strings.TrimSpace(model)
+		if model == "" {
+			return "", nil, fmt.Errorf("model name is required for custom providers")
+		}
+	}
+
 	// Build and save provider configuration
 	provider := buildProviderConfig(def, baseURL, model)
 	setAsDefault := cfg.DefaultProvider == ""
