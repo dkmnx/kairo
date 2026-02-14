@@ -109,11 +109,12 @@ flowchart TB
 
 | Feature                | Description                                                |
 | ---------------------- | ---------------------------------------------------------- |
-| **Multi-Provider**     | Native Anthropic, Z.AI, MiniMax, Kimi, DeepSeek, custom    |
+| **Multi-Harness**     | Claude Code (default), Qwen Code                           |
 | **Secure Encryption**  | Age (X25519) encryption for all API keys                   |
 | **Key Rotation**       | Regenerate encryption keys periodically                    |
 | **Audit Logging**      | Track all configuration changes                            |
 | **Cross-Platform**     | Linux, macOS, Windows support                              |
+| **Model Override**     | `--model` flag to override Qwen Code model (passed through to qwen) |
 
 ## Metrics
 
@@ -177,7 +178,7 @@ kairo metrics reset
 
 | Command                      | Description                                |
 | ---------------------------- | ------------------------------------------ |
-| `kairo switch <provider>`    | Switch and exec Claude                     |
+| `kairo switch <provider>`    | Switch and exec Claude (with --model flag for Qwen)            |
 | `kairo <provider> [args]`    | Shorthand for switch                       |
 | `kairo -- "query"`           | Query mode (default provider)              |
 

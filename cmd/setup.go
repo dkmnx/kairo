@@ -206,6 +206,31 @@ func promptForProvider() string {
 	return strings.TrimSpace(selection)
 }
 
+// promptForHarness prompts user to select a CLI harness (claude or qwen).
+func promptForHarness() string {
+	ui.PrintHeader("CLI Harness Selection\n")
+	ui.PrintWhite("Select CLI harness:")
+	ui.PrintWhite("  1.   Claude Code (default)")
+	ui.PrintWhite("  2.   Qwen Code")
+	ui.PrintWhite("")
+
+	selection, err := ui.PromptWithDefault("Selection [1-2]", "1")
+	if err != nil {
+		ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
+		return ""
+	}
+
+	num := parseIntOrZero(selection)
+	if num < 1 || num > 2 {
+		return "claude"
+	}
+
+	if num == 2 {
+		return "qwen"
+	}
+	return "claude"
+}
+
 // parseProviderSelection converts user input to a provider name.
 func parseProviderSelection(selection string) (string, bool) {
 	if selection == "" || selection == "done" || selection == "q" || selection == "exit" {
@@ -380,6 +405,16 @@ var setupCmd = &cobra.Command{
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
+		}
+
+		harnessSelection := promptForHarness()
+		if harnessSelection != "" {
+			cfg.DefaultHarness = harnessSelection
+			if err := config.SaveConfig(dir, cfg); err != nil {
+				ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
+				return
+			}
+			ui.PrintSuccess(fmt.Sprintf("Harness set to: %s", harnessSelection))
 		}
 
 		secrets, secretsPath, keyPath, err := LoadSecrets(dir)
