@@ -32,6 +32,39 @@ var exitProcess = os.Exit
 // It can be replaced in tests to avoid requiring actual executables.
 var lookPath = exec.LookPath
 
+var (
+	modelFlag   string
+	harnessFlag string
+)
+
+// getHarness returns the harness to use, checking flag then config then defaulting to claude.
+func getHarness(cfg *config.Config, flagHarness string) string {
+	harness := flagHarness
+	if harness == "" {
+		harness = cfg.DefaultHarness
+	}
+	if harness == "" {
+		return "claude"
+	}
+	if harness != "claude" && harness != "qwen" {
+		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", harness))
+		return "claude"
+	}
+	return harness
+}
+
+// getHarnessBinary returns the CLI binary name for a given harness.
+func getHarnessBinary(harness string) string {
+	switch harness {
+	case "qwen":
+		return "qwen"
+	case "claude":
+		return "claude"
+	default:
+		return "claude"
+	}
+}
+
 // mergeEnvVars merges environment variable slices, deduplicating by key.
 // If duplicate keys are found, the last value wins (preserves order of precedence).
 // Env vars should be in "KEY=VALUE" format.
@@ -100,6 +133,9 @@ var switchCmd = &cobra.Command{
 		}); err != nil {
 			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
 		}
+
+		harnessToUse := getHarness(cfg, harnessFlag)
+		harnessBinary := getHarnessBinary(harnessToUse)
 
 		// Environment variable name constants for model configuration
 		const (
@@ -176,14 +212,77 @@ var switchCmd = &cobra.Command{
 				return
 			}
 
-			claudeArgs := args[1:]
-			claudePath, err := lookPath("claude")
-			if err != nil {
-				cmd.Println("Error: 'claude' command not found in PATH")
+			cliArgs := args[1:]
+
+			// Handle Qwen harness - use wrapper for secure API key
+			if harnessToUse == "qwen" {
+				modelToUse := modelFlag
+				if modelToUse == "" {
+					modelToUse = provider.Model
+				}
+
+				cliArgs = append([]string{"--model", modelToUse}, cliArgs...)
+
+				ui.ClearScreen()
+				ui.PrintBanner(version.Version, provider.Name)
+
+				qwenPath, err := lookPath(harnessBinary)
+				if err != nil {
+					cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
+					cmd.Printf("Please install %s CLI or use 'kairo harness set claude'\n", harnessToUse)
+					return
+				}
+
+				wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, qwenPath, cliArgs, "ANTHROPIC_API_KEY")
+				if err != nil {
+					cmd.Printf("Error generating wrapper script: %v\n", err)
+					return
+				}
+
+				// Set up signal handling for cleanup on SIGINT/SIGTERM
+				sigChan := make(chan os.Signal, 1)
+				defer func() {
+					signal.Stop(sigChan)
+					close(sigChan)
+				}()
+				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+				go func() {
+					sig := <-sigChan
+					cleanup()
+					code := 128
+					if s, ok := sig.(syscall.Signal); ok {
+						code += int(s)
+					}
+					exitProcess(code)
+				}()
+
+				var execCmd *exec.Cmd
+				if useCmdExe {
+					execCmd = execCommand("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
+				} else {
+					execCmd = execCommand(wrapperScript)
+				}
+				execCmd.Env = providerEnv
+				execCmd.Stdin = os.Stdin
+				execCmd.Stdout = os.Stdout
+				execCmd.Stderr = os.Stderr
+
+				if err := execCmd.Run(); err != nil {
+					cmd.Printf("Error running Qwen: %v\n", err)
+					exitProcess(1)
+				}
 				return
 			}
 
-			wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, claudePath, claudeArgs)
+			// Claude harness - existing wrapper script logic
+			claudePath, err := lookPath(harnessBinary)
+			if err != nil {
+				cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
+				return
+			}
+
+			wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, claudePath, cliArgs)
 			if err != nil {
 				cmd.Printf("Error generating wrapper script: %v\n", err)
 				return
@@ -236,19 +335,27 @@ var switchCmd = &cobra.Command{
 			return
 		}
 
-		// No API key found, run claude directly without auth token
-		claudeArgs := args[1:]
+		// No API key found
+		cliArgs := args[1:]
 
-		claudePath, err := lookPath("claude")
+		// Handle Qwen harness
+		if harnessToUse == "qwen" {
+			ui.PrintError(fmt.Sprintf("API key not found for provider '%s'", providerName))
+			ui.PrintInfo("Qwen Code requires API keys to be set in environment variables.")
+			return
+		}
+
+		// Claude harness - run directly without auth token
+		claudePath, err := lookPath(harnessBinary)
 		if err != nil {
-			cmd.Println("Error: 'claude' command not found in PATH")
+			cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
 			return
 		}
 
 		ui.ClearScreen()
 		ui.PrintBanner(version.Version, provider.Name)
 
-		execCmd := execCommand(claudePath, claudeArgs...)
+		execCmd := execCommand(claudePath, cliArgs...)
 		execCmd.Env = providerEnv
 		execCmd.Stdin = os.Stdin
 		execCmd.Stdout = os.Stdout
@@ -262,5 +369,7 @@ var switchCmd = &cobra.Command{
 }
 
 func init() {
+	switchCmd.Flags().StringVar(&modelFlag, "model", "", "Model to use (passed through to CLI harness)")
+	switchCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
 	rootCmd.AddCommand(switchCmd)
 }
