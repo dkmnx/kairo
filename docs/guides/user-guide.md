@@ -131,8 +131,34 @@ kairo switch zai
 # Switch and execute query
 kairo switch zai "Explain goroutines"
 
+# Use Qwen harness instead of Claude
+kairo switch zai --harness qwen
+
+# Override model for Qwen
+kairo switch zai --harness qwen --model qwen-turbo
+
 # Short form
 kairo switch zai
+```
+
+### `kairo harness get`
+
+Get the current default CLI harness.
+
+```bash
+kairo harness get
+```
+
+### `kairo harness set <harness>`
+
+Set the default CLI harness (claude or qwen).
+
+```bash
+# Set default to Qwen
+kairo harness set qwen
+
+# Set default to Claude
+kairo harness set claude
 ```
 
 ### `kairo default [provider]`
