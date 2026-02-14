@@ -153,6 +153,13 @@ deps:
         curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sh; \
     fi
     
+    @if command -v staticcheck >/dev/null 2>&1; then \
+        echo "staticcheck already installed"; \
+    else \
+        echo "Installing staticcheck..."; \
+        go install honnef.co/go/tools/cmd/staticcheck@latest; \
+    fi
+    
     @echo "Installing pre-commit hooks..."
     pre-commit install
 
