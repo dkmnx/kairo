@@ -46,7 +46,6 @@ func MigrateConfigOnUpdate(configDir string) ([]MigrationChange, error) {
 			continue
 		}
 
-		expectedModel := cfg.DefaultModels[providerName]
 		userModel := provider.Model
 
 		if userModel == "" {
@@ -62,7 +61,9 @@ func MigrateConfigOnUpdate(configDir string) ([]MigrationChange, error) {
 			continue
 		}
 
-		if userModel == expectedModel || userModel == builtinDef.Model {
+		// Update model if user has explicitly set a model that differs from the new default
+		// This handles cases where the builtin default changed (e.g., model version upgrade)
+		if userModel != builtinDef.Model {
 			oldModel := userModel
 			provider.Model = builtinDef.Model
 			cfg.Providers[providerName] = provider
@@ -74,6 +75,7 @@ func MigrateConfigOnUpdate(configDir string) ([]MigrationChange, error) {
 				New:      builtinDef.Model,
 			})
 		} else {
+			// User's model already matches the new default, just ensure DefaultModels is set
 			cfg.DefaultModels[providerName] = builtinDef.Model
 		}
 	}
