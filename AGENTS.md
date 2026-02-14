@@ -43,6 +43,19 @@ just test-coverage
 go test -coverprofile=coverage.out ./...
 ```
 
+### Pre-release
+
+```bash
+# Run all pre-release checks before releasing
+just pre-release
+```
+
+This command runs the following checks in sequence:
+1. **format** - Format code with gofmt
+2. **lint** - Run linters (gofmt, go vet, golangci-lint)
+3. **pre-commit** - Run all pre-commit hooks
+4. **test** - Run all tests with race detector
+
 ### Lint
 
 ```bash

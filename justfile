@@ -77,6 +77,20 @@ pre-commit-install:
         echo "pre-commit not installed. Install with: pip install pre-commit"; \
     fi
 
+# Pre-release checks: format, lint, pre-commit, test
+pre-release:
+    @echo "Running pre-release checks..."
+    @echo ""
+    just format
+    @echo ""
+    just lint
+    @echo ""
+    just pre-commit
+    @echo ""
+    just test
+    @echo ""
+    @echo "Pre-release checks passed!"
+
 # Format code
 format:
     @echo "Formatting code..."
@@ -224,6 +238,8 @@ help:
     @echo "  test-coverage   - Run tests with coverage report"
     @echo "  lint            - Run linters (gofmt, govet)"
     @echo "  format          - Format code with gofmt"
+    @echo "  pre-commit      - Run pre-commit hooks"
+    @echo "  pre-release     - Run all pre-release checks (format, lint, pre-commit, test)"
     @echo "  clean           - Remove {{DIST_DIR}}/ directory"
     @echo "  install         - Install to {{LOCAL_BIN}}/"
     @echo "  uninstall       - Remove from {{LOCAL_BIN}}/"
