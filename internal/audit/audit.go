@@ -35,7 +35,7 @@ type Change struct {
 type Logger struct {
 	path      string
 	f         *os.File
-	mu        sync.Mutex
+	mu        sync.RWMutex
 	hostname  string
 	username  string
 	sessionID string
@@ -294,9 +294,12 @@ func (l *Logger) writeEntry(entry AuditEntry) error {
 //   - Returns error when audit log file cannot be read (e.g., permissions, file not found)
 //   - Returns error if any JSON line cannot be parsed (e.g., corrupted log file)
 //
-// Thread Safety: Not thread-safe (log file may be modified concurrently by writes)
+// Thread Safety: Thread-safe (uses RWMutex to allow concurrent reads)
 // Security Notes: Returns all audit entries including potentially sensitive data
 func (l *Logger) LoadEntries() ([]AuditEntry, error) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
 	data, err := os.ReadFile(l.path)
 	if err != nil {
 		return nil, err
