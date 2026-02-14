@@ -18,6 +18,8 @@ type Config struct {
 	// Version is deprecated and kept for backward compatibility with existing configs.
 	// It is no longer used but cannot be removed without breaking existing configs.
 	Version string `yaml:"version,omitempty"`
+	// DefaultHarness specifies the default CLI harness to use (claude or qwen).
+	DefaultHarness string `yaml:"default_harness,omitempty"`
 }
 
 // Provider represents a configured API provider.
