@@ -58,7 +58,8 @@ Qwen Code requires model providers to be configured in `~/.qwen/settings.json`. 
       {
         "id": "glm-4.7",
         "name": "GLM-4.7 [Z.AI Coding Plan] - Anthropic",
-        "envKey": "ANTHROPIC_API_KEY"
+        "envKey": "ANTHROPIC_API_KEY",
+        "baseUrl": "https://api.z.ai/api/anthropic"
       }
     ]
   }
