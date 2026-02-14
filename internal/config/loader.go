@@ -15,7 +15,9 @@ type Config struct {
 	DefaultProvider string              `yaml:"default_provider"`
 	Providers       map[string]Provider `yaml:"providers"`
 	DefaultModels   map[string]string   `yaml:"default_models"`
-	Version         string              `yaml:"version"`
+	// Version is deprecated and kept for backward compatibility with existing configs.
+	// It is no longer used but cannot be removed without breaking existing configs.
+	Version string `yaml:"version,omitempty"`
 }
 
 // Provider represents a configured API provider.
