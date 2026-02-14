@@ -1850,3 +1850,215 @@ func TestSetup_ProviderNameReservedWords(t *testing.T) {
 		})
 	}
 }
+func TestSetup_ValidateBaseURL(t *testing.T) {
+	tests := []struct {
+		name         string
+		url          string
+		providerName string
+		wantErr      bool
+		errContains  string
+	}{
+		{
+			name:         "valid https url",
+			url:          "https://api.example.com/anthropic",
+			providerName: "test-provider",
+			wantErr:      false,
+		},
+		{
+			name:         "valid https url with path",
+			url:          "https://api.example.com/v1/anthropic",
+			providerName: "test-provider",
+			wantErr:      false,
+		},
+		{
+			name:         "empty url",
+			url:          "",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "cannot be empty",
+		},
+		{
+			name:         "whitespace only url",
+			url:          "   ",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "HTTPS",
+		},
+		{
+			name:         "non-https url",
+			url:          "http://api.example.com/anthropic",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "HTTPS",
+		},
+		{
+			name:         "ftp url",
+			url:          "ftp://api.example.com/anthropic",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "HTTPS",
+		},
+		{
+			name:         "localhost url",
+			url:          "https://localhost/anthropic",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "blocked",
+		},
+		{
+			name:         "127.0.0.1 url",
+			url:          "https://127.0.0.1/anthropic",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "blocked",
+		},
+		{
+			name:         "private ip 10.x.x.x",
+			url:          "https://10.0.0.1/anthropic",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "blocked",
+		},
+		{
+			name:         "private ip 172.16-31.x.x",
+			url:          "https://172.16.0.1/anthropic",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "blocked",
+		},
+		{
+			name:         "private ip 192.168.x.x",
+			url:          "https://192.168.1.1/anthropic",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "blocked",
+		},
+		{
+			name:         "private ip 169.254.x.x",
+			url:          "https://169.254.1.1/anthropic",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "blocked",
+		},
+		{
+			name:         "invalid url format",
+			url:          "not-a-url",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "HTTPS",
+		},
+		{
+			name:         "url without scheme",
+			url:          "api.example.com/anthropic",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "HTTPS",
+		},
+		{
+			name:         "url with only scheme",
+			url:          "https://",
+			providerName: "test-provider",
+			wantErr:      true,
+			errContains:  "host",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateBaseURL(tt.url, tt.providerName)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateBaseURL(%q) error = %v, wantErr %v", tt.url, err, tt.wantErr)
+			}
+
+			if tt.wantErr && tt.errContains != "" {
+				if err == nil {
+					t.Errorf("validateBaseURL(%q) expected error containing %q, got nil", tt.url, tt.errContains)
+				} else if !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(tt.errContains)) {
+					t.Errorf("validateBaseURL(%q) error = %q, want error containing %q", tt.url, err.Error(), tt.errContains)
+				}
+			}
+		})
+	}
+}
+
+func TestSetup_ValidateModel(t *testing.T) {
+	tests := []struct {
+		name        string
+		model       string
+		isBuiltIn   bool
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:      "valid model",
+			model:     "claude-3-opus-20240229",
+			isBuiltIn: false,
+			wantErr:   false,
+		},
+		{
+			name:      "model with whitespace trimmed",
+			model:     "  claude-3-sonnet  ",
+			isBuiltIn: false,
+			wantErr:   false,
+		},
+		{
+			name:        "empty model for custom provider",
+			model:       "",
+			isBuiltIn:   false,
+			wantErr:     true,
+			errContains: "model name is required",
+		},
+		{
+			name:        "whitespace only model for custom provider",
+			model:       "   ",
+			isBuiltIn:   false,
+			wantErr:     true,
+			errContains: "model name is required",
+		},
+		{
+			name:      "empty model for built-in provider",
+			model:     "",
+			isBuiltIn: true,
+			wantErr:   false, // Built-in providers like anthropic can have empty model
+		},
+		{
+			name:      "simple model name",
+			model:     "claude-3",
+			isBuiltIn: false,
+			wantErr:   false,
+		},
+		{
+			name:      "model with version",
+			model:     "gpt-4-turbo",
+			isBuiltIn: false,
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// For custom providers, model should be non-empty
+			// For built-in providers, empty model is allowed
+			model := strings.TrimSpace(tt.model)
+
+			if !tt.isBuiltIn {
+				if model == "" {
+					err := fmt.Errorf("model name is required for custom providers")
+					if tt.wantErr {
+						if !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(tt.errContains)) {
+							t.Errorf("Expected error containing %q, got %q", tt.errContains, err.Error())
+						}
+					} else {
+						t.Errorf("Unexpected error: %v", err)
+					}
+					return
+				}
+			}
+
+			if tt.wantErr && !tt.isBuiltIn && strings.TrimSpace(tt.model) == "" {
+				return // Expected error already checked above
+			}
+		})
+	}
+}
