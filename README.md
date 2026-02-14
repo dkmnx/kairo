@@ -186,12 +186,14 @@ kairo metrics reset
 | Command                         | Description                        |
 | ------------------------------- | ---------------------------------- |
 | `kairo rotate`                  | Rotate encryption key              |
-| `kairo audit <list\|export>`    | View/export audit logs             |
+| `kairo backup`                  | Create backup of configuration     |
+| `kairo restore <file>`          | Restore from backup                |
+| `kairo recover`                 | Generate/restore recovery phrase   |
+| `kairo audit`                   | View/export audit logs             |
+| `kairo metrics`                 | View performance metrics           |
 | `kairo update`                  | Check for updates                  |
 | `kairo completion <shell>`      | Shell completion                   |
 | `kairo version`                 | Show version info                  |
-
-[Full Command Reference](cmd/README.md)
 
 ## Configuration
 
@@ -229,27 +231,29 @@ kairo metrics reset
 
 ### Reference
 
-| Resource                                                      | Description                          |
-|---------------------------------------------------------------|--------------------------------------|
-| [Command Reference](cmd/README.md)                            | CLI command details                  |
-| [Internal Packages](internal/README.md)                       | Core modules reference               |
-| [Troubleshooting](docs/troubleshooting/README.md)             | Common issues and solutions          |
-| [Changelog](CHANGELOG.md)                                     | Version history                      |
+| Resource                                                        | Description                            |
+| --------------------------------------------------------------- | -------------------------------------- |
+| [Development Guide](docs/guides/development-guide.md)           | Setup and contribution                 |
+| [Architecture](docs/architecture/README.md)                     | System design and diagrams             |
+| [Wrapper Scripts](docs/architecture/wrapper-scripts.md)         | Security design and rationale          |
+| [Contributing](docs/contributing/README.md)                     | Contribution workflow                  |
+| [Troubleshooting](docs/troubleshooting/README.md)               | Common issues and solutions            |
+| [Changelog](CHANGELOG.md)                                       | Version history                        |
 
 ## Building
 
 ```bash
 # Build
-task build        # or: go build -o dist/kairo .
+just build        # or: go build -o dist/kairo .
 
 # Test
-task test         # or: go test -race ./...
+just test         # or: go test -race ./...
 
 # Lint
-task lint         # or: gofmt -w . && go vet ./...
+just lint         # or: gofmt -w . && go vet ./...
 
 # Format
-task format       # or: gofmt -w .
+just format       # or: gofmt -w .
 ```
 
 ## Security

@@ -15,7 +15,7 @@ curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh 
 ```bash
 git clone https://github.com/dkmnx/kairo.git
 cd kairo
-make build
+just build
 # Binary outputs to ./dist/kairo
 ```
 
@@ -231,7 +231,7 @@ Location: `~/.config/kairo/`
 
 | File          | Purpose                   | Permissions   |
 | ------------- | ------------------------- | ------------- |
-| `config`      | Provider configurations   | 0600          |
+| `config.yaml` | Provider configurations   | 0600          |
 | `secrets.age` | Encrypted API keys        | 0600          |
 | `age.key`     | Encryption private key    | 0600          |
 
