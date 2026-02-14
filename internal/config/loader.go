@@ -15,7 +15,7 @@ type Config struct {
 	DefaultProvider string              `yaml:"default_provider"`
 	Providers       map[string]Provider `yaml:"providers"`
 	DefaultModels   map[string]string   `yaml:"default_models"`
-	Version        string              `yaml:"version"`
+	Version         string              `yaml:"version"`
 }
 
 // Provider represents a configured API provider.
