@@ -119,7 +119,7 @@ kairo/
 │   ├── guides/          # User & dev guides
 │   └── troubleshooting/ # Common issues
 ├── scripts/             # Install scripts
-└── Makefile             # Build targets
+└── justfile             # Command runner
 ```
 
 ## Data Flow: Provider Configuration

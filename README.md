@@ -16,13 +16,13 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/dkmnx/kairo/ci.yml?branch=main&style=flat-square)](https://github.com/dkmnx/kairo/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-**Secure CLI for managing Claude Code API providers** with age (X25519) encryption, multi-provider support, and audit logging.
+**Secure CLI for managing Claude Code and Qwen Code API providers** with age (X25519) encryption, multi-provider support, and audit logging.
 
 ## Prerequisites
 
-### Required: Claude Code CLI
+### Required: Claude Code CLI or Qwen Code CLI
 
-Kairo acts as a wrapper around Claude Code CLI to enable multi-provider support. You need to install Claude Code first.
+Kairo acts as a wrapper around Claude Code or Qwen Code CLI to enable multi-provider support. You need to install at least one of them.
 
 **Install Claude Code:**
 
@@ -37,10 +37,22 @@ Kairo acts as a wrapper around Claude Code CLI to enable multi-provider support.
   npm install -g @anthropic-ai/claude-code
   ```
 
+**Install Qwen Code:**
+
+- Visit: <https://qwenlm.github.io/qwen-code-docs/>
+- Or via package managers:
+
+  ```bash
+  # npm
+  npm install -g qwen-code
+  ```
+
 **Verify installation:**
 
 ```bash
 claude --version
+# or
+qwen --version
 ```
 
 ## Quick Start
@@ -107,13 +119,14 @@ flowchart TB
 
 ## Features
 
-| Feature                | Description                                                |
-| ---------------------- | ---------------------------------------------------------- |
-| **Multi-Provider**     | Native Anthropic, Z.AI, MiniMax, Kimi, DeepSeek, custom    |
-| **Secure Encryption**  | Age (X25519) encryption for all API keys                   |
-| **Key Rotation**       | Regenerate encryption keys periodically                    |
-| **Audit Logging**      | Track all configuration changes                            |
-| **Cross-Platform**     | Linux, macOS, Windows support                              |
+| Feature                | Description                                                         |
+| ---------------------- | ------------------------------------------------------------------- |
+| **Multi-Harness**      | Claude Code (default), Qwen Code                                    |
+| **Secure Encryption**  | Age (X25519) encryption for all API keys                            |
+| **Key Rotation**       | Regenerate encryption keys periodically                             |
+| **Audit Logging**      | Track all configuration changes                                     |
+| **Cross-Platform**     | Linux, macOS, Windows support                                       |
+| **Model Override**     | `--model` flag to override Qwen Code model (passed through to qwen) |
 
 ## Metrics
 
@@ -175,23 +188,29 @@ kairo metrics reset
 
 ### Execution
 
-| Command                      | Description                                |
-| ---------------------------- | ------------------------------------------ |
-| `kairo switch <provider>`    | Switch and exec Claude                     |
-| `kairo <provider> [args]`    | Shorthand for switch                       |
-| `kairo -- "query"`           | Query mode (default provider)              |
+| Command                                   | Description                                |
+| ----------------------------------------- | ------------------------------------------ |
+| `kairo switch <provider>`                 | Switch and exec CLI (claude or qwen)       |
+| `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                      |
+| `kairo switch <provider> --model <model>` | Override model (Qwen only)                 |
+| `kairo harness get`                       | Get current default harness                |
+| `kairo harness set <harness>`             | Set default harness (claude or qwen)       |
+| `kairo <provider> [args]`                 | Shorthand for switch                       |
+| `kairo -- "query"`                        | Query mode (default provider)              |
 
 ### Maintenance
 
 | Command                         | Description                        |
 | ------------------------------- | ---------------------------------- |
 | `kairo rotate`                  | Rotate encryption key              |
-| `kairo audit <list\|export>`    | View/export audit logs             |
+| `kairo backup`                  | Create backup of configuration     |
+| `kairo restore <file>`          | Restore from backup                |
+| `kairo recover`                 | Generate/restore recovery phrase   |
+| `kairo audit`                   | View/export audit logs             |
+| `kairo metrics`                 | View performance metrics           |
 | `kairo update`                  | Check for updates                  |
 | `kairo completion <shell>`      | Shell completion                   |
 | `kairo version`                 | Show version info                  |
-
-[Full Command Reference](cmd/README.md)
 
 ## Configuration
 
@@ -229,27 +248,29 @@ kairo metrics reset
 
 ### Reference
 
-| Resource                                                      | Description                          |
-|---------------------------------------------------------------|--------------------------------------|
-| [Command Reference](cmd/README.md)                            | CLI command details                  |
-| [Internal Packages](internal/README.md)                       | Core modules reference               |
-| [Troubleshooting](docs/troubleshooting/README.md)             | Common issues and solutions          |
-| [Changelog](CHANGELOG.md)                                     | Version history                      |
+| Resource                                                        | Description                            |
+| --------------------------------------------------------------- | -------------------------------------- |
+| [Development Guide](docs/guides/development-guide.md)           | Setup and contribution                 |
+| [Architecture](docs/architecture/README.md)                     | System design and diagrams             |
+| [Wrapper Scripts](docs/architecture/wrapper-scripts.md)         | Security design and rationale          |
+| [Contributing](docs/contributing/README.md)                     | Contribution workflow                  |
+| [Troubleshooting](docs/troubleshooting/README.md)               | Common issues and solutions            |
+| [Changelog](CHANGELOG.md)                                       | Version history                        |
 
 ## Building
 
 ```bash
 # Build
-task build        # or: go build -o dist/kairo .
+just build        # or: go build -o dist/kairo .
 
 # Test
-task test         # or: go test -race ./...
+just test         # or: go test -race ./...
 
 # Lint
-task lint         # or: gofmt -w . && go vet ./...
+just lint         # or: gofmt -w . && go vet ./...
 
 # Format
-task format       # or: gofmt -w .
+just format       # or: gofmt -w .
 ```
 
 ## Security
@@ -257,6 +278,7 @@ task format       # or: gofmt -w .
 - Age (X25519) encryption for all API keys
 - 0600 permissions on sensitive files
 - Secrets decrypted in-memory only
+- Secure wrapper scripts for both Claude and Qwen harnesses
 - Key generation on first run
 - Use `kairo rotate` for periodic key rotation
 

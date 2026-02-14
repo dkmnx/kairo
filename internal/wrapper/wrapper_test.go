@@ -402,3 +402,67 @@ func containsAt(s, substr string) bool {
 	}
 	return false
 }
+
+func TestGenerateWrapperScript_CustomEnvVar(t *testing.T) {
+	authDir := t.TempDir()
+	tokenPath := filepath.Join(authDir, "token")
+	cliPath := "/usr/local/bin/claude"
+	args := []string{"--help"}
+
+	t.Run("uses custom env var when provided", func(t *testing.T) {
+		scriptPath, _, err := GenerateWrapperScript(authDir, tokenPath, cliPath, args, "ANTHROPIC_API_KEY")
+		if err != nil {
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
+		}
+		defer os.Remove(scriptPath)
+
+		content, err := os.ReadFile(scriptPath)
+		if err != nil {
+			t.Fatalf("ReadFile() error = %v", err)
+		}
+
+		scriptStr := string(content)
+		if !strings.Contains(scriptStr, "ANTHROPIC_API_KEY") {
+			t.Error("Script should use custom env var ANTHROPIC_API_KEY")
+		}
+		if strings.Contains(scriptStr, "ANTHROPIC_AUTH_TOKEN") {
+			t.Error("Script should not contain ANTHROPIC_AUTH_TOKEN when custom env var is provided")
+		}
+	})
+
+	t.Run("uses default auth token when not provided", func(t *testing.T) {
+		scriptPath, _, err := GenerateWrapperScript(authDir, tokenPath, cliPath, args)
+		if err != nil {
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
+		}
+		defer os.Remove(scriptPath)
+
+		content, err := os.ReadFile(scriptPath)
+		if err != nil {
+			t.Fatalf("ReadFile() error = %v", err)
+		}
+
+		scriptStr := string(content)
+		if !strings.Contains(scriptStr, "ANTHROPIC_AUTH_TOKEN") {
+			t.Error("Script should use default env var ANTHROPIC_AUTH_TOKEN")
+		}
+	})
+
+	t.Run("uses empty string as default", func(t *testing.T) {
+		scriptPath, _, err := GenerateWrapperScript(authDir, tokenPath, cliPath, args, "")
+		if err != nil {
+			t.Fatalf("GenerateWrapperScript() error = %v", err)
+		}
+		defer os.Remove(scriptPath)
+
+		content, err := os.ReadFile(scriptPath)
+		if err != nil {
+			t.Fatalf("ReadFile() error = %v", err)
+		}
+
+		scriptStr := string(content)
+		if !strings.Contains(scriptStr, "ANTHROPIC_AUTH_TOKEN") {
+			t.Error("Empty string should default to ANTHROPIC_AUTH_TOKEN")
+		}
+	})
+}
