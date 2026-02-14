@@ -37,7 +37,7 @@ var resetCmd = &cobra.Command{
 				ui.PrintWarn("No providers configured")
 				return
 			}
-			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+			handleConfigError(cmd, err)
 			return
 		}
 

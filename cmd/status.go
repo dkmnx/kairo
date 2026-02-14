@@ -31,7 +31,7 @@ var statusCmd = &cobra.Command{
 				ui.PrintInfo("Run 'kairo setup' to get started")
 				return
 			}
-			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+			handleConfigError(cmd, err)
 			return
 		}
 

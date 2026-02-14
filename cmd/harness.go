@@ -26,7 +26,7 @@ var harnessGetCmd = &cobra.Command{
 
 		cfg, err := configCache.Get(dir)
 		if err != nil {
-			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+			handleConfigError(cmd, err)
 			return
 		}
 
@@ -66,7 +66,7 @@ var harnessSetCmd = &cobra.Command{
 
 		cfg, err := configCache.Get(dir)
 		if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
-			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+			handleConfigError(cmd, err)
 			return
 		}
 		if err != nil {

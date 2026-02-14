@@ -51,7 +51,7 @@ var configCmd = &cobra.Command{
 
 		cfg, err := configCache.Get(dir)
 		if err != nil && !os.IsNotExist(err) {
-			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+			handleConfigError(cmd, err)
 			return
 		}
 		if err != nil {
