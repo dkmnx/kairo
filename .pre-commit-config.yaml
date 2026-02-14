@@ -10,21 +10,21 @@ repos:
 
       - id: govet
         name: Vet Go code
-        entry: /usr/local/go/bin/go vet ./...
+        entry: go vet ./...
         language: system
         files: \.go$
         pass_filenames: false
 
       - id: staticcheck
         name: Run static analysis
-        entry: bash -c "export PATH=\"/usr/local/go/bin:$GOPATH/bin:$PATH\"; staticcheck ./..."
+        entry: bash -c "export PATH=\"$GOPATH/bin:$PATH\"; staticcheck ./..."
         language: system
         files: \.go$
         pass_filenames: false
 
       - id: go-test
         name: Run Go tests
-        entry: /usr/local/go/bin/go test -race ./...
+        entry: go test -race ./...
         language: system
         files: \.go$
         pass_filenames: false
@@ -32,7 +32,7 @@ repos:
 
       - id: go-mod-tidy
         name: Check go.mod tidy
-        entry: bash -c "/usr/local/go/bin/go mod tidy && git diff --exit-code go.mod go.sum"
+        entry: bash -c "go mod tidy && git diff --exit-code go.mod go.sum"
         language: system
         files: go\.(mod|sum)$
         pass_filenames: false
