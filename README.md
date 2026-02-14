@@ -47,6 +47,26 @@ Kairo acts as a wrapper around Claude Code or Qwen Code CLI to enable multi-prov
   npm install -g qwen-code
   ```
 
+**Configure Qwen Code:**
+
+Qwen Code requires model providers to be configured in `~/.qwen/settings.json`. Create this file with your providers:
+
+```json
+{
+  "modelProviders": {
+    "anthropic": [
+      {
+        "id": "glm-4.7",
+        "name": "GLM-4.7 [Z.AI Coding Plan] - Anthropic",
+        "envKey": "ANTHROPIC_API_KEY"
+      }
+    ]
+  }
+}
+```
+
+Kairo automatically sets `ANTHROPIC_API_KEY` when using the Qwen harness.
+
 **Verify installation:**
 
 ```bash
@@ -184,7 +204,7 @@ kairo metrics reset
 | `kairo status`                   | Test all providers                   |
 | `kairo test <provider>`          | Test specific provider               |
 | `kairo default <provider>`       | Get/set default provider             |
-| `kairo reset <provider\|all>`    | Remove provider config               |
+| `kairo reset <provider\          | all>`                                | Remove provider config |
 
 ### Execution
 
@@ -239,12 +259,12 @@ kairo metrics reset
 
 ### Developer Resources
 
-| Resource                                                      | Description                    |
-|---------------------------------------------------------------|--------------------------------|
-| [Development Guide](docs/guides/development-guide.md)         | Setup and contribution         |
-| [Architecture](docs/architecture/README.md)                   | System design and diagrams     |
-| [Wrapper Scripts](docs/architecture/wrapper-scripts.md)       | Security design and rationale  |
-| [Contributing](docs/contributing/README.md)                   | Contribution workflow          |
+| Resource                                                        | Description                      |
+| --------------------------------------------------------------- | -------------------------------- |
+| [Development Guide](docs/guides/development-guide.md)           | Setup and contribution           |
+| [Architecture](docs/architecture/README.md)                     | System design and diagrams       |
+| [Wrapper Scripts](docs/architecture/wrapper-scripts.md)         | Security design and rationale    |
+| [Contributing](docs/contributing/README.md)                     | Contribution workflow            |
 
 ### Reference
 
