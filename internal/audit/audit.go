@@ -1,8 +1,11 @@
 package audit
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"os"
+	"os/user"
 	"path/filepath"
 	"sync"
 	"time"
@@ -17,6 +20,10 @@ type AuditEntry struct {
 	Error     string                 `json:"error,omitempty"`
 	Details   map[string]interface{} `json:"details,omitempty"`
 	Changes   []Change               `json:"changes,omitempty"`
+	// Context fields for traceability
+	Hostname  string `json:"hostname,omitempty"`
+	Username  string `json:"username,omitempty"`
+	SessionID string `json:"session_id,omitempty"`
 }
 
 type Change struct {
@@ -26,9 +33,12 @@ type Change struct {
 }
 
 type Logger struct {
-	path string
-	f    *os.File
-	mu   sync.Mutex
+	path      string
+	f         *os.File
+	mu        sync.Mutex
+	hostname  string
+	username  string
+	sessionID string
 }
 
 func NewLogger(configDir string) (*Logger, error) {
@@ -37,7 +47,39 @@ func NewLogger(configDir string) (*Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Logger{path: logPath, f: f}, nil
+
+	// Capture hostname
+	hostname, _ := os.Hostname()
+	if hostname == "" {
+		hostname = "unknown"
+	}
+
+	// Capture username
+	username := "unknown"
+	if u, err := user.Current(); err == nil {
+		username = u.Username
+	}
+
+	// Generate unique session ID
+	sessionID := generateSessionID()
+
+	return &Logger{
+		path:      logPath,
+		f:         f,
+		hostname:  hostname,
+		username:  username,
+		sessionID: sessionID,
+	}, nil
+}
+
+// generateSessionID generates a unique session identifier.
+func generateSessionID() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to timestamp if crypto/rand fails
+		return hex.EncodeToString([]byte(time.Now().String()))
+	}
+	return hex.EncodeToString(b)
 }
 
 // Close closes the log file. Must be called when the logger is no longer needed.
@@ -74,6 +116,7 @@ func (l *Logger) LogSwitch(provider string) error {
 		Provider:  provider,
 		Status:    "success",
 	}
+	l.enrichWithContext(&entry)
 	return l.writeEntry(entry)
 }
 
@@ -105,6 +148,7 @@ func (l *Logger) LogConfig(provider, action string, changes []Change) error {
 		Status:    "success",
 		Changes:   changes,
 	}
+	l.enrichWithContext(&entry)
 	return l.writeEntry(entry)
 }
 
@@ -115,6 +159,7 @@ func (l *Logger) LogRotate(provider string) error {
 		Provider:  provider,
 		Status:    "success",
 	}
+	l.enrichWithContext(&entry)
 	return l.writeEntry(entry)
 }
 
@@ -125,6 +170,7 @@ func (l *Logger) LogDefault(provider string) error {
 		Provider:  provider,
 		Status:    "success",
 	}
+	l.enrichWithContext(&entry)
 	return l.writeEntry(entry)
 }
 
@@ -135,6 +181,7 @@ func (l *Logger) LogReset(provider string) error {
 		Provider:  provider,
 		Status:    "success",
 	}
+	l.enrichWithContext(&entry)
 	return l.writeEntry(entry)
 }
 
@@ -145,6 +192,7 @@ func (l *Logger) LogSetup(provider string) error {
 		Provider:  provider,
 		Status:    "success",
 	}
+	l.enrichWithContext(&entry)
 	return l.writeEntry(entry)
 }
 
@@ -157,6 +205,7 @@ func (l *Logger) LogSuccess(event, provider string, details map[string]interface
 		Status:    "success",
 		Details:   details,
 	}
+	l.enrichWithContext(&entry)
 	return l.writeEntry(entry)
 }
 
@@ -168,6 +217,7 @@ func (l *Logger) LogMigration(details map[string]interface{}) error {
 		Status:    "success",
 		Details:   details,
 	}
+	l.enrichWithContext(&entry)
 	return l.writeEntry(entry)
 }
 
@@ -181,7 +231,15 @@ func (l *Logger) LogFailure(event, provider, errMsg string, details map[string]i
 		Error:     errMsg,
 		Details:   details,
 	}
+	l.enrichWithContext(&entry)
 	return l.writeEntry(entry)
+}
+
+// enrichWithContext adds hostname, username, and session ID to an audit entry.
+func (l *Logger) enrichWithContext(entry *AuditEntry) {
+	entry.Hostname = l.hostname
+	entry.Username = l.username
+	entry.SessionID = l.sessionID
 }
 
 // writeEntry writes an audit entry to the log file.

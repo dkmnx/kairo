@@ -803,3 +803,351 @@ func TestAudit_WriteDurability(t *testing.T) {
 		t.Errorf("Provider = %q, want %q", entries[0].Provider, "test-provider")
 	}
 }
+
+// TESTS: Context fields (Hostname, Username, SessionID)
+
+func TestAuditEntryHasContextFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	err = logger.LogSwitch("test-provider")
+	if err != nil {
+		t.Fatalf("LogSwitch() error = %v", err)
+	}
+
+	data, err := os.ReadFile(logger.path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var entry AuditEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	// All context fields should be present
+	if entry.Hostname == "" {
+		t.Error("Hostname field should not be empty")
+	}
+
+	if entry.Username == "" {
+		t.Error("Username field should not be empty")
+	}
+
+	if entry.SessionID == "" {
+		t.Error("SessionID field should not be empty")
+	}
+}
+
+func TestAuditEntryContextFieldsPersisted(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	expectedHostname := logger.hostname
+	expectedUsername := logger.username
+	expectedSessionID := logger.sessionID
+
+	err = logger.LogSwitch("provider1")
+	if err != nil {
+		t.Fatalf("LogSwitch() error = %v", err)
+	}
+
+	// Load entries to verify persistence
+	entries, err := logger.LoadEntries()
+	if err != nil {
+		t.Fatalf("LoadEntries() error = %v", err)
+	}
+
+	if len(entries) != 1 {
+		t.Fatalf("LoadEntries() returned %d entries, want 1", len(entries))
+	}
+
+	entry := entries[0]
+
+	if entry.Hostname != expectedHostname {
+		t.Errorf("Hostname = %q, want %q", entry.Hostname, expectedHostname)
+	}
+
+	if entry.Username != expectedUsername {
+		t.Errorf("Username = %q, want %q", entry.Username, expectedUsername)
+	}
+
+	if entry.SessionID != expectedSessionID {
+		t.Errorf("SessionID = %q, want %q", entry.SessionID, expectedSessionID)
+	}
+}
+
+func TestAuditEntryContextConsistentAcrossEntries(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	// Log multiple entries
+	providers := []string{"provider1", "provider2", "provider3"}
+	for _, provider := range providers {
+		if err := logger.LogSwitch(provider); err != nil {
+			t.Fatalf("LogSwitch(%q) error = %v", provider, err)
+		}
+	}
+
+	// Load all entries
+	entries, err := logger.LoadEntries()
+	if err != nil {
+		t.Fatalf("LoadEntries() error = %v", err)
+	}
+
+	if len(entries) != len(providers) {
+		t.Fatalf("LoadEntries() returned %d entries, want %d", len(entries), len(providers))
+	}
+
+	// All entries should have the same context
+	firstHostname := entries[0].Hostname
+	firstUsername := entries[0].Username
+	firstSessionID := entries[0].SessionID
+
+	for i, entry := range entries {
+		if entry.Hostname != firstHostname {
+			t.Errorf("Entry %d: Hostname = %q, want %q (should be consistent)", i, entry.Hostname, firstHostname)
+		}
+		if entry.Username != firstUsername {
+			t.Errorf("Entry %d: Username = %q, want %q (should be consistent)", i, entry.Username, firstUsername)
+		}
+		if entry.SessionID != firstSessionID {
+			t.Errorf("Entry %d: SessionID = %q, want %q (should be consistent)", i, entry.SessionID, firstSessionID)
+		}
+	}
+}
+
+func TestAuditEntrySessionIDFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	// SessionID should be generated when logger is created
+	sessionID := logger.sessionID
+
+	// SessionID should be a hex string (8 bytes = 16 hex characters)
+	if len(sessionID) != 16 {
+		t.Errorf("SessionID length = %d, want 16 (8 bytes in hex)", len(sessionID))
+	}
+
+	// SessionID should be valid hexadecimal
+	for _, r := range sessionID {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+			t.Errorf("SessionID contains invalid hex character: %c", r)
+		}
+	}
+
+	// Log an entry to verify SessionID is included
+	err = logger.LogSwitch("test-provider")
+	if err != nil {
+		t.Fatalf("LogSwitch() error = %v", err)
+	}
+
+	data, err := os.ReadFile(logger.path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var entry AuditEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if entry.SessionID != sessionID {
+		t.Errorf("Entry SessionID = %q, want %q", entry.SessionID, sessionID)
+	}
+}
+
+func TestAuditEntryContextInAllLogTypes(t *testing.T) {
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	testCases := []struct {
+		name      string
+		logFunc   func() error
+		wantEvent string
+	}{
+		{
+			name: "LogSwitch",
+			logFunc: func() error {
+				return logger.LogSwitch("test-provider")
+			},
+			wantEvent: "switch",
+		},
+		{
+			name: "LogConfig",
+			logFunc: func() error {
+				return logger.LogConfig("test-provider", "add", []Change{{Field: "key", New: "value"}})
+			},
+			wantEvent: "config",
+		},
+		{
+			name: "LogRotate",
+			logFunc: func() error {
+				return logger.LogRotate("test-provider")
+			},
+			wantEvent: "rotate",
+		},
+		{
+			name: "LogDefault",
+			logFunc: func() error {
+				return logger.LogDefault("test-provider")
+			},
+			wantEvent: "default",
+		},
+		{
+			name: "LogReset",
+			logFunc: func() error {
+				return logger.LogReset("test-provider")
+			},
+			wantEvent: "reset",
+		},
+		{
+			name: "LogSetup",
+			logFunc: func() error {
+				return logger.LogSetup("test-provider")
+			},
+			wantEvent: "setup",
+		},
+		{
+			name: "LogSuccess",
+			logFunc: func() error {
+				return logger.LogSuccess("custom-event", "test-provider", map[string]interface{}{"key": "value"})
+			},
+			wantEvent: "custom-event",
+		},
+		{
+			name: "LogFailure",
+			logFunc: func() error {
+				return logger.LogFailure("custom-event", "test-provider", "error message", map[string]interface{}{"key": "value"})
+			},
+			wantEvent: "custom-event",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.logFunc(); err != nil {
+				t.Fatalf("%s() error = %v", tc.name, err)
+			}
+
+			// Get the last entry from the log
+			entries, err := logger.LoadEntries()
+			if err != nil {
+				t.Fatalf("LoadEntries() error = %v", err)
+			}
+
+			if len(entries) == 0 {
+				t.Fatal("No entries in log")
+			}
+
+			entry := entries[len(entries)-1]
+
+			if entry.Event != tc.wantEvent {
+				t.Errorf("Event = %q, want %q", entry.Event, tc.wantEvent)
+			}
+
+			// Verify context fields are present
+			if entry.Hostname == "" {
+				t.Error("Hostname field should not be empty")
+			}
+
+			if entry.Username == "" {
+				t.Error("Username field should not be empty")
+			}
+
+			if entry.SessionID == "" {
+				t.Error("SessionID field should not be empty")
+			}
+
+			// Clear log for next test
+			os.Truncate(logger.path, 0)
+		})
+	}
+}
+
+func TestAuditEntryContextFieldsBackwardCompatible(t *testing.T) {
+	// Test that old audit entries without context fields can still be loaded
+	tmpDir := t.TempDir()
+	logPath := filepath.Join(tmpDir, "audit.log")
+
+	// Write an old-style audit entry without context fields
+	oldEntry := `{"timestamp":"2024-01-01T00:00:00Z","event":"switch","provider":"old-provider","status":"success"}`
+	if err := os.WriteFile(logPath, []byte(oldEntry), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	logger := &Logger{path: logPath}
+	entries, err := logger.LoadEntries()
+	if err != nil {
+		t.Fatalf("LoadEntries() error = %v", err)
+	}
+
+	if len(entries) != 1 {
+		t.Fatalf("LoadEntries() returned %d entries, want 1", len(entries))
+	}
+
+	// Old entry should have empty context fields (omitempty means they won't be in JSON)
+	if entries[0].Hostname != "" {
+		t.Errorf("Old entry should have empty Hostname, got %q", entries[0].Hostname)
+	}
+
+	if entries[0].Username != "" {
+		t.Errorf("Old entry should have empty Username, got %q", entries[0].Username)
+	}
+
+	if entries[0].SessionID != "" {
+		t.Errorf("Old entry should have empty SessionID, got %q", entries[0].SessionID)
+	}
+
+	// But other fields should be present
+	if entries[0].Event != "switch" {
+		t.Errorf("Event = %q, want switch", entries[0].Event)
+	}
+}
+
+func TestLoggerSessionIDUniquePerInstance(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create first logger
+	logger1, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger1.Close()
+
+	sessionID1 := logger1.sessionID
+
+	// Create second logger
+	logger2, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger2.Close()
+
+	sessionID2 := logger2.sessionID
+
+	// SessionIDs should be different
+	if sessionID1 == sessionID2 {
+		t.Error("SessionIDs should be unique per logger instance")
+	}
+}
