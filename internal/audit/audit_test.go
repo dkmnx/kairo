@@ -1151,3 +1151,128 @@ func TestLoggerSessionIDUniquePerInstance(t *testing.T) {
 		t.Error("SessionIDs should be unique per logger instance")
 	}
 }
+
+func TestLoadEntriesConcurrentReads(t *testing.T) {
+	// Test that LoadEntries can be called concurrently without race conditions
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	// Write initial entries
+	for i := 0; i < 10; i++ {
+		if err := logger.LogSwitch(fmt.Sprintf("provider%d", i)); err != nil {
+			t.Fatalf("LogSwitch() error = %v", err)
+		}
+	}
+
+	var wg sync.WaitGroup
+	numGoroutines := 10
+	entriesPerGoroutine := 20
+
+	// Launch multiple goroutines that read entries concurrently
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < entriesPerGoroutine; j++ {
+				entries, err := logger.LoadEntries()
+				if err != nil {
+					t.Errorf("Goroutine %d: LoadEntries() error = %v", id, err)
+					return
+				}
+
+				// Verify we have the expected number of entries
+				if len(entries) != 10 {
+					t.Errorf("Goroutine %d, read %d: LoadEntries() returned %d entries, want 10", id, j, len(entries))
+					return
+				}
+
+				// Verify all entries are valid
+				for k, entry := range entries {
+					if entry.Event != "switch" {
+						t.Errorf("Goroutine %d, read %d: Entry %d has event %q, want switch", id, j, k, entry.Event)
+					}
+					if entry.Status != "success" {
+						t.Errorf("Goroutine %d, read %d: Entry %d has status %q, want success", id, j, k, entry.Status)
+					}
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func TestLoadEntriesConcurrentReadsAndWrites(t *testing.T) {
+	// Test that LoadEntries and writes can happen concurrently without race conditions
+	tmpDir := t.TempDir()
+	logger, err := NewLogger(tmpDir)
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	var wg sync.WaitGroup
+
+	// Writer goroutines
+	numWriters := 5
+	numWritesPerWriter := 10
+	for i := 0; i < numWriters; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < numWritesPerWriter; j++ {
+				if err := logger.LogSwitch(fmt.Sprintf("writer%d-provider%d", id, j)); err != nil {
+					t.Errorf("Writer %d: LogSwitch() error = %v", id, err)
+				}
+			}
+		}(i)
+	}
+
+	// Reader goroutines
+	numReaders := 5
+	numReadsPerReader := 10
+	for i := 0; i < numReaders; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < numReadsPerReader; j++ {
+				entries, err := logger.LoadEntries()
+				if err != nil {
+					t.Errorf("Reader %d, read %d: LoadEntries() error = %v", id, j, err)
+					return
+				}
+
+				// Verify all entries are valid (no partial/corrupted data)
+				for k, entry := range entries {
+					if entry.Timestamp.IsZero() {
+						t.Errorf("Reader %d, read %d: Entry %d has zero timestamp", id, j, k)
+					}
+					if entry.Event == "" {
+						t.Errorf("Reader %d, read %d: Entry %d has empty event", id, j, k)
+					}
+					if entry.Status == "" {
+						t.Errorf("Reader %d, read %d: Entry %d has empty status", id, j, k)
+					}
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Final verification - check that we have the expected number of entries
+	entries, err := logger.LoadEntries()
+	if err != nil {
+		t.Fatalf("Final LoadEntries() error = %v", err)
+	}
+
+	expectedEntries := numWriters * numWritesPerWriter
+	if len(entries) != expectedEntries {
+		t.Errorf("Final entry count = %d, want %d", len(entries), expectedEntries)
+	}
+}
+
