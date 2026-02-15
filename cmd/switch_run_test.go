@@ -23,7 +23,7 @@ func runningWithRaceDetector() bool {
 
 func TestSwitchCmd_WithAPIKey_Success(t *testing.T) {
 	if runningWithRaceDetector() {
-		t.Skip("Skipping integration test with race detector - benign race on global configDir")
+		t.Skip("Skipping with race detector - requires test refactoring for proper goroutine synchronization")
 	}
 	tmpDir := t.TempDir()
 
@@ -139,7 +139,7 @@ func TestSwitchCmd_WithAPIKey_Success(t *testing.T) {
 
 func TestSwitchCmd_WithoutAPIKey_Success(t *testing.T) {
 	if runningWithRaceDetector() {
-		t.Skip("Skipping integration test with race detector - benign race on global configDir")
+		t.Skip("Skipping with race detector - requires test refactoring for proper goroutine synchronization")
 	}
 	tmpDir := t.TempDir()
 
