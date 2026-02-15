@@ -32,10 +32,7 @@ var exitProcess = os.Exit
 // It can be replaced in tests to avoid requiring actual executables.
 var lookPath = exec.LookPath
 
-var (
-	modelFlag   string
-	harnessFlag string
-)
+var harnessFlag string
 
 var switchCmd = &cobra.Command{
 	Use:   "switch <provider> [args]",
@@ -152,12 +149,7 @@ var switchCmd = &cobra.Command{
 
 			// Handle Qwen harness - use wrapper for secure API key
 			if harnessToUse == "qwen" {
-				modelToUse := modelFlag
-				if modelToUse == "" {
-					modelToUse = provider.Model
-				}
-
-				cliArgs = append([]string{"--auth-type", "anthropic", "--model", modelToUse}, cliArgs...)
+				cliArgs = append([]string{"--auth-type", "anthropic", "--model", provider.Model}, cliArgs...)
 
 				ui.ClearScreen()
 				ui.PrintBanner(version.Version, provider.Name)
@@ -273,7 +265,6 @@ var switchCmd = &cobra.Command{
 }
 
 func init() {
-	switchCmd.Flags().StringVar(&modelFlag, "model", "", "Model to use (passed through to CLI harness)")
 	switchCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
 	rootCmd.AddCommand(switchCmd)
 }

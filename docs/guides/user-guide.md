@@ -134,9 +134,6 @@ kairo switch zai "Explain goroutines"
 # Use Qwen harness instead of Claude
 kairo switch zai --harness qwen
 
-# Override model for Qwen
-kairo switch zai --harness qwen --model qwen-turbo
-
 # Short form
 kairo switch zai
 ```
