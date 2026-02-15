@@ -31,7 +31,7 @@ ls -la ~/.local/bin/kairo
 ```bash
 git clone https://github.com/dkmnx/kairo.git
 cd kairo
-make build
+just build
 mkdir -p ~/.local/bin
 cp dist/kairo ~/.local/bin/
 ```

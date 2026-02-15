@@ -164,11 +164,18 @@ go test -v ./cmd/... -run Integration
 
 ## Global Flags
 
-| Flag             | Purpose                          |
-| ---------------- | -------------------------------- |
-| `-v, --verbose`  | Enable verbose output            |
-| `-h, --help`     | Show help for command            |
-| `--harness`      | CLI harness to use (claude/qwen) |
+| Flag            | Purpose                                     |
+| --------------- | ------------------------------------------- |
+| `-v, --verbose` | Enable verbose output                       |
+| `-h, --help`    | Show help for command                       |
+| `--config`      | Config directory (default is platform-specific) |
+
+## Switch Command Flags
+
+| Flag        | Purpose                                    |
+| ----------- | ------------------------------------------ |
+| `--harness` | CLI harness to use (claude or qwen)        |
+| `--model`   | Model to use (passed through to Qwen CLI)  |
 
 ## Banner Display
 
