@@ -157,7 +157,7 @@ var switchCmd = &cobra.Command{
 					modelToUse = provider.Model
 				}
 
-				cliArgs = append([]string{"--model", modelToUse}, cliArgs...)
+				cliArgs = append([]string{"--auth-type", "anthropic", "--model", modelToUse}, cliArgs...)
 
 				ui.ClearScreen()
 				ui.PrintBanner(version.Version, provider.Name)
