@@ -157,13 +157,7 @@ func TestGetHarness(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &config.Config{
-				Providers:      make(map[string]config.Provider),
-				DefaultModels:  make(map[string]string),
-				DefaultHarness: tt.configHarness,
-			}
-
-			result := getHarness(cfg, tt.flagHarness)
+			result := getHarness(tt.flagHarness, tt.configHarness)
 			if result != tt.expected {
 				t.Errorf("getHarness() = %q, want %q", result, tt.expected)
 			}
@@ -215,7 +209,7 @@ func TestGetHarnessWithExistingConfig(t *testing.T) {
 		t.Fatalf("LoadConfig() error = %v", err)
 	}
 
-	result := getHarness(loadedCfg, "")
+	result := getHarness("", loadedCfg.DefaultHarness)
 	if result != "qwen" {
 		t.Errorf("getHarness() = %q, want %q", result, "qwen")
 	}

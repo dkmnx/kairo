@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -435,4 +437,114 @@ func createConfigFile(t *testing.T, dir string, cfg *config.Config) string {
 		t.Fatalf("Failed to create test config: %v", err)
 	}
 	return configPath
+}
+
+func TestHandleConfigError(t *testing.T) {
+	t.Run("unknown field error shows helpful guide", func(t *testing.T) {
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+
+		// Simulate the error from outdated binary
+		err := fmt.Errorf("field default_harness not found in type config.Config (path=/home/user/.config/kairo/config.yaml)")
+
+		originalVerbose := verbose
+		setVerbose(false)
+		defer func() { setVerbose(originalVerbose) }()
+
+		handleConfigError(rootCmd, err)
+
+		result := output.String()
+
+		// Verify the helpful message is shown
+		expectedMessages := []string{
+			"Your kairo binary is outdated",
+			"configuration file contains newer fields",
+			"installation script",
+			"github.com/dkmnx/kairo",
+			"install.sh",
+		}
+
+		for _, msg := range expectedMessages {
+			if !containsString(result, msg) {
+				t.Errorf("Expected message %q not found in output:\n%s", msg, result)
+			}
+		}
+	})
+
+	t.Run("unknown field error with verbose shows technical details", func(t *testing.T) {
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+
+		// Simulate the error from outdated binary
+		err := fmt.Errorf("field default_harness not found in type config.Config")
+
+		originalVerbose := verbose
+		setVerbose(true)
+		defer func() { setVerbose(originalVerbose) }()
+
+		handleConfigError(rootCmd, err)
+
+		result := output.String()
+
+		// Verify technical details are shown in verbose mode
+		if !containsString(result, "Technical details:") {
+			t.Errorf("Expected 'Technical details:' in verbose output:\n%s", result)
+		}
+		if !containsString(result, "field default_harness") {
+			t.Errorf("Expected error details in verbose output:\n%s", result)
+		}
+	})
+
+	t.Run("other errors show default message", func(t *testing.T) {
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+
+		// Simulate a different error
+		err := fmt.Errorf("some other config error")
+
+		originalVerbose := verbose
+		setVerbose(false)
+		defer func() { setVerbose(originalVerbose) }()
+
+		handleConfigError(rootCmd, err)
+
+		result := output.String()
+
+		// Verify default error message
+		if !containsString(result, "Error loading config:") {
+			t.Errorf("Expected default error message, got:\n%s", result)
+		}
+		if !containsString(result, "some other config error") {
+			t.Errorf("Expected error text in output:\n%s", result)
+		}
+	})
+}
+
+func TestContainsSubstring(t *testing.T) {
+	tests := []struct {
+		name     string
+		s        string
+		substr   string
+		expected bool
+	}{
+		{"substring exists", "hello world", "world", true},
+		{"substring at start", "hello world", "hello", true},
+		{"substring at end", "hello world", "world", true},
+		{"substring in middle", "hello world test", "world", true},
+		{"exact match", "hello", "hello", true},
+		{"empty substring", "hello", "", true},
+		{"substring not found", "hello world", "goodbye", false},
+		{"case sensitive", "Hello World", "hello", false},
+		{"longer substring than string", "hi", "hello", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := strings.Contains(tt.s, tt.substr)
+			if result != tt.expected {
+				t.Errorf("strings.Contains(%q, %q) = %v, want %v",
+					tt.s, tt.substr, result, tt.expected)
+			}
+		})
+	}
 }
