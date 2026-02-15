@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
@@ -249,6 +250,21 @@ This command will:
 				cmd.Printf("Warning: config migration failed: %v\n", err)
 			} else if len(changes) > 0 {
 				cmd.Printf("%s\n", config.FormatMigrationChanges(changes))
+
+				// Audit log the migration
+				if err := logAuditEvent(dir, func(logger *audit.Logger) error {
+					auditChanges := make([]audit.Change, len(changes))
+					for i, c := range changes {
+						auditChanges[i] = audit.Change{
+							Field: c.Field,
+							Old:   c.Old,
+							New:   c.New,
+						}
+					}
+					return logger.LogConfig("config", "migrate", auditChanges)
+				}); err != nil {
+					cmd.Printf("Warning: audit logging failed: %v\n", err)
+				}
 			}
 		}
 	},

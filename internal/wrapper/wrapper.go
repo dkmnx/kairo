@@ -89,7 +89,7 @@ func WriteTempTokenFile(authDir, token string) (string, error) {
 // EscapePowerShellArg escapes a string for use as a PowerShell argument.
 // It wraps the argument in single quotes and escapes special characters to prevent
 // command injection. Special characters escaped: backtick, dollar sign, double quote,
-// single quote, and common control characters (newline, carriage return, tab, etc.).
+// single quote, ampersand, semicolon, pipe, percent, and common control characters.
 // Note: Some escape sequences like `v (vertical tab) and `f (form feed) are not
 // supported in older PowerShell versions (5.1 and below), so we only escape commonly
 // supported control characters.
@@ -102,6 +102,11 @@ func EscapePowerShellArg(arg string) string {
 	arg = strings.ReplaceAll(arg, "\"", "\\\"")
 	// Escape single quotes by doubling them
 	arg = strings.ReplaceAll(arg, "'", "''")
+	// Escape command separators to prevent injection
+	arg = strings.ReplaceAll(arg, "&", "`&")
+	arg = strings.ReplaceAll(arg, ";", "`;")
+	arg = strings.ReplaceAll(arg, "|", "`|")
+	arg = strings.ReplaceAll(arg, "%", "``%")
 	// Escape control characters (widely supported in PowerShell)
 	arg = strings.ReplaceAll(arg, "\n", "`n")
 	arg = strings.ReplaceAll(arg, "\r", "`r")

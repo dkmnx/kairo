@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -92,6 +93,134 @@ func (l *Logger) Close() error {
 		return err
 	}
 	return nil
+}
+
+// RotateOptions contains configuration options for log rotation.
+type RotateOptions struct {
+	// MaxSize is the maximum size in bytes before rotating (default: 10MB)
+	MaxSize int64
+	// MaxAge is the maximum age in days before rotating (default: 30 days)
+	MaxAge int
+	// MaxBackups is the number of old log files to keep (default: 5)
+	MaxBackups int
+}
+
+// DefaultRotateOptions returns sensible defaults for log rotation.
+func DefaultRotateOptions() RotateOptions {
+	return RotateOptions{
+		MaxSize:    10 * 1024 * 1024, // 10MB
+		MaxAge:     30,               // 30 days
+		MaxBackups: 5,
+	}
+}
+
+// RotateLog rotates the audit log if it exceeds size or age limits.
+// Old log files are renamed with a timestamp suffix.
+// Returns true if rotation occurred, false otherwise.
+func (l *Logger) RotateLog(opts ...RotateOptions) (bool, error) {
+	options := DefaultRotateOptions()
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// Check file stats
+	info, err := os.Stat(l.path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	// Check size limit
+	shouldRotate := info.Size() > options.MaxSize
+
+	// Check age limit
+	if !shouldRotate {
+		age := time.Since(info.ModTime())
+		shouldRotate = age > time.Duration(options.MaxAge)*24*time.Hour
+	}
+
+	if !shouldRotate {
+		return false, nil
+	}
+
+	// Close current file if open
+	if l.f != nil {
+		l.f.Close()
+		l.f = nil
+	}
+
+	// Generate timestamped backup name
+	timestamp := time.Now().Format("2006-01-02T15-04-05")
+	backupPath := filepath.Join(filepath.Dir(l.path),
+		fmt.Sprintf("audit.%s.log", timestamp))
+
+	// Rename current log to backup
+	if err := os.Rename(l.path, backupPath); err != nil {
+		return false, err
+	}
+
+	// Open new log file
+	f, err := os.OpenFile(l.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		return false, err
+	}
+	l.f = f
+
+	// Clean up old backups
+	l.cleanupOldBackups(options.MaxBackups)
+
+	return true, nil
+}
+
+// cleanupOldBackups removes old audit log backups beyond the limit.
+func (l *Logger) cleanupOldBackups(maxBackups int) {
+	if maxBackups <= 0 {
+		return
+	}
+
+	dir := filepath.Dir(l.path)
+	pattern := filepath.Join(dir, "audit.*.log")
+
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return
+	}
+
+	if len(matches) <= maxBackups {
+		return
+	}
+
+	// Sort by modification time (oldest first)
+	type fileInfo struct {
+		path    string
+		modTime time.Time
+	}
+
+	var files []fileInfo
+	for _, m := range matches {
+		if info, err := os.Stat(m); err == nil {
+			files = append(files, fileInfo{path: m, modTime: info.ModTime()})
+		}
+	}
+
+	// Sort by mod time
+	for i := 0; i < len(files)-1; i++ {
+		for j := i + 1; j < len(files); j++ {
+			if files[i].modTime.After(files[j].modTime) {
+				files[i], files[j] = files[j], files[i]
+			}
+		}
+	}
+
+	// Remove oldest files beyond limit
+	for i := 0; i < len(files)-maxBackups; i++ {
+		os.Remove(files[i].path)
+	}
 }
 
 // LogSwitch logs a provider switch event to the audit log.

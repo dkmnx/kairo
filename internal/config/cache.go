@@ -61,3 +61,17 @@ func (c *ConfigCache) Invalidate(configDir string) {
 	delete(c.entries, configDir)
 	c.mu.Unlock()
 }
+
+// Cleanup removes all expired entries from the cache.
+// This can be called periodically to prevent memory growth in long-running processes.
+func (c *ConfigCache) Cleanup() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	now := time.Now()
+	for configDir, entry := range c.entries {
+		if now.Sub(entry.loadedAt) >= c.ttl {
+			delete(c.entries, configDir)
+		}
+	}
+}
