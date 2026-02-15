@@ -16,7 +16,7 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/dkmnx/kairo/ci.yml?branch=main&style=flat-square)](https://github.com/dkmnx/kairo/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-**Secure CLI for managing multiple AI providers via the Anthropic API** with age (X25519) encryption, multi-provider support, and audit logging.
+**Anthropic-powered CLI for multi-provider management with X25519 encryption and integrated audit trails.**
 
 ## Prerequisites
 
