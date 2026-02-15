@@ -21,16 +21,6 @@ func runningWithRaceDetector() bool {
 	return runtime.GOMAXPROCS(-1) > 1
 }
 
-// Temporarily disabled - Cobra output not captured
-func TestSwitchCmd_ProviderNotFound(t *testing.T) {
-	t.Skip("Temporarily disabled - Cobra output capture needs refactoring")
-}
-
-// Temporarily disabled - Cobra output not captured
-func TestSwitchCmd_ClaudeNotFound(t *testing.T) {
-	t.Skip("Temporarily disabled - Cobra output capture needs refactoring")
-}
-
 func TestSwitchCmd_WithAPIKey_Success(t *testing.T) {
 	if runningWithRaceDetector() {
 		t.Skip("Skipping integration test with race detector - benign race on global configDir")
