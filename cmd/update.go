@@ -117,7 +117,16 @@ func getInstallScriptURL(goos string) string {
 
 // downloadToTempFile downloads a file from URL and saves to a temporary file
 func downloadToTempFile(url string) (string, error) {
-	resp, err := http.Get(url)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to create download request", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
 			"failed to download", err)
