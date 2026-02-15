@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -150,7 +151,9 @@ func (l *Logger) RotateLog(opts ...RotateOptions) (bool, error) {
 
 	// Close current file if open
 	if l.f != nil {
-		l.f.Close()
+		if err := l.f.Close(); err != nil {
+			log.Printf("Warning: failed to close audit log file: %v", err)
+		}
 		l.f = nil
 	}
 
@@ -219,7 +222,9 @@ func (l *Logger) cleanupOldBackups(maxBackups int) {
 
 	// Remove oldest files beyond limit
 	for i := 0; i < len(files)-maxBackups; i++ {
-		os.Remove(files[i].path)
+		if err := os.Remove(files[i].path); err != nil {
+			log.Printf("Warning: failed to remove old audit backup %s: %v", files[i].path, err)
+		}
 	}
 }
 
