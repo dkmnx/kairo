@@ -97,3 +97,31 @@ func init() {
 	harnessCmd.AddCommand(harnessSetCmd)
 	rootCmd.AddCommand(harnessCmd)
 }
+
+// getHarness returns the harness to use, checking flag then config then defaulting to claude.
+func getHarness(flagHarness, configHarness string) string {
+	harness := flagHarness
+	if harness == "" {
+		harness = configHarness
+	}
+	if harness == "" {
+		return "claude"
+	}
+	if harness != "claude" && harness != "qwen" {
+		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", harness))
+		return "claude"
+	}
+	return harness
+}
+
+// getHarnessBinary returns the CLI binary name for a given harness.
+func getHarnessBinary(harness string) string {
+	switch harness {
+	case "qwen":
+		return "qwen"
+	case "claude":
+		return "claude"
+	default:
+		return "claude"
+	}
+}

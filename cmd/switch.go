@@ -37,71 +37,6 @@ var (
 	harnessFlag string
 )
 
-// getHarness returns the harness to use, checking flag then config then defaulting to claude.
-func getHarness(cfg *config.Config, flagHarness string) string {
-	harness := flagHarness
-	if harness == "" {
-		harness = cfg.DefaultHarness
-	}
-	if harness == "" {
-		return "claude"
-	}
-	if harness != "claude" && harness != "qwen" {
-		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", harness))
-		return "claude"
-	}
-	return harness
-}
-
-// getHarnessBinary returns the CLI binary name for a given harness.
-func getHarnessBinary(harness string) string {
-	switch harness {
-	case "qwen":
-		return "qwen"
-	case "claude":
-		return "claude"
-	default:
-		return "claude"
-	}
-}
-
-// mergeEnvVars merges environment variable slices, deduplicating by key.
-// If duplicate keys are found, the last value wins (preserves order of precedence).
-// Env vars should be in "KEY=VALUE" format.
-func mergeEnvVars(envs ...[]string) []string {
-	seen := make(map[string]bool)
-	var result []string
-
-	for _, envSlice := range envs {
-		for _, env := range envSlice {
-			// Extract the key (everything before the first '=')
-			idx := strings.IndexByte(env, '=')
-			if idx <= 0 {
-				// Invalid format, skip
-				continue
-			}
-			key := env[:idx]
-
-			// Remove any previous occurrence of this key
-			if seen[key] {
-				// Find and remove previous entry with this key
-				for i, e := range result {
-					if strings.HasPrefix(e, key+"=") {
-						result = append(result[:i], result[i+1:]...)
-						break
-					}
-				}
-			}
-
-			// Add the new entry
-			result = append(result, env)
-			seen[key] = true
-		}
-	}
-
-	return result
-}
-
 var switchCmd = &cobra.Command{
 	Use:   "switch <provider> [args]",
 	Short: "Switch to a provider and execute Claude",
@@ -134,7 +69,7 @@ var switchCmd = &cobra.Command{
 			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
 		}
 
-		harnessToUse := getHarness(cfg, harnessFlag)
+		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
 
 		// Environment variable name constants for model configuration

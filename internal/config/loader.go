@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"gopkg.in/yaml.v3"
@@ -165,16 +166,6 @@ func SaveConfig(configDir string, cfg *Config) error {
 // This pattern appears when the config file contains fields that don't exist
 // in the current Config struct, typically due to an outdated binary.
 func containsUnknownField(errStr string) bool {
-	return containsSubstring(errStr, "field") &&
-		containsSubstring(errStr, "not found in type")
-}
-
-// containsSubstring is a simple substring checker to avoid importing strings package.
-func containsSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	return strings.Contains(errStr, "field") &&
+		strings.Contains(errStr, "not found in type")
 }
