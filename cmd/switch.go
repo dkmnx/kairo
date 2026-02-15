@@ -176,15 +176,12 @@ var switchCmd = &cobra.Command{
 
 				// Set up signal handling for cleanup on SIGINT/SIGTERM
 				sigChan := make(chan os.Signal, 1)
-				defer func() {
-					signal.Stop(sigChan)
-					close(sigChan)
-				}()
 				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 				go func() {
 					sig := <-sigChan
 					cleanup()
+					signal.Stop(sigChan)
 					code := 128
 					if s, ok := sig.(syscall.Signal); ok {
 						code += int(s)
@@ -205,8 +202,10 @@ var switchCmd = &cobra.Command{
 
 				if err := execCmd.Run(); err != nil {
 					cmd.Printf("Error running Qwen: %v\n", err)
-					exitProcess(1)
 				}
+
+				// Cleanup happens before returning - signal handler runs independently
+				cleanup()
 				return
 			}
 
@@ -228,15 +227,12 @@ var switchCmd = &cobra.Command{
 
 			// Set up signal handling for cleanup on SIGINT/SIGTERM
 			sigChan := make(chan os.Signal, 1)
-			defer func() {
-				signal.Stop(sigChan)
-				close(sigChan)
-			}()
 			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 			go func() {
 				sig := <-sigChan
 				cleanup()
+				signal.Stop(sigChan)
 				// Exit with signal code (cross-platform)
 				code := 128
 				if s, ok := sig.(syscall.Signal); ok {
@@ -265,8 +261,10 @@ var switchCmd = &cobra.Command{
 
 			if err := execCmd.Run(); err != nil {
 				cmd.Printf("Error running Claude: %v\n", err)
-				exitProcess(1)
 			}
+
+			// Cleanup happens before returning - signal handler runs independently
+			cleanup()
 			return
 		}
 
