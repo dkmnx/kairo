@@ -254,7 +254,7 @@ func TestProviderConfigSaveLoad(t *testing.T) {
 
 func TestGetConfigDir(t *testing.T) {
 	// Reset configDir to avoid pollution from other tests
-	configDir = ""
+	setConfigDir("")
 
 	home, err := os.UserHomeDir()
 	if err != nil {

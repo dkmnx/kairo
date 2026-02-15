@@ -48,6 +48,7 @@ snapshot:
   version_template: '{{ .Version }}-next'
 
 changelog:
+  # Disable auto-generated changelog since CHANGELOG.md is maintained manually
   disable: true
 
 release:

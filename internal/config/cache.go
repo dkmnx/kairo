@@ -26,17 +26,18 @@ func NewConfigCache(ttl time.Duration) *ConfigCache {
 }
 
 func (c *ConfigCache) Get(configDir string) (*Config, error) {
-	configPath := filepath.Join(configDir, "config.yaml")
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	c.mu.RLock()
 	entry, exists := c.entries[configDir]
-	c.mu.RUnlock()
 
 	if exists {
 		// Check TTL
 		if time.Since(entry.loadedAt) < c.ttl {
 			return entry.config, nil
 		}
+		// Entry expired, remove it
+		delete(c.entries, configDir)
 	}
 
 	// Load fresh
@@ -46,13 +47,11 @@ func (c *ConfigCache) Get(configDir string) (*Config, error) {
 	}
 
 	// Cache it
-	c.mu.Lock()
 	c.entries[configDir] = &cachedConfig{
 		config:     cfg,
 		loadedAt:   time.Now(),
-		configPath: configPath,
+		configPath: filepath.Join(configDir, "config.yaml"),
 	}
-	c.mu.Unlock()
 
 	return cfg, nil
 }
@@ -61,4 +60,18 @@ func (c *ConfigCache) Invalidate(configDir string) {
 	c.mu.Lock()
 	delete(c.entries, configDir)
 	c.mu.Unlock()
+}
+
+// Cleanup removes all expired entries from the cache.
+// This can be called periodically to prevent memory growth in long-running processes.
+func (c *ConfigCache) Cleanup() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	now := time.Now()
+	for configDir, entry := range c.entries {
+		if now.Sub(entry.loadedAt) >= c.ttl {
+			delete(c.entries, configDir)
+		}
+	}
 }

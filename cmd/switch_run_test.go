@@ -21,19 +21,9 @@ func runningWithRaceDetector() bool {
 	return runtime.GOMAXPROCS(-1) > 1
 }
 
-// Temporarily disabled - Cobra output not captured
-func TestSwitchCmd_ProviderNotFound(t *testing.T) {
-	t.Skip("Temporarily disabled - Cobra output capture needs refactoring")
-}
-
-// Temporarily disabled - Cobra output not captured
-func TestSwitchCmd_ClaudeNotFound(t *testing.T) {
-	t.Skip("Temporarily disabled - Cobra output capture needs refactoring")
-}
-
 func TestSwitchCmd_WithAPIKey_Success(t *testing.T) {
 	if runningWithRaceDetector() {
-		t.Skip("Skipping integration test with race detector - benign race on global configDir")
+		t.Skip("Skipping with race detector - requires test refactoring for proper goroutine synchronization")
 	}
 	tmpDir := t.TempDir()
 
@@ -99,7 +89,10 @@ func TestSwitchCmd_WithAPIKey_Success(t *testing.T) {
 
 	var buf bytes.Buffer
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 	os.Stdout = w
 
 	done := make(chan struct{})
@@ -146,7 +139,7 @@ func TestSwitchCmd_WithAPIKey_Success(t *testing.T) {
 
 func TestSwitchCmd_WithoutAPIKey_Success(t *testing.T) {
 	if runningWithRaceDetector() {
-		t.Skip("Skipping integration test with race detector - benign race on global configDir")
+		t.Skip("Skipping with race detector - requires test refactoring for proper goroutine synchronization")
 	}
 	tmpDir := t.TempDir()
 
@@ -210,7 +203,10 @@ func TestSwitchCmd_WithoutAPIKey_Success(t *testing.T) {
 
 	var buf bytes.Buffer
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 	os.Stdout = w
 
 	done := make(chan struct{})

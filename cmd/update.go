@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
@@ -55,29 +57,34 @@ func getLatestRelease() (*release, error) {
 	url := getLatestReleaseURL()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to create request", err)
 	}
 
 	req.Header.Set("User-Agent", "kairo-cli")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch release: %w", err)
+		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to fetch release", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+		return nil, kairoerrors.NewError(kairoerrors.NetworkError,
+			fmt.Sprintf("API returned status %d", resp.StatusCode))
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to read response", err)
 	}
 
 	var r release
 	if err := json.Unmarshal(body, &r); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to parse response", err)
 	}
 
 	return &r, nil
@@ -112,12 +119,14 @@ func getInstallScriptURL(goos string) string {
 func downloadToTempFile(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", fmt.Errorf("failed to download: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to download", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("download failed with status %d", resp.StatusCode)
+		return "", kairoerrors.NewError(kairoerrors.NetworkError,
+			fmt.Sprintf("download failed with status %d", resp.StatusCode))
 	}
 
 	ext := ".sh"
@@ -126,19 +135,22 @@ func downloadToTempFile(url string) (string, error) {
 	}
 	tempFile, err := os.CreateTemp("", "kairo-install-*"+ext)
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to create temp file", err)
 	}
 
 	_, err = io.Copy(tempFile, resp.Body)
 	if err != nil {
 		tempFile.Close()
 		os.Remove(tempFile.Name())
-		return "", fmt.Errorf("failed to write to temp file: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to write to temp file", err)
 	}
 
 	if err := tempFile.Close(); err != nil {
 		os.Remove(tempFile.Name())
-		return "", fmt.Errorf("failed to close temp file: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to close temp file", err)
 	}
 
 	return tempFile.Name(), nil
@@ -152,21 +164,24 @@ func runInstallScript(scriptPath string) error {
 		pwshCmd.Stderr = os.Stderr
 
 		if err := pwshCmd.Run(); err != nil {
-			return fmt.Errorf("powershell execution failed: %w", err)
+			return kairoerrors.WrapError(kairoerrors.RuntimeError,
+				"powershell execution failed", err)
 		}
 
 		return nil
 	}
 
 	if err := os.Chmod(scriptPath, 0755); err != nil {
-		return fmt.Errorf("failed to make script executable: %w", err)
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to make script executable", err)
 	}
 
 	shCmd := exec.Command("/bin/sh", scriptPath)
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
 	if err := shCmd.Run(); err != nil {
-		return fmt.Errorf("shell execution failed: %w", err)
+		return kairoerrors.WrapError(kairoerrors.RuntimeError,
+			"shell execution failed", err)
 	}
 
 	return nil
@@ -235,6 +250,21 @@ This command will:
 				cmd.Printf("Warning: config migration failed: %v\n", err)
 			} else if len(changes) > 0 {
 				cmd.Printf("%s\n", config.FormatMigrationChanges(changes))
+
+				// Audit log the migration
+				if err := logAuditEvent(dir, func(logger *audit.Logger) error {
+					auditChanges := make([]audit.Change, len(changes))
+					for i, c := range changes {
+						auditChanges[i] = audit.Change{
+							Field: c.Field,
+							Old:   c.Old,
+							New:   c.New,
+						}
+					}
+					return logger.LogConfig("config", "migrate", auditChanges)
+				}); err != nil {
+					cmd.Printf("Warning: audit logging failed: %v\n", err)
+				}
 			}
 		}
 	},

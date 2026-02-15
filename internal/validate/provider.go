@@ -5,7 +5,19 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
+)
+
+// Validation limits for provider and model names.
+const (
+	// MaxProviderNameLength is the maximum length for custom provider names.
+	// Most provider names are short identifiers (e.g., "anthropic", "openai").
+	MaxProviderNameLength = 50
+
+	// MaxModelNameLength is the maximum length for model names.
+	// Most LLM model names are reasonable length (e.g., "claude-3-opus-20240229").
+	MaxModelNameLength = 100
 )
 
 // validateCrossProviderConfig validates configuration across all providers to detect conflicts.
@@ -51,8 +63,8 @@ func ValidateCrossProviderConfig(cfg *config.Config) error {
 				}
 			}
 			if !allSame {
-				return fmt.Errorf("environment variable collision: '%s' is set to different values by providers: %v",
-					key, sources)
+				return kairoerrors.NewError(kairoerrors.ValidationError,
+					fmt.Sprintf("environment variable collision: '%s' is set to different values by providers: %v", key, sources))
 			}
 		}
 	}
@@ -73,13 +85,15 @@ func ValidateProviderModel(providerName, modelName string) error {
 		// If provider has a default model, do basic validation
 		if def.Model != "" {
 			// Check model name length (most LLM model names are reasonable length)
-			if len(modelName) > 100 {
-				return fmt.Errorf("model name '%s' for provider '%s' is too long (max 100 characters)", modelName, providerName)
+			if len(modelName) > MaxModelNameLength {
+				return kairoerrors.NewError(kairoerrors.ValidationError,
+					fmt.Sprintf("model name '%s' for provider '%s' is too long (max %d characters)", modelName, providerName, MaxModelNameLength))
 			}
 			// Check for valid characters (alphanumeric, hyphens, underscores, dots)
 			for _, r := range modelName {
 				if !isValidModelRune(r) {
-					return fmt.Errorf("model name '%s' for provider '%s' contains invalid characters", modelName, providerName)
+					return kairoerrors.NewError(kairoerrors.ValidationError,
+						fmt.Sprintf("model name '%s' for provider '%s' contains invalid characters", modelName, providerName))
 				}
 			}
 		}
