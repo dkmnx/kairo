@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dkmnx/kairo/internal/performance"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -172,10 +173,12 @@ func exportMetrics(registry *performance.Registry) error {
 	case "json":
 		data, err = registry.ToJSON()
 		if err != nil {
-			return fmt.Errorf("failed to convert to JSON: %w", err)
+			return kairoerrors.WrapError(kairoerrors.ConfigError,
+				"failed to convert to JSON", err)
 		}
 	default:
-		return fmt.Errorf("unsupported format: %s (supported: json)", metricsFormat)
+		return kairoerrors.NewError(kairoerrors.ConfigError,
+			fmt.Sprintf("unsupported format: %s (supported: json)", metricsFormat))
 	}
 
 	return os.WriteFile(metricsOutputPath, data, 0600)

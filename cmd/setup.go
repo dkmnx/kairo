@@ -31,19 +31,23 @@ var validProviderName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 // - Not be a reserved built-in provider name (case-insensitive)
 func validateCustomProviderName(name string) (string, error) {
 	if name == "" {
-		return "", fmt.Errorf("provider name is required")
+		return "", kairoerrors.NewError(kairoerrors.ValidationError,
+			"provider name is required")
 	}
 	// Check maximum length
 	if len(name) > validate.MaxProviderNameLength {
-		return "", fmt.Errorf("provider name must be at most %d characters (got %d)", validate.MaxProviderNameLength, len(name))
+		return "", kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("provider name must be at most %d characters (got %d)", validate.MaxProviderNameLength, len(name)))
 	}
 	if !validProviderName.MatchString(name) {
-		return "", fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters, underscores, and hyphens")
+		return "", kairoerrors.NewError(kairoerrors.ValidationError,
+			"provider name must start with a letter and contain only alphanumeric characters, underscores, and hyphens")
 	}
 	// Check for reserved provider names (case-insensitive)
 	lowerName := strings.ToLower(name)
 	if providers.IsBuiltInProvider(lowerName) {
-		return "", fmt.Errorf("reserved provider name: %s", lowerName)
+		return "", kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("reserved provider name: %s", lowerName))
 	}
 	return name, nil
 }
@@ -92,7 +96,8 @@ func saveProviderConfigFile(dir string, cfg *config.Config, providerName string,
 		cfg.DefaultProvider = providerName
 	}
 	if err := config.SaveConfig(dir, cfg); err != nil {
-		return fmt.Errorf("saving config: %w", err)
+		return kairoerrors.WrapError(kairoerrors.ConfigError,
+			"saving config", err)
 	}
 	return nil
 }
@@ -128,10 +133,12 @@ func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider 
 // ensureConfigDirectory creates the config directory and encryption key if they don't exist.
 func ensureConfigDirectory(dir string) error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
-		return fmt.Errorf("creating config directory: %w", err)
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"creating config directory", err)
 	}
 	if err := crypto.EnsureKeyExists(dir); err != nil {
-		return fmt.Errorf("creating encryption key: %w", err)
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"creating encryption key", err)
 	}
 	return nil
 }
@@ -286,7 +293,8 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	if providerName == "custom" {
 		customName, err := ui.Prompt("Provider name")
 		if err != nil {
-			return "", nil, fmt.Errorf("reading provider name: %w", err)
+			return "", nil, kairoerrors.WrapError(kairoerrors.ValidationError,
+				"reading provider name", err)
 		}
 		validatedName, err := validateCustomProviderName(customName)
 		if err != nil {
@@ -316,7 +324,8 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 
 	model, err := ui.PromptWithDefault("Model", def.Model)
 	if err != nil {
-		return "", nil, fmt.Errorf("reading model: %w", err)
+		return "", nil, kairoerrors.WrapError(kairoerrors.ValidationError,
+			"reading model", err)
 	}
 
 	// Validate model is non-empty for custom providers
@@ -324,7 +333,8 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	if !providers.IsBuiltInProvider(providerName) {
 		model = strings.TrimSpace(model)
 		if model == "" {
-			return "", nil, fmt.Errorf("model name is required for custom providers")
+			return "", nil, kairoerrors.NewError(kairoerrors.ValidationError,
+				"model name is required for custom providers")
 		}
 	}
 
@@ -339,7 +349,8 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
 	secretsContent := formatSecretsFileContent(secrets)
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
-		return "", nil, fmt.Errorf("saving API key: %w", err)
+		return "", nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"saving API key", err)
 	}
 
 	// Prepare audit details
@@ -361,7 +372,8 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 func promptForAPIKey(providerName string) (string, error) {
 	apiKey, err := ui.PromptSecret("API Key")
 	if err != nil {
-		return "", fmt.Errorf("reading API key: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
+			"reading API key", err)
 	}
 	if err := validateAPIKey(apiKey, providerName); err != nil {
 		return "", err
@@ -373,7 +385,8 @@ func promptForAPIKey(providerName string) (string, error) {
 func promptForBaseURL(defaultURL, providerName string) (string, error) {
 	baseURL, err := ui.PromptWithDefault("Base URL", defaultURL)
 	if err != nil {
-		return "", fmt.Errorf("reading base URL: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
+			"reading base URL", err)
 	}
 	if err := validateBaseURL(baseURL, providerName); err != nil {
 		return "", err

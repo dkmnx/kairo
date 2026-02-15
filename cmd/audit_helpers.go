@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/dkmnx/kairo/internal/audit"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 // logAuditEvent logs an audit event using the provided logging function.
@@ -27,12 +26,14 @@ import (
 func logAuditEvent(configDir string, logFunc func(*audit.Logger) error) error {
 	logger, err := audit.NewLogger(configDir)
 	if err != nil {
-		return fmt.Errorf("failed to create audit logger: %w", err)
+		return kairoerrors.WrapError(kairoerrors.ConfigError,
+			"failed to create audit logger", err)
 	}
 	defer logger.Close()
 
 	if err := logFunc(logger); err != nil {
-		return fmt.Errorf("failed to log audit event: %w", err)
+		return kairoerrors.WrapError(kairoerrors.ConfigError,
+			"failed to log audit event", err)
 	}
 	return nil
 }

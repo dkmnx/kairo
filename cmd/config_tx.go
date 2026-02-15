@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 // createConfigBackup creates a backup of the current configuration file.
@@ -16,7 +18,8 @@ func createConfigBackup(configDir string) (string, error) {
 	// Read the current config file
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read config for backup: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.ConfigError,
+			"failed to read config for backup", err)
 	}
 
 	// Create backup filename with timestamp
@@ -24,7 +27,8 @@ func createConfigBackup(configDir string) (string, error) {
 
 	// Write the backup
 	if err := os.WriteFile(backupPath, data, 0600); err != nil {
-		return "", fmt.Errorf("failed to write backup file: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to write backup file", err)
 	}
 
 	return backupPath, nil
@@ -36,19 +40,22 @@ func createConfigBackup(configDir string) (string, error) {
 func rollbackConfig(configDir, backupPath string) error {
 	// Verify backup exists
 	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
-		return fmt.Errorf("backup file not found: %s", backupPath)
+		return kairoerrors.NewError(kairoerrors.ConfigError,
+			fmt.Sprintf("backup file not found: %s", backupPath))
 	}
 
 	// Read backup data
 	data, err := os.ReadFile(backupPath)
 	if err != nil {
-		return fmt.Errorf("failed to read backup file: %w", err)
+		return kairoerrors.WrapError(kairoerrors.ConfigError,
+			"failed to read backup file", err)
 	}
 
 	// Write to config file
 	configPath := getConfigPath(configDir)
 	if err := os.WriteFile(configPath, data, 0600); err != nil {
-		return fmt.Errorf("failed to restore config from backup: %w", err)
+		return kairoerrors.WrapError(kairoerrors.ConfigError,
+			"failed to restore config from backup", err)
 	}
 
 	return nil
@@ -79,7 +86,8 @@ func withConfigTransaction(configDir string, fn func(txDir string) error) error 
 	// Create backup before transaction
 	backupPath, err := createConfigBackup(configDir)
 	if err != nil {
-		return fmt.Errorf("failed to create transaction backup: %w", err)
+		return kairoerrors.WrapError(kairoerrors.ConfigError,
+			"failed to create transaction backup", err)
 	}
 
 	// Execute the transaction function
@@ -89,9 +97,11 @@ func withConfigTransaction(configDir string, fn func(txDir string) error) error 
 	if err != nil {
 		if rbErr := rollbackConfig(configDir, backupPath); rbErr != nil {
 			// Rollback failed - this is a critical situation
-			return fmt.Errorf("transaction failed and rollback also failed: tx_err=%w, rollback_err=%w", err, rbErr)
+			return kairoerrors.WrapError(kairoerrors.ConfigError,
+				fmt.Sprintf("transaction failed and rollback also failed: tx_err=%v, rollback_err=%v", err, rbErr), rbErr)
 		}
-		return fmt.Errorf("transaction failed, changes rolled back: %w", err)
+		return kairoerrors.WrapError(kairoerrors.ConfigError,
+			"transaction failed, changes rolled back", err)
 	}
 
 	// Transaction succeeded - clean up the backup file

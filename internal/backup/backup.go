@@ -7,12 +7,15 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 func CreateBackup(configDir string) (string, error) {
 	backupDir := filepath.Join(configDir, "backups")
 	if err := os.MkdirAll(backupDir, 0700); err != nil {
-		return "", fmt.Errorf("create backup dir: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"create backup dir", err)
 	}
 
 	timestamp := time.Now().Format("20060102_150405")
@@ -20,7 +23,8 @@ func CreateBackup(configDir string) (string, error) {
 
 	zipFile, err := os.Create(backupPath)
 	if err != nil {
-		return "", fmt.Errorf("create zip: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"create zip", err)
 	}
 	defer zipFile.Close()
 
@@ -36,25 +40,29 @@ func CreateBackup(configDir string) (string, error) {
 
 		src, err := os.Open(srcPath)
 		if err != nil {
-			return "", fmt.Errorf("open %s: %w", f, err)
+			return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+				fmt.Sprintf("open %s", f), err)
 		}
 
 		w, err := zipWriter.Create(f)
 		if err != nil {
 			src.Close()
-			return "", fmt.Errorf("create zip entry %s: %w", f, err)
+			return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+				fmt.Sprintf("create zip entry %s", f), err)
 		}
 
 		if _, err := io.Copy(w, src); err != nil {
 			src.Close()
-			return "", fmt.Errorf("write %s: %w", f, err)
+			return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+				fmt.Sprintf("write %s", f), err)
 		}
 		src.Close()
 	}
 
 	// Explicitly close and check for flush errors
 	if err := zipWriter.Close(); err != nil {
-		return "", fmt.Errorf("close zip writer: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"close zip writer", err)
 	}
 	return backupPath, nil
 }
@@ -62,7 +70,8 @@ func CreateBackup(configDir string) (string, error) {
 func RestoreBackup(configDir, backupPath string) error {
 	r, err := zip.OpenReader(backupPath)
 	if err != nil {
-		return fmt.Errorf("open backup: %w", err)
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"open backup", err)
 	}
 	defer r.Close()
 
@@ -74,24 +83,28 @@ func RestoreBackup(configDir, backupPath string) error {
 
 		destPath := filepath.Join(configDir, f.Name)
 		if err := os.MkdirAll(filepath.Dir(destPath), 0700); err != nil {
-			return fmt.Errorf("create dir for %s: %w", f.Name, err)
+			return kairoerrors.WrapError(kairoerrors.FileSystemError,
+				fmt.Sprintf("create dir for %s", f.Name), err)
 		}
 
 		outFile, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
-			return fmt.Errorf("create %s: %w", f.Name, err)
+			return kairoerrors.WrapError(kairoerrors.FileSystemError,
+				fmt.Sprintf("create %s", f.Name), err)
 		}
 
 		rc, err := f.Open()
 		if err != nil {
 			outFile.Close()
-			return fmt.Errorf("open %s in zip: %w", f.Name, err)
+			return kairoerrors.WrapError(kairoerrors.FileSystemError,
+				fmt.Sprintf("open %s in zip", f.Name), err)
 		}
 
 		if _, err := io.Copy(outFile, rc); err != nil {
 			outFile.Close()
 			rc.Close()
-			return fmt.Errorf("extract %s: %w", f.Name, err)
+			return kairoerrors.WrapError(kairoerrors.FileSystemError,
+				fmt.Sprintf("extract %s", f.Name), err)
 		}
 
 		outFile.Close()
