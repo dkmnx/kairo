@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
@@ -62,8 +63,8 @@ func ValidateCrossProviderConfig(cfg *config.Config) error {
 				}
 			}
 			if !allSame {
-				return fmt.Errorf("environment variable collision: '%s' is set to different values by providers: %v",
-					key, sources)
+				return kairoerrors.NewError(kairoerrors.ValidationError,
+					fmt.Sprintf("environment variable collision: '%s' is set to different values by providers: %v", key, sources))
 			}
 		}
 	}
@@ -85,12 +86,14 @@ func ValidateProviderModel(providerName, modelName string) error {
 		if def.Model != "" {
 			// Check model name length (most LLM model names are reasonable length)
 			if len(modelName) > MaxModelNameLength {
-				return fmt.Errorf("model name '%s' for provider '%s' is too long (max %d characters)", modelName, providerName, MaxModelNameLength)
+				return kairoerrors.NewError(kairoerrors.ValidationError,
+					fmt.Sprintf("model name '%s' for provider '%s' is too long (max %d characters)", modelName, providerName, MaxModelNameLength))
 			}
 			// Check for valid characters (alphanumeric, hyphens, underscores, dots)
 			for _, r := range modelName {
 				if !isValidModelRune(r) {
-					return fmt.Errorf("model name '%s' for provider '%s' contains invalid characters", modelName, providerName)
+					return kairoerrors.NewError(kairoerrors.ValidationError,
+						fmt.Sprintf("model name '%s' for provider '%s' contains invalid characters", modelName, providerName))
 				}
 			}
 		}

@@ -3,17 +3,19 @@ package recover
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 // CreateRecoveryPhrase generates a recovery phrase from the key file
 func CreateRecoveryPhrase(keyPath string) (string, error) {
 	keyData, err := os.ReadFile(keyPath)
 	if err != nil {
-		return "", fmt.Errorf("read key: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
+			"read key", err)
 	}
 
 	// Encode key as base64 phrase
@@ -33,7 +35,8 @@ func RecoverFromPhrase(configDir, phrase string) error {
 
 	keyData, err := base64.RawStdEncoding.DecodeString(encoded)
 	if err != nil {
-		return fmt.Errorf("decode phrase: %w", err)
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"decode phrase", err)
 	}
 
 	keyPath := filepath.Join(configDir, "age.key")
@@ -45,7 +48,8 @@ func GenerateRecoveryPhrase() (string, error) {
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	if err != nil {
-		return "", fmt.Errorf("generate key: %w", err)
+		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
+			"generate key", err)
 	}
 
 	phrase := base64.RawStdEncoding.EncodeToString(key)

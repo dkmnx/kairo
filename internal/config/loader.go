@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,7 +47,8 @@ func migrateConfigFile(configDir string) (bool, error) {
 			// No old config to migrate
 			return false, nil
 		}
-		return false, fmt.Errorf("failed to check old config file: %w", err)
+		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to check old config file", err)
 	}
 
 	// Check if new config already exists
@@ -56,24 +56,28 @@ func migrateConfigFile(configDir string) (bool, error) {
 		// New config exists, don't overwrite - keep both for safety
 		return false, nil
 	} else if !os.IsNotExist(err) {
-		return false, fmt.Errorf("failed to check new config file: %w", err)
+		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to check new config file", err)
 	}
 
 	// Read the old config file to verify it's valid YAML before migrating
 	data, err := os.ReadFile(oldConfigPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to read old config file: %w", err)
+		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to read old config file", err)
 	}
 
 	// Verify it's valid YAML
 	var testCfg Config
 	if err := yaml.Unmarshal(data, &testCfg); err != nil {
-		return false, fmt.Errorf("old config file is not valid YAML, cannot migrate: %w", err)
+		return false, kairoerrors.WrapError(kairoerrors.ConfigError,
+			"old config file is not valid YAML, cannot migrate", err)
 	}
 
 	// Write to new location with same permissions
 	if err := os.WriteFile(newConfigPath, data, oldInfo.Mode()); err != nil {
-		return false, fmt.Errorf("failed to write migrated config file: %w", err)
+		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to write migrated config file", err)
 	}
 
 	// Rename old file to .backup instead of deleting
@@ -81,7 +85,8 @@ func migrateConfigFile(configDir string) (bool, error) {
 	if err := os.Rename(oldConfigPath, backupPath); err != nil {
 		// If rename fails, try to remove the new file and report error
 		os.Remove(newConfigPath)
-		return false, fmt.Errorf("failed to backup old config file: %w", err)
+		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to backup old config file", err)
 	}
 
 	return true, nil
