@@ -26,32 +26,27 @@ func NewConfigCache(ttl time.Duration) *ConfigCache {
 }
 
 func (c *ConfigCache) Get(configDir string) (*Config, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+	c.mu.RLock()
 	entry, exists := c.entries[configDir]
-
-	if exists {
-		// Check TTL
-		if time.Since(entry.loadedAt) < c.ttl {
-			return entry.config, nil
-		}
-		// Entry expired, remove it
-		delete(c.entries, configDir)
+	if exists && time.Since(entry.loadedAt) < c.ttl {
+		cfg := entry.config
+		c.mu.RUnlock()
+		return cfg, nil
 	}
+	c.mu.RUnlock()
 
-	// Load fresh
 	cfg, err := LoadConfig(configDir)
 	if err != nil {
 		return nil, err
 	}
 
-	// Cache it
+	c.mu.Lock()
 	c.entries[configDir] = &cachedConfig{
 		config:     cfg,
 		loadedAt:   time.Now(),
 		configPath: filepath.Join(configDir, "config.yaml"),
 	}
+	c.mu.Unlock()
 
 	return cfg, nil
 }
