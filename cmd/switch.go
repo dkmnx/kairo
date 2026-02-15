@@ -95,6 +95,7 @@ var switchCmd = &cobra.Command{
 			fmt.Sprintf("%s=%s", envSonnetModel, provider.Model),
 			fmt.Sprintf("%s=%s", envOpusModel, provider.Model),
 			fmt.Sprintf("%s=%s", envSmallFast, provider.Model),
+			"NODE_OPTIONS=--no-deprecation",
 		}
 
 		secretsPath := filepath.Join(dir, "secrets.age")
@@ -174,7 +175,7 @@ var switchCmd = &cobra.Command{
 					return
 				}
 
-				setupSignalHandler()
+				setupSignalHandler(cleanup)
 
 				var execCmd *exec.Cmd
 				if useCmdExe {
@@ -189,9 +190,9 @@ var switchCmd = &cobra.Command{
 
 				if err := execCmd.Run(); err != nil {
 					cmd.Printf("Error running Qwen: %v\n", err)
+					exitProcess(1)
 				}
-
-				// Cleanup via deferred cleanup() above
+				return
 			}
 
 			// Claude harness - existing wrapper script logic
@@ -210,7 +211,7 @@ var switchCmd = &cobra.Command{
 			ui.ClearScreen()
 			ui.PrintBanner(version.Version, provider.Name)
 
-			setupSignalHandler()
+			setupSignalHandler(cleanup)
 
 			// Execute the wrapper script instead of claude directly
 			// The wrapper script will:
@@ -277,13 +278,16 @@ func init() {
 	rootCmd.AddCommand(switchCmd)
 }
 
-func setupSignalHandler() {
+func setupSignalHandler(cleanup func()) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		sig := <-sigChan
 		signal.Stop(sigChan)
+		if cleanup != nil {
+			cleanup()
+		}
 		code := 128
 		if s, ok := sig.(syscall.Signal); ok {
 			code += int(s)
