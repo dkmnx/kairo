@@ -8,6 +8,17 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
+// Validation limits for provider and model names.
+const (
+	// MaxProviderNameLength is the maximum length for custom provider names.
+	// Most provider names are short identifiers (e.g., "anthropic", "openai").
+	MaxProviderNameLength = 50
+
+	// MaxModelNameLength is the maximum length for model names.
+	// Most LLM model names are reasonable length (e.g., "claude-3-opus-20240229").
+	MaxModelNameLength = 100
+)
+
 // validateCrossProviderConfig validates configuration across all providers to detect conflicts.
 //
 // This function checks for environment variable collisions where multiple providers
@@ -73,8 +84,8 @@ func ValidateProviderModel(providerName, modelName string) error {
 		// If provider has a default model, do basic validation
 		if def.Model != "" {
 			// Check model name length (most LLM model names are reasonable length)
-			if len(modelName) > 100 {
-				return fmt.Errorf("model name '%s' for provider '%s' is too long (max 100 characters)", modelName, providerName)
+			if len(modelName) > MaxModelNameLength {
+				return fmt.Errorf("model name '%s' for provider '%s' is too long (max %d characters)", modelName, providerName, MaxModelNameLength)
 			}
 			// Check for valid characters (alphanumeric, hyphens, underscores, dots)
 			for _, r := range modelName {

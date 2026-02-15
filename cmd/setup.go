@@ -33,9 +33,9 @@ func validateCustomProviderName(name string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("provider name is required")
 	}
-	// Check maximum length (50 characters)
-	if len(name) > 50 {
-		return "", fmt.Errorf("provider name must be at most 50 characters (got %d)", len(name))
+	// Check maximum length
+	if len(name) > validate.MaxProviderNameLength {
+		return "", fmt.Errorf("provider name must be at most %d characters (got %d)", validate.MaxProviderNameLength, len(name))
 	}
 	if !validProviderName.MatchString(name) {
 		return "", fmt.Errorf("provider name must start with a letter and contain only alphanumeric characters, underscores, and hyphens")
