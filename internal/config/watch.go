@@ -51,14 +51,14 @@ func (fw *FileWatcher) checkForChanges() {
 		return // File doesn't exist, nothing to watch
 	}
 
-	fw.cache.mu.RLock()
-	entry := fw.cache.entries[fw.watchDir]
-	fw.cache.mu.RUnlock()
+	fw.cache.mu.Lock()
+	defer fw.cache.mu.Unlock()
 
+	entry := fw.cache.entries[fw.watchDir]
 	if entry != nil {
 		// Check if file was modified since we cached it
 		if info.ModTime().After(entry.loadedAt) {
-			fw.cache.Invalidate(fw.watchDir)
+			delete(fw.cache.entries, fw.watchDir)
 		}
 	}
 }
