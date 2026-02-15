@@ -1,6 +1,9 @@
 package providers
 
 // BuiltInProviders contains the definitions of all supported built-in providers.
+// Note: EnvVars are hardcoded configuration values defined by Kairo maintainers,
+// not user input. They contain only timeout/model settings - no sensitive data.
+// Provider-specific secrets (API keys) are stored separately in encrypted form.
 var BuiltInProviders = map[string]ProviderDefinition{
 	"anthropic": {
 		Name:           "Native Anthropic",
