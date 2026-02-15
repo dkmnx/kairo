@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/dkmnx/kairo/internal/performance"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/performance"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
