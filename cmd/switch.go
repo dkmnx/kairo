@@ -180,8 +180,8 @@ var switchCmd = &cobra.Command{
 
 				go func() {
 					sig := <-sigChan
-					cleanup()
 					signal.Stop(sigChan)
+					// Let deferred cleanup() handle resource cleanup
 					code := 128
 					if s, ok := sig.(syscall.Signal); ok {
 						code += int(s)
@@ -204,9 +204,7 @@ var switchCmd = &cobra.Command{
 					cmd.Printf("Error running Qwen: %v\n", err)
 				}
 
-				// Cleanup happens before returning - signal handler runs independently
-				cleanup()
-				return
+				// Cleanup via deferred cleanup() above
 			}
 
 			// Claude harness - existing wrapper script logic
@@ -231,9 +229,8 @@ var switchCmd = &cobra.Command{
 
 			go func() {
 				sig := <-sigChan
-				cleanup()
 				signal.Stop(sigChan)
-				// Exit with signal code (cross-platform)
+				// Let deferred cleanup() handle resource cleanup
 				code := 128
 				if s, ok := sig.(syscall.Signal); ok {
 					code += int(s)
@@ -263,8 +260,7 @@ var switchCmd = &cobra.Command{
 				cmd.Printf("Error running Claude: %v\n", err)
 			}
 
-			// Cleanup happens before returning - signal handler runs independently
-			cleanup()
+			// Cleanup via deferred cleanup() above
 			return
 		}
 
