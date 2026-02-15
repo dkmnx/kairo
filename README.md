@@ -142,14 +142,13 @@ flowchart TB
 
 ## Features
 
-| Feature                | Description                                                         |
-| ---------------------- | ------------------------------------------------------------------- |
-| **Multi-Harness**      | Claude Code (default), Qwen Code                                    |
-| **Secure Encryption**  | Age (X25519) encryption for all API keys                            |
-| **Key Rotation**       | Regenerate encryption keys periodically                             |
-| **Audit Logging**      | Track all configuration changes                                     |
-| **Cross-Platform**     | Linux, macOS, Windows support                                       |
-| **Model Override**     | `--model` flag to override Qwen Code model (passed through to qwen) |
+| Feature                | Description                              |
+| ---------------------- | ---------------------------------------- |
+| **Multi-Harness**      | Claude Code (default), Qwen Code         |
+| **Secure Encryption**  | Age (X25519) encryption for all API keys |
+| **Key Rotation**       | Regenerate encryption keys periodically  |
+| **Audit Logging**      | Track all configuration changes          |
+| **Cross-Platform**     | Linux, macOS, Windows support            |
 
 ## Metrics
 
@@ -211,15 +210,14 @@ kairo metrics reset
 
 ### Execution
 
-| Command                                   | Description                                |
-| ----------------------------------------- | ------------------------------------------ |
-| `kairo switch <provider>`                 | Switch and exec CLI (claude or qwen)       |
-| `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                      |
-| `kairo switch <provider> --model <model>` | Override model (Qwen only)                 |
-| `kairo harness get`                       | Get current default harness                |
-| `kairo harness set <harness>`             | Set default harness (claude or qwen)       |
-| `kairo <provider> [args]`                 | Shorthand for switch                       |
-| `kairo -- "query"`                        | Query mode (default provider)              |
+| Command                                   | Description                          |
+| ----------------------------------------- | ------------------------------------ |
+| `kairo switch <provider>`                 | Switch and exec CLI (claude or qwen) |
+| `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                |
+| `kairo harness get`                       | Get current default harness          |
+| `kairo harness set <harness>`             | Set default harness (claude or qwen) |
+| `kairo <provider> [args]`                 | Shorthand for switch                 |
+| `kairo -- "query"`                        | Query mode (default provider)        |
 
 ### Maintenance
 
