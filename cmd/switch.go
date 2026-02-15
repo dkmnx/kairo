@@ -174,20 +174,7 @@ var switchCmd = &cobra.Command{
 					return
 				}
 
-				// Set up signal handling for cleanup on SIGINT/SIGTERM
-				sigChan := make(chan os.Signal, 1)
-				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-				go func() {
-					sig := <-sigChan
-					signal.Stop(sigChan)
-					// Let deferred cleanup() handle resource cleanup
-					code := 128
-					if s, ok := sig.(syscall.Signal); ok {
-						code += int(s)
-					}
-					exitProcess(code)
-				}()
+				setupSignalHandler()
 
 				var execCmd *exec.Cmd
 				if useCmdExe {
@@ -223,20 +210,7 @@ var switchCmd = &cobra.Command{
 			ui.ClearScreen()
 			ui.PrintBanner(version.Version, provider.Name)
 
-			// Set up signal handling for cleanup on SIGINT/SIGTERM
-			sigChan := make(chan os.Signal, 1)
-			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-			go func() {
-				sig := <-sigChan
-				signal.Stop(sigChan)
-				// Let deferred cleanup() handle resource cleanup
-				code := 128
-				if s, ok := sig.(syscall.Signal); ok {
-					code += int(s)
-				}
-				exitProcess(code)
-			}()
+			setupSignalHandler()
 
 			// Execute the wrapper script instead of claude directly
 			// The wrapper script will:
@@ -301,4 +275,19 @@ func init() {
 	switchCmd.Flags().StringVar(&modelFlag, "model", "", "Model to use (passed through to CLI harness)")
 	switchCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
 	rootCmd.AddCommand(switchCmd)
+}
+
+func setupSignalHandler() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		signal.Stop(sigChan)
+		code := 128
+		if s, ok := sig.(syscall.Signal); ok {
+			code += int(s)
+		}
+		exitProcess(code)
+	}()
 }
