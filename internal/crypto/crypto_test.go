@@ -468,3 +468,88 @@ func TestRotateKeyInvalidOldKey(t *testing.T) {
 		t.Errorf("should be able to decrypt with valid key: %v", err)
 	}
 }
+
+func TestDecryptCorruptedFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(keyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "corrupted.age")
+
+	// Write corrupted data (not valid age encryption)
+	corruptedData := []byte("this is not encrypted data!!!")
+	if err := os.WriteFile(secretsPath, corruptedData, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = DecryptSecrets(secretsPath, keyPath)
+	if err == nil {
+		t.Error("DecryptSecrets() should error on corrupted file")
+	}
+}
+
+func TestDecryptTruncatedFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(keyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "truncated.age")
+
+	// First encrypt some valid data
+	validContent := "ANTHROPIC_API_KEY=test-key-123"
+	err = EncryptSecrets(secretsPath, keyPath, validContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Read and truncate the file
+	data, err := os.ReadFile(secretsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Write truncated data (half of original)
+	truncatedData := data[:len(data)/2]
+	if err := os.WriteFile(secretsPath, truncatedData, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = DecryptSecrets(secretsPath, keyPath)
+	if err == nil {
+		t.Error("DecryptSecrets() should error on truncated file")
+	}
+}
+
+func TestDecryptRandomData(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	keyPath := filepath.Join(tmpDir, "age.key")
+	err := GenerateKey(keyPath)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, "random.age")
+
+	// Write random bytes (not valid age encryption)
+	randomData := make([]byte, 256)
+	for i := range randomData {
+		randomData[i] = byte(i % 256)
+	}
+	if err := os.WriteFile(secretsPath, randomData, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = DecryptSecrets(secretsPath, keyPath)
+	if err == nil {
+		t.Error("DecryptSecrets() should error on random data")
+	}
+}

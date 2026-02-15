@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/audit"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -122,7 +123,8 @@ var auditExportCmd = &cobra.Command{
 		}
 
 		if exportOutput == "" {
-			return fmt.Errorf("--output is required for export")
+			return kairoerrors.NewError(kairoerrors.ConfigError,
+				"--output is required for export")
 		}
 
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -318,5 +320,6 @@ func exportAuditLog(entries []audit.AuditEntry, outputPath, format string) error
 		return nil
 	}
 
-	return fmt.Errorf("unsupported format: %s (supported: csv, json)", format)
+	return kairoerrors.NewError(kairoerrors.ConfigError,
+		fmt.Sprintf("unsupported format: %s (supported: csv, json)", format))
 }

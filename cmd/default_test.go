@@ -61,13 +61,13 @@ providers:
 		t.Fatal(err)
 	}
 
-	t.Logf("Before: configDir=%s", configDir)
+	t.Logf("Before: configDir=%s", getConfigDir())
 	rootCmd.SetArgs([]string{"default", "zai"})
 	err = rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
-	t.Logf("After: configDir=%s", configDir)
+	t.Logf("After: configDir=%s", getConfigDir())
 
 	cfg, err := config.LoadConfig(tmpDir)
 	if err != nil {

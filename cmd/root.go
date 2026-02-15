@@ -26,6 +26,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -36,6 +37,7 @@ import (
 
 var (
 	configDir   string
+	configDirMu sync.RWMutex // Protects configDir
 	verbose     bool
 	configCache *config.ConfigCache
 )
@@ -49,7 +51,18 @@ func setVerbose(v bool) {
 }
 
 func setConfigDir(dir string) {
+	configDirMu.Lock()
+	defer configDirMu.Unlock()
 	configDir = dir
+}
+
+func getConfigDir() string {
+	configDirMu.RLock()
+	defer configDirMu.RUnlock()
+	if configDir != "" {
+		return configDir
+	}
+	return env.GetConfigDir()
 }
 
 var rootCmd = &cobra.Command{
@@ -184,13 +197,6 @@ func init() {
 			configCache.Invalidate(dir)
 		}
 	}
-}
-
-func getConfigDir() string {
-	if configDir != "" {
-		return configDir
-	}
-	return env.GetConfigDir()
 }
 
 // handleConfigError provides user-friendly guidance for config errors.

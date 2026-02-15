@@ -161,11 +161,13 @@ kairo/
 - **Line Length:** 120 characters (MD013)
 - **Indentation:** Tabs (Go standard)
 - **Naming:** Go conventions (PascalCase for exported, camelCase for unexported)
-- **Error Handling:** Typed errors from `internal/errors` package
+- **Error Handling:** Always use typed errors from `internal/errors` package
 - **Formatting:** `gofmt -w .` (run before committing)
 - **Vetting:** `go vet ./...` (run before committing)
 
 ### Error Handling Pattern
+
+When handling errors, always use an error type from the `kairoerrors` package. Never use plain `errors.New()` or `fmt.Errorf()` without a typed error.
 
 ```go
 import kairoerrors "github.com/dkmnx/kairo/internal/errors"

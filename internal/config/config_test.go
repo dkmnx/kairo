@@ -622,3 +622,54 @@ func TestParseSecretsNewlines(t *testing.T) {
 		t.Error("ParseSecrets() should skip line 'newline' (no =)")
 	}
 }
+
+func TestLoadConfigEmptyFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Create an empty config file
+	if err := os.WriteFile(configPath, []byte(""), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Empty file should return error (not valid YAML)
+	_, err := LoadConfig(tmpDir)
+	if err == nil {
+		t.Error("LoadConfig() on empty file should error")
+	}
+}
+
+func TestLoadConfigWhitespaceOnly(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Create a file with only whitespace
+	if err := os.WriteFile(configPath, []byte("   \n\n   \n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Whitespace-only file should return error (not valid YAML)
+	_, err := LoadConfig(tmpDir)
+	if err == nil {
+		t.Error("LoadConfig() on whitespace-only file should error")
+	}
+}
+
+func TestLoadConfigCommentOnly(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Create a file with only comments - YAML requires content, comments alone fail
+	commentContent := `# This is a comment
+# Another comment
+`
+	if err := os.WriteFile(configPath, []byte(commentContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Comment-only file returns error (YAML parser requires content)
+	_, err := LoadConfig(tmpDir)
+	if err == nil {
+		t.Error("LoadConfig() on comment-only file should error")
+	}
+}

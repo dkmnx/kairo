@@ -395,17 +395,16 @@ func calculateDelay(attempt int, cfg RetryConfig) time.Duration {
 	}
 
 	// Exponential backoff: base * 2^attempt
-	// Note: Using loop instead of 1 << attempt to avoid float64 type issues
-	backoffFactor := 1.0
-	for i := 0; i < int(attempt); i++ {
-		backoffFactor *= 2
-		// Prevent integer overflow in time.Duration calculations
-		// MaxSafeBackoffFactor is 10^18, safe for int64 nanoseconds
-		if backoffFactor > MaxSafeBackoffFactor {
-			backoffFactor = MaxSafeBackoffFactor
-			break
-		}
+	// Use bit shifting for O(1) calculation instead of loop
+	// 2^60 ≈ 1.15e18 exceeds MaxSafeBackoffFactor (1.0e18)
+	const maxBackoffBits = 60
+	var backoffFactor float64
+	if attempt >= maxBackoffBits {
+		backoffFactor = MaxSafeBackoffFactor
+	} else {
+		backoffFactor = float64(uint(1) << uint(attempt))
 	}
+
 	delay := time.Duration(float64(cfg.BaseDelay) * backoffFactor)
 
 	// Cap at max delay

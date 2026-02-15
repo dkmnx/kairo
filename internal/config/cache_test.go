@@ -1,8 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
@@ -134,4 +136,47 @@ func TestConfigCache_InvalidateNonExistent(t *testing.T) {
 
 	// Invalidate should not panic for non-existent entries
 	cache.Invalidate("nonexistent")
+}
+
+func TestConfigCache_ConcurrentWrites(t *testing.T) {
+	cache := NewConfigCache(5 * time.Minute)
+	tmpDir := t.TempDir()
+
+	// Create initial config file
+	configContent := `default_provider: test
+providers: {}
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte(configContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run concurrent writes (simulate config modification)
+	var wg sync.WaitGroup
+	errs := make(chan error, 20)
+
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			// Invalidate and reload - simulates config modification
+			cache.Invalidate(tmpDir)
+			cfg, err := cache.Get(tmpDir)
+			if err != nil {
+				errs <- err
+				return
+			}
+			// Verify we got a valid config
+			if cfg == nil {
+				errs <- fmt.Errorf("nil config returned")
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errs)
+
+	// Check for any errors
+	for err := range errs {
+		t.Errorf("Concurrent write error: %v", err)
+	}
 }

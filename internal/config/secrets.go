@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"strings"
 )
 
@@ -20,6 +21,7 @@ func ParseSecrets(secrets string) map[string]string {
 			key, value := parts[0], parts[1]
 			// Skip entries with empty keys or values, or newlines in key or value (malformed input)
 			if key == "" || value == "" || strings.Contains(key, "\n") || strings.Contains(value, "\n") {
+				log.Printf("Warning: skipping malformed secret entry: %q", line)
 				continue
 			}
 			result[key] = value
