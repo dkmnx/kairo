@@ -89,7 +89,10 @@ func TestSwitchCmd_WithAPIKey_Success(t *testing.T) {
 
 	var buf bytes.Buffer
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 	os.Stdout = w
 
 	done := make(chan struct{})
@@ -200,7 +203,10 @@ func TestSwitchCmd_WithoutAPIKey_Success(t *testing.T) {
 
 	var buf bytes.Buffer
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 	os.Stdout = w
 
 	done := make(chan struct{})
