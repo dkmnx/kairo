@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -539,9 +540,9 @@ func TestContainsSubstring(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := containsSubstring(tt.s, tt.substr)
+			result := strings.Contains(tt.s, tt.substr)
 			if result != tt.expected {
-				t.Errorf("containsSubstring(%q, %q) = %v, want %v",
+				t.Errorf("strings.Contains(%q, %q) = %v, want %v",
 					tt.s, tt.substr, result, tt.expected)
 			}
 		})

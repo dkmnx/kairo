@@ -10,6 +10,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
+	"github.com/dkmnx/kairo/internal/validate"
 )
 
 func TestProviderDefaults(t *testing.T) {
@@ -470,7 +471,7 @@ func TestConfig_CrossProviderValidation(t *testing.T) {
 		}
 
 		// This should detect the collision
-		err := validateCrossProviderConfig(cfg)
+		err := validate.ValidateCrossProviderConfig(cfg)
 		if err == nil {
 			t.Error("Expected error for env var collision, got nil")
 		}
@@ -483,18 +484,18 @@ func TestConfig_CrossProviderValidation(t *testing.T) {
 	t.Run("ModelValidation", func(t *testing.T) {
 		// Test with a provider that has a default model (zai has "glm-4.7")
 		// This should validate the model name
-		err := validateProviderModel("zai", "invalid@model#name!")
+		err := validate.ValidateProviderModel("zai", "invalid@model#name!")
 		if err == nil {
 			t.Error("Expected error for invalid model with special characters, got nil")
 		}
 		// Test with a model that's too long
 		longModel := strings.Repeat("a", 101)
-		err = validateProviderModel("zai", longModel)
+		err = validate.ValidateProviderModel("zai", longModel)
 		if err == nil {
 			t.Error("Expected error for model name that's too long, got nil")
 		}
 		// Test with a valid model - should not error
-		err = validateProviderModel("zai", "valid-model-name.123")
+		err = validate.ValidateProviderModel("zai", "valid-model-name.123")
 		if err != nil {
 			t.Errorf("Expected valid model to pass validation, got error: %v", err)
 		}
@@ -520,7 +521,7 @@ func TestConfig_CrossProviderValidation(t *testing.T) {
 			DefaultProvider: "zai",
 		}
 
-		err := validateCrossProviderConfig(cfg)
+		err := validate.ValidateCrossProviderConfig(cfg)
 		if err != nil {
 			t.Errorf("Expected valid config to pass validation, got error: %v", err)
 		}

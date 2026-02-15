@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -200,9 +201,9 @@ func handleConfigError(cmd *cobra.Command, err error) {
 	// This can appear in two forms:
 	// 1. Raw YAML error: "field X not found in type config.Config"
 	// 2. Wrapped error: "configuration file contains field(s) not recognized"
-	if (containsSubstring(errStr, "field") && containsSubstring(errStr, "not found in type")) ||
-		containsSubstring(errStr, "configuration file contains field(s) not recognized") ||
-		containsSubstring(errStr, "your installed kairo binary is outdated") {
+	if (strings.Contains(errStr, "field") && strings.Contains(errStr, "not found in type")) ||
+		strings.Contains(errStr, "configuration file contains field(s) not recognized") ||
+		strings.Contains(errStr, "your installed kairo binary is outdated") {
 		cmd.Println("Error: Your kairo binary is outdated and cannot read your configuration file.")
 		cmd.Println()
 		cmd.Println("The configuration file contains newer fields that this version doesn't recognize.")
@@ -231,14 +232,4 @@ func handleConfigError(cmd *cobra.Command, err error) {
 
 	// Default error handling
 	cmd.Printf("Error loading config: %v\n", err)
-}
-
-// containsSubstring checks if a string contains a substring.
-func containsSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

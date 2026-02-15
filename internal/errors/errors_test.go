@@ -2,6 +2,7 @@ package errors
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -10,11 +11,6 @@ func TestNewError(t *testing.T) {
 		err := NewError(ConfigError, "configuration not found")
 		if err == nil {
 			t.Fatal("NewError() returned nil")
-		}
-
-		// Defensive check for static analysis
-		if err == nil {
-			return
 		}
 
 		if err.Type != ConfigError {
@@ -69,13 +65,13 @@ func TestWithContext(t *testing.T) {
 
 		errMsg := err.Error()
 		// Map order is not guaranteed, just check values are present
-		if !containsSubstring(errMsg, "provider=zai") {
+		if !strings.Contains(errMsg, "provider=zai") {
 			t.Errorf("Error() should contain provider context, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "action=switch") {
+		if !strings.Contains(errMsg, "action=switch") {
 			t.Errorf("Error() should contain action context, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "provider not configured") {
+		if !strings.Contains(errMsg, "provider not configured") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
 	})
@@ -87,13 +83,13 @@ func TestWithContext(t *testing.T) {
 
 		errMsg := err.Error()
 		// Map order is not guaranteed, just check both values are present
-		if !containsSubstring(errMsg, "file=/path/to/config") {
+		if !strings.Contains(errMsg, "file=/path/to/config") {
 			t.Errorf("Error() should contain file context, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "line=42") {
+		if !strings.Contains(errMsg, "line=42") {
 			t.Errorf("Error() should contain line context, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "invalid config") {
+		if !strings.Contains(errMsg, "invalid config") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
 	})
@@ -196,13 +192,13 @@ func TestErrorStringFormatting(t *testing.T) {
 			WithContext("attempt", "3")
 		errMsg := err.Error()
 		// Map order is not guaranteed, just check values are present
-		if !containsSubstring(errMsg, "provider unavailable") {
+		if !strings.Contains(errMsg, "provider unavailable") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "name=anthropic") {
+		if !strings.Contains(errMsg, "name=anthropic") {
 			t.Errorf("Error() should contain name context, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "attempt=3") {
+		if !strings.Contains(errMsg, "attempt=3") {
 			t.Errorf("Error() should contain attempt context, got: %v", errMsg)
 		}
 	})
@@ -214,29 +210,16 @@ func TestErrorStringFormatting(t *testing.T) {
 			WithContext("port", "443")
 
 		errMsg := err.Error()
-		if !containsSubstring(errMsg, "failed to connect") {
+		if !strings.Contains(errMsg, "failed to connect") {
 			t.Error("Error message should contain original message")
 		}
-		if !containsSubstring(errMsg, "connection timeout") {
+		if !strings.Contains(errMsg, "connection timeout") {
 			t.Error("Error message should contain cause")
 		}
-		if !containsSubstring(errMsg, "host=api.example.com") {
+		if !strings.Contains(errMsg, "host=api.example.com") {
 			t.Error("Error message should contain host context")
 		}
 	})
-}
-
-func containsSubstring(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && findSubstring(s, substr))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func TestFileError(t *testing.T) {
@@ -261,13 +244,13 @@ func TestFileError(t *testing.T) {
 		}
 
 		errMsg := err.Error()
-		if !containsSubstring(errMsg, "failed to write config") {
+		if !strings.Contains(errMsg, "failed to write config") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "permission denied") {
+		if !strings.Contains(errMsg, "permission denied") {
 			t.Errorf("Error() should contain cause, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "path=/path/to/config.yaml") {
+		if !strings.Contains(errMsg, "path=/path/to/config.yaml") {
 			t.Errorf("Error() should contain path context, got: %v", errMsg)
 		}
 	})
@@ -284,10 +267,10 @@ func TestFileError(t *testing.T) {
 		}
 
 		errMsg := err.Error()
-		if !containsSubstring(errMsg, "file not found") {
+		if !strings.Contains(errMsg, "file not found") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "path=/missing/file.txt") {
+		if !strings.Contains(errMsg, "path=/missing/file.txt") {
 			t.Errorf("Error() should contain path context, got: %v", errMsg)
 		}
 	})
@@ -324,13 +307,13 @@ func TestConfigFileError(t *testing.T) {
 		}
 
 		errMsg := err.Error()
-		if !containsSubstring(errMsg, "failed to parse config") {
+		if !strings.Contains(errMsg, "failed to parse config") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "path=/home/user/.config/kairo/config") {
+		if !strings.Contains(errMsg, "path=/home/user/.config/kairo/config") {
 			t.Errorf("Error() should contain path context, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "hint=Check YAML syntax and indentation") {
+		if !strings.Contains(errMsg, "hint=Check YAML syntax and indentation") {
 			t.Errorf("Error() should contain hint context, got: %v", errMsg)
 		}
 	})
@@ -356,7 +339,7 @@ func TestConfigFileError(t *testing.T) {
 		}
 
 		errMsg := err.Error()
-		if !containsSubstring(errMsg, "config file not found") {
+		if !strings.Contains(errMsg, "config file not found") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
 	})
@@ -388,13 +371,13 @@ func TestCryptoErrorWithHint(t *testing.T) {
 		}
 
 		errMsg := err.Error()
-		if !containsSubstring(errMsg, "failed to decrypt secrets") {
+		if !strings.Contains(errMsg, "failed to decrypt secrets") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "X25519 key not found") {
+		if !strings.Contains(errMsg, "X25519 key not found") {
 			t.Errorf("Error() should contain cause, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "hint=Ensure 'age.key' exists in config directory") {
+		if !strings.Contains(errMsg, "hint=Ensure 'age.key' exists in config directory") {
 			t.Errorf("Error() should contain hint context, got: %v", errMsg)
 		}
 	})
@@ -411,10 +394,10 @@ func TestCryptoErrorWithHint(t *testing.T) {
 		}
 
 		errMsg := err.Error()
-		if !containsSubstring(errMsg, "encryption failed") {
+		if !strings.Contains(errMsg, "encryption failed") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "hint=Check file permissions on 'secrets.age'") {
+		if !strings.Contains(errMsg, "hint=Check file permissions on 'secrets.age'") {
 			t.Errorf("Error() should contain hint context, got: %v", errMsg)
 		}
 	})
@@ -442,13 +425,13 @@ func TestProviderErr(t *testing.T) {
 		}
 
 		errMsg := err.Error()
-		if !containsSubstring(errMsg, "API request failed") {
+		if !strings.Contains(errMsg, "API request failed") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "HTTP 401 Unauthorized") {
+		if !strings.Contains(errMsg, "HTTP 401 Unauthorized") {
 			t.Errorf("Error() should contain cause, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "provider=zai") {
+		if !strings.Contains(errMsg, "provider=zai") {
 			t.Errorf("Error() should contain provider context, got: %v", errMsg)
 		}
 	})
@@ -481,10 +464,10 @@ func TestProviderErr(t *testing.T) {
 		}
 
 		errMsg := err.Error()
-		if !containsSubstring(errMsg, "provider not configured") {
+		if !strings.Contains(errMsg, "provider not configured") {
 			t.Errorf("Error() should contain message, got: %v", errMsg)
 		}
-		if !containsSubstring(errMsg, "provider=minimax") {
+		if !strings.Contains(errMsg, "provider=minimax") {
 			t.Errorf("Error() should contain provider context, got: %v", errMsg)
 		}
 	})
