@@ -206,7 +206,8 @@ kairo metrics reset
 | `kairo status`                   | Test all providers                   |
 | `kairo test <provider>`          | Test specific provider               |
 | `kairo default <provider>`       | Get/set default provider             |
-| `kairo reset <provider\          | all>`                                | Remove provider config |
+| `kairo reset <provider>`         | Remove provider config               |
+| `kairo reset all`                | Remove all provider configs          |
 
 ### Execution
 
