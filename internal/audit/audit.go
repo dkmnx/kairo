@@ -379,6 +379,8 @@ func (l *Logger) enrichWithContext(entry *AuditEntry) {
 // writeEntry writes an audit entry to the log file.
 // The entry is serialized to JSON, written to the file with a newline,
 // and then synced to disk to ensure durability even in crash scenarios.
+// Note: JSON marshaling is performed BEFORE acquiring the lock to avoid blocking
+// other operations during serialization. The lock is held only for the file write.
 func (l *Logger) writeEntry(entry AuditEntry) error {
 	data, err := json.Marshal(entry)
 	if err != nil {

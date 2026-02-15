@@ -113,6 +113,8 @@ func validateBaseURL(url, providerName string) error {
 }
 
 // providerStatusIcon returns a status indicator for a provider's configuration.
+// Note: This function is intentionally used only in tests (setup_test.go) to verify
+// provider status display logic. It remains exported for test coverage purposes.
 func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider string) string {
 	if !providers.RequiresAPIKey(provider) {
 		if _, exists := cfg.Providers[provider]; exists {
