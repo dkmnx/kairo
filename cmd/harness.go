@@ -26,7 +26,7 @@ var harnessGetCmd = &cobra.Command{
 
 		cfg, err := configCache.Get(dir)
 		if err != nil {
-			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+			handleConfigError(cmd, err)
 			return
 		}
 
@@ -66,7 +66,7 @@ var harnessSetCmd = &cobra.Command{
 
 		cfg, err := configCache.Get(dir)
 		if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
-			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+			handleConfigError(cmd, err)
 			return
 		}
 		if err != nil {
@@ -96,4 +96,32 @@ func init() {
 	harnessCmd.AddCommand(harnessGetCmd)
 	harnessCmd.AddCommand(harnessSetCmd)
 	rootCmd.AddCommand(harnessCmd)
+}
+
+// getHarness returns the harness to use, checking flag then config then defaulting to claude.
+func getHarness(flagHarness, configHarness string) string {
+	harness := flagHarness
+	if harness == "" {
+		harness = configHarness
+	}
+	if harness == "" {
+		return "claude"
+	}
+	if harness != "claude" && harness != "qwen" {
+		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", harness))
+		return "claude"
+	}
+	return harness
+}
+
+// getHarnessBinary returns the CLI binary name for a given harness.
+func getHarnessBinary(harness string) string {
+	switch harness {
+	case "qwen":
+		return "qwen"
+	case "claude":
+		return "claude"
+	default:
+		return "claude"
+	}
 }

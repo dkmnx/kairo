@@ -24,6 +24,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -71,7 +73,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
 				return
 			}
-			cmd.Printf("Error loading config: %v\n", err)
+			handleConfigError(cmd, err)
 			return
 		}
 
@@ -189,4 +191,45 @@ func getConfigDir() string {
 		return configDir
 	}
 	return env.GetConfigDir()
+}
+
+// handleConfigError provides user-friendly guidance for config errors.
+func handleConfigError(cmd *cobra.Command, err error) {
+	errStr := err.Error()
+
+	// Check for unknown field error (outdated binary)
+	// This can appear in two forms:
+	// 1. Raw YAML error: "field X not found in type config.Config"
+	// 2. Wrapped error: "configuration file contains field(s) not recognized"
+	if (strings.Contains(errStr, "field") && strings.Contains(errStr, "not found in type")) ||
+		strings.Contains(errStr, "configuration file contains field(s) not recognized") ||
+		strings.Contains(errStr, "your installed kairo binary is outdated") {
+		cmd.Println("Error: Your kairo binary is outdated and cannot read your configuration file.")
+		cmd.Println()
+		cmd.Println("The configuration file contains newer fields that this version doesn't recognize.")
+		cmd.Println()
+		cmd.Println("How to fix:")
+		cmd.Println("  Run the installation script for your platform:")
+		cmd.Println()
+
+		// Display platform-specific installation script
+		switch runtime.GOOS {
+		case "windows":
+			cmd.Println("    irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex")
+		default: // linux, darwin (macOS)
+			cmd.Println("    curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh")
+		}
+
+		cmd.Println()
+		cmd.Println("  For manual installation, see:")
+		cmd.Println("    https://github.com/dkmnx/kairo/blob/main/docs/guides/user-guide.md#manual-installation")
+		cmd.Println()
+		if verbose {
+			cmd.Printf("Technical details: %v\n", err)
+		}
+		return
+	}
+
+	// Default error handling
+	cmd.Printf("Error loading config: %v\n", err)
 }

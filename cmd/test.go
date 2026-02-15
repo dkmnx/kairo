@@ -32,7 +32,7 @@ var testCmd = &cobra.Command{
 				ui.PrintInfo("Run 'kairo config " + providerName + "' to configure")
 				return
 			}
-			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+			handleConfigError(cmd, err)
 			return
 		}
 
