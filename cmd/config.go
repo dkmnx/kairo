@@ -125,6 +125,8 @@ var configCmd = &cobra.Command{
 			return
 		}
 
+		configCache.Invalidate(dir)
+
 		secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
 
 		var secretsBuilder strings.Builder
