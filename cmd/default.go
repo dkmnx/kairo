@@ -22,7 +22,7 @@ var defaultCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := config.LoadConfig(dir)
+		cfg, err := configCache.Get(dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				if len(args) == 0 {
