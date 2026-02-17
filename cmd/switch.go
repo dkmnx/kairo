@@ -5,14 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
 
 	"github.com/dkmnx/kairo/internal/audit"
-	"github.com/dkmnx/kairo/internal/config"
-	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
@@ -94,11 +91,7 @@ var switchCmd = &cobra.Command{
 			"NODE_OPTIONS=--no-deprecation",
 		}
 
-		secretsPath := filepath.Join(dir, config.SecretsFileName)
-		keyPath := filepath.Join(dir, config.KeyFileName)
-
-		var secrets map[string]string
-		secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
+		secrets, _, _, err := LoadAndDecryptSecrets(dir)
 		if err != nil {
 			if providers.RequiresAPIKey(providerName) {
 				ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
@@ -107,8 +100,6 @@ var switchCmd = &cobra.Command{
 				return
 			}
 			secrets = make(map[string]string)
-		} else {
-			secrets = config.ParseSecrets(secretsContent)
 		}
 
 		// Convert secrets to env var slice
