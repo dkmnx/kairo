@@ -271,16 +271,11 @@ func setupSignalHandler(ctx context.Context, cleanup func()) {
 
 	go func() {
 		select {
-		case sig := <-sigChan:
+		case <-sigChan:
 			signal.Stop(sigChan)
 			if cleanup != nil {
 				cleanup()
 			}
-			code := 128
-			if s, ok := sig.(syscall.Signal); ok {
-				code += int(s)
-			}
-			exitProcess(code)
 		case <-ctx.Done():
 			signal.Stop(sigChan)
 		}
