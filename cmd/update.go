@@ -107,12 +107,12 @@ func isWindows(goos string) bool {
 	return goos == "windows"
 }
 
-// getInstallScriptURL returns the appropriate install script URL based on OS
-func getInstallScriptURL(goos string) string {
+// getInstallScriptURL returns the appropriate install script URL based on OS and version tag
+func getInstallScriptURL(goos, tag string) string {
 	if isWindows(goos) {
-		return "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1"
+		return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.ps1", tag)
 	}
-	return "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh"
+	return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.sh", tag)
 }
 
 // downloadToTempFile downloads a file from URL and saves to a temporary file
@@ -209,7 +209,9 @@ var updateCmd = &cobra.Command{
 
 This command will:
 1. Check GitHub for the latest release
-2. Download and run the platform-appropriate install script`,
+2. Download and run the platform-appropriate install script from the release tag
+
+Security: The install script is downloaded from the specific release tag to ensure the script matches the version being installed.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentVersion := version.Version
 		if currentVersion == "dev" {
@@ -230,7 +232,7 @@ This command will:
 
 		cmd.Printf("Updating to %s...\n", latest.TagName)
 
-		installScriptURL := getInstallScriptURL(runtime.GOOS)
+		installScriptURL := getInstallScriptURL(runtime.GOOS, latest.TagName)
 
 		confirmed, err := ui.Confirm("Do you want to proceed with installation?")
 		if err != nil {

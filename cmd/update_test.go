@@ -425,30 +425,34 @@ func TestGetInstallScriptURL(t *testing.T) {
 	tests := []struct {
 		name     string
 		goos     string
+		tag      string
 		expected string
 	}{
 		{
 			name:     "windows returns ps1 script",
 			goos:     "windows",
-			expected: "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1",
+			tag:      "v1.0.0",
+			expected: "https://raw.githubusercontent.com/dkmnx/kairo/v1.0.0/scripts/install.ps1",
 		},
 		{
 			name:     "linux returns sh script",
 			goos:     "linux",
-			expected: "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh",
+			tag:      "v2.0.0",
+			expected: "https://raw.githubusercontent.com/dkmnx/kairo/v2.0.0/scripts/install.sh",
 		},
 		{
 			name:     "darwin returns sh script",
 			goos:     "darwin",
-			expected: "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh",
+			tag:      "v1.5.0",
+			expected: "https://raw.githubusercontent.com/dkmnx/kairo/v1.5.0/scripts/install.sh",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getInstallScriptURL(tt.goos)
+			result := getInstallScriptURL(tt.goos, tt.tag)
 			if result != tt.expected {
-				t.Errorf("getInstallScriptURL(%q) = %q, want %q", tt.goos, result, tt.expected)
+				t.Errorf("getInstallScriptURL(%q, %q) = %q, want %q", tt.goos, tt.tag, result, tt.expected)
 			}
 		})
 	}
