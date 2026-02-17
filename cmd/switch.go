@@ -34,6 +34,15 @@ var lookPath = exec.LookPath
 
 var harnessFlag string
 
+const (
+	envBaseURL     = "ANTHROPIC_BASE_URL"
+	envModel       = "ANTHROPIC_MODEL"
+	envHaikuModel  = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+	envSonnetModel = "ANTHROPIC_DEFAULT_SONNET_MODEL"
+	envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
+	envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
+)
+
 var switchCmd = &cobra.Command{
 	Use:   "switch <provider> [args]",
 	Short: "Switch to a provider and execute Claude",
@@ -68,16 +77,6 @@ var switchCmd = &cobra.Command{
 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
-
-		// Environment variable name constants for model configuration
-		const (
-			envBaseURL     = "ANTHROPIC_BASE_URL"
-			envModel       = "ANTHROPIC_MODEL"
-			envHaikuModel  = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
-			envSonnetModel = "ANTHROPIC_DEFAULT_SONNET_MODEL"
-			envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
-			envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
-		)
 
 		// Build environment variables with proper deduplication
 		// Order of precedence (last wins):
