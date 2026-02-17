@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -157,7 +158,9 @@ var switchCmd = &cobra.Command{
 					return
 				}
 
-				setupSignalHandler(cleanup)
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				setupSignalHandler(ctx, cleanup)
 
 				var execCmd *exec.Cmd
 				if useCmdExe {
@@ -193,7 +196,9 @@ var switchCmd = &cobra.Command{
 			ui.ClearScreen()
 			ui.PrintBanner(version.Version, provider.Name)
 
-			setupSignalHandler(cleanup)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			setupSignalHandler(ctx, cleanup)
 
 			// Execute the wrapper script instead of claude directly
 			// The wrapper script will:
@@ -260,20 +265,24 @@ func init() {
 	rootCmd.AddCommand(switchCmd)
 }
 
-func setupSignalHandler(cleanup func()) {
+func setupSignalHandler(ctx context.Context, cleanup func()) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		sig := <-sigChan
-		signal.Stop(sigChan)
-		if cleanup != nil {
-			cleanup()
+		select {
+		case sig := <-sigChan:
+			signal.Stop(sigChan)
+			if cleanup != nil {
+				cleanup()
+			}
+			code := 128
+			if s, ok := sig.(syscall.Signal); ok {
+				code += int(s)
+			}
+			exitProcess(code)
+		case <-ctx.Done():
+			signal.Stop(sigChan)
 		}
-		code := 128
-		if s, ok := sig.(syscall.Signal); ok {
-			code += int(s)
-		}
-		exitProcess(code)
 	}()
 }
