@@ -257,12 +257,12 @@ func EnsureKeyExists(configDir string) error {
 // The old key is replaced with the new key. This should be done periodically
 // as a security best practice.
 func RotateKey(configDir string) error {
-	oldKeyPath := filepath.Join(configDir, "age.key")
+	keyPath := filepath.Join(configDir, "age.key")
 	secretsPath := filepath.Join(configDir, "secrets.age")
 
 	_, err := os.Stat(secretsPath)
 	if os.IsNotExist(err) {
-		return generateNewKeyAndReplace(oldKeyPath)
+		return generateNewKeyAndReplace(keyPath)
 	}
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
@@ -270,7 +270,7 @@ func RotateKey(configDir string) error {
 			WithContext("path", secretsPath)
 	}
 
-	decrypted, err := DecryptSecrets(secretsPath, oldKeyPath)
+	decrypted, err := DecryptSecrets(secretsPath, keyPath)
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets with old key during rotation", err).
@@ -278,13 +278,13 @@ func RotateKey(configDir string) error {
 			WithContext("secrets_path", secretsPath)
 	}
 
-	if err := generateNewKeyAndReplace(oldKeyPath); err != nil {
+	if err := generateNewKeyAndReplace(keyPath); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to generate and replace new encryption key", err).
-			WithContext("path", oldKeyPath)
+			WithContext("path", keyPath)
 	}
 
-	if err := EncryptSecrets(secretsPath, oldKeyPath, decrypted); err != nil {
+	if err := EncryptSecrets(secretsPath, keyPath, decrypted); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to re-encrypt secrets with new key", err).
 			WithContext("hint", "secrets were not encrypted after key rotation").
