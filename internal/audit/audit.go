@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 )
@@ -211,14 +212,9 @@ func (l *Logger) cleanupOldBackups(maxBackups int) {
 		}
 	}
 
-	// Sort by mod time
-	for i := 0; i < len(files)-1; i++ {
-		for j := i + 1; j < len(files); j++ {
-			if files[i].modTime.After(files[j].modTime) {
-				files[i], files[j] = files[j], files[i]
-			}
-		}
-	}
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].modTime.Before(files[j].modTime)
+	})
 
 	// Remove oldest files beyond limit
 	for i := 0; i < len(files)-maxBackups; i++ {
