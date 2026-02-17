@@ -6,7 +6,6 @@ repos:
         entry: gofmt -l
         language: system
         files: \.go$
-        pass_filenames: false
 
       - id: govet
         name: Vet Go code
