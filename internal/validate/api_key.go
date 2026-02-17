@@ -98,7 +98,7 @@ func ValidateURL(rawURL string, providerName string) error {
 		}
 	}
 
-	host := parsed.Host
+	host := parsed.Hostname()
 	if host == "" {
 		return &ValidationError{
 			msg: fmt.Sprintf("%s BaseURL missing host component", providerName),
