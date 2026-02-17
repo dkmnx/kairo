@@ -259,6 +259,7 @@ func EnsureKeyExists(configDir string) error {
 func RotateKey(configDir string) error {
 	keyPath := filepath.Join(configDir, "age.key")
 	secretsPath := filepath.Join(configDir, "secrets.age")
+	backupKeyPath := keyPath + ".backup"
 
 	_, err := os.Stat(secretsPath)
 	if os.IsNotExist(err) {
@@ -278,19 +279,41 @@ func RotateKey(configDir string) error {
 			WithContext("secrets_path", secretsPath)
 	}
 
+	backupKeyData, err := os.ReadFile(keyPath)
+	if err != nil {
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to backup old key before rotation", err).
+			WithContext("path", keyPath)
+	}
+
+	if err := os.WriteFile(backupKeyPath, backupKeyData, 0600); err != nil {
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to write old key backup", err).
+			WithContext("path", backupKeyPath)
+	}
+
 	if err := generateNewKeyAndReplace(keyPath); err != nil {
+		os.Remove(backupKeyPath)
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to generate and replace new encryption key", err).
 			WithContext("path", keyPath)
 	}
 
 	if err := EncryptSecrets(secretsPath, keyPath, decrypted); err != nil {
+		restoreErr := os.Rename(backupKeyPath, keyPath)
+		if restoreErr != nil {
+			return kairoerrors.WrapError(kairoerrors.CryptoError,
+				"CRITICAL: failed to re-encrypt secrets and failed to restore old key", err).
+				WithContext("restore_error", restoreErr.Error()).
+				WithContext("hint", "manual recovery from backup file required: "+backupKeyPath).
+				WithContext("backup_path", backupKeyPath)
+		}
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to re-encrypt secrets with new key", err).
-			WithContext("hint", "secrets were not encrypted after key rotation").
-			WithContext("secrets_path", secretsPath)
+			"failed to re-encrypt secrets with new key, old key restored", err).
+			WithContext("backup_path", backupKeyPath)
 	}
 
+	os.Remove(backupKeyPath)
 	return nil
 }
 
