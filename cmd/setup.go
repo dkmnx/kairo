@@ -164,8 +164,8 @@ func loadOrInitializeConfig(dir string) (*config.Config, error) {
 // Returns nil map with error if secrets file cannot be decrypted.
 // Returns empty map with nil error if secrets file doesn't exist (first-time setup).
 func LoadSecrets(dir string) (map[string]string, string, string, error) {
-	secretsPath := filepath.Join(dir, "secrets.age")
-	keyPath := filepath.Join(dir, "age.key")
+	secretsPath := filepath.Join(dir, config.SecretsFileName)
+	keyPath := filepath.Join(dir, config.KeyFileName)
 
 	secrets := make(map[string]string)
 

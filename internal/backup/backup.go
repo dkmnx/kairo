@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
@@ -31,7 +32,7 @@ func CreateBackup(configDir string) (string, error) {
 	zipWriter := zip.NewWriter(zipFile)
 	defer zipWriter.Close()
 
-	files := []string{"age.key", "secrets.age", "config.yaml"}
+	files := []string{config.KeyFileName, config.SecretsFileName, config.ConfigFileName}
 	for _, f := range files {
 		srcPath := filepath.Join(configDir, f)
 		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
