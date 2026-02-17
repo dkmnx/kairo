@@ -185,11 +185,6 @@ func LoadAndDecryptSecrets(dir string) (map[string]string, string, string, error
 	return secrets, secretsPath, keyPath, nil
 }
 
-// LoadSecrets is deprecated, use LoadAndDecryptSecrets instead
-func LoadSecrets(dir string) (map[string]string, string, string, error) {
-	return LoadAndDecryptSecrets(dir)
-}
-
 // promptForProvider displays interactive provider selection menu and reads user choice.
 //
 // This function presents a numbered list of available providers to the user,
@@ -440,7 +435,7 @@ var setupCmd = &cobra.Command{
 			ui.PrintSuccess(fmt.Sprintf("Harness set to: %s", harnessSelection))
 		}
 
-		secrets, secretsPath, keyPath, err := LoadSecrets(dir)
+		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(dir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
 			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
