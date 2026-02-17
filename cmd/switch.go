@@ -225,6 +225,7 @@ var switchCmd = &cobra.Command{
 
 			if err := execCmd.Run(); err != nil {
 				cmd.Printf("Error running Claude: %v\n", err)
+				exitProcess(1)
 			}
 
 			// Cleanup via deferred cleanup() above
