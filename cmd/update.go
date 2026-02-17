@@ -185,7 +185,13 @@ func runInstallScript(scriptPath string) error {
 			"failed to make script executable", err)
 	}
 
-	shCmd := exec.Command("/bin/sh", scriptPath)
+	shPath, err := exec.LookPath("sh")
+	if err != nil {
+		return kairoerrors.WrapError(kairoerrors.RuntimeError,
+			"failed to find shell", err)
+	}
+
+	shCmd := exec.Command(shPath, scriptPath)
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
 	if err := shCmd.Run(); err != nil {
