@@ -3,6 +3,7 @@ package ui
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"runtime"
@@ -86,7 +87,7 @@ func PromptSecret(prompt string) (string, error) {
 	fmt.Println()
 	if err != nil {
 		// Check if user cancelled (Ctrl+C or EOF)
-		if errors.Is(err, os.ErrClosed) || isEoferr(err) {
+		if errors.Is(err, os.ErrClosed) || errors.Is(err, io.EOF) || isInterrupted(err) {
 			return "", ErrUserCancelled
 		}
 		return "", err
@@ -94,23 +95,22 @@ func PromptSecret(prompt string) (string, error) {
 	return string(password), nil
 }
 
-// isEoferr checks if the error is an EOF or interrupt error
-func isEoferr(err error) bool {
+// isInterrupted checks if the error is from an interrupted read
+func isInterrupted(err error) bool {
 	if err == nil {
 		return false
 	}
-	errStr := err.Error()
-	// "unexpected newline" is returned by fmt.Scanln when input is empty (just Enter)
-	// This is valid input (empty string), not an EOF condition
-	return strings.Contains(errStr, "EOF") || strings.Contains(errStr, "interrupted")
+	return errors.Is(err, os.ErrClosed) || strings.Contains(err.Error(), "interrupted")
 }
 
 // isEmptyInput checks if the error indicates empty input (user just pressed Enter)
+// For fmt.Scanln, this is when the input contains a newline with no tokens
 func isEmptyInput(err error) bool {
 	if err == nil {
 		return false
 	}
-	return strings.Contains(err.Error(), "unexpected newline")
+	// Not EOF or interrupted, treat as empty input (e.g., unexpected newline from fmt.Scanln)
+	return !errors.Is(err, io.EOF) && !isInterrupted(err)
 }
 
 // Prompt prompts the user for input and returns the input string.
@@ -125,7 +125,7 @@ func Prompt(prompt string) (string, error) {
 			// User just pressed Enter, return empty string (not an error)
 			return "", nil
 		}
-		if isEoferr(err) {
+		if errors.Is(err, io.EOF) || isInterrupted(err) {
 			return "", ErrUserCancelled
 		}
 		return "", err
@@ -148,7 +148,7 @@ func PromptWithDefault(prompt, defaultVal string) (string, error) {
 			// User just pressed Enter, return default value (not an error)
 			return defaultVal, nil
 		}
-		if isEoferr(err) {
+		if errors.Is(err, io.EOF) || isInterrupted(err) {
 			return defaultVal, ErrUserCancelled
 		}
 		return defaultVal, err
@@ -206,7 +206,7 @@ func Confirm(prompt string) (bool, error) {
 			// User just pressed Enter, default to No (false, not an error)
 			return false, nil
 		}
-		if isEoferr(err) {
+		if errors.Is(err, io.EOF) || isInterrupted(err) {
 			return false, ErrUserCancelled
 		}
 		return false, err
