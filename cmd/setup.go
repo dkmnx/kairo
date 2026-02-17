@@ -163,7 +163,10 @@ func loadOrInitializeConfig(dir string) (*config.Config, error) {
 // Returns the secrets map, secrets file path, key file path, and any error.
 // Returns nil map with error if secrets file cannot be decrypted.
 // Returns empty map with nil error if secrets file doesn't exist (first-time setup).
-func LoadSecrets(dir string) (map[string]string, string, string, error) {
+// LoadAndDecryptSecrets loads and decrypts secrets from the specified directory.
+// Returns secrets map, secrets path, and key path. If secrets file doesn't exist
+// or decryption fails, returns empty secrets map with appropriate error handling.
+func LoadAndDecryptSecrets(dir string) (map[string]string, string, string, error) {
 	secretsPath := filepath.Join(dir, config.SecretsFileName)
 	keyPath := filepath.Join(dir, config.KeyFileName)
 
@@ -180,6 +183,11 @@ func LoadSecrets(dir string) (map[string]string, string, string, error) {
 
 	secrets = config.ParseSecrets(existingSecrets)
 	return secrets, secretsPath, keyPath, nil
+}
+
+// LoadSecrets is deprecated, use LoadAndDecryptSecrets instead
+func LoadSecrets(dir string) (map[string]string, string, string, error) {
+	return LoadAndDecryptSecrets(dir)
 }
 
 // promptForProvider displays interactive provider selection menu and reads user choice.
