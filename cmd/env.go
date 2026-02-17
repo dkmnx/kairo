@@ -5,16 +5,15 @@ import (
 )
 
 // mergeEnvVars merges environment variable slices, deduplicating by key.
-// If duplicate keys are found, the last value wins (preserves order of precedence).
+// If duplicate keys are found, last value wins (preserves order of precedence).
 // Env vars should be in "KEY=VALUE" format.
 func mergeEnvVars(envs ...[]string) []string {
-	// Use map to track key -> index in result for O(1) lookup and removal
-	seen := make(map[string]int)
+	seen := make(map[string]bool)
 	var result []string
 
 	for _, envSlice := range envs {
 		for _, env := range envSlice {
-			// Extract the key (everything before the first '=')
+			// Extract key (everything before the first '=')
 			idx := strings.IndexByte(env, '=')
 			// Check for invalid format: no '=' or '=' is first or last char
 			if idx <= 0 || idx == len(env)-1 {
@@ -23,21 +22,27 @@ func mergeEnvVars(envs ...[]string) []string {
 			}
 			key := env[:idx]
 
-			// Remove any previous occurrence of this key
-			if prevIdx, exists := seen[key]; exists {
-				// Remove the previous entry by swapping with last and truncating
-				lastIdx := len(result) - 1
-				result[prevIdx] = result[lastIdx]
-				// Update the index for the moved entry
-				if prevIdx != lastIdx {
-					seen[result[prevIdx][:strings.IndexByte(result[prevIdx], '=')]] = prevIdx
+			// Remove previous occurrence if it exists
+			if seen[key] {
+				// Find and remove the previous entry by filtering
+				var filtered []string
+				for _, e := range result {
+					eIdx := strings.IndexByte(e, '=')
+					if eIdx > 0 {
+						eKey := e[:eIdx]
+						if eKey == key {
+							// Skip this one (it's the duplicate)
+							continue
+						}
+					}
+					filtered = append(filtered, e)
 				}
-				result = result[:lastIdx]
+				result = filtered
 			}
 
-			// Add the new entry and record its index
+			// Add the new entry and mark key as seen
 			result = append(result, env)
-			seen[key] = len(result) - 1
+			seen[key] = true
 		}
 	}
 
