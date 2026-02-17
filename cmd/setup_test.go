@@ -840,7 +840,7 @@ func TestLoadOrInitializeConfigError(t *testing.T) {
 	}
 }
 
-func TestLoadSecrets(t *testing.T) {
+func TestLoadAndDecryptSecrets(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cfg := &config.Config{}
@@ -857,9 +857,9 @@ func TestLoadSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsOut, keyOut, err := LoadSecrets(tmpDir)
+	secrets, secretsOut, keyOut, err := LoadAndDecryptSecrets(tmpDir)
 	if err != nil {
-		t.Fatalf("LoadSecrets() error = %v", err)
+		t.Fatalf("LoadAndDecryptSecrets() error = %v", err)
 	}
 	if secretsOut != secretsPath {
 		t.Errorf("secretsPath = %q, want %q", secretsOut, secretsPath)
@@ -880,9 +880,9 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsPath, keyPath, err := LoadSecrets(tmpDir)
+	secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(tmpDir)
 	if err != nil {
-		t.Fatalf("LoadSecrets() error = %v", err)
+		t.Fatalf("LoadAndDecryptSecrets() error = %v", err)
 	}
 	if len(secrets) != 0 {
 		t.Errorf("got %d secrets, want 0", len(secrets))
@@ -909,7 +909,7 @@ func TestLoadSecretsWithCorruptedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, _, _, err := LoadSecrets(tmpDir)
+	secrets, _, _, err := LoadAndDecryptSecrets(tmpDir)
 
 	if err == nil {
 		t.Fatal("Expected error for corrupted secrets file, got nil")
@@ -937,7 +937,7 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, _, _, err := LoadSecrets(tmpDir)
+	secrets, _, _, err := LoadAndDecryptSecrets(tmpDir)
 
 	if err == nil {
 		t.Fatal("Expected error for corrupted key file, got nil")

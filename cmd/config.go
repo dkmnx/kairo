@@ -101,7 +101,7 @@ var configCmd = &cobra.Command{
 			provider.EnvVars = builtinDef.EnvVars
 		}
 
-		secrets, secretsPath, keyPath, err := LoadSecrets(dir)
+		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(dir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
 			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
