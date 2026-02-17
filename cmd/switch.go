@@ -94,8 +94,8 @@ var switchCmd = &cobra.Command{
 			"NODE_OPTIONS=--no-deprecation",
 		}
 
-		secretsPath := filepath.Join(dir, "secrets.age")
-		keyPath := filepath.Join(dir, "age.key")
+		secretsPath := filepath.Join(dir, config.SecretsFileName)
+		keyPath := filepath.Join(dir, config.KeyFileName)
 
 		var secrets map[string]string
 		secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)

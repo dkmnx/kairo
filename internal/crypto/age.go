@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 
 	"filippo.io/age"
+	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
@@ -240,7 +241,7 @@ func loadIdentity(keyPath string) (age.Identity, error) {
 
 // EnsureKeyExists generates a new encryption key if one doesn't exist at the specified directory.
 func EnsureKeyExists(configDir string) error {
-	keyPath := filepath.Join(configDir, "age.key")
+	keyPath := filepath.Join(configDir, config.KeyFileName)
 	_, err := os.Stat(keyPath)
 	if err == nil {
 		return nil
@@ -257,8 +258,8 @@ func EnsureKeyExists(configDir string) error {
 // The old key is replaced with the new key. This should be done periodically
 // as a security best practice.
 func RotateKey(configDir string) error {
-	keyPath := filepath.Join(configDir, "age.key")
-	secretsPath := filepath.Join(configDir, "secrets.age")
+	keyPath := filepath.Join(configDir, config.KeyFileName)
+	secretsPath := filepath.Join(configDir, config.SecretsFileName)
 	backupKeyPath := keyPath + ".backup"
 
 	_, err := os.Stat(secretsPath)
