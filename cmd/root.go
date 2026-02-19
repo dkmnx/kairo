@@ -147,7 +147,7 @@ func findFirstNonFlagArg(args []string) string {
 		// Skip flags
 		if len(arg) > 0 && arg[0] == '-' {
 			// Skip flag value if it's a separate argument
-			if arg == "--config" && i+1 < len(args) {
+			if (arg == "--config" || arg == "--harness") && i+1 < len(args) {
 				i++
 			}
 			continue
@@ -182,6 +182,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
 
 	// Invalidate cache on config-modifying commands
 	setupCmd.PreRun = func(cmd *cobra.Command, args []string) {
