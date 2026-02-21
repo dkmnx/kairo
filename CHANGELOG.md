@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-02-21
+
+### Added
+
+- `--harness` flag on `switch` command to override harness per invocation (claude or qwen)
+- Automatic `--auth-type anthropic` flag passed to Qwen harness
+- Suppression of Node.js deprecation warnings in Claude/Qwen child processes
+- Rollback mechanism for key rotation to restore old key on re-encryption failure
+- Timeout protection for install script downloads in update command
+- Warning logging for silently ignored errors in audit log rotation
+
+### Changed
+
+- Model now passed from provider config instead of `--model` flag (removed)
+- Extracted duplicated secrets loading to shared `LoadAndDecryptSecrets()` function
+- Centralized file name constants in `internal/config/paths.go`
+- Replaced `fmt.Errorf` and string matching with typed errors throughout codebase
+- Simplified `mergeEnvVars` with filter-based deduplication for stability
+- Extracted signal handler, validation, and transaction logic to separate modules
+- Use `RLock` for cache reads to reduce contention
+- Use bit shifting for O(1) exponential backoff calculation
+- Use `exec.LookPath("sh")` for cross-platform shell detection
+
+### Deprecated
+
+- Nothing
+
+### Removed
+
+- `--model` flag from switch command (model now from provider config)
+- Unused `LoadSecrets` alias (use `LoadAndDecryptSecrets`)
+- Unused file watcher code in `internal/config/watch.go`
+
+### Fixed
+
+- SSRF bypass in URL validation by using `Hostname()` to strip port numbers and handle IPv6 brackets
+- Directory traversal vulnerability in `RestoreBackup` by validating extraction paths
+- Config cache mutation issues by invalidating cache after `SaveConfig`
+- TOCTOU race condition in config cache
+- Goroutine leaks in signal handler with context cancellation
+- Race condition in file watcher `checkForChanges`
+- Missing mutex protection for global `configDir`
+- Missing exit code 1 on Claude harness error failure
+- Gofmt pre-commit hook not receiving filenames
+- Empty/malformed secret entries causing silent failures
+
+### Security
+
+- Pin install script downloads to specific release tag instead of main branch to reduce supply chain risk
+- Validate backup extraction paths to prevent directory traversal attacks
+- Fix SSRF bypass in URL validation that allowed `localhost:8080` to evade blocked-host checks
+
 ## [1.9.0] - 2026-02-15
 
 ### Added
@@ -864,6 +916,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.10.0]: https://github.com/dkmnx/kairo/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/dkmnx/kairo/compare/v1.8.4...v1.9.0
 [1.8.4]: https://github.com/dkmnx/kairo/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/dkmnx/kairo/compare/v1.8.2...v1.8.3
