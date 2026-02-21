@@ -1,4 +1,4 @@
-package recover
+package recoveryphrase
 
 import (
 	"crypto/rand"
@@ -10,7 +10,6 @@ import (
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
-// CreateRecoveryPhrase generates a recovery phrase from the key file
 func CreateRecoveryPhrase(keyPath string) (string, error) {
 	keyData, err := os.ReadFile(keyPath)
 	if err != nil {
@@ -18,18 +17,14 @@ func CreateRecoveryPhrase(keyPath string) (string, error) {
 			"read key", err)
 	}
 
-	// Encode key as base64 phrase
 	phrase := base64.RawStdEncoding.EncodeToString(keyData)
 
-	// Split into words for readability
 	words := strings.Fields(phrase)
 
 	return strings.Join(words, "-"), nil
 }
 
-// RecoverFromPhrase recovers the key file from a recovery phrase
 func RecoverFromPhrase(configDir, phrase string) error {
-	// Decode phrase back to key
 	words := strings.Split(phrase, "-")
 	encoded := strings.Join(words, "")
 
@@ -43,7 +38,6 @@ func RecoverFromPhrase(configDir, phrase string) error {
 	return os.WriteFile(keyPath, keyData, 0600)
 }
 
-// GenerateRecoveryPhrase generates a fresh recovery phrase (for new keys)
 func GenerateRecoveryPhrase() (string, error) {
 	key := make([]byte, 32)
 	_, err := rand.Read(key)

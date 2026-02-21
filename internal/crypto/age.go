@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 
 	"filippo.io/age"
+	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
@@ -240,7 +241,7 @@ func loadIdentity(keyPath string) (age.Identity, error) {
 
 // EnsureKeyExists generates a new encryption key if one doesn't exist at the specified directory.
 func EnsureKeyExists(configDir string) error {
-	keyPath := filepath.Join(configDir, "age.key")
+	keyPath := filepath.Join(configDir, config.KeyFileName)
 	_, err := os.Stat(keyPath)
 	if err == nil {
 		return nil
@@ -257,12 +258,13 @@ func EnsureKeyExists(configDir string) error {
 // The old key is replaced with the new key. This should be done periodically
 // as a security best practice.
 func RotateKey(configDir string) error {
-	oldKeyPath := filepath.Join(configDir, "age.key")
-	secretsPath := filepath.Join(configDir, "secrets.age")
+	keyPath := filepath.Join(configDir, config.KeyFileName)
+	secretsPath := filepath.Join(configDir, config.SecretsFileName)
+	backupKeyPath := keyPath + ".backup"
 
 	_, err := os.Stat(secretsPath)
 	if os.IsNotExist(err) {
-		return generateNewKeyAndReplace(oldKeyPath)
+		return generateNewKeyAndReplace(keyPath)
 	}
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
@@ -270,7 +272,7 @@ func RotateKey(configDir string) error {
 			WithContext("path", secretsPath)
 	}
 
-	decrypted, err := DecryptSecrets(secretsPath, oldKeyPath)
+	decrypted, err := DecryptSecrets(secretsPath, keyPath)
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets with old key during rotation", err).
@@ -278,19 +280,41 @@ func RotateKey(configDir string) error {
 			WithContext("secrets_path", secretsPath)
 	}
 
-	if err := generateNewKeyAndReplace(oldKeyPath); err != nil {
+	backupKeyData, err := os.ReadFile(keyPath)
+	if err != nil {
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to backup old key before rotation", err).
+			WithContext("path", keyPath)
+	}
+
+	if err := os.WriteFile(backupKeyPath, backupKeyData, 0600); err != nil {
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to write old key backup", err).
+			WithContext("path", backupKeyPath)
+	}
+
+	if err := generateNewKeyAndReplace(keyPath); err != nil {
+		os.Remove(backupKeyPath)
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to generate and replace new encryption key", err).
-			WithContext("path", oldKeyPath)
+			WithContext("path", keyPath)
 	}
 
-	if err := EncryptSecrets(secretsPath, oldKeyPath, decrypted); err != nil {
+	if err := EncryptSecrets(secretsPath, keyPath, decrypted); err != nil {
+		restoreErr := os.Rename(backupKeyPath, keyPath)
+		if restoreErr != nil {
+			return kairoerrors.WrapError(kairoerrors.CryptoError,
+				"CRITICAL: failed to re-encrypt secrets and failed to restore old key", err).
+				WithContext("restore_error", restoreErr.Error()).
+				WithContext("hint", "manual recovery from backup file required: "+backupKeyPath).
+				WithContext("backup_path", backupKeyPath)
+		}
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to re-encrypt secrets with new key", err).
-			WithContext("hint", "secrets were not encrypted after key rotation").
-			WithContext("secrets_path", secretsPath)
+			"failed to re-encrypt secrets with new key, old key restored", err).
+			WithContext("backup_path", backupKeyPath)
 	}
 
+	os.Remove(backupKeyPath)
 	return nil
 }
 

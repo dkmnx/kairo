@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
@@ -31,7 +33,7 @@ func CreateBackup(configDir string) (string, error) {
 	zipWriter := zip.NewWriter(zipFile)
 	defer zipWriter.Close()
 
-	files := []string{"age.key", "secrets.age", "config.yaml"}
+	files := []string{config.KeyFileName, config.SecretsFileName, config.ConfigFileName}
 	for _, f := range files {
 		srcPath := filepath.Join(configDir, f)
 		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
@@ -82,12 +84,23 @@ func RestoreBackup(configDir, backupPath string) error {
 		}
 
 		destPath := filepath.Join(configDir, f.Name)
-		if err := os.MkdirAll(filepath.Dir(destPath), 0700); err != nil {
+
+		// Validate path to prevent directory traversal attacks
+		cleanDestPath := filepath.Clean(destPath)
+		relPath, err := filepath.Rel(configDir, cleanDestPath)
+		if err != nil || strings.HasPrefix(relPath, "..") {
+			return kairoerrors.NewError(kairoerrors.FileSystemError,
+				fmt.Sprintf("invalid path in backup: %s (may be path traversal attempt)", f.Name)).
+				WithContext("file", f.Name).
+				WithContext("dest", cleanDestPath)
+		}
+
+		if err := os.MkdirAll(filepath.Dir(cleanDestPath), 0700); err != nil {
 			return kairoerrors.WrapError(kairoerrors.FileSystemError,
 				fmt.Sprintf("create dir for %s", f.Name), err)
 		}
 
-		outFile, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		outFile, err := os.OpenFile(cleanDestPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
 			return kairoerrors.WrapError(kairoerrors.FileSystemError,
 				fmt.Sprintf("create %s", f.Name), err)

@@ -113,6 +113,8 @@ func validateBaseURL(url, providerName string) error {
 }
 
 // providerStatusIcon returns a status indicator for a provider's configuration.
+// Note: This function is intentionally used only in tests (setup_test.go) to verify
+// provider status display logic. It remains exported for test coverage purposes.
 func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider string) string {
 	if !providers.RequiresAPIKey(provider) {
 		if _, exists := cfg.Providers[provider]; exists {
@@ -161,9 +163,12 @@ func loadOrInitializeConfig(dir string) (*config.Config, error) {
 // Returns the secrets map, secrets file path, key file path, and any error.
 // Returns nil map with error if secrets file cannot be decrypted.
 // Returns empty map with nil error if secrets file doesn't exist (first-time setup).
-func LoadSecrets(dir string) (map[string]string, string, string, error) {
-	secretsPath := filepath.Join(dir, "secrets.age")
-	keyPath := filepath.Join(dir, "age.key")
+// LoadAndDecryptSecrets loads and decrypts secrets from the specified directory.
+// Returns secrets map, secrets path, and key path. If secrets file doesn't exist
+// or decryption fails, returns empty secrets map with appropriate error handling.
+func LoadAndDecryptSecrets(dir string) (map[string]string, string, string, error) {
+	secretsPath := filepath.Join(dir, config.SecretsFileName)
+	keyPath := filepath.Join(dir, config.KeyFileName)
 
 	secrets := make(map[string]string)
 
@@ -430,7 +435,7 @@ var setupCmd = &cobra.Command{
 			ui.PrintSuccess(fmt.Sprintf("Harness set to: %s", harnessSelection))
 		}
 
-		secrets, secretsPath, keyPath, err := LoadSecrets(dir)
+		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(dir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
 			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")

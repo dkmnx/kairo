@@ -1,18 +1,16 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
 
 	"github.com/dkmnx/kairo/internal/audit"
-	"github.com/dkmnx/kairo/internal/config"
-	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
@@ -32,9 +30,15 @@ var exitProcess = os.Exit
 // It can be replaced in tests to avoid requiring actual executables.
 var lookPath = exec.LookPath
 
-var (
-	modelFlag   string
-	harnessFlag string
+var harnessFlag string
+
+const (
+	envBaseURL     = "ANTHROPIC_BASE_URL"
+	envModel       = "ANTHROPIC_MODEL"
+	envHaikuModel  = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+	envSonnetModel = "ANTHROPIC_DEFAULT_SONNET_MODEL"
+	envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
+	envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
 )
 
 var switchCmd = &cobra.Command{
@@ -72,16 +76,6 @@ var switchCmd = &cobra.Command{
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
 
-		// Environment variable name constants for model configuration
-		const (
-			envBaseURL     = "ANTHROPIC_BASE_URL"
-			envModel       = "ANTHROPIC_MODEL"
-			envHaikuModel  = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
-			envSonnetModel = "ANTHROPIC_DEFAULT_SONNET_MODEL"
-			envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
-			envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
-		)
-
 		// Build environment variables with proper deduplication
 		// Order of precedence (last wins):
 		// 1. System environment variables
@@ -95,13 +89,10 @@ var switchCmd = &cobra.Command{
 			fmt.Sprintf("%s=%s", envSonnetModel, provider.Model),
 			fmt.Sprintf("%s=%s", envOpusModel, provider.Model),
 			fmt.Sprintf("%s=%s", envSmallFast, provider.Model),
+			"NODE_OPTIONS=--no-deprecation",
 		}
 
-		secretsPath := filepath.Join(dir, "secrets.age")
-		keyPath := filepath.Join(dir, "age.key")
-
-		var secrets map[string]string
-		secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
+		secrets, _, _, err := LoadAndDecryptSecrets(dir)
 		if err != nil {
 			if providers.RequiresAPIKey(providerName) {
 				ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
@@ -110,8 +101,6 @@ var switchCmd = &cobra.Command{
 				return
 			}
 			secrets = make(map[string]string)
-		} else {
-			secrets = config.ParseSecrets(secretsContent)
 		}
 
 		// Convert secrets to env var slice
@@ -151,12 +140,7 @@ var switchCmd = &cobra.Command{
 
 			// Handle Qwen harness - use wrapper for secure API key
 			if harnessToUse == "qwen" {
-				modelToUse := modelFlag
-				if modelToUse == "" {
-					modelToUse = provider.Model
-				}
-
-				cliArgs = append([]string{"--model", modelToUse}, cliArgs...)
+				cliArgs = append([]string{"--auth-type", "anthropic", "--model", provider.Model}, cliArgs...)
 
 				ui.ClearScreen()
 				ui.PrintBanner(version.Version, provider.Name)
@@ -174,20 +158,9 @@ var switchCmd = &cobra.Command{
 					return
 				}
 
-				// Set up signal handling for cleanup on SIGINT/SIGTERM
-				sigChan := make(chan os.Signal, 1)
-				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-				go func() {
-					sig := <-sigChan
-					signal.Stop(sigChan)
-					// Let deferred cleanup() handle resource cleanup
-					code := 128
-					if s, ok := sig.(syscall.Signal); ok {
-						code += int(s)
-					}
-					exitProcess(code)
-				}()
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				setupSignalHandler(ctx, cleanup)
 
 				var execCmd *exec.Cmd
 				if useCmdExe {
@@ -202,9 +175,9 @@ var switchCmd = &cobra.Command{
 
 				if err := execCmd.Run(); err != nil {
 					cmd.Printf("Error running Qwen: %v\n", err)
+					exitProcess(1)
 				}
-
-				// Cleanup via deferred cleanup() above
+				return
 			}
 
 			// Claude harness - existing wrapper script logic
@@ -223,20 +196,9 @@ var switchCmd = &cobra.Command{
 			ui.ClearScreen()
 			ui.PrintBanner(version.Version, provider.Name)
 
-			// Set up signal handling for cleanup on SIGINT/SIGTERM
-			sigChan := make(chan os.Signal, 1)
-			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-			go func() {
-				sig := <-sigChan
-				signal.Stop(sigChan)
-				// Let deferred cleanup() handle resource cleanup
-				code := 128
-				if s, ok := sig.(syscall.Signal); ok {
-					code += int(s)
-				}
-				exitProcess(code)
-			}()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			setupSignalHandler(ctx, cleanup)
 
 			// Execute the wrapper script instead of claude directly
 			// The wrapper script will:
@@ -258,6 +220,7 @@ var switchCmd = &cobra.Command{
 
 			if err := execCmd.Run(); err != nil {
 				cmd.Printf("Error running Claude: %v\n", err)
+				exitProcess(1)
 			}
 
 			// Cleanup via deferred cleanup() above
@@ -298,7 +261,23 @@ var switchCmd = &cobra.Command{
 }
 
 func init() {
-	switchCmd.Flags().StringVar(&modelFlag, "model", "", "Model to use (passed through to CLI harness)")
 	switchCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
 	rootCmd.AddCommand(switchCmd)
+}
+
+func setupSignalHandler(ctx context.Context, cleanup func()) {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		select {
+		case <-sigChan:
+			signal.Stop(sigChan)
+			if cleanup != nil {
+				cleanup()
+			}
+		case <-ctx.Done():
+			signal.Stop(sigChan)
+		}
+	}()
 }

@@ -82,7 +82,7 @@ flowchart TB
 | ----------------------------------------- | -------------------------------------------------- |
 | `kairo switch <provider>`                 | Switch and execute CLI (claude or qwen)            |
 | `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                              |
-| `kairo switch <provider> --model <model>` | Override model (Qwen harness only)                 |
+| `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                              |
 | `kairo harness get`                       | Get current default harness                        |
 | `kairo harness set <harness>`             | Set default harness (claude or qwen)               |
 | `kairo <provider> [args]`                 | Shorthand for switch (e.g., `kairo zai`)           |
@@ -164,11 +164,17 @@ go test -v ./cmd/... -run Integration
 
 ## Global Flags
 
-| Flag             | Purpose                          |
-| ---------------- | -------------------------------- |
-| `-v, --verbose`  | Enable verbose output            |
-| `-h, --help`     | Show help for command            |
-| `--harness`      | CLI harness to use (claude/qwen) |
+| Flag            | Purpose                                     |
+| --------------- | ------------------------------------------- |
+| `-v, --verbose` | Enable verbose output                       |
+| `-h, --help`    | Show help for command                       |
+| `--config`      | Config directory (default is platform-specific) |
+
+## Switch Command Flags
+
+| Flag        | Purpose                             |
+| ----------- | ----------------------------------- |
+| `--harness` | CLI harness to use (claude or qwen) |
 
 ## Banner Display
 
@@ -195,9 +201,6 @@ Kairo supports multiple CLI harnesses:
 # Use Qwen harness for a specific provider
 kairo switch zai --harness qwen
 
-# Override model for Qwen
-kairo switch zai --harness qwen --model qwen-turbo
-
 # Set default harness globally
 kairo harness set qwen
 
@@ -205,7 +208,7 @@ kairo harness set qwen
 kairo harness get
 ```
 
-The `--model` flag is passed through to Qwen CLI. If not specified, uses the provider's configured model.
+The model is automatically passed from the provider's configuration.
 
 ## Provider Shorthand
 

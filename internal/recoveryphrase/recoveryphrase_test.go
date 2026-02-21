@@ -1,4 +1,4 @@
-package recover
+package recoveryphrase
 
 import (
 	"os"
@@ -10,10 +10,8 @@ func TestCreateAndRecover(t *testing.T) {
 	tmpDir := t.TempDir()
 	keyPath := filepath.Join(tmpDir, "age.key")
 
-	// Create a test key
 	_ = os.WriteFile(keyPath, []byte("test-key-content"), 0600)
 
-	// Generate phrase
 	phrase, err := CreateRecoveryPhrase(keyPath)
 	if err != nil {
 		t.Fatalf("CreateRecoveryPhrase failed: %v", err)
@@ -23,16 +21,13 @@ func TestCreateAndRecover(t *testing.T) {
 		t.Error("recovery phrase too short")
 	}
 
-	// Remove key
 	os.Remove(keyPath)
 
-	// Recover
 	err = RecoverFromPhrase(tmpDir, phrase)
 	if err != nil {
 		t.Fatalf("RecoverFromPhrase failed: %v", err)
 	}
 
-	// Verify
 	content, _ := os.ReadFile(keyPath)
 	if string(content) != "test-key-content" {
 		t.Error("key not recovered correctly")
