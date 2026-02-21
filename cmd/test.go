@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +24,7 @@ var testCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := config.LoadConfig(dir)
+		cfg, err := configCache.Get(dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintError(fmt.Sprintf("Provider '%s' not configured", providerName))

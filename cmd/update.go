@@ -107,17 +107,26 @@ func isWindows(goos string) bool {
 	return goos == "windows"
 }
 
-// getInstallScriptURL returns the appropriate install script URL based on OS
-func getInstallScriptURL(goos string) string {
+// getInstallScriptURL returns the appropriate install script URL based on OS and version tag
+func getInstallScriptURL(goos, tag string) string {
 	if isWindows(goos) {
-		return "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1"
+		return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.ps1", tag)
 	}
-	return "https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh"
+	return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.sh", tag)
 }
 
 // downloadToTempFile downloads a file from URL and saves to a temporary file
 func downloadToTempFile(url string) (string, error) {
-	resp, err := http.Get(url)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to create download request", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
 			"failed to download", err)
@@ -176,7 +185,13 @@ func runInstallScript(scriptPath string) error {
 			"failed to make script executable", err)
 	}
 
-	shCmd := exec.Command("/bin/sh", scriptPath)
+	shPath, err := exec.LookPath("sh")
+	if err != nil {
+		return kairoerrors.WrapError(kairoerrors.RuntimeError,
+			"failed to find shell", err)
+	}
+
+	shCmd := exec.Command(shPath, scriptPath)
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
 	if err := shCmd.Run(); err != nil {
@@ -194,7 +209,9 @@ var updateCmd = &cobra.Command{
 
 This command will:
 1. Check GitHub for the latest release
-2. Download and run the platform-appropriate install script`,
+2. Download and run the platform-appropriate install script from the release tag
+
+Security: The install script is downloaded from the specific release tag to ensure the script matches the version being installed.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentVersion := version.Version
 		if currentVersion == "dev" {
@@ -215,7 +232,7 @@ This command will:
 
 		cmd.Printf("Updating to %s...\n", latest.TagName)
 
-		installScriptURL := getInstallScriptURL(runtime.GOOS)
+		installScriptURL := getInstallScriptURL(runtime.GOOS, latest.TagName)
 
 		confirmed, err := ui.Confirm("Do you want to proceed with installation?")
 		if err != nil {

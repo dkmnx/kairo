@@ -16,7 +16,7 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/dkmnx/kairo/ci.yml?branch=main&style=flat-square)](https://github.com/dkmnx/kairo/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-**Secure CLI for managing Claude Code and Qwen Code API providers** with age (X25519) encryption, multi-provider support, and audit logging.
+**Anthropic-powered CLI for multi-provider management with X25519 encryption and integrated audit trails.**
 
 ## Prerequisites
 
@@ -44,12 +44,14 @@ Kairo acts as a wrapper around Claude Code or Qwen Code CLI to enable multi-prov
 
   ```bash
   # npm
-  npm install -g qwen-code
+  npm install -g @qwen-code/qwen-code@latest
   ```
 
 **Configure Qwen Code:**
 
 Qwen Code requires model providers to be configured in `~/.qwen/settings.json`. Create this file with your providers:
+
+> Note: Only Anthropic API providers are supported.
 
 ```json
 {
@@ -140,14 +142,13 @@ flowchart TB
 
 ## Features
 
-| Feature                | Description                                                         |
-| ---------------------- | ------------------------------------------------------------------- |
-| **Multi-Harness**      | Claude Code (default), Qwen Code                                    |
-| **Secure Encryption**  | Age (X25519) encryption for all API keys                            |
-| **Key Rotation**       | Regenerate encryption keys periodically                             |
-| **Audit Logging**      | Track all configuration changes                                     |
-| **Cross-Platform**     | Linux, macOS, Windows support                                       |
-| **Model Override**     | `--model` flag to override Qwen Code model (passed through to qwen) |
+| Feature                | Description                              |
+| ---------------------- | ---------------------------------------- |
+| **Multi-Harness**      | Claude Code (default), Qwen Code         |
+| **Secure Encryption**  | Age (X25519) encryption for all API keys |
+| **Key Rotation**       | Regenerate encryption keys periodically  |
+| **Audit Logging**      | Track all configuration changes          |
+| **Cross-Platform**     | Linux, macOS, Windows support            |
 
 ## Metrics
 
@@ -205,19 +206,19 @@ kairo metrics reset
 | `kairo status`                   | Test all providers                   |
 | `kairo test <provider>`          | Test specific provider               |
 | `kairo default <provider>`       | Get/set default provider             |
-| `kairo reset <provider\          | all>`                                | Remove provider config |
+| `kairo reset <provider>`         | Remove provider config               |
+| `kairo reset all`                | Remove all provider configs          |
 
 ### Execution
 
-| Command                                   | Description                                |
-| ----------------------------------------- | ------------------------------------------ |
-| `kairo switch <provider>`                 | Switch and exec CLI (claude or qwen)       |
-| `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                      |
-| `kairo switch <provider> --model <model>` | Override model (Qwen only)                 |
-| `kairo harness get`                       | Get current default harness                |
-| `kairo harness set <harness>`             | Set default harness (claude or qwen)       |
-| `kairo <provider> [args]`                 | Shorthand for switch                       |
-| `kairo -- "query"`                        | Query mode (default provider)              |
+| Command                                   | Description                          |
+| ----------------------------------------- | ------------------------------------ |
+| `kairo switch <provider>`                 | Switch and exec CLI (claude or qwen) |
+| `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                |
+| `kairo harness get`                       | Get current default harness          |
+| `kairo harness set <harness>`             | Set default harness (claude or qwen) |
+| `kairo <provider> [args]`                 | Shorthand for switch                 |
+| `kairo -- "query"`                        | Query mode (default provider)        |
 
 ### Maintenance
 

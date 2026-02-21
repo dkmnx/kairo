@@ -5,9 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/user"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 )
@@ -150,7 +152,9 @@ func (l *Logger) RotateLog(opts ...RotateOptions) (bool, error) {
 
 	// Close current file if open
 	if l.f != nil {
-		l.f.Close()
+		if err := l.f.Close(); err != nil {
+			log.Printf("Warning: failed to close audit log file: %v", err)
+		}
 		l.f = nil
 	}
 
@@ -208,18 +212,15 @@ func (l *Logger) cleanupOldBackups(maxBackups int) {
 		}
 	}
 
-	// Sort by mod time
-	for i := 0; i < len(files)-1; i++ {
-		for j := i + 1; j < len(files); j++ {
-			if files[i].modTime.After(files[j].modTime) {
-				files[i], files[j] = files[j], files[i]
-			}
-		}
-	}
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].modTime.Before(files[j].modTime)
+	})
 
 	// Remove oldest files beyond limit
 	for i := 0; i < len(files)-maxBackups; i++ {
-		os.Remove(files[i].path)
+		if err := os.Remove(files[i].path); err != nil {
+			log.Printf("Warning: failed to remove old audit backup %s: %v", files[i].path, err)
+		}
 	}
 }
 
@@ -374,6 +375,8 @@ func (l *Logger) enrichWithContext(entry *AuditEntry) {
 // writeEntry writes an audit entry to the log file.
 // The entry is serialized to JSON, written to the file with a newline,
 // and then synced to disk to ensure durability even in crash scenarios.
+// Note: JSON marshaling is performed BEFORE acquiring the lock to avoid blocking
+// other operations during serialization. The lock is held only for the file write.
 func (l *Logger) writeEntry(entry AuditEntry) error {
 	data, err := json.Marshal(entry)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dkmnx/kairo/internal/recover"
+	"github.com/dkmnx/kairo/internal/recoveryphrase"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -34,7 +34,7 @@ var generatePhraseCmd = &cobra.Command{
 		keyPath := dir + "/age.key"
 		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 			// No existing key, generate new phrase
-			phrase, err := recover.GenerateRecoveryPhrase()
+			phrase, err := recoveryphrase.GenerateRecoveryPhrase()
 			if err != nil {
 				ui.PrintError(fmt.Sprintf("Failed to generate phrase: %v", err))
 				return
@@ -44,7 +44,7 @@ var generatePhraseCmd = &cobra.Command{
 			return
 		}
 
-		phrase, err := recover.CreateRecoveryPhrase(keyPath)
+		phrase, err := recoveryphrase.CreateRecoveryPhrase(keyPath)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to create phrase: %v", err))
 			return
@@ -69,7 +69,7 @@ Example: kairo recover restore word1-word2-word3...`,
 		}
 
 		phrase := strings.TrimSpace(args[0])
-		err := recover.RecoverFromPhrase(dir, phrase)
+		err := recoveryphrase.RecoverFromPhrase(dir, phrase)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to restore: %v", err))
 			return

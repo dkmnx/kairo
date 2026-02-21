@@ -15,6 +15,10 @@ type KeyFormat struct {
 	Pattern   string
 }
 
+// providerKeyFormats defines minimum key lengths per provider.
+// These are baseline security defaults; providers may have additional format requirements.
+// Note: Hardcoded values are intentional - they ensure baseline security without requiring
+// external configuration that could be accidentally weakened.
 var providerKeyFormats = map[string]KeyFormat{
 	"zai":      {MinLength: 32},
 	"minimax":  {MinLength: 32},
@@ -94,7 +98,7 @@ func ValidateURL(rawURL string, providerName string) error {
 		}
 	}
 
-	host := parsed.Host
+	host := parsed.Hostname()
 	if host == "" {
 		return &ValidationError{
 			msg: fmt.Sprintf("%s BaseURL missing host component", providerName),

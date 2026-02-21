@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	recoverpkg "github.com/dkmnx/kairo/internal/recover"
+	recoveryphrasepkg "github.com/dkmnx/kairo/internal/recoveryphrase"
 )
 
 func TestRecoverGenerate(t *testing.T) {
@@ -41,7 +41,7 @@ func TestRecoverRestore(t *testing.T) {
 	_ = os.WriteFile(keyPath, knownKey, 0600)
 
 	// Create phrase using the actual recovery package
-	phrase, err := recoverpkg.CreateRecoveryPhrase(keyPath)
+	phrase, err := recoveryphrasepkg.CreateRecoveryPhrase(keyPath)
 	if err != nil {
 		t.Fatalf("failed to create phrase: %v", err)
 	}

@@ -81,52 +81,18 @@ var configCmd = &cobra.Command{
 			return
 		}
 
-		if builtinDef.BaseURL == "" {
-			baseURL, err := ui.PromptWithDefault("Base URL", provider.BaseURL)
-			if err != nil {
-				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
-				return
-			}
-			if err := validate.ValidateURL(baseURL, provider.Name); err != nil {
-				ui.PrintError(err.Error())
-				return
-			}
-			provider.BaseURL = baseURL
-		} else {
-			currentBaseURL := provider.BaseURL
-			if currentBaseURL == "" {
-				currentBaseURL = builtinDef.BaseURL
-			}
-			baseURL, err := ui.PromptWithDefault("Base URL", currentBaseURL)
-			if err != nil {
-				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
-				return
-			}
-			if err := validate.ValidateURL(baseURL, provider.Name); err != nil {
-				ui.PrintError(err.Error())
-				return
-			}
-			provider.BaseURL = baseURL
+		provider.BaseURL, err = promptWithDefaultAndValidate("Base URL", provider.BaseURL, builtinDef.BaseURL, func(value string) error {
+			return validate.ValidateURL(value, provider.Name)
+		})
+		if err != nil {
+			ui.PrintError(err.Error())
+			return
 		}
 
-		if builtinDef.Model == "" {
-			model, err := ui.PromptWithDefault("Model", provider.Model)
-			if err != nil {
-				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
-				return
-			}
-			provider.Model = model
-		} else {
-			currentModel := provider.Model
-			if currentModel == "" {
-				currentModel = builtinDef.Model
-			}
-			model, err := ui.PromptWithDefault("Model", currentModel)
-			if err != nil {
-				ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
-				return
-			}
-			provider.Model = model
+		provider.Model, err = promptWithDefaultAndValidate("Model", provider.Model, builtinDef.Model, nil)
+		if err != nil {
+			ui.PrintError(err.Error())
+			return
 		}
 
 		// Always refresh EnvVars from provider definition
@@ -135,7 +101,7 @@ var configCmd = &cobra.Command{
 			provider.EnvVars = builtinDef.EnvVars
 		}
 
-		secrets, secretsPath, keyPath, err := LoadSecrets(dir)
+		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(dir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
 			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
@@ -158,6 +124,8 @@ var configCmd = &cobra.Command{
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 			return
 		}
+
+		configCache.Invalidate(dir)
 
 		secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
 
@@ -206,4 +174,24 @@ var configCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(configCmd)
+}
+
+func promptWithDefaultAndValidate(fieldName, currentValue, defaultValue string, validator func(string) error) (string, error) {
+	promptValue := currentValue
+	if defaultValue != "" && currentValue == "" {
+		promptValue = defaultValue
+	}
+
+	value, err := ui.PromptWithDefault(fieldName, promptValue)
+	if err != nil {
+		return "", fmt.Errorf("failed to read input: %w", err)
+	}
+
+	if validator != nil {
+		if err := validator(value); err != nil {
+			return "", err
+		}
+	}
+
+	return value, nil
 }
