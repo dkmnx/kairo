@@ -6,6 +6,7 @@
 *.dylib
 kairo
 dist/
+bin/
 
 # Test binary
 *.test
