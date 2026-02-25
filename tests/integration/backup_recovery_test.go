@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -13,23 +12,9 @@ import (
 )
 
 func TestBackupRestoreCycle(t *testing.T) {
-	// Get the project root by finding go.mod
-	projectRoot, err := findProjectRoot()
-	if err != nil {
-		t.Fatalf("failed to find project root: %v", err)
+	if testBinary == "" {
+		t.Fatal("testBinary not initialized, TestMain may have failed")
 	}
-
-	// Build kairo
-	kairoBinary := filepath.Join(projectRoot, "kairo_test")
-	if runtime.GOOS == "windows" {
-		kairoBinary += ".exe"
-	}
-	cmd := exec.Command("go", "build", "-o", kairoBinary, ".")
-	cmd.Dir = projectRoot
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("build failed: %v", err)
-	}
-	defer os.Remove(kairoBinary)
 
 	tmpDir := t.TempDir()
 
@@ -73,11 +58,11 @@ func TestBackupRestoreCycle(t *testing.T) {
 	}
 
 	// Create backup using CLI
-	backupCmd := exec.Command(kairoBinary, "--config", tmpDir, "backup")
+	backupCmd := exec.Command(testBinary, "--config", tmpDir, "backup")
 	backupOutput, _ := backupCmd.CombinedOutput()
 
 	if !strings.Contains(string(backupOutput), "Backup created") {
-		t.Errorf("backup command failed: %s", string(backupOutput))
+		t.Errorf("failed to create backup: %s", string(backupOutput))
 	}
 
 	// Remove original files
@@ -98,11 +83,11 @@ func TestBackupRestoreCycle(t *testing.T) {
 	backupPath := filepath.Join(backupsDir, backups[0].Name())
 
 	// Restore from backup using CLI
-	restoreCmd := exec.Command(kairoBinary, "--config", tmpDir, "restore", backupPath)
+	restoreCmd := exec.Command(testBinary, "--config", tmpDir, "restore", backupPath)
 	restoreOutput, _ := restoreCmd.CombinedOutput()
 
 	if !strings.Contains(string(restoreOutput), "Backup restored") {
-		t.Errorf("restore command failed: %s", string(restoreOutput))
+		t.Errorf("failed to restore backup: %s", string(restoreOutput))
 	}
 
 	// Verify all files restored
@@ -137,27 +122,5 @@ func TestBackupRestoreCycle(t *testing.T) {
 	}
 	if restoredCfg.DefaultProvider != "anthropic" {
 		t.Errorf("expected default provider 'anthropic', got '%s'", restoredCfg.DefaultProvider)
-	}
-}
-
-func findProjectRoot() (string, error) {
-	// Start from the current working directory and search upward for go.mod
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		goModPath := filepath.Join(dir, "go.mod")
-		if _, err := os.Stat(goModPath); err == nil {
-			return dir, nil
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			// Reached the filesystem root without finding go.mod
-			return "", os.ErrNotExist
-		}
-		dir = parent
 	}
 }
