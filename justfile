@@ -62,7 +62,7 @@ test-coverage:
 lint:
     @echo "Running linters..."
     gofmt -w .
-    @if [ -n "$(gofmt -l .)" ]; then \
+    @if [ -n "`gofmt -l .`" ]; then \
         echo "Formatting issues found (cannot be auto-fixed):"; \
         gofmt -l .; \
         exit 1; \

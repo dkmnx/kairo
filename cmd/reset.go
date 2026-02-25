@@ -120,12 +120,7 @@ var resetCmd = &cobra.Command{
 			secrets := config.ParseSecrets(existingSecrets)
 			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(target)))
 
-			var secretsContent string
-			for key, value := range secrets {
-				if key != "" && value != "" {
-					secretsContent += fmt.Sprintf("%s=%s\n", key, value)
-				}
-			}
+			secretsContent := config.FormatSecrets(secrets)
 
 			if secretsContent == "" {
 				err := os.Remove(secretsPath)
