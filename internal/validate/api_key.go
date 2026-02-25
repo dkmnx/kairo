@@ -27,6 +27,10 @@ var providerKeyFormats = map[string]KeyFormat{
 	"custom":   {MinLength: 20},
 }
 
+// Note: These CIDR ranges are hardcoded and validated at compile time.
+// mustParseCIDR will panic if any of these are invalid, which is acceptable
+// since the inputs are constant literals under our control - this catches
+// developer errors immediately rather than silently failing at runtime.
 var (
 	private10  = mustParseCIDR("10.0.0.0/8")
 	private172 = mustParseCIDR("172.16.0.0/12")
