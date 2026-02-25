@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"testing"
 
@@ -130,7 +129,7 @@ func TestBuildProviderConfig(t *testing.T) {
 	})
 }
 
-func TestFormatSecretsFileContent(t *testing.T) {
+func TestFormatSecrets(t *testing.T) {
 	t.Run("formats secrets with sorting", func(t *testing.T) {
 		secrets := map[string]string{
 			"Z_KEY": "value1",
@@ -138,7 +137,7 @@ func TestFormatSecretsFileContent(t *testing.T) {
 			"M_KEY": "value3",
 		}
 
-		content := formatSecretsFileContent(secrets)
+		content := config.FormatSecrets(secrets)
 
 		lines := strings.Split(strings.TrimSpace(content), "\n")
 		if len(lines) != 3 {
@@ -160,36 +159,10 @@ func TestFormatSecretsFileContent(t *testing.T) {
 	t.Run("handles empty secrets", func(t *testing.T) {
 		secrets := map[string]string{}
 
-		content := formatSecretsFileContent(secrets)
+		content := config.FormatSecrets(secrets)
 
 		if content != "" {
 			t.Errorf("Expected empty string, got: %q", content)
-		}
-	})
-}
-
-func TestSortSecretsKeys(t *testing.T) {
-	t.Run("sorts keys alphabetically", func(t *testing.T) {
-		secrets := map[string]string{
-			"Z_KEY": "value1",
-			"A_KEY": "value2",
-			"M_KEY": "value3",
-		}
-
-		keys := getSortedSecretsKeys(secrets)
-
-		if !sort.StringsAreSorted(keys) {
-			t.Errorf("Keys are not sorted: %v", keys)
-		}
-
-		if keys[0] != "A_KEY" {
-			t.Errorf("First key should be A_KEY, got %s", keys[0])
-		}
-		if keys[1] != "M_KEY" {
-			t.Errorf("Second key should be M_KEY, got %s", keys[1])
-		}
-		if keys[2] != "Z_KEY" {
-			t.Errorf("Third key should be Z_KEY, got %s", keys[2])
 		}
 	})
 }

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/audit"
@@ -63,29 +62,6 @@ func buildProviderConfig(def providers.ProviderDefinition, baseURL, model string
 		provider.EnvVars = def.EnvVars
 	}
 	return provider
-}
-
-// getSortedSecretsKeys returns a sorted slice of keys from a secrets map.
-func getSortedSecretsKeys(secrets map[string]string) []string {
-	keys := make([]string, 0, len(secrets))
-	for key := range secrets {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-// formatSecretsFileContent formats a secrets map into a string suitable for file storage.
-func formatSecretsFileContent(secrets map[string]string) string {
-	var builder strings.Builder
-	keys := getSortedSecretsKeys(secrets)
-	for _, key := range keys {
-		value := secrets[key]
-		if key != "" && value != "" {
-			builder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
-		}
-	}
-	return builder.String()
 }
 
 // saveProviderConfigFile saves a provider configuration to the config file.
@@ -352,7 +328,7 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 
 	// Save secrets
 	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
-	secretsContent := formatSecretsFileContent(secrets)
+	secretsContent := config.FormatSecrets(secrets)
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
 		return "", nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"saving API key", err)
