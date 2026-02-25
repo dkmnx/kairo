@@ -31,7 +31,7 @@ var resetCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := config.LoadConfig(dir)
+		cfg, err := configCache.Get(dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")
