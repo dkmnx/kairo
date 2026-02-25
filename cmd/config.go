@@ -129,14 +129,7 @@ var configCmd = &cobra.Command{
 
 		secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
 
-		var secretsBuilder strings.Builder
-		for key, value := range secrets {
-			if key != "" && value != "" {
-				secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
-			}
-		}
-
-		if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
+		if err := crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets)); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving API key: %v", err))
 			return
 		}
