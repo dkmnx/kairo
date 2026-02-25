@@ -366,7 +366,7 @@ var setupCmd = &cobra.Command{
 		}
 
 		if err := ensureConfigDirectory(dir); err != nil {
-			ui.PrintError(fmt.Sprintf("Error: %v", err))
+			ui.PrintError(err.Error())
 			return
 		}
 
@@ -394,7 +394,7 @@ var setupCmd = &cobra.Command{
 		var auditDetails map[string]interface{}
 		if !providers.RequiresAPIKey(providerName) {
 			if err := configureAnthropic(dir, cfg, providerName); err != nil {
-				ui.PrintError(fmt.Sprintf("Error: %v", err))
+				ui.PrintError(err.Error())
 				return
 			}
 			configuredProvider = providerName
@@ -408,7 +408,7 @@ var setupCmd = &cobra.Command{
 		} else {
 			provider, details, err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath)
 			if err != nil {
-				ui.PrintError(fmt.Sprintf("Error: %v", err))
+				ui.PrintError(err.Error())
 				return
 			}
 			configuredProvider = provider
@@ -425,23 +425,7 @@ var setupCmd = &cobra.Command{
 	},
 }
 
-// parseIntOrZero converts a string to an integer, returning 0 if invalid.
-//
-// This function parses a string character by character, building an integer
-// from ASCII digits. If any non-digit character is encountered, the
-// function immediately returns 0. Used for parsing user-provided
-// numeric selections in setup wizard.
-//
-// Parameters:
-//   - s: String to parse as integer
-//
-// Returns:
-//   - int: Parsed integer value, or 0 if string contains non-digit characters
-//
-// Error conditions: None (returns 0 for invalid input instead of error)
-//
-// Thread Safety: Thread-safe (pure function, no shared state)
-// Performance Notes: O(n) where n is string length, returns early on first invalid character
+// parseIntOrZero parses a string to int, returning 0 on invalid input.
 func parseIntOrZero(s string) int {
 	var result int
 	for _, c := range s {

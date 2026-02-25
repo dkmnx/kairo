@@ -61,10 +61,11 @@ test-coverage:
 # Run linters
 lint:
     @echo "Running linters..."
-    gofmt -w .
-    @if [ -n "`gofmt -l .`" ]; then \
+    @format_issues=`gofmt -l .`; \
+    gofmt -w .; \
+    if [ -n "$$format_issues" ]; then \
         echo "Formatting issues found (cannot be auto-fixed):"; \
-        gofmt -l .; \
+        echo "$$format_issues"; \
         exit 1; \
     fi
     go vet ./...
