@@ -51,7 +51,7 @@ just ci-local       # Run GitHub Actions locally with act
 ## Docs
 
 Read these if relevant to your task:
+- `internal/README.md` - Package contracts, architecture, data flow
 - `docs/architecture/README.md` - System design and wrapper architecture
 - `docs/best-practices.md` - Error handling patterns, testing conventions
 - `docs/guides/development-guide.md` - Adding commands, testing, CI workflows
-- `internal/README.md` - Internal package contracts and separation of concerns
