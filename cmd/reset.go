@@ -61,7 +61,7 @@ var resetCmd = &cobra.Command{
 			cfg.DefaultProvider = ""
 
 			if err := config.SaveConfig(dir, cfg); err != nil {
-				ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
+				ui.PrintError(fmt.Sprintf("Saving config: %v", err))
 				return
 			}
 
@@ -108,7 +108,7 @@ var resetCmd = &cobra.Command{
 		}
 
 		if err := config.SaveConfig(dir, cfg); err != nil {
-			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
+			ui.PrintError(fmt.Sprintf("Saving config: %v", err))
 			return
 		}
 

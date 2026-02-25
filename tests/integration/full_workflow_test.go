@@ -54,7 +54,7 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 
 	// Step 2: Configure Z.AI provider with API key
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	secretsContent := "ZAI_API_KEY=sk-zai-integration-test-key\n"
+	secretsContent := "ZAI_API_KEY=TEST-KEY-DO-NOT-USE-zai-001\n"
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("failed to encrypt secrets: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 	}
 
 	// Step 3: Configure MiniMax provider
-	secretsContent += "MINIMAX_API_KEY=sk-minimax-integration-test-key\n"
+	secretsContent += "MINIMAX_API_KEY=TEST-KEY-DO-NOT-USE-minimax-002\n"
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("failed to encrypt secrets with minimax: %v", err)
 	}
@@ -157,9 +157,9 @@ func TestFullWorkflowKeyRotation(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	secretsContent := `ZAI_API_KEY=sk-zai-key-123
-MINIMAX_API_KEY=sk-minimax-key-456
-KIMI_API_KEY=sk-kimi-key-789
+	secretsContent := `ZAI_API_KEY=TEST-KEY-DO-NOT-USE-zai-123
+MINIMAX_API_KEY=TEST-KEY-DO-NOT-USE-minimax-456
+KIMI_API_KEY=TEST-KEY-DO-NOT-USE-kimi-789
 `
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
@@ -198,7 +198,7 @@ KIMI_API_KEY=sk-kimi-key-789
 	}
 
 	// Verify all secrets preserved
-	expectedSecrets := []string{"ZAI_API_KEY", "MINIMAX_API_KEY", "KIMI_API_KEY", "sk-zai-key-123", "sk-minimax-key-456", "sk-kimi-key-789"}
+	expectedSecrets := []string{"ZAI_API_KEY", "MINIMAX_API_KEY", "KIMI_API_KEY", "TEST-KEY-DO-NOT-USE-zai-123", "TEST-KEY-DO-NOT-USE-minimax-456", "TEST-KEY-DO-NOT-USE-kimi-789"}
 	for _, secret := range expectedSecrets {
 		if !strings.Contains(postRotationSecrets, secret) {
 			t.Errorf("post-rotation secrets should contain %q", secret)
@@ -245,8 +245,8 @@ func TestFullWorkflowBackupRestore(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	secretsContent := `ZAI_API_KEY=backup-test-zai-key
-MINIMAX_API_KEY=backup-test-minimax-key
+	secretsContent := `ZAI_API_KEY=TEST-KEY-DO-NOT-USE-backup-zai
+MINIMAX_API_KEY=TEST-KEY-DO-NOT-USE-backup-minimax
 `
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
@@ -320,10 +320,10 @@ MINIMAX_API_KEY=backup-test-minimax-key
 	if err != nil {
 		t.Fatalf("failed to decrypt restored secrets: %v", err)
 	}
-	if !strings.Contains(decrypted, "backup-test-zai-key") {
+	if !strings.Contains(decrypted, "TEST-KEY-DO-NOT-USE-backup-zai") {
 		t.Error("restored secrets missing zai key")
 	}
-	if !strings.Contains(decrypted, "backup-test-minimax-key") {
+	if !strings.Contains(decrypted, "TEST-KEY-DO-NOT-USE-backup-minimax") {
 		t.Error("restored secrets missing minimax key")
 	}
 }
@@ -427,8 +427,8 @@ func TestFullWorkflowProviderReset(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	secretsContent := `ZAI_API_KEY=sk-zai-key
-MINIMAX_API_KEY=sk-minimax-key
+	secretsContent := `ZAI_API_KEY=TEST-KEY-DO-NOT-USE-reset-zai
+MINIMAX_API_KEY=TEST-KEY-DO-NOT-USE-reset-minimax
 `
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
@@ -551,8 +551,8 @@ func TestFullWorkflowListAndStatus(t *testing.T) {
 	}
 
 	// Only configure secrets for some providers
-	secretsContent := `ZAI_API_KEY=sk-zai-key
-DEEPSEEK_API_KEY=sk-deepseek-key
+	secretsContent := `ZAI_API_KEY=TEST-KEY-DO-NOT-USE-list-zai
+DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 `
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
@@ -660,7 +660,7 @@ func TestFullWorkflowCustomProvider(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	secretsContent := "MYCUSTOM_API_KEY=sk-custom-provider-key\n"
+	secretsContent := "MYCUSTOM_API_KEY=TEST-KEY-DO-NOT-USE-custom-provider\n"
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("failed to encrypt secrets: %v", err)
@@ -695,7 +695,7 @@ func TestFullWorkflowCustomProvider(t *testing.T) {
 	if !strings.Contains(decrypted, "MYCUSTOM_API_KEY") {
 		t.Error("secrets should contain MYCUSTOM_API_KEY")
 	}
-	if !strings.Contains(decrypted, "sk-custom-provider-key") {
+	if !strings.Contains(decrypted, "TEST-KEY-DO-NOT-USE-custom-provider") {
 		t.Error("secrets should contain the custom API key")
 	}
 }
