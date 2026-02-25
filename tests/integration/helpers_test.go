@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,14 +23,14 @@ func TestMain(m *testing.M) {
 	// Get project root
 	projectRoot, err := findProjectRoot()
 	if err != nil {
-		os.Stderr.WriteString("failed to find project root: " + err.Error() + "\n")
+		fmt.Fprintf(os.Stderr, "failed to find project root: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Create temporary directory for test binary
 	tmpDir, err := os.MkdirTemp("", "kairo-test-*")
 	if err != nil {
-		os.Stderr.WriteString("failed to create temp dir: " + err.Error() + "\n")
+		fmt.Fprintf(os.Stderr, "failed to create temp dir: %v\n", err)
 		os.Exit(1)
 	}
 	defer os.RemoveAll(tmpDir)
@@ -44,8 +45,7 @@ func TestMain(m *testing.M) {
 	cmd := exec.Command("go", "build", "-o", testBinary, ".")
 	cmd.Dir = projectRoot
 	if output, err := cmd.CombinedOutput(); err != nil {
-		os.Stderr.WriteString("build failed: " + err.Error() + "\n")
-		os.Stderr.WriteString("output: " + string(output) + "\n")
+		fmt.Fprintf(os.Stderr, "build failed: %v\noutput: %s\n", err, string(output))
 		os.Exit(1)
 	}
 
