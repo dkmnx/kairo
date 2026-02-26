@@ -138,6 +138,16 @@ var switchCmd = &cobra.Command{
 
 			cliArgs := args[1:]
 
+			// Helper function to verify token file deletion after execution
+			verifyTokenDeleted := func() {
+				// Check if token file still exists (race condition check)
+				// This handles the narrow window between wrapper starting and completing
+				if _, err := os.Stat(tokenPath); err == nil {
+					// Token file still exists - force cleanup
+					cleanup()
+				}
+			}
+
 			// Handle Qwen harness - use wrapper for secure API key
 			if harnessToUse == "qwen" {
 				cliArgs = append([]string{"--auth-type", "anthropic", "--model", provider.Model}, cliArgs...)
@@ -177,6 +187,9 @@ var switchCmd = &cobra.Command{
 					cmd.Printf("Error running Qwen: %v\n", err)
 					exitProcess(1)
 				}
+
+				// Verify token file was deleted by wrapper script
+				verifyTokenDeleted()
 				return
 			}
 
@@ -223,7 +236,8 @@ var switchCmd = &cobra.Command{
 				exitProcess(1)
 			}
 
-			// Cleanup via deferred cleanup() above
+			// Verify token file was deleted by wrapper script
+			verifyTokenDeleted()
 			return
 		}
 
