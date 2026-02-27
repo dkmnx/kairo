@@ -9,6 +9,7 @@ import (
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
@@ -183,7 +184,12 @@ func promptWithDefaultAndValidate(fieldName, currentValue, defaultValue string, 
 
 	value, err := ui.PromptWithDefault(fieldName, promptValue)
 	if err != nil {
-		return "", fmt.Errorf("failed to read input: %w", err)
+		if err == ui.ErrUserCancelled {
+			return "", kairoerrors.NewError(kairoerrors.RuntimeError,
+				"user cancelled input")
+		}
+		return "", kairoerrors.WrapError(kairoerrors.RuntimeError,
+			"failed to read input", err)
 	}
 
 	if validator != nil {

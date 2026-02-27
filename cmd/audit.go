@@ -25,7 +25,8 @@ var auditCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir := getConfigDir()
 		if dir == "" {
-			return fmt.Errorf("config directory not found")
+			return kairoerrors.NewError(kairoerrors.ConfigError,
+				"config directory not found")
 		}
 
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -35,7 +36,9 @@ var auditCmd = &cobra.Command{
 
 		logger, err := audit.NewLogger(dir)
 		if err != nil {
-			return fmt.Errorf("failed to open audit log: %w", err)
+			return kairoerrors.WrapError(kairoerrors.FileSystemError,
+				"failed to open audit log", err).
+				WithContext("config_dir", dir)
 		}
 		defer logger.Close()
 
@@ -45,7 +48,9 @@ var auditCmd = &cobra.Command{
 				ui.PrintInfo("No audit log entries yet")
 				return nil
 			}
-			return fmt.Errorf("failed to read audit log: %w", err)
+			return kairoerrors.WrapError(kairoerrors.FileSystemError,
+				"failed to read audit log", err).
+				WithContext("config_dir", dir)
 		}
 
 		if len(entries) == 0 {
@@ -55,7 +60,10 @@ var auditCmd = &cobra.Command{
 
 		if exportOutput != "" {
 			if err := exportAuditLog(entries, exportOutput, exportFormat); err != nil {
-				return fmt.Errorf("failed to export audit log: %w", err)
+				return kairoerrors.WrapError(kairoerrors.ConfigError,
+					"failed to export audit log", err).
+					WithContext("output_path", exportOutput).
+					WithContext("format", exportFormat)
 			}
 			ui.PrintSuccess(fmt.Sprintf("Audit log exported to %s", exportOutput))
 			return nil
@@ -73,7 +81,8 @@ var auditListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir := getConfigDir()
 		if dir == "" {
-			return fmt.Errorf("config directory not found")
+			return kairoerrors.NewError(kairoerrors.ConfigError,
+				"config directory not found")
 		}
 
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -83,7 +92,9 @@ var auditListCmd = &cobra.Command{
 
 		logger, err := audit.NewLogger(dir)
 		if err != nil {
-			return fmt.Errorf("failed to open audit log: %w", err)
+			return kairoerrors.WrapError(kairoerrors.FileSystemError,
+				"failed to open audit log", err).
+				WithContext("config_dir", dir)
 		}
 		defer logger.Close()
 
@@ -93,7 +104,9 @@ var auditListCmd = &cobra.Command{
 				ui.PrintInfo("No audit log entries yet")
 				return nil
 			}
-			return fmt.Errorf("failed to read audit log: %w", err)
+			return kairoerrors.WrapError(kairoerrors.FileSystemError,
+				"failed to read audit log", err).
+				WithContext("config_dir", dir)
 		}
 
 		if len(entries) == 0 {
@@ -113,7 +126,8 @@ var auditExportCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir := getConfigDir()
 		if dir == "" {
-			return fmt.Errorf("config directory not found")
+			return kairoerrors.NewError(kairoerrors.ConfigError,
+				"config directory not found")
 		}
 
 		if exportOutput == "" {
@@ -123,12 +137,15 @@ var auditExportCmd = &cobra.Command{
 
 		// Audit directory must exist for export - don't create empty files
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			return fmt.Errorf("no audit log directory exists")
+			return kairoerrors.NewError(kairoerrors.ConfigError,
+				"no audit log directory exists")
 		}
 
 		logger, err := audit.NewLogger(dir)
 		if err != nil {
-			return err
+			return kairoerrors.WrapError(kairoerrors.FileSystemError,
+				"failed to open audit log", err).
+				WithContext("config_dir", dir)
 		}
 		defer logger.Close()
 
@@ -137,7 +154,9 @@ var auditExportCmd = &cobra.Command{
 			if os.IsNotExist(err) {
 				entries = []audit.AuditEntry{}
 			} else {
-				return err
+				return kairoerrors.WrapError(kairoerrors.FileSystemError,
+					"failed to read audit log", err).
+					WithContext("config_dir", dir)
 			}
 		}
 
@@ -309,7 +328,9 @@ func exportAuditLog(entries []audit.AuditEntry, outputPath, format string) error
 				changes,
 			}
 			if err := writer.Write(record); err != nil {
-				return err
+				return kairoerrors.WrapError(kairoerrors.FileSystemError,
+					"failed to write CSV record", err).
+					WithContext("output_path", outputPath)
 			}
 		}
 
@@ -317,5 +338,7 @@ func exportAuditLog(entries []audit.AuditEntry, outputPath, format string) error
 	}
 
 	return kairoerrors.NewError(kairoerrors.ConfigError,
-		fmt.Sprintf("unsupported format: %s (supported: csv, json)", format))
+		fmt.Sprintf("unsupported format: %s (supported: csv, json)", format)).
+		WithContext("format", format).
+		WithContext("supported", "csv, json")
 }

@@ -3,7 +3,6 @@ package recoveryphrase
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"hash/crc32"
 	"os"
 	"path/filepath"
@@ -35,7 +34,7 @@ func CreateRecoveryPhrase(keyPath string) (string, error) {
 func RecoverFromPhrase(configDir, phrase string) error {
 	if len(phrase) > maxPhraseLength {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"validate phrase", errors.New("recovery phrase exceeds maximum length"))
+			"validate phrase", kairoerrors.ErrRecoveryPhraseTooLong)
 	}
 
 	words := strings.Split(phrase, "-")
@@ -43,7 +42,7 @@ func RecoverFromPhrase(configDir, phrase string) error {
 	// Validate minimum word count: base64 words + 1 checksum word
 	if len(words) < 2 {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"validate phrase", errors.New("recovery phrase too short"))
+			"validate phrase", kairoerrors.ErrRecoveryPhraseTooShort)
 	}
 
 	// Extract checksum (last word) and validate
@@ -62,7 +61,7 @@ func RecoverFromPhrase(configDir, phrase string) error {
 	expectedChecksum := generateChecksum(keyData)
 	if providedChecksum != expectedChecksum {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"validate phrase", errors.New("recovery phrase is invalid or contains typos"))
+			"validate phrase", kairoerrors.ErrRecoveryPhraseInvalid)
 	}
 
 	keyPath := filepath.Join(configDir, "age.key")
