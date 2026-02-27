@@ -1,3 +1,10 @@
+// Package config provides configuration loading, saving, and caching for Kairo.
+//
+// Cache Behavior:
+//   - ConfigCache is designed for CLI usage where processes are short-lived
+//   - Cache entries have a TTL (default 5 minutes) to balance freshness vs I/O
+//   - Cleanup() is available but typically not needed for CLI tools
+//   - For long-running processes, call Cleanup() periodically to prevent memory growth
 package config
 
 import (
@@ -58,7 +65,11 @@ func (c *ConfigCache) Invalidate(configDir string) {
 }
 
 // Cleanup removes all expired entries from the cache.
-// This can be called periodically to prevent memory growth in long-running processes.
+//
+// Note: This method is typically not needed for CLI usage since the process
+// exits after each command, releasing all memory. It is provided for
+// long-running processes (e.g., daemons, services) that need to prevent
+// unbounded memory growth when processing many different config directories.
 func (c *ConfigCache) Cleanup() {
 	c.mu.Lock()
 	defer c.mu.Unlock()

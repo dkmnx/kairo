@@ -22,22 +22,20 @@ var auditCmd = &cobra.Command{
 	Use:   "audit",
 	Short: "View audit log",
 	Long:  "View and export the audit log of configuration changes and provider switches",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		dir := getConfigDir()
 		if dir == "" {
-			ui.PrintError("Config directory not found")
-			return
+			return fmt.Errorf("config directory not found")
 		}
 
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			ui.PrintInfo("No audit log entries yet")
-			return
+			return nil
 		}
 
 		logger, err := audit.NewLogger(dir)
 		if err != nil {
-			ui.PrintError(fmt.Sprintf("Failed to open audit log: %v", err))
-			return
+			return fmt.Errorf("failed to open audit log: %w", err)
 		}
 		defer logger.Close()
 
@@ -45,27 +43,26 @@ var auditCmd = &cobra.Command{
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintInfo("No audit log entries yet")
-				return
+				return nil
 			}
-			ui.PrintError(fmt.Sprintf("Failed to read audit log: %v", err))
-			return
+			return fmt.Errorf("failed to read audit log: %w", err)
 		}
 
 		if len(entries) == 0 {
 			ui.PrintInfo("No audit log entries")
-			return
+			return nil
 		}
 
 		if exportOutput != "" {
 			if err := exportAuditLog(entries, exportOutput, exportFormat); err != nil {
-				ui.PrintError(fmt.Sprintf("Failed to export audit log: %v", err))
-				return
+				return fmt.Errorf("failed to export audit log: %w", err)
 			}
 			ui.PrintSuccess(fmt.Sprintf("Audit log exported to %s", exportOutput))
-			return
+			return nil
 		}
 
 		printAuditList(entries, cmd)
+		return nil
 	},
 }
 
@@ -73,22 +70,20 @@ var auditListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List audit entries",
 	Long:  "Display audit entries in human-readable format",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		dir := getConfigDir()
 		if dir == "" {
-			ui.PrintError("Config directory not found")
-			return
+			return fmt.Errorf("config directory not found")
 		}
 
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			ui.PrintInfo("No audit log entries yet")
-			return
+			return nil
 		}
 
 		logger, err := audit.NewLogger(dir)
 		if err != nil {
-			ui.PrintError(fmt.Sprintf("Failed to open audit log: %v", err))
-			return
+			return fmt.Errorf("failed to open audit log: %w", err)
 		}
 		defer logger.Close()
 
@@ -96,18 +91,18 @@ var auditListCmd = &cobra.Command{
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintInfo("No audit log entries yet")
-				return
+				return nil
 			}
-			ui.PrintError(fmt.Sprintf("Failed to read audit log: %v", err))
-			return
+			return fmt.Errorf("failed to read audit log: %w", err)
 		}
 
 		if len(entries) == 0 {
 			ui.PrintInfo("No audit log entries")
-			return
+			return nil
 		}
 
 		printAuditList(entries, cmd)
+		return nil
 	},
 }
 
