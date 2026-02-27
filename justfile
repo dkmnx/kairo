@@ -61,15 +61,15 @@ test-coverage:
 # Run linters
 lint:
     @echo "Running linters..."
-    @gofmt -l . > /tmp/gofmt_issues.txt
-    @gofmt -w .
-    @if [ -s /tmp/gofmt_issues.txt ]; then \
-        echo "Formatting issues found (cannot be auto-fixed):"; \
-        cat /tmp/gofmt_issues.txt; \
-        rm /tmp/gofmt_issues.txt; \
-        exit 1; \
-    fi
-    @rm -f /tmp/gofmt_issues.txt
+    @TMPFILE=$(mktemp -t gofmt_issues.XXXXXX) && \
+        gofmt -l . > "$$TMPFILE" && \
+        if [ -s "$$TMPFILE" ]; then \
+            echo "Formatting issues found (cannot be auto-fixed):"; \
+            cat "$$TMPFILE"; \
+            rm -f "$$TMPFILE"; \
+            exit 1; \
+        fi && \
+        rm -f "$$TMPFILE"
     go vet ./...
     @if command -v golangci-lint >/dev/null 2>&1; then \
         golangci-lint run ./...; \
