@@ -85,6 +85,11 @@ var configCmd = &cobra.Command{
 		}
 
 		provider.BaseURL, err = promptWithDefaultAndValidate("Base URL", provider.BaseURL, builtinDef.BaseURL, func(value string) error {
+			// Built-in providers may allow empty base URL (e.g., anthropic)
+			// Custom providers must have a valid base URL
+			if isCustom && value == "" {
+				return validate.ValidateAPIKey(value, "base_url") // Reuse to get "cannot be empty" error
+			}
 			return validate.ValidateURL(value, provider.Name)
 		})
 		if err != nil {
@@ -92,7 +97,14 @@ var configCmd = &cobra.Command{
 			return
 		}
 
-		provider.Model, err = promptWithDefaultAndValidate("Model", provider.Model, builtinDef.Model, nil)
+		provider.Model, err = promptWithDefaultAndValidate("Model", provider.Model, builtinDef.Model, func(value string) error {
+			// Built-in providers may allow empty model (e.g., anthropic)
+			// Custom providers must have a valid model
+			if isCustom && value == "" {
+				return validate.ValidateAPIKey(value, "model") // Reuse to get "cannot be empty" error
+			}
+			return validate.ValidateProviderModel(value, provider.Name)
+		})
 		if err != nil {
 			ui.PrintError(err.Error())
 			return
@@ -151,7 +163,7 @@ var configCmd = &cobra.Command{
 			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName)))
 			if rollbackErr := crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets)); rollbackErr != nil {
 				ui.PrintError(fmt.Sprintf("Rollback failed: %v", rollbackErr))
-				ui.PrintInfo(" Secrets may be outdated. Run 'kairo " + providerName + "' to reconfigure.")
+				ui.PrintInfo("Secrets may be outdated. Run 'kairo " + providerName + "' to reconfigure.")
 			}
 			return
 		}
