@@ -142,16 +142,67 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 	return buf.String(), nil
 }
 
-// DecryptSecretsBytes decrypts the secrets file and returns the plaintext as []byte.
-// The caller is responsible for clearing the returned slice after use:
+// SecretBytes wraps decrypted secret data with automatic memory zeroization.
+// It implements io.Closer so it can be used with defer for automatic cleanup.
 //
-//	defer func(b []byte) {
-//		for i := range b { b[i] = 0 }
-//	}(decrypted)
+// Usage:
+//
+//	defer secrets.Close()
+//	secrets, err := DecryptSecretsBytes(path, keyPath)
+//
+// _CONTENT := secrets.String()
+//
+// Close() automatically zeroizes the underlying byte slice to prevent secrets
+// from lingering in memory. After Close() is called, the secrets are不可 recoverable.
+type SecretBytes struct {
+	data []byte
+}
+
+// String returns the secrets as a string. The underlying data is NOT cleared.
+func (s *SecretBytes) String() string {
+	return string(s.data)
+}
+
+// Bytes returns a copy of the secrets. The underlying data is NOT cleared.
+func (s *SecretBytes) Bytes() []byte {
+	copyBytes := make([]byte, len(s.data))
+	copy(copyBytes, s.data)
+	return copyBytes
+}
+
+// Clear explicitly zeroizes the secrets. Called automatically by Close().
+func (s *SecretBytes) Clear() {
+	if s.data != nil {
+		for i := range s.data {
+			s.data[i] = 0
+		}
+	}
+}
+
+// Close zeroizes the secrets and clears the reference.
+// This method is safe to call multiple times.
+func (s *SecretBytes) Close() error {
+	s.Clear()
+	s.data = nil
+	return nil
+}
+
+// DecryptSecretsBytes decrypts the secrets file and returns the plaintext wrapped in SecretBytes.
+// The SecretBytes type implements io.Closer and will automatically zeroize the memory
+// when Close() is called or when used with defer.
+//
+// Usage:
+//
+//	defer secrets.Close()
+//	secrets, err := DecryptSecretsBytes(path, keyPath)
+//	if err != nil {
+//	    return err
+//	}
+//	content := secrets.String()
 //
 // This function provides better memory safety than DecryptSecrets for applications
 // that need to explicitly clear sensitive data after use.
-func DecryptSecretsBytes(secretsPath, keyPath string) ([]byte, error) {
+func DecryptSecretsBytes(secretsPath, keyPath string) (*SecretBytes, error) {
 	identity, err := loadIdentity(keyPath)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
@@ -183,11 +234,10 @@ func DecryptSecretsBytes(secretsPath, keyPath string) ([]byte, error) {
 			"failed to read decrypted content", err)
 	}
 
-	return buf.Bytes(), nil
+	// Return data wrapped in SecretBytes for automatic zeroization
+	return &SecretBytes{data: buf.Bytes()}, nil
 }
 
-// loadRecipient reads and parses the X25519 recipient from an age key file.
-//
 // This function opens the key file, skips the identity line (first line),
 // and parses the recipient line (second line) which contains the public
 // key used for encryption. The recipient is required for encrypting

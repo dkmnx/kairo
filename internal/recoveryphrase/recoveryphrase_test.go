@@ -10,7 +10,14 @@ func TestCreateAndRecover(t *testing.T) {
 	tmpDir := t.TempDir()
 	keyPath := filepath.Join(tmpDir, "age.key")
 
-	_ = os.WriteFile(keyPath, []byte("test-key-content"), 0600)
+	// Use a proper 32-byte key (X25519 private key size)
+	keyData := make([]byte, 32)
+	for i := range keyData {
+		keyData[i] = byte(i % 256)
+	}
+	if err := os.WriteFile(keyPath, keyData, 0600); err != nil {
+		t.Fatalf("failed to write test key: %v", err)
+	}
 
 	phrase, err := CreateRecoveryPhrase(keyPath)
 	if err != nil {
@@ -28,8 +35,11 @@ func TestCreateAndRecover(t *testing.T) {
 		t.Fatalf("RecoverFromPhrase failed: %v", err)
 	}
 
-	content, _ := os.ReadFile(keyPath)
-	if string(content) != "test-key-content" {
+	content, err := os.ReadFile(keyPath)
+	if err != nil {
+		t.Fatalf("failed to read key after recovery: %v", err)
+	}
+	if string(content) != string(keyData) {
 		t.Error("key not recovered correctly")
 	}
 }

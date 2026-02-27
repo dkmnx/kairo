@@ -157,9 +157,10 @@ func TestDecryptSecretsBytes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("DecryptSecretsBytes() failed: %v", err)
 		}
+		defer decrypted.Close()
 
-		if string(decrypted) != testSecret {
-			t.Errorf("decrypted content mismatch: got %q, want %q", string(decrypted), testSecret)
+		if decrypted.String() != testSecret {
+			t.Errorf("decrypted content mismatch: got %q, want %q", decrypted.String(), testSecret)
 		}
 	})
 

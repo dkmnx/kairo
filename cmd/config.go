@@ -24,7 +24,9 @@ var configCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		providerName := args[0]
 
-		if !providers.IsBuiltInProvider(providerName) {
+		isCustom := providerName == "custom"
+		isBuiltIn := providers.IsBuiltInProvider(providerName)
+		if !isCustom && !isBuiltIn {
 			ui.PrintError(fmt.Sprintf("Unknown provider: '%s'", providerName))
 			ui.PrintInfo("Available: anthropic, zai, minimax, kimi, deepseek, custom")
 			return
@@ -130,12 +132,27 @@ var configCmd = &cobra.Command{
 			return
 		}
 
+		// Validate cross-provider config before saving
+		if err := validate.ValidateCrossProviderConfig(cfg); err != nil {
+			ui.PrintError(err.Error())
+			// Rollback: remove the just-encrypted secret
+			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName)))
+			if rollbackErr := crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets)); rollbackErr != nil {
+				ui.PrintError(fmt.Sprintf("Rollback failed: %v", rollbackErr))
+				ui.PrintInfo("Config saved but secrets may be outdated. Run 'kairo " + providerName + "' to reconfigure.")
+			}
+			return
+		}
+
 		// Now save config AFTER secrets are successfully encrypted
 		if err := config.SaveConfig(dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 			// Rollback: remove the just-encrypted secret
 			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName)))
-			_ = crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets))
+			if rollbackErr := crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets)); rollbackErr != nil {
+				ui.PrintError(fmt.Sprintf("Rollback failed: %v", rollbackErr))
+				ui.PrintInfo(" Secrets may be outdated. Run 'kairo " + providerName + "' to reconfigure.")
+			}
 			return
 		}
 

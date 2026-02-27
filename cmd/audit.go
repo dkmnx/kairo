@@ -338,7 +338,5 @@ func exportAuditLog(entries []audit.AuditEntry, outputPath, format string) error
 	}
 
 	return kairoerrors.NewError(kairoerrors.ConfigError,
-		fmt.Sprintf("unsupported format: %s (supported: csv, json)", format)).
-		WithContext("format", format).
-		WithContext("supported", "csv, json")
+		fmt.Sprintf("unsupported format: %s (supported: csv, json)", format))
 }
