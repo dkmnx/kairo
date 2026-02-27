@@ -158,16 +158,11 @@ type SecretBytes struct {
 	data []byte
 }
 
-// String returns the secrets as a string. The underlying data is NOT cleared.
+// String returns the secrets as a string. The returned string is immutable
+// in Go, so it cannot be cleared from memory. Do not use for sensitive data
+// that requires explicit memory cleanup.
 func (s *SecretBytes) String() string {
 	return string(s.data)
-}
-
-// Bytes returns a copy of the secrets. The underlying data is NOT cleared.
-func (s *SecretBytes) Bytes() []byte {
-	copyBytes := make([]byte, len(s.data))
-	copy(copyBytes, s.data)
-	return copyBytes
 }
 
 // Clear explicitly zeroizes the secrets. Called automatically by Close().
