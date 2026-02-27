@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.1] - 2026-02-28
+
+### Added
+
+- Fuzzing tests for input validation functions
+
+### Changed
+
+- Centralized all error definitions in `internal/errors` package
+- Extracted `FormatSecrets` to shared config utility for reuse in reset command
+- Removed harness selection from setup command (use `kairo harness set` instead)
+
+### Fixed
+
+- Audit export: fixed format validation and error handling for JSON/CSV exports
+- Reset command: use direct config load instead of cache for consistency
+- Reset command: renamed `integrityKey` to more accurate `identityKey`
+- Recovery phrase: added max length validation and documented memory safety limitation
+
+### Security
+
+- Addressed critical HMAC security issues
+- Addressed code review security findings
+- Addressed remaining security warnings and suggestions
+
 ## [1.10.0] - 2026-02-21
 
 ### Added
@@ -916,6 +941,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[1.10.1]: https://github.com/dkmnx/kairo/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/dkmnx/kairo/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/dkmnx/kairo/compare/v1.8.4...v1.9.0
 [1.8.4]: https://github.com/dkmnx/kairo/compare/v1.8.3...v1.8.4
