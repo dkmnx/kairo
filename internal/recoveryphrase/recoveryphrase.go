@@ -70,22 +70,13 @@ func RecoverFromPhrase(configDir, phrase string) error {
 }
 
 func generateMAC(data []byte) string {
-	// Use HMAC-SHA256 for integrity verification
-	// HMAC key is derived from the key data (self-contained verification)
+	// Use full HMAC-SHA256 for integrity verification
+	// HMAC key is derived from the key data itself (self-contained verification)
 	h := hmac.New(sha256.New, data)
 	h.Write(data)
 	mac := h.Sum(nil)
-	return strings.ToUpper(formatHex(uint32(mac[0])<<24 | uint32(mac[1])<<16 | uint32(mac[2])<<8 | uint32(mac[3])))
-}
-
-func formatHex(n uint32) string {
-	hexChars := "0123456789ABCDEF"
-	result := make([]byte, 8)
-	for i := 7; i >= 0; i-- {
-		result[i] = hexChars[n&0xF]
-		n >>= 4
-	}
-	return string(result)
+	// Convert full 32-byte HMAC to base64 for compact storage
+	return base64.RawStdEncoding.EncodeToString(mac)
 }
 
 func GenerateRecoveryPhrase() (string, error) {
