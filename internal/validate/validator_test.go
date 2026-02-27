@@ -2,8 +2,12 @@ package validate
 
 import (
 	"net"
+	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/providers"
 )
 
 func TestProviderValidation(t *testing.T) {
@@ -166,4 +170,251 @@ func TestIsBlockedHost(t *testing.T) {
 			}
 		})
 	}
+}
+
+// FuzzValidateAPIKey fuzzes the ValidateAPIKey function with random inputs.
+func FuzzValidateAPIKey(f *testing.F) {
+	// Seed with some initial values
+	f.Add("sk-ant-valid-key-12345678901234567890", "zai")
+	f.Add("", "zai")
+	f.Add("   ", "TestProvider")
+	f.Add("short", "zai")
+	f.Add("zai-api-key-123456789012345678901234", "zai")
+	f.Add("custom-key-1234567890", "custom")
+	f.Add("minimax-api-key-12345678901234567890", "minimax")
+	f.Add("kimi-api-key-1234567890123456789012345", "kimi")
+	f.Add("deepseek-api-key-12345678901234567890", "deepseek")
+	f.Add("test-key-12345678901234567890", "unknown_provider")
+
+	f.Fuzz(func(t *testing.T, key, providerName string) {
+		err := ValidateAPIKey(key, providerName)
+
+		// Verify error message always includes provider name when provided
+		if err != nil && providerName != "" {
+			errMsg := err.Error()
+			if !strings.Contains(errMsg, providerName) {
+				t.Errorf("ValidateAPIKey() error message should include provider name %q, got: %v", providerName, errMsg)
+			}
+		}
+
+		// Verify empty/whitespace keys always fail
+		if strings.TrimSpace(key) == "" && err == nil {
+			t.Errorf("ValidateAPIKey() should fail for empty/whitespace key, got nil error")
+		}
+
+		// Verify known providers with short keys always fail
+		knownProviders := []string{"zai", "minimax", "kimi", "deepseek", "custom"}
+		for _, p := range knownProviders {
+			if providerName == p && len(key) < 20 && err == nil {
+				t.Errorf("ValidateAPIKey() should fail for %s provider with key length %d", providerName, len(key))
+			}
+		}
+	})
+}
+
+// FuzzValidateURL fuzzes the ValidateURL function with random inputs.
+func FuzzValidateURL(f *testing.F) {
+	// Seed with some initial values
+	f.Add("https://api.example.com/anthropic", "TestProvider")
+	f.Add("", "TestProvider")
+	f.Add("http://api.example.com", "TestProvider")
+	f.Add("https://localhost/api", "TestProvider")
+	f.Add("https://127.0.0.1/api", "TestProvider")
+	f.Add("https://10.0.0.1/api", "TestProvider")
+	f.Add("https://172.16.0.1/api", "TestProvider")
+	f.Add("https://192.168.1.1/api", "TestProvider")
+	f.Add("https://api.z.ai/api/anthropic", "zai")
+	f.Add("https://api.minimax.io/v1", "minimax")
+
+	f.Fuzz(func(t *testing.T, rawURL, providerName string) {
+		err := ValidateURL(rawURL, providerName)
+
+		// Verify error message always includes provider name when provided
+		if err != nil && providerName != "" {
+			errMsg := err.Error()
+			if !strings.Contains(errMsg, providerName) {
+				t.Errorf("ValidateURL() error message should include provider name %q, got: %v", providerName, errMsg)
+			}
+		}
+
+		// Verify empty URLs always fail
+		if rawURL == "" && err == nil {
+			t.Errorf("ValidateURL() should fail for empty URL")
+		}
+
+		// Verify HTTP (non-HTTPS) URLs always fail
+		if strings.HasPrefix(rawURL, "http://") && err == nil {
+			t.Errorf("ValidateURL() should fail for HTTP URL: %s", rawURL)
+		}
+
+		// Parse the URL to check for blocked hosts
+		parsed, parseErr := url.Parse(rawURL)
+		if parseErr == nil && parsed.Host != "" {
+			host := parsed.Hostname()
+			// Verify exact localhost matches always fail
+			if host == "localhost" && err == nil {
+				t.Errorf("ValidateURL() should fail for localhost URL: %s", rawURL)
+			}
+			// Verify 127.0.0.1 always fail
+			if host == "127.0.0.1" && err == nil {
+				t.Errorf("ValidateURL() should fail for 127.0.0.1 URL: %s", rawURL)
+			}
+		}
+	})
+}
+
+// FuzzValidateProviderModel fuzzes the ValidateProviderModel function with random inputs.
+func FuzzValidateProviderModel(f *testing.F) {
+	// Seed with some initial values
+	f.Add("claude-3-opus-20240229", "anthropic")
+	f.Add("", "anthropic")
+	f.Add("gpt-4", "openai")
+	f.Add("gemini-pro", "google")
+	f.Add("invalid@model#name", "anthropic")
+
+	f.Fuzz(func(t *testing.T, modelName, providerName string) {
+		err := ValidateProviderModel(providerName, modelName)
+
+		// Verify empty model names are always valid (allowed to use provider default)
+		if modelName == "" && err != nil {
+			t.Errorf("ValidateProviderModel() should allow empty model names, got error: %v", err)
+		}
+
+		// Note: ValidateProviderModel only validates model names for built-in providers
+		// that have a default model set. For custom providers or built-in providers
+		// without default models, it returns nil. This is by design.
+
+		// Verify model names exceeding max length always fail (only for built-in providers)
+		if len(modelName) > MaxModelNameLength {
+			// For built-in providers with default models, this should fail
+			if def, ok := providers.GetBuiltInProvider(providerName); ok && def.Model != "" {
+				if err == nil {
+					t.Errorf("ValidateProviderModel() should fail for model name exceeding max length (%d)", MaxModelNameLength)
+				}
+			}
+		}
+
+		// For built-in providers with default models, verify invalid characters fail
+		if modelName != "" && err == nil {
+			if def, ok := providers.GetBuiltInProvider(providerName); ok && def.Model != "" {
+				// If validation passed for a built-in provider, verify all characters are valid
+				for _, r := range modelName {
+					if !isValidModelRune(r) {
+						t.Errorf("ValidateProviderModel() should fail for model with invalid character %q in %q", r, modelName)
+					}
+				}
+			}
+		}
+	})
+}
+
+// FuzzValidateCrossProviderConfig fuzzes the ValidateCrossProviderConfig function with random inputs.
+// Note: Go's native fuzzing doesn't support complex struct types, so we fuzz with string inputs
+// that represent serialized provider configurations.
+func FuzzValidateCrossProviderConfig(f *testing.F) {
+	// Seed with some initial test cases representing different scenarios
+	// Format: "provider1:env1=val1;provider2:env2=val2"
+	f.Add("provider1:API_KEY=value1")
+	f.Add("provider1:API_KEY=value1;provider2:API_KEY=value2")
+	f.Add("provider1:API_KEY=same;provider2:API_KEY=same")
+	f.Add("provider1:VAR1=val1;provider2:VAR2=val2")
+	f.Add("provider1:API_KEY=val1;provider2:API_KEY=val1;provider3:API_KEY=val2")
+
+	f.Fuzz(func(t *testing.T, input string) {
+		// Parse the input string into a config
+		cfg := parseFuzzConfig(input)
+		if cfg == nil {
+			t.Skip("Invalid config generated from fuzz input")
+		}
+
+		err := ValidateCrossProviderConfig(cfg)
+
+		// Verify the validation logic
+		envVarValues := make(map[string]map[string]string) // envVar -> provider -> value
+		for providerName, provider := range cfg.Providers {
+			for _, envVar := range provider.EnvVars {
+				parts := strings.SplitN(envVar, "=", 2)
+				if len(parts) == 2 {
+					key := strings.TrimSpace(parts[0])
+					value := strings.TrimSpace(parts[1])
+					if envVarValues[key] == nil {
+						envVarValues[key] = make(map[string]string)
+					}
+					envVarValues[key][providerName] = value
+				}
+			}
+		}
+
+		// Check for collisions
+		hasCollision := false
+		for _, values := range envVarValues {
+			if len(values) > 1 {
+				vals := make([]string, 0, len(values))
+				for _, v := range values {
+					vals = append(vals, v)
+				}
+				for i := 0; i < len(vals); i++ {
+					for j := i + 1; j < len(vals); j++ {
+						if vals[i] != vals[j] {
+							hasCollision = true
+							break
+						}
+					}
+				}
+			}
+		}
+
+		if hasCollision && err == nil {
+			t.Errorf("ValidateCrossProviderConfig() should fail when env vars have different values across providers")
+		}
+	})
+}
+
+// parseFuzzConfig parses a fuzz input string into a Config struct.
+// Format: "provider1:env1=val1;provider2:env2=val2"
+func parseFuzzConfig(input string) *config.Config {
+	cfg := &config.Config{
+		Providers: make(map[string]config.Provider),
+	}
+
+	if input == "" {
+		return cfg
+	}
+
+	// Split by semicolon to get provider entries
+	entries := strings.Split(input, ";")
+	for _, entry := range entries {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+
+		// Split by colon to get provider name and env vars
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		providerName := strings.TrimSpace(parts[0])
+		if providerName == "" {
+			continue
+		}
+
+		envVars := strings.Split(strings.TrimSpace(parts[1]), ";")
+		cleanEnvVars := make([]string, 0, len(envVars))
+		for _, envVar := range envVars {
+			envVar = strings.TrimSpace(envVar)
+			if envVar != "" {
+				cleanEnvVars = append(cleanEnvVars, envVar)
+			}
+		}
+
+		cfg.Providers[providerName] = config.Provider{
+			Name:    providerName,
+			BaseURL: "https://api." + providerName + ".example.com",
+			EnvVars: cleanEnvVars,
+		}
+	}
+
+	return cfg
 }

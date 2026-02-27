@@ -9,6 +9,7 @@ import (
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
@@ -23,7 +24,9 @@ var configCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		providerName := args[0]
 
-		if !providers.IsBuiltInProvider(providerName) {
+		isCustom := providerName == "custom"
+		isBuiltIn := providers.IsBuiltInProvider(providerName)
+		if !isCustom && !isBuiltIn {
 			ui.PrintError(fmt.Sprintf("Unknown provider: '%s'", providerName))
 			ui.PrintInfo("Available: anthropic, zai, minimax, kimi, deepseek, custom")
 			return
@@ -82,6 +85,11 @@ var configCmd = &cobra.Command{
 		}
 
 		provider.BaseURL, err = promptWithDefaultAndValidate("Base URL", provider.BaseURL, builtinDef.BaseURL, func(value string) error {
+			// Built-in providers may allow empty base URL (e.g., anthropic)
+			// Custom providers must have a valid base URL
+			if isCustom && value == "" {
+				return validate.ValidateAPIKey(value, "base_url") // Reuse to get "cannot be empty" error
+			}
 			return validate.ValidateURL(value, provider.Name)
 		})
 		if err != nil {
@@ -89,7 +97,14 @@ var configCmd = &cobra.Command{
 			return
 		}
 
-		provider.Model, err = promptWithDefaultAndValidate("Model", provider.Model, builtinDef.Model, nil)
+		provider.Model, err = promptWithDefaultAndValidate("Model", provider.Model, builtinDef.Model, func(value string) error {
+			// Built-in providers may allow empty model (e.g., anthropic)
+			// Custom providers must have a valid model
+			if isCustom && value == "" {
+				return validate.ValidateAPIKey(value, "model") // Reuse to get "cannot be empty" error
+			}
+			return validate.ValidateProviderModel(value, provider.Name)
+		})
 		if err != nil {
 			ui.PrintError(err.Error())
 			return
@@ -120,26 +135,40 @@ var configCmd = &cobra.Command{
 		}
 		cfg.DefaultModels[providerName] = provider.Model
 
+		// Encrypt secrets FIRST to prevent inconsistent state
+		// If this fails, the config won't be saved with a reference to non-existent secrets
+		secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
+
+		if err := crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets)); err != nil {
+			ui.PrintError(fmt.Sprintf("Error saving API key: %v", err))
+			return
+		}
+
+		// Validate cross-provider config before saving
+		if err := validate.ValidateCrossProviderConfig(cfg); err != nil {
+			ui.PrintError(err.Error())
+			// Rollback: remove the just-encrypted secret
+			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName)))
+			if rollbackErr := crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets)); rollbackErr != nil {
+				ui.PrintError(fmt.Sprintf("Rollback failed: %v", rollbackErr))
+				ui.PrintInfo("Config saved but secrets may be outdated. Run 'kairo " + providerName + "' to reconfigure.")
+			}
+			return
+		}
+
+		// Now save config AFTER secrets are successfully encrypted
 		if err := config.SaveConfig(dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
+			// Rollback: remove the just-encrypted secret
+			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName)))
+			if rollbackErr := crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets)); rollbackErr != nil {
+				ui.PrintError(fmt.Sprintf("Rollback failed: %v", rollbackErr))
+				ui.PrintInfo("Secrets may be outdated. Run 'kairo " + providerName + "' to reconfigure.")
+			}
 			return
 		}
 
 		configCache.Invalidate(dir)
-
-		secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
-
-		var secretsBuilder strings.Builder
-		for key, value := range secrets {
-			if key != "" && value != "" {
-				secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
-			}
-		}
-
-		if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
-			ui.PrintError(fmt.Sprintf("Error saving API key: %v", err))
-			return
-		}
 
 		ui.PrintSuccess(fmt.Sprintf("Provider '%s' configured successfully", providerName))
 
@@ -184,7 +213,12 @@ func promptWithDefaultAndValidate(fieldName, currentValue, defaultValue string, 
 
 	value, err := ui.PromptWithDefault(fieldName, promptValue)
 	if err != nil {
-		return "", fmt.Errorf("failed to read input: %w", err)
+		if err == ui.ErrUserCancelled {
+			return "", kairoerrors.NewError(kairoerrors.RuntimeError,
+				"user cancelled input")
+		}
+		return "", kairoerrors.WrapError(kairoerrors.RuntimeError,
+			"failed to read input", err)
 	}
 
 	if validator != nil {

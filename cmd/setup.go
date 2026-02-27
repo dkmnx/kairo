@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/audit"
@@ -63,29 +62,6 @@ func buildProviderConfig(def providers.ProviderDefinition, baseURL, model string
 		provider.EnvVars = def.EnvVars
 	}
 	return provider
-}
-
-// getSortedSecretsKeys returns a sorted slice of keys from a secrets map.
-func getSortedSecretsKeys(secrets map[string]string) []string {
-	keys := make([]string, 0, len(secrets))
-	for key := range secrets {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-// formatSecretsFileContent formats a secrets map into a string suitable for file storage.
-func formatSecretsFileContent(secrets map[string]string) string {
-	var builder strings.Builder
-	keys := getSortedSecretsKeys(secrets)
-	for _, key := range keys {
-		value := secrets[key]
-		if key != "" && value != "" {
-			builder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
-		}
-	}
-	return builder.String()
 }
 
 // saveProviderConfigFile saves a provider configuration to the config file.
@@ -218,31 +194,6 @@ func promptForProvider() string {
 	return strings.TrimSpace(selection)
 }
 
-// promptForHarness prompts user to select a CLI harness (claude or qwen).
-func promptForHarness() string {
-	ui.PrintHeader("CLI Harness Selection\n")
-	ui.PrintWhite("Select CLI harness:")
-	ui.PrintWhite("  1.   Claude Code (default)")
-	ui.PrintWhite("  2.   Qwen Code")
-	ui.PrintWhite("")
-
-	selection, err := ui.PromptWithDefault("Selection [1-2]", "1")
-	if err != nil {
-		ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
-		return ""
-	}
-
-	num := parseIntOrZero(selection)
-	if num < 1 || num > 2 {
-		return "claude"
-	}
-
-	if num == 2 {
-		return "qwen"
-	}
-	return "claude"
-}
-
 // parseProviderSelection converts user input to a provider name.
 func parseProviderSelection(selection string) (string, bool) {
 	if selection == "" || selection == "done" || selection == "q" || selection == "exit" {
@@ -352,7 +303,7 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 
 	// Save secrets
 	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
-	secretsContent := formatSecretsFileContent(secrets)
+	secretsContent := config.FormatSecrets(secrets)
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
 		return "", nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"saving API key", err)
@@ -415,7 +366,7 @@ var setupCmd = &cobra.Command{
 		}
 
 		if err := ensureConfigDirectory(dir); err != nil {
-			ui.PrintError(fmt.Sprintf("Error: %v", err))
+			ui.PrintError(err.Error())
 			return
 		}
 
@@ -423,16 +374,6 @@ var setupCmd = &cobra.Command{
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
-		}
-
-		harnessSelection := promptForHarness()
-		if harnessSelection != "" {
-			cfg.DefaultHarness = harnessSelection
-			if err := config.SaveConfig(dir, cfg); err != nil {
-				ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
-				return
-			}
-			ui.PrintSuccess(fmt.Sprintf("Harness set to: %s", harnessSelection))
 		}
 
 		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(dir)
@@ -453,7 +394,7 @@ var setupCmd = &cobra.Command{
 		var auditDetails map[string]interface{}
 		if !providers.RequiresAPIKey(providerName) {
 			if err := configureAnthropic(dir, cfg, providerName); err != nil {
-				ui.PrintError(fmt.Sprintf("Error: %v", err))
+				ui.PrintError(err.Error())
 				return
 			}
 			configuredProvider = providerName
@@ -467,7 +408,7 @@ var setupCmd = &cobra.Command{
 		} else {
 			provider, details, err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath)
 			if err != nil {
-				ui.PrintError(fmt.Sprintf("Error: %v", err))
+				ui.PrintError(err.Error())
 				return
 			}
 			configuredProvider = provider
@@ -484,23 +425,7 @@ var setupCmd = &cobra.Command{
 	},
 }
 
-// parseIntOrZero converts a string to an integer, returning 0 if invalid.
-//
-// This function parses a string character by character, building an integer
-// from ASCII digits. If any non-digit character is encountered, the
-// function immediately returns 0. Used for parsing user-provided
-// numeric selections in setup wizard.
-//
-// Parameters:
-//   - s: String to parse as integer
-//
-// Returns:
-//   - int: Parsed integer value, or 0 if string contains non-digit characters
-//
-// Error conditions: None (returns 0 for invalid input instead of error)
-//
-// Thread Safety: Thread-safe (pure function, no shared state)
-// Performance Notes: O(n) where n is string length, returns early on first invalid character
+// parseIntOrZero parses a string to int, returning 0 on invalid input.
 func parseIntOrZero(s string) int {
 	var result int
 	for _, c := range s {

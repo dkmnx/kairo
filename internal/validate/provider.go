@@ -64,7 +64,8 @@ func ValidateCrossProviderConfig(cfg *config.Config) error {
 			}
 			if !allSame {
 				return kairoerrors.NewError(kairoerrors.ValidationError,
-					fmt.Sprintf("environment variable collision: '%s' is set to different values by providers: %v", key, sources))
+					fmt.Sprintf("environment variable collision: '%s' is set to different values by providers: %v", key, sources)).
+					WithContext("env_var", key)
 			}
 		}
 	}
@@ -87,13 +88,17 @@ func ValidateProviderModel(providerName, modelName string) error {
 			// Check model name length (most LLM model names are reasonable length)
 			if len(modelName) > MaxModelNameLength {
 				return kairoerrors.NewError(kairoerrors.ValidationError,
-					fmt.Sprintf("model name '%s' for provider '%s' is too long (max %d characters)", modelName, providerName, MaxModelNameLength))
+					fmt.Sprintf("model name '%s' for provider '%s' is too long (max %d characters)", modelName, providerName, MaxModelNameLength)).
+					WithContext("model", modelName).
+					WithContext("provider", providerName)
 			}
 			// Check for valid characters (alphanumeric, hyphens, underscores, dots)
 			for _, r := range modelName {
 				if !isValidModelRune(r) {
 					return kairoerrors.NewError(kairoerrors.ValidationError,
-						fmt.Sprintf("model name '%s' for provider '%s' contains invalid characters", modelName, providerName))
+						fmt.Sprintf("model name '%s' for provider '%s' contains invalid characters", modelName, providerName)).
+						WithContext("model", modelName).
+						WithContext("provider", providerName)
 				}
 			}
 		}

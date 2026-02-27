@@ -16,6 +16,12 @@
 //   - Key rotation uses atomic operations to prevent data loss
 //   - Private key material is never logged or printed
 //
+// Memory Safety Limitation:
+//   - Decrypted secrets are returned as strings which are immutable in Go
+//   - This means decrypted data remains in memory until garbage collected
+//   - For applications requiring secure memory handling, consider using
+//     DecryptSecretsBytes which returns []byte that can be explicitly zeroed
+//
 // Performance:
 //   - Key generation uses X25519 (fast, secure curve)
 //   - Encryption uses age's efficient streaming API
@@ -136,8 +142,97 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 	return buf.String(), nil
 }
 
-// loadRecipient reads and parses the X25519 recipient from an age key file.
+// SecretBytes wraps decrypted secret data with automatic memory zeroization.
+// It implements io.Closer so it can be used with defer for automatic cleanup.
 //
+// Usage:
+//
+//	defer secrets.Close()
+//	secrets, err := DecryptSecretsBytes(path, keyPath)
+//
+// _CONTENT := secrets.String()
+//
+// Close() automatically zeroizes the underlying byte slice to prevent secrets
+// from lingering in memory. After Close() is called, the secrets are not recoverable.
+type SecretBytes struct {
+	data []byte
+}
+
+// String returns the secrets as a string. The returned string is immutable
+// in Go, so it cannot be cleared from memory. Do not use for sensitive data
+// that requires explicit memory cleanup.
+func (s *SecretBytes) String() string {
+	return string(s.data)
+}
+
+// Clear explicitly zeroizes the secrets. Called automatically by Close().
+func (s *SecretBytes) Clear() {
+	if s.data != nil {
+		for i := range s.data {
+			s.data[i] = 0
+		}
+	}
+}
+
+// Close zeroizes the secrets and clears the reference.
+// This method is safe to call multiple times.
+func (s *SecretBytes) Close() error {
+	s.Clear()
+	s.data = nil
+	return nil
+}
+
+// DecryptSecretsBytes decrypts the secrets file and returns the plaintext wrapped in SecretBytes.
+// The SecretBytes type implements io.Closer and will automatically zeroize the memory
+// when Close() is called or when used with defer.
+//
+// Usage:
+//
+//	defer secrets.Close()
+//	secrets, err := DecryptSecretsBytes(path, keyPath)
+//	if err != nil {
+//	    return err
+//	}
+//	content := secrets.String()
+//
+// This function provides better memory safety than DecryptSecrets for applications
+// that need to explicitly clear sensitive data after use.
+func DecryptSecretsBytes(secretsPath, keyPath string) (*SecretBytes, error) {
+	identity, err := loadIdentity(keyPath)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to load decryption key", err).
+			WithContext("key_path", keyPath).
+			WithContext("hint", "If your key is lost, use 'kairo recover restore <phrase>' if you have a recovery phrase, or 'kairo backup restore <backup-file>' if you have a backup")
+	}
+
+	file, err := os.Open(secretsPath)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to open secrets file", err).
+			WithContext("path", secretsPath)
+	}
+	defer file.Close()
+
+	r, err := age.Decrypt(file, identity)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to decrypt secrets file", err).
+			WithContext("path", secretsPath).
+			WithContext("hint", "Ensure your encryption key matches the one used for encryption. Try 'kairo recover restore' if you have a recovery phrase, or 'kairo backup restore' if you have a backup.")
+	}
+
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to read decrypted content", err)
+	}
+
+	// Return data wrapped in SecretBytes for automatic zeroization
+	return &SecretBytes{data: buf.Bytes()}, nil
+}
+
 // This function opens the key file, skips the identity line (first line),
 // and parses the recipient line (second line) which contains the public
 // key used for encryption. The recipient is required for encrypting

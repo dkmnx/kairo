@@ -222,8 +222,6 @@ var switchCmd = &cobra.Command{
 				cmd.Printf("Error running Claude: %v\n", err)
 				exitProcess(1)
 			}
-
-			// Cleanup via deferred cleanup() above
 			return
 		}
 

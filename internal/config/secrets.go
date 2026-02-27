@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"sort"
 	"strings"
 )
 
@@ -28,4 +29,26 @@ func ParseSecrets(secrets string) map[string]string {
 		}
 	}
 	return result
+}
+
+// FormatSecrets formats a secrets map into a string suitable for file storage.
+// Keys are sorted for deterministic output. Empty keys or values are skipped.
+func FormatSecrets(secrets map[string]string) string {
+	keys := make([]string, 0, len(secrets))
+	for key := range secrets {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var builder strings.Builder
+	for _, key := range keys {
+		value := secrets[key]
+		if key != "" && value != "" {
+			builder.WriteString(key)
+			builder.WriteString("=")
+			builder.WriteString(value)
+			builder.WriteString("\n")
+		}
+	}
+	return builder.String()
 }
