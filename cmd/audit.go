@@ -121,13 +121,9 @@ var auditExportCmd = &cobra.Command{
 				"--output is required for export")
 		}
 
+		// Audit directory must exist for export - don't create empty files
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			entries := []audit.AuditEntry{}
-			if err := exportAuditLog(entries, exportOutput, exportFormat); err != nil {
-				return err
-			}
-			ui.PrintSuccess(fmt.Sprintf("Audit log exported to %s", exportOutput))
-			return nil
+			return fmt.Errorf("no audit log directory exists")
 		}
 
 		logger, err := audit.NewLogger(dir)
@@ -250,6 +246,7 @@ func printAuditList(entries []audit.AuditEntry, cmd *cobra.Command) {
 func exportAuditLog(entries []audit.AuditEntry, outputPath, format string) error {
 	format = strings.ToLower(format)
 
+	// Validate format early before any file operations to fail fast and prevent creating empty files
 	if format != "json" && format != "csv" {
 		return kairoerrors.NewError(kairoerrors.ConfigError,
 			fmt.Sprintf("unsupported format: %s (supported: csv, json)", format))
