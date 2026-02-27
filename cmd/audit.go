@@ -113,8 +113,7 @@ var auditExportCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir := getConfigDir()
 		if dir == "" {
-			ui.PrintError("Config directory not found")
-			return nil
+			return fmt.Errorf("config directory not found")
 		}
 
 		if exportOutput == "" {
@@ -250,6 +249,11 @@ func printAuditList(entries []audit.AuditEntry, cmd *cobra.Command) {
 
 func exportAuditLog(entries []audit.AuditEntry, outputPath, format string) error {
 	format = strings.ToLower(format)
+
+	if format != "json" && format != "csv" {
+		return kairoerrors.NewError(kairoerrors.ConfigError,
+			fmt.Sprintf("unsupported format: %s (supported: csv, json)", format))
+	}
 
 	if format == "json" {
 		data, err := json.MarshalIndent(entries, "", "  ")
