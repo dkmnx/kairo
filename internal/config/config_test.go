@@ -673,3 +673,67 @@ func TestLoadConfigCommentOnly(t *testing.T) {
 		t.Error("LoadConfig() on comment-only file should error")
 	}
 }
+
+func TestFormatSecrets(t *testing.T) {
+	tests := []struct {
+		name     string
+		secrets  map[string]string
+		expected string
+	}{
+		{
+			name:     "empty map",
+			secrets:  map[string]string{},
+			expected: "",
+		},
+		{
+			name:     "single entry",
+			secrets:  map[string]string{"KEY": "value"},
+			expected: "KEY=value\n",
+		},
+		{
+			name:     "multiple entries sorted",
+			secrets:  map[string]string{"Z_KEY": "val3", "A_KEY": "val1", "M_KEY": "val2"},
+			expected: "A_KEY=val1\nM_KEY=val2\nZ_KEY=val3\n",
+		},
+		{
+			name:     "skips empty key",
+			secrets:  map[string]string{"": "value", "KEY": "value"},
+			expected: "KEY=value\n",
+		},
+		{
+			name:     "skips empty value",
+			secrets:  map[string]string{"KEY": "", "OTHER": "value"},
+			expected: "OTHER=value\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatSecrets(tt.secrets)
+			if result != tt.expected {
+				t.Errorf("FormatSecrets() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFormatSecretsRoundTrip(t *testing.T) {
+	original := map[string]string{
+		"ZAI_API_KEY":   "sk-test-123",
+		"ANTHROPIC_KEY": "sk-ant-456",
+		"DEEPSEEK_KEY":  "sk-deep-789",
+	}
+
+	formatted := FormatSecrets(original)
+	parsed := ParseSecrets(formatted)
+
+	if len(parsed) != len(original) {
+		t.Errorf("Round trip: got %d entries, want %d", len(parsed), len(original))
+	}
+
+	for key, value := range original {
+		if parsed[key] != value {
+			t.Errorf("Round trip: parsed[%q] = %q, want %q", key, parsed[key], value)
+		}
+	}
+}

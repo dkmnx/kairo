@@ -28,6 +28,42 @@ const (
 // ErrConfigNotFound is returned when the configuration file does not exist.
 var ErrConfigNotFound = errors.New("configuration file not found")
 
+// ErrProviderModelTooLong is returned when a provider model name exceeds the maximum length.
+var ErrProviderModelTooLong = errors.New("provider model name is too long")
+
+// ErrProviderModelInvalidChars is returned when a provider model name contains invalid characters.
+var ErrProviderModelInvalidChars = errors.New("provider model name contains invalid characters")
+
+// ErrRecoveryPhraseTooLong is returned when a recovery phrase exceeds maximum length.
+var ErrRecoveryPhraseTooLong = errors.New("recovery phrase exceeds maximum length")
+
+// ErrRecoveryPhraseTooShort is returned when a recovery phrase is too short.
+var ErrRecoveryPhraseTooShort = errors.New("recovery phrase too short")
+
+// ErrRecoveryPhraseInvalid is returned when a recovery phrase is invalid or contains typos.
+var ErrRecoveryPhraseInvalid = errors.New("recovery phrase is invalid or contains typos")
+
+// ErrEmptyToken is returned when a token is empty.
+var ErrEmptyToken = errors.New("token cannot be empty")
+
+// ErrEmptyTokenPath is returned when a token path is empty.
+var ErrEmptyTokenPath = errors.New("token path cannot be empty")
+
+// ErrEmptyCLIPath is returned when a CLI path is empty.
+var ErrEmptyCLIPath = errors.New("cli path cannot be empty")
+
+// ErrInvalidPathInBackup is returned when a backup contains an invalid path (path traversal attempt).
+var ErrInvalidPathInBackup = errors.New("invalid path in backup (may be path traversal attempt)")
+
+// ErrEnvVarCollision is returned when multiple providers set the same environment variable with different values.
+var ErrEnvVarCollision = errors.New("environment variable collision detected")
+
+// ErrUnsupportedFormat is returned when an unsupported export format is used.
+var ErrUnsupportedFormat = errors.New("unsupported export format")
+
+// ErrUserCancelled is returned when the user cancels input (Ctrl+C or Ctrl+D).
+var ErrUserCancelled = errors.New("user cancelled input")
+
 // KairoError is a structured error type that provides context about what went wrong.
 type KairoError struct {
 	Type    ErrorType

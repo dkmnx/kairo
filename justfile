@@ -35,6 +35,21 @@ test:
     go test -v ./...
     go test -race ./...
 
+# Run fuzzing tests with timeout
+fuzz:
+    @echo "Running fuzzing tests (5s per test)..."
+    @echo ""
+    @echo "=== internal/validate ==="
+    go test -fuzz=FuzzValidateAPIKey -fuzztime=5s ./internal/validate/
+    go test -fuzz=FuzzValidateURL -fuzztime=5s ./internal/validate/
+    go test -fuzz=FuzzValidateProviderModel -fuzztime=5s ./internal/validate/
+    go test -fuzz=FuzzValidateCrossProviderConfig -fuzztime=5s ./internal/validate/
+    @echo ""
+    @echo "=== cmd ==="
+    go test -fuzz=FuzzValidateCustomProviderName -fuzztime=5s ./cmd/
+    @echo ""
+    @echo "Fuzzing tests completed!"
+
 # Run tests with coverage report
 test-coverage:
     @echo "Running tests with coverage..."
@@ -46,12 +61,15 @@ test-coverage:
 # Run linters
 lint:
     @echo "Running linters..."
-    gofmt -w .
-    @if [ -n "$(gofmt -l .)" ]; then \
-        echo "Formatting issues found (cannot be auto-fixed):"; \
-        gofmt -l .; \
-        exit 1; \
-    fi
+    @TMPFILE=$(mktemp -t gofmt_issues.XXXXXX) && \
+        gofmt -l . > "$$TMPFILE" && \
+        if [ -s "$$TMPFILE" ]; then \
+            echo "Formatting issues found (cannot be auto-fixed):"; \
+            cat "$$TMPFILE"; \
+            rm -f "$$TMPFILE"; \
+            exit 1; \
+        fi && \
+        rm -f "$$TMPFILE"
     go vet ./...
     @if command -v golangci-lint >/dev/null 2>&1; then \
         golangci-lint run ./...; \
@@ -235,6 +253,7 @@ help:
     @echo "  default         - Build the binary (default)"
     @echo "  build           - Build the binary to {{DIST_DIR}}/"
     @echo "  test            - Run all tests"
+    @echo "  fuzz            - Run fuzzing tests (10s per package)"
     @echo "  test-coverage   - Run tests with coverage report"
     @echo "  lint            - Run linters (gofmt, govet)"
     @echo "  format          - Format code with gofmt"

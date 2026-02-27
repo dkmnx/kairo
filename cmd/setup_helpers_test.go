@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
+	"github.com/dkmnx/kairo/internal/validate"
 )
 
 func TestValidateCustomProviderName(t *testing.T) {
@@ -130,7 +130,7 @@ func TestBuildProviderConfig(t *testing.T) {
 	})
 }
 
-func TestFormatSecretsFileContent(t *testing.T) {
+func TestFormatSecrets(t *testing.T) {
 	t.Run("formats secrets with sorting", func(t *testing.T) {
 		secrets := map[string]string{
 			"Z_KEY": "value1",
@@ -138,7 +138,7 @@ func TestFormatSecretsFileContent(t *testing.T) {
 			"M_KEY": "value3",
 		}
 
-		content := formatSecretsFileContent(secrets)
+		content := config.FormatSecrets(secrets)
 
 		lines := strings.Split(strings.TrimSpace(content), "\n")
 		if len(lines) != 3 {
@@ -160,36 +160,10 @@ func TestFormatSecretsFileContent(t *testing.T) {
 	t.Run("handles empty secrets", func(t *testing.T) {
 		secrets := map[string]string{}
 
-		content := formatSecretsFileContent(secrets)
+		content := config.FormatSecrets(secrets)
 
 		if content != "" {
 			t.Errorf("Expected empty string, got: %q", content)
-		}
-	})
-}
-
-func TestSortSecretsKeys(t *testing.T) {
-	t.Run("sorts keys alphabetically", func(t *testing.T) {
-		secrets := map[string]string{
-			"Z_KEY": "value1",
-			"A_KEY": "value2",
-			"M_KEY": "value3",
-		}
-
-		keys := getSortedSecretsKeys(secrets)
-
-		if !sort.StringsAreSorted(keys) {
-			t.Errorf("Keys are not sorted: %v", keys)
-		}
-
-		if keys[0] != "A_KEY" {
-			t.Errorf("First key should be A_KEY, got %s", keys[0])
-		}
-		if keys[1] != "M_KEY" {
-			t.Errorf("Second key should be M_KEY, got %s", keys[1])
-		}
-		if keys[2] != "Z_KEY" {
-			t.Errorf("Third key should be Z_KEY, got %s", keys[2])
 		}
 	})
 }
@@ -294,6 +268,67 @@ func TestAuditLoggerErrorHandling(t *testing.T) {
 
 		if err != nil {
 			t.Errorf("logAuditEvent should succeed with valid input, got: %v", err)
+		}
+	})
+}
+
+// FuzzValidateCustomProviderName fuzzes the validateCustomProviderName function with random inputs.
+func FuzzValidateCustomProviderName(f *testing.F) {
+	// Seed with some initial values
+	f.Add("myprovider")
+	f.Add("")
+	f.Add("my-provider")
+	f.Add("my_provider")
+	f.Add("123provider")
+	f.Add("my@provider")
+	f.Add("zai")
+	f.Add("minimax")
+	f.Add("kimi")
+	f.Add("deepseek")
+	f.Add("anthropic")
+	f.Add("openai")
+	f.Add(strings.Repeat("a", 50))
+	f.Add(strings.Repeat("a", 51))
+
+	f.Fuzz(func(t *testing.T, name string) {
+		result, err := validateCustomProviderName(name)
+
+		// Verify empty names always fail
+		if name == "" && err == nil {
+			t.Errorf("validateCustomProviderName() should fail for empty name")
+		}
+
+		// Verify names exceeding max length always fail
+		if len(name) > validate.MaxProviderNameLength && err == nil {
+			t.Errorf("validateCustomProviderName() should fail for name exceeding max length (%d)", validate.MaxProviderNameLength)
+		}
+
+		// Verify names starting with numbers always fail (when not empty)
+		if name != "" && len(name) > 0 && name[0] >= '0' && name[0] <= '9' && err == nil {
+			t.Errorf("validateCustomProviderName() should fail for name starting with number: %s", name)
+		}
+
+		// Verify builtin provider names always fail
+		if providers.IsBuiltInProvider(strings.ToLower(name)) && err == nil {
+			t.Errorf("validateCustomProviderName() should fail for builtin provider name: %s", name)
+		}
+
+		// Verify valid names succeed (when not empty, not too long, starts with letter, no special chars, not builtin)
+		if name != "" &&
+			len(name) <= validate.MaxProviderNameLength &&
+			((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z')) &&
+			err == nil {
+			// If validation passed, verify all characters are valid
+			for _, r := range name {
+				if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+					t.Errorf("validateCustomProviderName() should fail for name with invalid character %q in %q", r, name)
+				}
+			}
+		}
+
+		// Verify successful validation returns the original name
+		if err == nil && result != name {
+			t.Errorf("validateCustomProviderName() should return original name on success, got %q want %q", result, name)
 		}
 	})
 }

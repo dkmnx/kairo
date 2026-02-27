@@ -39,14 +39,19 @@ var (
 	configDir   string
 	configDirMu sync.RWMutex // Protects configDir
 	verbose     bool
+	verboseMu   sync.RWMutex // Protects verbose
 	configCache *config.ConfigCache
 )
 
 func getVerbose() bool {
+	verboseMu.RLock()
+	defer verboseMu.RUnlock()
 	return verbose
 }
 
 func setVerbose(v bool) {
+	verboseMu.Lock()
+	defer verboseMu.Unlock()
 	verbose = v
 }
 
