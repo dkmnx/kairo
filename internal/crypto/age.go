@@ -16,6 +16,12 @@
 //   - Key rotation uses atomic operations to prevent data loss
 //   - Private key material is never logged or printed
 //
+// Memory Safety Limitation:
+//   - Decrypted secrets are returned as strings which are immutable in Go
+//   - This means decrypted data remains in memory until garbage collected
+//   - For applications requiring secure memory handling, consider using
+//     DecryptSecretsBytes which returns []byte that can be explicitly zeroed
+//
 // Performance:
 //   - Key generation uses X25519 (fast, secure curve)
 //   - Encryption uses age's efficient streaming API
@@ -134,6 +140,50 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+// DecryptSecretsBytes decrypts the secrets file and returns the plaintext as []byte.
+// The caller is responsible for clearing the returned slice after use:
+//
+//	defer func(b []byte) {
+//		for i := range b { b[i] = 0 }
+//	}(decrypted)
+//
+// This function provides better memory safety than DecryptSecrets for applications
+// that need to explicitly clear sensitive data after use.
+func DecryptSecretsBytes(secretsPath, keyPath string) ([]byte, error) {
+	identity, err := loadIdentity(keyPath)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to load decryption key", err).
+			WithContext("key_path", keyPath).
+			WithContext("hint", "If your key is lost, use 'kairo recover restore <phrase>' if you have a recovery phrase, or 'kairo backup restore <backup-file>' if you have a backup")
+	}
+
+	file, err := os.Open(secretsPath)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to open secrets file", err).
+			WithContext("path", secretsPath)
+	}
+	defer file.Close()
+
+	r, err := age.Decrypt(file, identity)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to decrypt secrets file", err).
+			WithContext("path", secretsPath).
+			WithContext("hint", "Ensure your encryption key matches the one used for encryption. Try 'kairo recover restore' if you have a recovery phrase, or 'kairo backup restore' if you have a backup.")
+	}
+
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to read decrypted content", err)
+	}
+
+	return buf.Bytes(), nil
 }
 
 // loadRecipient reads and parses the X25519 recipient from an age key file.

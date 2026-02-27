@@ -14,6 +14,8 @@ import (
 
 const checksumLength = 8
 
+const maxPhraseLength = 65536
+
 func CreateRecoveryPhrase(keyPath string) (string, error) {
 	keyData, err := os.ReadFile(keyPath)
 	if err != nil {
@@ -33,6 +35,11 @@ func CreateRecoveryPhrase(keyPath string) (string, error) {
 }
 
 func RecoverFromPhrase(configDir, phrase string) error {
+	if len(phrase) > maxPhraseLength {
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"validate phrase", errors.New("recovery phrase exceeds maximum length"))
+	}
+
 	words := strings.Split(phrase, "-")
 
 	// Validate minimum word count: base64 words + 1 checksum word

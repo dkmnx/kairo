@@ -44,3 +44,26 @@ func TestGenerateRecoveryPhrase(t *testing.T) {
 		t.Error("phrase too short")
 	}
 }
+
+func TestRecoverFromPhrase_MaxLength(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	longPhrase := make([]byte, maxPhraseLength+1)
+	for i := range longPhrase {
+		longPhrase[i] = 'A'
+	}
+
+	err := RecoverFromPhrase(tmpDir, string(longPhrase))
+	if err == nil {
+		t.Error("expected error for phrase exceeding max length")
+	}
+}
+
+func TestRecoverFromPhrase_TooShort(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	err := RecoverFromPhrase(tmpDir, "singleword")
+	if err == nil {
+		t.Error("expected error for phrase with too few words")
+	}
+}
