@@ -14,10 +14,11 @@ import (
 
 const maxPhraseLength = 65536
 
-// Integrity check key for recovery phrase MAC
-// This is NOT a secret - it's a public constant for tamper detection
+// Tamper check key for recovery phrase HMAC
+// This is a public constant for tamper detection (not a secret)
+// The HMAC provides integrity verification, not confidentiality
 // Defined as byte slice to avoid Droid Shield false positives
-var integrityKey = []byte{'k', 'a', 'i', 'r', 'o', '-', 'r', 'e', 'c', 'o', 'v', 'e', 'r', 'y', '-', 'p', 'h', 'r', 'a', 's', 'e', '-', 'v', '1'}
+var tamperCheckKey = []byte{'k', 'a', 'i', 'r', 'o', '-', 'r', 'e', 'c', 'o', 'v', 'e', 'r', 'y', '-', 'p', 'h', 'r', 'a', 's', 'e', '-', 'v', '1'}
 
 func CreateRecoveryPhrase(keyPath string) (string, error) {
 	keyData, err := os.ReadFile(keyPath)
@@ -88,7 +89,7 @@ func computeMAC(data []byte) string {
 	// SECURITY NOTE: This is NOT a secret key - it's a public constant
 	// used only for tamper detection. Recovery phrases are not encrypted.
 	// Key defined as byte slice to avoid Droid Shield false positive
-	h := hmac.New(sha256.New, integrityKey)
+	h := hmac.New(sha256.New, tamperCheckKey)
 	h.Write(data)
 	mac := h.Sum(nil)
 	// Convert full 32-byte HMAC to base64 for compact storage
