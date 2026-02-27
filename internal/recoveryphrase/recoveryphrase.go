@@ -12,8 +12,6 @@ import (
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
-const checksumLength = 8
-
 const maxPhraseLength = 65536
 
 func CreateRecoveryPhrase(keyPath string) (string, error) {

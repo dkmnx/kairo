@@ -61,13 +61,15 @@ test-coverage:
 # Run linters
 lint:
     @echo "Running linters..."
-    @format_issues=`gofmt -l .`; \
-    gofmt -w .; \
-    if [ -n "$$format_issues" ]; then \
+    @gofmt -l . > /tmp/gofmt_issues.txt
+    @gofmt -w .
+    @if [ -s /tmp/gofmt_issues.txt ]; then \
         echo "Formatting issues found (cannot be auto-fixed):"; \
-        echo "$$format_issues"; \
+        cat /tmp/gofmt_issues.txt; \
+        rm /tmp/gofmt_issues.txt; \
         exit 1; \
     fi
+    @rm -f /tmp/gofmt_issues.txt
     go vet ./...
     @if command -v golangci-lint >/dev/null 2>&1; then \
         golangci-lint run ./...; \
