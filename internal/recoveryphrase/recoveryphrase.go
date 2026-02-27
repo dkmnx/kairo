@@ -63,6 +63,12 @@ func RecoverFromPhrase(configDir, phrase string) error {
 			"decode phrase", err)
 	}
 
+	// Validate key length - must be exactly 32 bytes for X25519 key
+	if len(keyData) != 32 {
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"validate key", kairoerrors.ErrRecoveryPhraseInvalid)
+	}
+
 	// Validate HMAC
 	expectedMAC := computeMAC(keyData)
 	if !hmac.Equal([]byte(providedMAC), []byte(expectedMAC)) {

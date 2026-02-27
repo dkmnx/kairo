@@ -37,7 +37,11 @@ func TestRecoverRestore(t *testing.T) {
 	keyPath := filepath.Join(tmpDir, "age.key")
 
 	// First, generate a phrase from a known key
-	knownKey := []byte("test-key-for-recovery-32bytes!")
+	// Must be exactly 32 bytes for X25519 key
+	knownKey := make([]byte, 32)
+	for i := range knownKey {
+		knownKey[i] = byte(i % 256)
+	}
 	_ = os.WriteFile(keyPath, knownKey, 0600)
 
 	// Create phrase using the actual recovery package

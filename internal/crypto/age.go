@@ -153,7 +153,7 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 // _CONTENT := secrets.String()
 //
 // Close() automatically zeroizes the underlying byte slice to prevent secrets
-// from lingering in memory. After Close() is called, the secrets are不可 recoverable.
+// from lingering in memory. After Close() is called, the secrets are not recoverable.
 type SecretBytes struct {
 	data []byte
 }
