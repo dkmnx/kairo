@@ -139,6 +139,45 @@ func TestDecryptSecretsErrorMessages(t *testing.T) {
 	})
 }
 
+func TestDecryptSecretsBytes(t *testing.T) {
+	t.Run("decrypts and returns bytes", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		keyPath := filepath.Join(tmpDir, "age.key")
+		if err := GenerateKey(keyPath); err != nil {
+			t.Fatal(err)
+		}
+
+		secretsPath := filepath.Join(tmpDir, "secrets.age")
+		testSecret := "TEST_KEY=secret123\nANOTHER_KEY=value456"
+		if err := EncryptSecrets(secretsPath, keyPath, testSecret); err != nil {
+			t.Fatal(err)
+		}
+
+		decrypted, err := DecryptSecretsBytes(secretsPath, keyPath)
+		if err != nil {
+			t.Fatalf("DecryptSecretsBytes() failed: %v", err)
+		}
+
+		if string(decrypted) != testSecret {
+			t.Errorf("decrypted content mismatch: got %q, want %q", string(decrypted), testSecret)
+		}
+	})
+
+	t.Run("nonexistent file returns descriptive error", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		keyPath := filepath.Join(tmpDir, "age.key")
+		if err := GenerateKey(keyPath); err != nil {
+			t.Fatal(err)
+		}
+
+		secretsPath := filepath.Join(tmpDir, "nonexistent.age")
+		_, err := DecryptSecretsBytes(secretsPath, keyPath)
+		if err == nil {
+			t.Fatal("DecryptSecretsBytes() should error for nonexistent file")
+		}
+	})
+}
+
 func TestRotateKeyErrorMessages(t *testing.T) {
 	t.Run("invalid old key returns descriptive error", func(t *testing.T) {
 		tmpDir := t.TempDir()

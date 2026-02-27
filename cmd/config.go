@@ -120,25 +120,25 @@ var configCmd = &cobra.Command{
 		}
 		cfg.DefaultModels[providerName] = provider.Model
 
-	// Encrypt secrets FIRST to prevent inconsistent state
-	// If this fails, the config won't be saved with a reference to non-existent secrets
-	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
+		// Encrypt secrets FIRST to prevent inconsistent state
+		// If this fails, the config won't be saved with a reference to non-existent secrets
+		secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
 
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets)); err != nil {
-		ui.PrintError(fmt.Sprintf("Error saving API key: %v", err))
-		return
-	}
+		if err := crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets)); err != nil {
+			ui.PrintError(fmt.Sprintf("Error saving API key: %v", err))
+			return
+		}
 
-	// Now save config AFTER secrets are successfully encrypted
-	if err := config.SaveConfig(dir, cfg); err != nil {
-		ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
-		// Rollback: remove the just-encrypted secret
-		delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName)))
-		_ = crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets))
-		return
-	}
+		// Now save config AFTER secrets are successfully encrypted
+		if err := config.SaveConfig(dir, cfg); err != nil {
+			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
+			// Rollback: remove the just-encrypted secret
+			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName)))
+			_ = crypto.EncryptSecrets(secretsPath, keyPath, config.FormatSecrets(secrets))
+			return
+		}
 
-	configCache.Invalidate(dir)
+		configCache.Invalidate(dir)
 
 		ui.PrintSuccess(fmt.Sprintf("Provider '%s' configured successfully", providerName))
 
