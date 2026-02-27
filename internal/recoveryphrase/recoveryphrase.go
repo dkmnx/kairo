@@ -1,9 +1,10 @@
 package recoveryphrase
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
-	"hash/crc32"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,9 +25,9 @@ func CreateRecoveryPhrase(keyPath string) (string, error) {
 
 	words := strings.Fields(phrase)
 
-	// Add checksum for validation
-	checksum := generateChecksum(keyData)
-	words = append(words, checksum)
+	// Add MAC for validation
+	mac := generateMAC(keyData)
+	words = append(words, mac)
 
 	return strings.Join(words, "-"), nil
 }
@@ -39,14 +40,14 @@ func RecoverFromPhrase(configDir, phrase string) error {
 
 	words := strings.Split(phrase, "-")
 
-	// Validate minimum word count: base64 words + 1 checksum word
+	// Validate min word count: base64 words + 1 MAC word
 	if len(words) < 2 {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"validate phrase", kairoerrors.ErrRecoveryPhraseTooShort)
 	}
 
 	// Extract checksum (last word) and validate
-	providedChecksum := words[len(words)-1]
+	providedMAC := words[len(words)-1]
 	words = words[:len(words)-1]
 
 	encoded := strings.Join(words, "")
@@ -57,9 +58,9 @@ func RecoverFromPhrase(configDir, phrase string) error {
 			"decode phrase", err)
 	}
 
-	// Validate checksum
-	expectedChecksum := generateChecksum(keyData)
-	if providedChecksum != expectedChecksum {
+	// Validate HMAC
+	expectedMAC := generateMAC(keyData)
+	if !hmac.Equal([]byte(providedMAC), []byte(expectedMAC)) {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"validate phrase", kairoerrors.ErrRecoveryPhraseInvalid)
 	}
@@ -68,10 +69,13 @@ func RecoverFromPhrase(configDir, phrase string) error {
 	return os.WriteFile(keyPath, keyData, 0600)
 }
 
-func generateChecksum(data []byte) string {
-	crc := crc32.ChecksumIEEE(data)
-	// Convert to 8-char hex string
-	return strings.ToUpper(formatHex(crc))
+func generateMAC(data []byte) string {
+	// Use HMAC-SHA256 for integrity verification
+	// HMAC key is derived from the key data (self-contained verification)
+	h := hmac.New(sha256.New, data)
+	h.Write(data)
+	mac := h.Sum(nil)
+	return strings.ToUpper(formatHex(uint32(mac[0])<<24 | uint32(mac[1])<<16 | uint32(mac[2])<<8 | uint32(mac[3])))
 }
 
 func formatHex(n uint32) string {

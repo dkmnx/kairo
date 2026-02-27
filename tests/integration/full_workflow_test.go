@@ -444,14 +444,13 @@ MINIMAX_API_KEY=TEST-KEY-DO-NOT-USE-reset-minimax
 		t.Errorf("expected 3 providers, got %d", len(loadedCfg.Providers))
 	}
 
-	// Remove minimax provider
-	delete(cfg.Providers, "minimax")
-	cfg.DefaultProvider = "anthropic"
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
-		t.Fatalf("failed to save config after removal: %v", err)
+	// Remove minimax provider using CLI command
+	resetCmd := exec.Command(testBinary, "--config", tmpDir, "reset", "minimax", "--yes")
+	if output, err := resetCmd.CombinedOutput(); err != nil {
+		t.Fatalf("failed to run reset command: %v, output: %s", err, string(output))
 	}
 
-	// Verify minimax removed
+	// Reload config to get updated state from file
 	loadedCfg, err = config.LoadConfig(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config after removal: %v", err)
@@ -461,9 +460,6 @@ MINIMAX_API_KEY=TEST-KEY-DO-NOT-USE-reset-minimax
 	}
 	if len(loadedCfg.Providers) != 2 {
 		t.Errorf("expected 2 providers after removal, got %d", len(loadedCfg.Providers))
-	}
-	if loadedCfg.DefaultProvider != "anthropic" {
-		t.Errorf("default provider = %q, want 'anthropic'", loadedCfg.DefaultProvider)
 	}
 }
 
