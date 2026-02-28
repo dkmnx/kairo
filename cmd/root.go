@@ -141,8 +141,36 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			}
 		}
 
+		// Split args on -- to separate kairo args from harness args
+		// If no -- found, treat all args after provider as harness args
+		kairoArgs, harnessArgs := splitArgs(args)
+
+		// If args[0] was a flag (starts with -), use default provider and pass remaining args to harness
+		if len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "" {
+			args = []string{cfg.DefaultProvider}
+			harnessArgs = kairoArgs
+		} else if len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0] {
+			// -- was present, use split result
+			args = append([]string{args[0]}, kairoArgs...)
+		} else if len(args) > 1 {
+			// No -- found, args after provider are harness args
+			harnessArgs = args[1:]
+			args = args[:1]
+		}
+
 		// First argument should be a provider name
 		providerName := args[0]
+
+		// If first arg is a flag (starts with -) and default provider exists, use it
+		if strings.HasPrefix(providerName, "-") {
+			if cfg.DefaultProvider == "" {
+				cmd.Println("Error: No default provider set and first argument looks like a flag")
+				cmd.Println("Run 'kairo setup' to configure a provider")
+				return
+			}
+			providerName = cfg.DefaultProvider
+		}
+
 		provider, ok := cfg.Providers[providerName]
 		if !ok {
 			cmd.Printf("Error: provider '%s' not configured\n", providerName)
@@ -221,7 +249,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 				return
 			}
 
-			cliArgs := args[1:]
+			cliArgs := harnessArgs
 
 			// Handle Qwen harness - use wrapper for secure API key
 			if harnessToUse == "qwen" {
@@ -311,7 +339,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		}
 
 		// No API key found
-		cliArgs := args[1:]
+		cliArgs := harnessArgs
 
 		// Handle Qwen harness
 		if harnessToUse == "qwen" {
@@ -406,4 +434,13 @@ func handleConfigError(cmd *cobra.Command, err error) {
 
 	// Default error handling
 	cmd.Printf("Error loading config: %v\n", err)
+}
+
+func splitArgs(args []string) ([]string, []string) {
+	for i, arg := range args {
+		if arg == "--" {
+			return args[:i], args[i+1:]
+		}
+	}
+	return args, nil
 }
