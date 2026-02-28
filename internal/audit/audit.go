@@ -10,7 +10,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -81,25 +80,30 @@ func NewLogger(configDir string) (*Logger, error) {
 func generateSessionID() string {
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {
-		// Fallback if crypto/rand fails: combine multiple unpredictable values
-		// This is less secure than crypto/rand but still unpredictable
 		pid := os.Getpid()
-		gid := strconv.Itoa(os.Getpid()) + strconv.Itoa(int(time.Now().UnixNano()))
+		ts := time.Now().UnixNano()
 		hostname := "unknown"
 		if h, err := os.Hostname(); err == nil {
 			hostname = h
 		}
-		// Combine PID, timestamp, hostname for entropy
-		seed := hostname + strconv.Itoa(pid) + gid
-		// Create a simple hash-like identifier
-		sum := 0
-		for _, c := range seed {
-			sum = sum*31 + int(c)
-		}
-		// Convert to hex string
-		return fmt.Sprintf("%08x%08x", uint32(sum), uint32(time.Now().UnixNano()))
+
+		seed := fmt.Sprintf("%s-%d-%d", hostname, pid, ts)
+		hash := fnv64a([]byte(seed))
+
+		return fmt.Sprintf("%016x%016x", hash, uint64(ts))
 	}
 	return hex.EncodeToString(b)
+}
+
+// fnv64a is a FNV-1a 64-bit hash function.
+// Used for fallback session ID generation when crypto/rand is unavailable.
+func fnv64a(data []byte) uint64 {
+	hash := uint64(2166136261)
+	for _, b := range data {
+		hash ^= uint64(b)
+		hash *= 1099511628211
+	}
+	return hash
 }
 
 // Close closes the log file. Must be called when the logger is no longer needed.

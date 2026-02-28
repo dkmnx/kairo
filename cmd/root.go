@@ -271,15 +271,15 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 					return
 				}
 
-				_, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				setupSignalHandler(cancel)
 
 				var execCmd *exec.Cmd
 				if useCmdExe {
-					execCmd = execCommand("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
+					execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
 				} else {
-					execCmd = execCommand(wrapperScript)
+					execCmd = execCommandContext(ctx, wrapperScript)
 				}
 				execCmd.Env = providerEnv
 				execCmd.Stdin = os.Stdin
@@ -309,7 +309,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			ui.ClearScreen()
 			ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
 
-			_, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			setupSignalHandler(cancel)
 
@@ -322,9 +322,9 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			var execCmd *exec.Cmd
 			if useCmdExe {
 				// On Windows, use powershell to execute the script
-				execCmd = execCommand("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
+				execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
 			} else {
-				execCmd = execCommand(wrapperScript)
+				execCmd = execCommandContext(ctx, wrapperScript)
 			}
 			execCmd.Env = providerEnv
 			execCmd.Stdin = os.Stdin
@@ -358,7 +358,11 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		ui.ClearScreen()
 		ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
 
-		execCmd := execCommand(claudePath, cliArgs...)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		setupSignalHandler(cancel)
+
+		execCmd := execCommandContext(ctx, claudePath, cliArgs...)
 		execCmd.Env = providerEnv
 		execCmd.Stdin = os.Stdin
 		execCmd.Stdout = os.Stdout
