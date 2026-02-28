@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,20 +12,14 @@ import (
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
+	"github.com/yarlson/tap"
 )
 
-var (
-	resetYesFlag bool
-)
-
-var resetCmd = &cobra.Command{
-	Use:   "reset <provider | all>",
-	Short: "Reset provider configuration",
-	Long:  "Remove a provider's configuration. Use 'all' to reset all providers.",
-	Args:  cobra.MinimumNArgs(1),
+var deleteCmd = &cobra.Command{
+	Use:   "delete [provider]",
+	Short: "Delete a provider configuration",
+	Long:  "Remove a provider's configuration. If no provider is specified, shows an interactive list.",
 	Run: func(cmd *cobra.Command, args []string) {
-		target := args[0]
-
 		dir := getConfigDir()
 		if dir == "" {
 			ui.PrintError("Config directory not found")
@@ -41,63 +36,52 @@ var resetCmd = &cobra.Command{
 			return
 		}
 
-		if target == "all" {
-			if !resetYesFlag {
-				ui.PrintWarn("This will remove ALL provider configurations and secrets.")
-				confirmed, err := ui.Confirm("Do you want to proceed?")
-				if err != nil {
-					ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
-					return
-				}
-				if !confirmed {
-					ui.PrintInfo("Operation cancelled")
-					return
-				}
-			}
-
-			for name := range cfg.Providers {
-				delete(cfg.Providers, name)
-			}
-			cfg.DefaultProvider = ""
-
-			if err := config.SaveConfig(dir, cfg); err != nil {
-				ui.PrintError(fmt.Sprintf("Saving config: %v", err))
+		var target string
+		if len(args) == 0 {
+			// Interactive selection using tap
+			if len(cfg.Providers) == 0 {
+				ui.PrintWarn("No providers configured")
+				ui.PrintInfo("Run 'kairo setup' to get started")
 				return
 			}
 
-			secretsPath := filepath.Join(dir, "secrets.age")
-			keyPath := filepath.Join(dir, "age.key")
-
-			_, err := os.Stat(secretsPath)
-			if err == nil {
-				err := os.Remove(secretsPath)
-				if err != nil {
-					ui.PrintWarn(fmt.Sprintf("Warning: Could not remove secrets file: %v", err))
-				}
+			providerNames := make([]string, 0, len(cfg.Providers))
+			for name := range cfg.Providers {
+				providerNames = append(providerNames, name)
 			}
 
-			_, err = os.Stat(keyPath)
-			if err == nil {
-				err := os.Remove(keyPath)
-				if err != nil {
-					ui.PrintWarn(fmt.Sprintf("Warning: Could not remove key file: %v", err))
-				}
+			// Convert to tap.SelectOption format
+			options := make([]tap.SelectOption[string], len(providerNames))
+			for i, name := range providerNames {
+				options[i] = tap.SelectOption[string]{Value: name, Label: name}
 			}
 
-			ui.PrintSuccess("All providers reset successfully")
-
-			if err := logAuditEvent(dir, func(logger *audit.Logger) error {
-				return logger.LogReset("all")
-			}); err != nil {
-				ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
+			selected := tap.Select(context.Background(), tap.SelectOptions[string]{
+				Message: "Select provider to delete",
+				Options: options,
+			})
+			target = selected
+			if target == "" {
+				ui.PrintInfo("Operation cancelled")
+				return
 			}
-			return
+		} else {
+			target = args[0]
 		}
 
 		_, ok := cfg.Providers[target]
 		if !ok {
 			ui.PrintError(fmt.Sprintf("Provider '%s' not configured", target))
 			ui.PrintInfo("Run 'kairo list' to see configured providers")
+			return
+		}
+
+		// Confirmation
+		confirmed := tap.Confirm(context.Background(), tap.ConfirmOptions{
+			Message: fmt.Sprintf("Are you sure you want to delete '%s'?", target),
+		})
+		if !confirmed {
+			ui.PrintInfo("Operation cancelled")
 			return
 		}
 
@@ -134,7 +118,7 @@ var resetCmd = &cobra.Command{
 			}
 		}
 
-		ui.PrintSuccess(fmt.Sprintf("Provider '%s' reset successfully", target))
+		ui.PrintSuccess(fmt.Sprintf("Provider '%s' deleted successfully", target))
 
 		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogReset(target)
@@ -145,6 +129,5 @@ var resetCmd = &cobra.Command{
 }
 
 func init() {
-	resetCmd.Flags().BoolVar(&resetYesFlag, "yes", false, "Skip confirmation prompt")
-	rootCmd.AddCommand(resetCmd)
+	rootCmd.AddCommand(deleteCmd)
 }
