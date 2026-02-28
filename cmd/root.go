@@ -31,7 +31,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
@@ -176,14 +175,6 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			cmd.Printf("Error: provider '%s' not configured\n", providerName)
 			cmd.Println("Run 'kairo list' to see configured providers")
 			return
-		}
-
-		// Execute with specified provider
-		// Log audit event for provider execution
-		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
-			return logger.LogSwitch(providerName)
-		}); err != nil {
-			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
 		}
 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)

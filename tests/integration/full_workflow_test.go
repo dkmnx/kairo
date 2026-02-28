@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
@@ -127,83 +126,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 	}
 	if !strings.Contains(decrypted, "MINIMAX_API_KEY") {
 		t.Error("secrets should contain MINIMAX_API_KEY")
-	}
-}
-
-// TestFullWorkflowAuditLogging tests audit log creation across operations.
-func TestFullWorkflowAuditLogging(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Setup initial config
-	cfg := &config.Config{
-		DefaultProvider: "anthropic",
-		Providers: map[string]config.Provider{
-			"anthropic": {Name: "Native Anthropic"},
-		},
-	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
-		t.Fatalf("failed to save config: %v", err)
-	}
-
-	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
-		t.Fatalf("failed to generate key: %v", err)
-	}
-
-	auditPath := filepath.Join(tmpDir, "audit.log")
-
-	// Log multiple operations (NewLogger expects configDir, not full path)
-	logger, err := audit.NewLogger(tmpDir)
-	if err != nil {
-		t.Fatalf("failed to create audit logger: %v", err)
-	}
-
-	operations := []struct {
-		op     string
-		detail string
-	}{
-		{"setup", "anthropic"},
-		{"config", "zai"},
-		{"switch", "zai"},
-		{"rotate", ""},
-		{"backup", ""},
-	}
-
-	for _, op := range operations {
-		var err error
-		switch op.op {
-		case "setup":
-			err = logger.LogSuccess(op.op, op.detail, map[string]interface{}{"type": "builtin"})
-		case "config":
-			err = logger.LogConfig(op.detail, "add", nil)
-		case "switch":
-			err = logger.LogSwitch(op.detail)
-		case "rotate":
-			err = logger.LogSuccess(op.op, "key_rotation", nil)
-		case "backup":
-			err = logger.LogSuccess(op.op, "backup_created", nil)
-		}
-		if err != nil {
-			t.Errorf("failed to log %s: %v", op.op, err)
-		}
-	}
-
-	// Verify audit log exists and contains entries
-	if _, err := os.Stat(auditPath); os.IsNotExist(err) {
-		t.Fatal("audit.log should exist")
-	}
-
-	content, err := os.ReadFile(auditPath)
-	if err != nil {
-		t.Fatalf("failed to read audit log: %v", err)
-	}
-
-	// Check for expected entries
-	expectedEntries := []string{"setup", "config", "switch", "rotate", "backup"}
-	for _, entry := range expectedEntries {
-		if !strings.Contains(string(content), entry) {
-			t.Errorf("audit log should contain %q", entry)
-		}
 	}
 }
 
