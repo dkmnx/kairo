@@ -17,8 +17,8 @@ import (
 
 var deleteCmd = &cobra.Command{
 	Use:   "delete [provider]",
-	Short: "Delete a provider configuration",
-	Long:  "Remove a provider's configuration. If no provider is specified, shows an interactive list.",
+	Short: "Remove a provider configuration",
+	Long:  "Remove a provider from Kairo. If no provider is specified, shows an interactive list of configured providers.",
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := getConfigDir()
 		if dir == "" {
@@ -55,6 +55,12 @@ var deleteCmd = &cobra.Command{
 			for i, name := range providerNames {
 				options[i] = tap.SelectOption[string]{Value: name, Label: name}
 			}
+
+			fmt.Println()
+
+			tap.Intro("Delete Provider", tap.MessageOptions{
+				Hint: "Remove a configured provider from Kairo",
+			})
 
 			selected := tap.Select(context.Background(), tap.SelectOptions[string]{
 				Message: "Select provider to delete",
@@ -118,7 +124,7 @@ var deleteCmd = &cobra.Command{
 			}
 		}
 
-		ui.PrintSuccess(fmt.Sprintf("Provider '%s' deleted successfully", target))
+		tap.Outro(fmt.Sprintf("Provider '%s' deleted successfully", target))
 
 		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
 			return logger.LogReset(target)

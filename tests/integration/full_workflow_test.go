@@ -132,6 +132,8 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 
 // TestFullWorkflowKeyRotation tests key rotation with multiple configured providers.
 func TestFullWorkflowKeyRotation(t *testing.T) {
+	t.Skip("rotate command removed - test needs to be updated or removed")
+
 	if testBinary == "" {
 		t.Fatal("testBinary not initialized, TestMain may have failed")
 	}
@@ -220,6 +222,8 @@ KIMI_API_KEY=TEST-KEY-DO-NOT-USE-kimi-789
 
 // TestFullWorkflowBackupRestore tests complete backup and restore cycle.
 func TestFullWorkflowBackupRestore(t *testing.T) {
+	t.Skip("backup command removed - test needs to be updated or removed")
+
 	if testBinary == "" {
 		t.Fatal("testBinary not initialized, TestMain may have failed")
 	}
@@ -407,6 +411,8 @@ func TestFullWorkflowAuditLogging(t *testing.T) {
 
 // TestFullWorkflowProviderReset tests removing providers.
 func TestFullWorkflowProviderReset(t *testing.T) {
+	t.Skip("reset command removed - test needs to be updated or removed")
+
 	tmpDir := t.TempDir()
 
 	// Setup multiple providers

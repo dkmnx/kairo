@@ -5,12 +5,6 @@ package providers
 // not user input. They contain only timeout/model settings - no sensitive data.
 // Provider-specific secrets (API keys) are stored separately in encrypted form.
 var BuiltInProviders = map[string]ProviderDefinition{
-	"anthropic": {
-		Name:           "Native Anthropic",
-		BaseURL:        "",
-		Model:          "",
-		RequiresAPIKey: false,
-	},
 	"zai": {
 		Name:           "Z.AI",
 		BaseURL:        "https://api.z.ai/api/anthropic",
@@ -78,7 +72,7 @@ func GetBuiltInProvider(name string) (ProviderDefinition, bool) {
 }
 
 // providerOrder defines the display order of providers in setup wizard.
-var providerOrder = []string{"anthropic", "zai", "minimax", "deepseek", "kimi", "custom"}
+var providerOrder = []string{"zai", "minimax", "deepseek", "kimi"}
 
 // GetProviderList returns a list of all built-in provider names in display order.
 func GetProviderList() []string {

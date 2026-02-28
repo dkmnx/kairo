@@ -597,12 +597,12 @@ func TestPrintProviderOption(t *testing.T) {
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
-				"anthropic": {Name: "Native Anthropic"},
+				"zai": {Name: "Z.AI"},
 			},
 		}
-		secrets := map[string]string{}
+		secrets := map[string]string{"ZAI_API_KEY": "test-key"}
 
-		PrintProviderOption(1, "Native Anthropic", cfg, secrets, "anthropic")
+		PrintProviderOption(1, "Z.AI", cfg, secrets, "zai")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -613,7 +613,7 @@ func TestPrintProviderOption(t *testing.T) {
 		if !strings.Contains(output, "✓") {
 			t.Error("PrintProviderOption should show checkmark for configured provider")
 		}
-		if !strings.Contains(output, "Native Anthropic") {
+		if !strings.Contains(output, "Z.AI") {
 			t.Error("PrintProviderOption should display provider name")
 		}
 		if !strings.Contains(output, "1.") {
@@ -705,29 +705,29 @@ func TestPrintProviderOption(t *testing.T) {
 }
 
 func TestIsProviderConfigured(t *testing.T) {
-	t.Run("anthropic configured without API key", func(t *testing.T) {
+	t.Run("custom configured with API key", func(t *testing.T) {
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
-				"anthropic": {Name: "Native Anthropic"},
+				"custom": {Name: "Custom Provider"},
 			},
 		}
-		secrets := map[string]string{}
+		secrets := map[string]string{"CUSTOM_API_KEY": "test-key"}
 
-		result := isProviderConfigured(cfg, secrets, "anthropic")
+		result := isProviderConfigured(cfg, secrets, "custom")
 		if !result {
-			t.Error("isProviderConfigured should return true for configured anthropic")
+			t.Error("isProviderConfigured should return true for configured custom with API key")
 		}
 	})
 
-	t.Run("anthropic not configured", func(t *testing.T) {
+	t.Run("custom not configured", func(t *testing.T) {
 		cfg := &config.Config{
 			Providers: make(map[string]config.Provider),
 		}
 		secrets := map[string]string{}
 
-		result := isProviderConfigured(cfg, secrets, "anthropic")
+		result := isProviderConfigured(cfg, secrets, "custom")
 		if result {
-			t.Error("isProviderConfigured should return false for unconfigured anthropic")
+			t.Error("isProviderConfigured should return false for unconfigured custom")
 		}
 	})
 
@@ -831,10 +831,10 @@ func TestIsProviderConfigured(t *testing.T) {
 }
 
 func TestProviderRequirements(t *testing.T) {
-	t.Run("anthropic does not require API key", func(t *testing.T) {
-		requiresKey := providers.RequiresAPIKey("anthropic")
-		if requiresKey {
-			t.Error("anthropic should not require API key")
+	t.Run("custom requires API key", func(t *testing.T) {
+		requiresKey := providers.RequiresAPIKey("custom")
+		if !requiresKey {
+			t.Error("custom should require API key")
 		}
 	})
 
