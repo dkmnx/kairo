@@ -16,6 +16,10 @@ var lookPath = exec.LookPath
 // It can be replaced in tests to avoid actual process execution.
 var execCommand = exec.Command
 
+// execCommandContext is like execCommand but with context for cancellation.
+// It can be replaced in tests to avoid actual process execution.
+var execCommandContext = exec.CommandContext
+
 // exitProcess is the function used to terminate the process.
 // It can be replaced in tests to avoid actual exit calls.
 var exitProcess = os.Exit
@@ -41,38 +45,47 @@ func runningWithRaceDetector() bool {
 
 // mergeEnvVars merges and deduplicates environment variables.
 // Later values override earlier values with the same key.
+// Uses O(n) algorithm with a single pass and final deduplication.
 func mergeEnvVars(envs ...[]string) []string {
 	seen := make(map[string]bool)
 	var result []string
 
 	for _, envSlice := range envs {
 		for _, env := range envSlice {
-			// Extract key (everything before first '=')
 			idx := strings.IndexByte(env, '=')
 			if idx <= 0 {
-				// Invalid format, skip
 				continue
 			}
 			key := env[:idx]
-
-			// Remove any previous occurrence of this key
-			if seen[key] {
-				// Find and remove previous entry with this key
-				for i, e := range result {
-					if strings.HasPrefix(e, key+"=") {
-						result = append(result[:i], result[i+1:]...)
-						break
-					}
-				}
-			}
-
-			// Add new entry
-			result = append(result, env)
 			seen[key] = true
+			result = append(result, env)
 		}
 	}
 
-	return result
+	if len(seen) == len(result) {
+		return result
+	}
+
+	seen = make(map[string]bool)
+	var deduped []string
+	for i := len(result) - 1; i >= 0; i-- {
+		env := result[i]
+		idx := strings.IndexByte(env, '=')
+		if idx <= 0 {
+			continue
+		}
+		key := env[:idx]
+		if !seen[key] {
+			seen[key] = true
+			deduped = append(deduped, env)
+		}
+	}
+
+	for i, j := 0, len(deduped)-1; i < j; i, j = i+1, j-1 {
+		deduped[i], deduped[j] = deduped[j], deduped[i]
+	}
+
+	return deduped
 }
 
 // setupSignalHandler sets up a signal handler for cleanup.

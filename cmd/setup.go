@@ -301,17 +301,26 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	// API Key prompt
 	var apiKey string
 	if isEdit && exists {
-		// Edit mode - confirm before prompting
-		modifyAPIKey := tap.Confirm(context.Background(), tap.ConfirmOptions{
-			Message: "Modify API key?",
-		})
-		if modifyAPIKey {
+		// Check if existing API key exists in secrets
+		existingKey := secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))]
+		if existingKey == "" {
+			// No existing key - must prompt for new one
 			apiKey = tap.Password(context.Background(), tap.PasswordOptions{
-				Message: "New API Key",
+				Message: "API Key",
 			})
 		} else {
-			// Keep existing API key from secrets
-			apiKey = secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))]
+			// Has existing key - confirm before prompting
+			modifyAPIKey := tap.Confirm(context.Background(), tap.ConfirmOptions{
+				Message: "Modify API key?",
+			})
+			if modifyAPIKey {
+				apiKey = tap.Password(context.Background(), tap.PasswordOptions{
+					Message: "New API Key",
+				})
+			} else {
+				// Keep existing API key from secrets
+				apiKey = existingKey
+			}
 		}
 	} else {
 		// Setup mode - always prompt
