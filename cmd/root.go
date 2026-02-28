@@ -256,7 +256,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 				cliArgs = append([]string{"--auth-type", "anthropic", "--model", provider.Model}, cliArgs...)
 
 				ui.ClearScreen()
-				ui.PrintBanner(kairoversion.Version, provider.Name)
+				ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
 
 				qwenPath, err := lookPath(harnessBinary)
 				if err != nil {
@@ -307,7 +307,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			}
 
 			ui.ClearScreen()
-			ui.PrintBanner(kairoversion.Version, provider.Name)
+			ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
 
 			_, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -356,7 +356,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		}
 
 		ui.ClearScreen()
-		ui.PrintBanner(kairoversion.Version, provider.Name)
+		ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
 
 		execCmd := execCommand(claudePath, cliArgs...)
 		execCmd.Env = providerEnv

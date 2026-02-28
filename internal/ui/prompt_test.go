@@ -529,13 +529,13 @@ func TestPromptWithDefault(t *testing.T) {
 }
 
 func TestPrintBanner(t *testing.T) {
-	t.Run("prints banner with version and provider", func(t *testing.T) {
+	t.Run("prints banner with version model and provider", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 		originalStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("1.0.0-dev", "Z.AI")
+		PrintBanner("1.0.0-dev", "claude-sonnet-4-20250514", "Z.AI")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -543,9 +543,9 @@ func TestPrintBanner(t *testing.T) {
 
 		output := buf.String()
 
-		// Check for ASCII art characters
-		if !strings.Contains(output, "████") {
-			t.Error("PrintBanner should contain ASCII art characters")
+		// Check for kairo prefix
+		if !strings.Contains(output, "kairo") {
+			t.Error("PrintBanner should contain kairo")
 		}
 
 		// Check for version
@@ -553,24 +553,29 @@ func TestPrintBanner(t *testing.T) {
 			t.Error("PrintBanner should display version")
 		}
 
+		// Check for model
+		if !strings.Contains(output, "claude-sonnet-4-20250514") {
+			t.Error("PrintBanner should display model")
+		}
+
 		// Check for provider
 		if !strings.Contains(output, "Z.AI") {
 			t.Error("PrintBanner should display provider name")
 		}
 
-		// Check for bold formatting
-		if !strings.Contains(output, Bold) {
-			t.Error("PrintBanner should use bold formatting")
+		// Check for gray formatting
+		if !strings.Contains(output, Gray) {
+			t.Error("PrintBanner should use gray formatting")
 		}
 	})
 
-	t.Run("handles custom provider name", func(t *testing.T) {
+	t.Run("handles custom provider and model", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 		originalStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("2.0.0", "mycustomprovider")
+		PrintBanner("2.0.0", "custom-model", "mycustomprovider")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -580,6 +585,10 @@ func TestPrintBanner(t *testing.T) {
 
 		if !strings.Contains(output, "2.0.0") {
 			t.Error("PrintBanner should display custom version")
+		}
+
+		if !strings.Contains(output, "custom-model") {
+			t.Error("PrintBanner should display custom model")
 		}
 
 		if !strings.Contains(output, "mycustomprovider") {

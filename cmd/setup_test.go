@@ -21,20 +21,23 @@ func TestPrintBanner(t *testing.T) {
 	tests := []struct {
 		name     string
 		version  string
+		model    string
 		provider string
 		wantSub  string
 	}{
 		{
-			name:     "banner with version and provider",
+			name:     "banner with version model and provider",
 			version:  "v0.1.0",
+			model:    "claude-sonnet-4-20250514",
 			provider: "MiniMax",
-			wantSub:  "v0.1.0 - MiniMax",
+			wantSub:  "kairo v0.1.0 - claude-sonnet-4-20250514 - MiniMax",
 		},
 		{
-			name:     "banner with custom provider",
+			name:     "banner with custom provider and model",
 			version:  "vdev",
+			model:    "custom-model",
 			provider: "Custom Provider",
-			wantSub:  "vdev - Custom Provider",
+			wantSub:  "kairo vdev - custom-model - Custom Provider",
 		},
 	}
 
@@ -46,7 +49,7 @@ func TestPrintBanner(t *testing.T) {
 
 			done := make(chan struct{})
 			go func() {
-				ui.PrintBanner(tt.version, tt.provider)
+				ui.PrintBanner(tt.version, tt.model, tt.provider)
 				w.Close()
 				close(done)
 			}()
@@ -64,48 +67,6 @@ func TestPrintBanner(t *testing.T) {
 				t.Errorf("banner output does not contain expected substring %q, got: %q", tt.wantSub, output)
 			}
 		})
-	}
-}
-
-func TestPrintBannerContainsASCIIArt(t *testing.T) {
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	done := make(chan struct{})
-	go func() {
-		ui.PrintBanner("v0.1.0", "Test Provider")
-		w.Close()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		os.Stdout = oldStdout
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, r); err != nil {
-			t.Logf("Warning: io.Copy failed: %v", err)
-		}
-		r.Close()
-		output := buf.String()
-		expectedParts := []string{
-			"█████",
-			"░░███",
-			"░███",
-			"░██████░",
-			"░░░░ ░░░░░",
-			"v0.1.0 - Test Provider",
-		}
-		for _, part := range expectedParts {
-			if !strings.Contains(output, part) {
-				t.Errorf("banner output does not contain expected part %q, got: %q", part, output)
-			}
-		}
-	case <-time.After(2 * time.Second):
-		t.Error("timeout waiting for banner output")
-		w.Close()
-		os.Stdout = oldStdout
-		r.Close()
 	}
 }
 
