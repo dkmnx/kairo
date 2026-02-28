@@ -93,7 +93,7 @@ var rootCmd = &cobra.Command{
 encrypted secrets management using age encryption.
 
 Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, kairoversion.Date),
-	Args: cobra.MinimumNArgs(0), // Accept any number of arguments (including none)
+	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := getConfigDir()
 		if dir == "" {
@@ -117,57 +117,9 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			return
 		}
 
-		// If no arguments, list providers or launch default with harness flag
-		if len(args) == 0 {
-			if cfg.DefaultProvider == "" {
-				cmd.Println("No default provider set.")
-				cmd.Println()
-				cmd.Println("Usage:")
-				cmd.Println("  kairo setup            # Configure providers")
-				cmd.Println("  kairo edit <provider> # Configure a provider")
-				cmd.Println("  kairo list             # List providers")
-				cmd.Println("  kairo <provider>       # Use specific provider")
-				return
-			}
-			// If harness flag is set, launch with default provider
-			if harnessFlag != "" {
-				args = []string{cfg.DefaultProvider}
-			} else {
-				cmd.Printf("Default provider: %s\n", cfg.DefaultProvider)
-				cmd.Println("Usage:")
-				cmd.Println("  kairo <provider> [args]  # Use specific provider")
-				return
-			}
-		}
-
-		// Split args on -- to separate kairo args from harness args
-		// If no -- found, treat all args after provider as harness args
-		kairoArgs, harnessArgs := splitArgs(args)
-
-		// If args[0] was a flag (starts with -), use default provider and pass remaining args to harness
-		if len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "" {
-			args = []string{cfg.DefaultProvider}
-			harnessArgs = kairoArgs
-		} else if len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0] {
-			// -- was present, use split result
-			args = append([]string{args[0]}, kairoArgs...)
-		} else if len(args) > 1 {
-			// No -- found, args after provider are harness args
-			harnessArgs = args[1:]
-			args = args[:1]
-		}
-
-		// First argument should be a provider name
-		providerName := args[0]
-
-		// If first arg is a flag (starts with -) and default provider exists, use it
-		if strings.HasPrefix(providerName, "-") {
-			if cfg.DefaultProvider == "" {
-				cmd.Println("Error: No default provider set and first argument looks like a flag")
-				cmd.Println("Run 'kairo setup' to configure a provider")
-				return
-			}
-			providerName = cfg.DefaultProvider
+		_, harnessArgs, providerName := resolveProviderAndArgs(cmd, cfg, args)
+		if providerName == "" {
+			return
 		}
 
 		provider, ok := cfg.Providers[providerName]
@@ -180,189 +132,19 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
 
-		// Build environment variables with proper deduplication
-		// Order of precedence (last wins):
-		// 1. System environment variables
-		// 2. Built-in Kairo environment variables
-		// 3. Provider custom EnvVars
-		// 4. Secrets (API keys, etc.)
-		builtInEnvVars := []string{
-			fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),
-			fmt.Sprintf("%s=%s", envModel, provider.Model),
-			fmt.Sprintf("%s=%s", envHaikuModel, provider.Model),
-			fmt.Sprintf("%s=%s", envSonnetModel, provider.Model),
-			fmt.Sprintf("%s=%s", envOpusModel, provider.Model),
-			fmt.Sprintf("%s=%s", envSmallFast, provider.Model),
-			"NODE_OPTIONS=--no-deprecation",
-		}
-
-		secrets, _, _, err := LoadAndDecryptSecrets(dir)
+		providerEnv, secrets, err := buildProviderEnvironment(dir, provider, providerName)
 		if err != nil {
-			if providers.RequiresAPIKey(providerName) {
-				ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
-				ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
-				ui.PrintInfo("Use --verbose for more details.")
-				return
-			}
-			secrets = make(map[string]string)
+			handleSecretsError(cmd, err, providerName)
+			return
 		}
 
-		// Convert secrets to env var slice
-		secretsEnvVars := make([]string, 0, len(secrets))
-		for key, value := range secrets {
-			secretsEnvVars = append(secretsEnvVars, fmt.Sprintf("%s=%s", key, value))
-		}
-
-		// Merge all environment variables with deduplication
-		providerEnv := mergeEnvVars(os.Environ(), builtInEnvVars, provider.EnvVars, secretsEnvVars)
 		apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
-		if apiKey, ok := secrets[apiKeyKey]; ok {
-			// SECURE: Create private auth directory and use wrapper script
-			// This prevents API key from being visible in /proc/<pid>/environ
-			// and ensures files are only accessible to the current user
-			authDir, err := wrapper.CreateTempAuthDir()
-			if err != nil {
-				cmd.Printf("Error creating auth directory: %v\n", err)
-				return
-			}
-
-			var cleanupOnce sync.Once
-			cleanup := func() {
-				cleanupOnce.Do(func() {
-					_ = os.RemoveAll(authDir)
-				})
-			}
-			defer cleanup()
-
-			tokenPath, err := wrapper.WriteTempTokenFile(authDir, apiKey)
-			if err != nil {
-				cmd.Printf("Error creating secure token file: %v\n", err)
-				return
-			}
-
-			cliArgs := harnessArgs
-
-			// Handle Qwen harness - use wrapper for secure API key
-			if harnessToUse == "qwen" {
-				cliArgs = append([]string{"--auth-type", "anthropic", "--model", provider.Model}, cliArgs...)
-
-				ui.ClearScreen()
-				ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
-
-				qwenPath, err := lookPath(harnessBinary)
-				if err != nil {
-					cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
-					cmd.Printf("Please install %s CLI or use 'kairo harness set claude'\n", harnessToUse)
-					return
-				}
-
-				wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, qwenPath, cliArgs, "ANTHROPIC_API_KEY")
-				if err != nil {
-					cmd.Printf("Error generating wrapper script: %v\n", err)
-					return
-				}
-
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
-				setupSignalHandler(cancel)
-
-				var execCmd *exec.Cmd
-				if useCmdExe {
-					execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
-				} else {
-					execCmd = execCommandContext(ctx, wrapperScript)
-				}
-				execCmd.Env = providerEnv
-				execCmd.Stdin = os.Stdin
-				execCmd.Stdout = os.Stdout
-				execCmd.Stderr = os.Stderr
-
-				if err := execCmd.Run(); err != nil {
-					cmd.Printf("Error running Qwen: %v\n", err)
-					exitProcess(1)
-				}
-				return
-			}
-
-			// Claude harness - existing wrapper script logic
-			claudePath, err := lookPath(harnessBinary)
-			if err != nil {
-				cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
-				return
-			}
-
-			wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, claudePath, cliArgs)
-			if err != nil {
-				cmd.Printf("Error generating wrapper script: %v\n", err)
-				return
-			}
-
-			ui.ClearScreen()
-			ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			setupSignalHandler(cancel)
-
-			// Execute wrapper script instead of claude directly
-			// The wrapper script will:
-			// 1. Read API key from the temp file
-			// 2. Set ANTHROPIC_AUTH_TOKEN environment variable
-			// 3. Delete the temp file
-			// 4. Execute claude with the proper arguments
-			var execCmd *exec.Cmd
-			if useCmdExe {
-				// On Windows, use powershell to execute the script
-				execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
-			} else {
-				execCmd = execCommandContext(ctx, wrapperScript)
-			}
-			execCmd.Env = providerEnv
-			execCmd.Stdin = os.Stdin
-			execCmd.Stdout = os.Stdout
-			execCmd.Stderr = os.Stderr
-
-			if err := execCmd.Run(); err != nil {
-				cmd.Printf("Error running Claude: %v\n", err)
-				exitProcess(1)
-			}
+		if apiKey, hasKey := secrets[apiKeyKey]; hasKey {
+			executeWithAuth(cmd, dir, providerEnv, harnessToUse, harnessBinary, provider, providerName, harnessArgs, apiKey)
 			return
 		}
 
-		// No API key found
-		cliArgs := harnessArgs
-
-		// Handle Qwen harness
-		if harnessToUse == "qwen" {
-			ui.PrintError(fmt.Sprintf("API key not found for provider '%s'", providerName))
-			ui.PrintInfo("Qwen Code requires API keys to be set in environment variables.")
-			return
-		}
-
-		// Claude harness - run directly without auth token
-		claudePath, err := lookPath(harnessBinary)
-		if err != nil {
-			cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
-			return
-		}
-
-		ui.ClearScreen()
-		ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		setupSignalHandler(cancel)
-
-		execCmd := execCommandContext(ctx, claudePath, cliArgs...)
-		execCmd.Env = providerEnv
-		execCmd.Stdin = os.Stdin
-		execCmd.Stdout = os.Stdout
-		execCmd.Stderr = os.Stderr
-
-		if err := execCmd.Run(); err != nil {
-			cmd.Printf("Error running Claude: %v\n", err)
-			exitProcess(1)
-		}
+		executeWithoutAuth(cmd, providerEnv, harnessToUse, harnessBinary, provider, harnessArgs)
 	},
 }
 
@@ -438,4 +220,220 @@ func splitArgs(args []string) ([]string, []string) {
 		}
 	}
 	return args, nil
+}
+
+func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
+	if len(args) == 0 {
+		if cfg.DefaultProvider == "" {
+			cmd.Println("No default provider set.")
+			cmd.Println()
+			cmd.Println("Usage:")
+			cmd.Println("  kairo setup            # Configure providers")
+			cmd.Println("  kairo edit <provider> # Configure a provider")
+			cmd.Println("  kairo list             # List providers")
+			cmd.Println("  kairo <provider>       # Use specific provider")
+			return nil, nil, ""
+		}
+		if harnessFlag != "" {
+			args = []string{cfg.DefaultProvider}
+		} else {
+			cmd.Printf("Default provider: %s\n", cfg.DefaultProvider)
+			cmd.Println("Usage:")
+			cmd.Println("  kairo <provider> [args]  # Use specific provider")
+			return nil, nil, ""
+		}
+	}
+
+	kairoArgs, harnessArgs := splitArgs(args)
+
+	if len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "" {
+		args = []string{cfg.DefaultProvider}
+		harnessArgs = kairoArgs
+	} else if len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0] {
+		args = append([]string{args[0]}, kairoArgs...)
+	} else if len(args) > 1 {
+		harnessArgs = args[1:]
+		args = args[:1]
+	}
+
+	providerName := args[0]
+
+	if strings.HasPrefix(providerName, "-") {
+		if cfg.DefaultProvider == "" {
+			cmd.Println("Error: No default provider set and first argument looks like a flag")
+			cmd.Println("Run 'kairo setup' to configure a provider")
+			return nil, nil, ""
+		}
+		providerName = cfg.DefaultProvider
+	}
+
+	return args, harnessArgs, providerName
+}
+
+func buildProviderEnvironment(dir string, provider config.Provider, providerName string) ([]string, map[string]string, error) {
+	builtInEnvVars := []string{
+		fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),
+		fmt.Sprintf("%s=%s", envModel, provider.Model),
+		fmt.Sprintf("%s=%s", envHaikuModel, provider.Model),
+		fmt.Sprintf("%s=%s", envSonnetModel, provider.Model),
+		fmt.Sprintf("%s=%s", envOpusModel, provider.Model),
+		fmt.Sprintf("%s=%s", envSmallFast, provider.Model),
+		"NODE_OPTIONS=--no-deprecation",
+	}
+
+	secrets, _, _, err := LoadAndDecryptSecrets(dir)
+	if err != nil {
+		if providers.RequiresAPIKey(providerName) {
+			return nil, nil, err
+		}
+		secrets = make(map[string]string)
+	}
+
+	secretsEnvVars := make([]string, 0, len(secrets))
+	for key, value := range secrets {
+		secretsEnvVars = append(secretsEnvVars, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	providerEnv := mergeEnvVars(os.Environ(), builtInEnvVars, provider.EnvVars, secretsEnvVars)
+	return providerEnv, secrets, nil
+}
+
+func handleSecretsError(cmd *cobra.Command, err error, providerName string) {
+	ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
+	ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
+	ui.PrintInfo("Use --verbose for more details.")
+}
+
+func executeWithAuth(cmd *cobra.Command, dir string, providerEnv []string, harnessToUse, harnessBinary string, provider config.Provider, providerName string, harnessArgs []string, apiKey string) {
+	authDir, err := wrapper.CreateTempAuthDir()
+	if err != nil {
+		cmd.Printf("Error creating auth directory: %v\n", err)
+		return
+	}
+
+	var cleanupOnce sync.Once
+	cleanup := func() {
+		cleanupOnce.Do(func() {
+			_ = os.RemoveAll(authDir)
+		})
+	}
+	defer cleanup()
+
+	tokenPath, err := wrapper.WriteTempTokenFile(authDir, apiKey)
+	if err != nil {
+		cmd.Printf("Error creating secure token file: %v\n", err)
+		return
+	}
+
+	cliArgs := harnessArgs
+
+	if harnessToUse == "qwen" {
+		cliArgs = append([]string{"--auth-type", "anthropic", "--model", provider.Model}, cliArgs...)
+
+		ui.ClearScreen()
+		ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
+
+		qwenPath, err := lookPath(harnessBinary)
+		if err != nil {
+			cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
+			cmd.Printf("Please install %s CLI or use 'kairo harness set claude'\n", harnessToUse)
+			return
+		}
+
+		wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, qwenPath, cliArgs, "ANTHROPIC_API_KEY")
+		if err != nil {
+			cmd.Printf("Error generating wrapper script: %v\n", err)
+			return
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		setupSignalHandler(cancel)
+
+		var execCmd *exec.Cmd
+		if useCmdExe {
+			execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
+		} else {
+			execCmd = execCommandContext(ctx, wrapperScript)
+		}
+		execCmd.Env = providerEnv
+		execCmd.Stdin = os.Stdin
+		execCmd.Stdout = os.Stdout
+		execCmd.Stderr = os.Stderr
+
+		if err := execCmd.Run(); err != nil {
+			cmd.Printf("Error running Qwen: %v\n", err)
+			exitProcess(1)
+		}
+		return
+	}
+
+	claudePath, err := lookPath(harnessBinary)
+	if err != nil {
+		cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
+		return
+	}
+
+	wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, claudePath, cliArgs)
+	if err != nil {
+		cmd.Printf("Error generating wrapper script: %v\n", err)
+		return
+	}
+
+	ui.ClearScreen()
+	ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	setupSignalHandler(cancel)
+
+	var execCmd *exec.Cmd
+	if useCmdExe {
+		execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
+	} else {
+		execCmd = execCommandContext(ctx, wrapperScript)
+	}
+	execCmd.Env = providerEnv
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	if err := execCmd.Run(); err != nil {
+		cmd.Printf("Error running Claude: %v\n", err)
+		exitProcess(1)
+	}
+}
+
+func executeWithoutAuth(cmd *cobra.Command, providerEnv []string, harnessToUse, harnessBinary string, provider config.Provider, harnessArgs []string) {
+	cliArgs := harnessArgs
+
+	if harnessToUse == "qwen" {
+		ui.PrintError("API key not found for provider")
+		ui.PrintInfo("Qwen Code requires API keys to be set in environment variables.")
+		return
+	}
+
+	claudePath, err := lookPath(harnessBinary)
+	if err != nil {
+		cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
+		return
+	}
+
+	ui.ClearScreen()
+	ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	setupSignalHandler(cancel)
+
+	execCmd := execCommandContext(ctx, claudePath, cliArgs...)
+	execCmd.Env = providerEnv
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	if err := execCmd.Run(); err != nil {
+		cmd.Printf("Error running Claude: %v\n", err)
+		exitProcess(1)
+	}
 }
