@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
@@ -547,24 +546,8 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		var configuredProvider string
-		var auditDetails map[string]interface{}
 		_, exists := cfg.Providers[providerName]
-		provider, details, err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath, exists)
-		if err != nil {
-			ui.PrintError(err.Error())
-			return
-		}
-		configuredProvider = provider
-		auditDetails = details
-
-		if configuredProvider != "" {
-			if err := logAuditEvent(dir, func(logger *audit.Logger) error {
-				return logger.LogSuccess("setup", configuredProvider, auditDetails)
-			}); err != nil {
-				ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
-			}
-		}
+		configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath, exists)
 	},
 }
 

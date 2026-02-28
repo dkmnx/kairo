@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/validate"
@@ -227,47 +225,6 @@ func TestValidateBaseURL(t *testing.T) {
 
 		if !strings.Contains(err.Error(), "HTTPS") {
 			t.Errorf("Error should mention HTTPS, got: %v", err)
-		}
-	})
-}
-
-func TestAuditLoggerErrorHandling(t *testing.T) {
-	t.Run("logAuditEvent returns error on invalid directory", func(t *testing.T) {
-		nonExistentDir := "/this/directory/does/not/exist/xyz123"
-
-		err := logAuditEvent(nonExistentDir, func(l *audit.Logger) error {
-			return nil
-		})
-
-		if err == nil {
-			t.Error("logAuditEvent should return error when directory doesn't exist")
-		}
-	})
-
-	t.Run("logAuditEvent returns error on logging failure", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		err := logAuditEvent(tmpDir, func(l *audit.Logger) error {
-			return fmt.Errorf("test logging error")
-		})
-
-		if err == nil {
-			t.Error("logAuditEvent should return error when logFunc returns error")
-		}
-		if !strings.Contains(err.Error(), "test logging error") {
-			t.Errorf("Error should contain original error message, got: %v", err)
-		}
-	})
-
-	t.Run("logAuditEvent succeeds with valid logger and logFunc", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		err := logAuditEvent(tmpDir, func(l *audit.Logger) error {
-			return l.LogSetup("test-provider")
-		})
-
-		if err != nil {
-			t.Errorf("logAuditEvent should succeed with valid input, got: %v", err)
 		}
 	})
 }

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
@@ -125,12 +124,6 @@ var deleteCmd = &cobra.Command{
 		}
 
 		tap.Outro(fmt.Sprintf("Provider '%s' deleted successfully", target))
-
-		if err := logAuditEvent(dir, func(logger *audit.Logger) error {
-			return logger.LogReset(target)
-		}); err != nil {
-			ui.PrintWarn(fmt.Sprintf("Audit logging failed: %v", err))
-		}
 	},
 }
 
