@@ -183,16 +183,9 @@ func isProviderConfigured(cfg *config.Config, secrets map[string]string, provide
 	return false
 }
 
-func PrintBanner(version, provider string) {
-	banner := ` █████                 ███
-░░███                 ░░░
- ░███ █████  ██████   ████  ████████   ██████
- ░███░░███  ░░░░░███ ░░███ ░░███░░███ ███░░███
- ░██████░    ███████  ░███  ░███ ░░░ ░███ ░███
- ░███░░███  ███░░███  ░███  ░███     ░███ ░███
- ████ █████░░████████ █████ █████    ░░██████
-░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░      ░░░░░░   ` + version + ` - ` + provider
-	fmt.Printf("%s%s\n", Bold, banner)
+func PrintBanner(version, model, provider string) {
+	banner := fmt.Sprintf("kairo %s - %s - %s", version, model, provider)
+	fmt.Printf("%s%s%s\n", Gray, banner, Reset)
 }
 
 // Confirm prompts the user for a yes/no confirmation.
