@@ -75,6 +75,28 @@ jobs:
       - name: Run go vet
         run: go vet ./...
 
+      - name: Install govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: |
+          $(go env GOPATH)/bin/govulncheck ./...
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          allow-licenses: GPL-2.0-only, GPL-3.0-only, AGPL-3.0-only
+
   build-test:
     name: Build and Test (Go ${{ matrix.go-version }})
     runs-on: ubuntu-latest
@@ -231,7 +253,7 @@ jobs:
 
   summary:
     name: Summary
-    needs: [lint, security, build-test, platform, powershell-test, tidy]
+    needs: [lint, security, build-test, platform, powershell-test, tidy, dependency-review]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -244,7 +266,7 @@ jobs:
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
           FAILED=0
-          for job in lint security build-test platform powershell-test tidy; do
+          for job in lint security build-test platform powershell-test tidy dependency-review; do
             status="${{ needs[job].result }}"
             if [ "$status" = "failure" ]; then
               echo "| $job | :x: Failed |" >> $GITHUB_STEP_SUMMARY
