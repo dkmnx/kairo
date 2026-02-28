@@ -286,6 +286,8 @@ flowchart LR
     Validate --> URL[Base URL]
     CLI --> Providers[providers]
     Providers --> Registry[Built-in Providers]
+    CLI --> Wrapper[wrapper]
+    Wrapper --> AuthDir[Temp Auth Dir]
 ```
 
 ## Dependencies

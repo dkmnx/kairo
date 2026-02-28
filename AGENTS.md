@@ -23,7 +23,6 @@ Go CLI wrapper for Claude/Qwen Code API providers with X25519 encryption and aud
 
 ```bash
 just build          # Binary to dist/
-just install        # Install to ~/.local/bin/
 just test           # All tests with race detector
 just test-coverage  # Coverage report
 just lint           # gofmt, go vet, golangci-lint
