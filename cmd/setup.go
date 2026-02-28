@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
 	"github.com/spf13/cobra"
+	"github.com/yarlson/tap"
 )
 
 // validProviderName validates custom provider names to ensure they start with
@@ -161,11 +163,10 @@ func LoadAndDecryptSecrets(dir string) (map[string]string, string, string, error
 	return secrets, secretsPath, keyPath, nil
 }
 
-// promptForProvider displays interactive provider selection menu and reads user choice.
+// promptForProvider displays interactive provider selection menu using Tap TUI.
 //
-// This function presents a numbered list of available providers to the user,
-// prompts for selection, and returns the trimmed provider name.
-// Special options 'q', 'exit', or 'done' return empty string.
+// This function presents a list of available providers to the user using Tap
+// and returns the selected provider name, or empty string if user cancels.
 //
 // Parameters:
 //   - none (function uses providers.GetProviderList() internally)
@@ -173,41 +174,39 @@ func LoadAndDecryptSecrets(dir string) (map[string]string, string, string, error
 // Returns:
 //   - string: Selected provider name, or empty string if user chose to exit
 //
-// Error conditions: None (returns empty string on input errors, but does not error)
+// Error conditions: None (returns empty string on cancellation)
 //
-// Thread Safety: Not thread-safe (uses ui.PromptWithDefault which reads from stdin)
-// Security Notes: This is a user-facing interactive function. Input is trimmed but not validated here (validation happens in caller).
+// Thread Safety: Not thread-safe (uses Tap which reads from stdin)
+// Security Notes: This is a user-facing interactive function. Input is validated by Tap.
 func promptForProvider() string {
 	providerList := providers.GetProviderList()
-	ui.PrintHeader("Kairo Setup Wizard\n")
-	ui.PrintWhite("Available providers:")
-	for i, name := range providerList {
-		ui.PrintWhite(fmt.Sprintf("  %d.   %s", i+1, name))
-	}
-	ui.PrintWhite("  q.   Exit\n")
 
-	selection, err := ui.PromptWithDefault("Select provider to configure", "")
-	if err != nil {
-		ui.PrintError(fmt.Sprintf("Failed to read input: %v", err))
-		return ""
+	// Convert to tap.SelectOption format
+	options := make([]tap.SelectOption[string], len(providerList))
+	for i, name := range providerList {
+		options[i] = tap.SelectOption[string]{Value: name, Label: name}
 	}
-	return strings.TrimSpace(selection)
+
+	selected := tap.Select(context.Background(), tap.SelectOptions[string]{
+		Message: "Select provider to configure",
+		Options: options,
+	})
+
+	return selected
 }
 
-// parseProviderSelection converts user input to a provider name.
+// parseProviderSelection validates the provider selection.
 func parseProviderSelection(selection string) (string, bool) {
-	if selection == "" || selection == "done" || selection == "q" || selection == "exit" {
+	if selection == "" {
 		return "", false
 	}
 
-	providerList := providers.GetProviderList()
-	num := parseIntOrZero(selection)
-	if num < 1 || num > len(providerList) {
-		ui.PrintError(fmt.Sprintf("Invalid selection. Please enter a number 1-%d, or 'q' to exit.", len(providerList)))
-		return "", false
+	// Verify it's a valid built-in provider
+	if providers.IsBuiltInProvider(selection) {
+		return selection, true
 	}
 
-	return providerList[num-1], true
+	return "", false
 }
 
 // configureAnthropic configures the Native Anthropic provider with default settings.
@@ -247,11 +246,9 @@ func configureAnthropic(dir string, cfg *config.Config, providerName string) err
 func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string) (string, map[string]interface{}, error) {
 	// Handle custom provider name
 	if providerName == "custom" {
-		customName, err := ui.Prompt("Provider name")
-		if err != nil {
-			return "", nil, kairoerrors.WrapError(kairoerrors.ValidationError,
-				"reading provider name", err)
-		}
+		customName := tap.Text(context.Background(), tap.TextOptions{
+			Message: "Provider name",
+		})
 		validatedName, err := validateCustomProviderName(customName)
 		if err != nil {
 			return "", nil, err
@@ -268,20 +265,27 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	ui.PrintInfo("")
 	ui.PrintHeader(fmt.Sprintf("%s Configuration", def.Name))
 
-	apiKey, err := promptForAPIKey(def.Name)
-	if err != nil {
+	apiKey := tap.Password(context.Background(), tap.PasswordOptions{
+		Message: "API Key",
+	})
+	if err := validateAPIKey(apiKey, def.Name); err != nil {
 		return "", nil, err
 	}
 
-	baseURL, err := promptForBaseURL(def.BaseURL, def.Name)
-	if err != nil {
+	baseURL := tap.Text(context.Background(), tap.TextOptions{
+		Message:     "Base URL",
+		Placeholder: def.BaseURL,
+	})
+	if err := validateBaseURL(baseURL, def.Name); err != nil {
 		return "", nil, err
 	}
 
-	model, err := ui.PromptWithDefault("Model", def.Model)
-	if err != nil {
-		return "", nil, kairoerrors.WrapError(kairoerrors.ValidationError,
-			"reading model", err)
+	model := tap.Text(context.Background(), tap.TextOptions{
+		Message:     "Model",
+		Placeholder: def.Model,
+	})
+	if err := validate.ValidateProviderModel(model, def.Name); err != nil {
+		return "", nil, err
 	}
 
 	// Validate model is non-empty for custom providers
@@ -324,32 +328,6 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	return providerName, details, nil
 }
 
-// promptForAPIKey prompts user for an API key and validates it.
-func promptForAPIKey(providerName string) (string, error) {
-	apiKey, err := ui.PromptSecret("API Key")
-	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
-			"reading API key", err)
-	}
-	if err := validateAPIKey(apiKey, providerName); err != nil {
-		return "", err
-	}
-	return apiKey, nil
-}
-
-// promptForBaseURL prompts user for a base URL and validates it.
-func promptForBaseURL(defaultURL, providerName string) (string, error) {
-	baseURL, err := ui.PromptWithDefault("Base URL", defaultURL)
-	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
-			"reading base URL", err)
-	}
-	if err := validateBaseURL(baseURL, providerName); err != nil {
-		return "", err
-	}
-	return baseURL, nil
-}
-
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Interactive setup wizard",
@@ -384,9 +362,9 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		selection := promptForProvider()
-		providerName, ok := parseProviderSelection(selection)
-		if !ok {
+		providerName := promptForProvider()
+		if providerName == "" {
+			ui.PrintInfo("Setup cancelled")
 			return
 		}
 
@@ -425,16 +403,34 @@ var setupCmd = &cobra.Command{
 	},
 }
 
-// parseIntOrZero parses a string to int, returning 0 on invalid input.
-func parseIntOrZero(s string) int {
-	var result int
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return 0
-		}
-		result = result*10 + int(c-'0')
+// promptForAPIKey prompts user for an API key and validates it.
+// NOTE: This function is kept for backwards compatibility with tests.
+// Production code now uses Tap TUI.
+func promptForAPIKey(providerName string) (string, error) {
+	apiKey, err := ui.PromptSecret("API Key")
+	if err != nil {
+		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
+			"reading API key", err)
 	}
-	return result
+	if err := validateAPIKey(apiKey, providerName); err != nil {
+		return "", err
+	}
+	return apiKey, nil
+}
+
+// promptForBaseURL prompts user for a base URL and validates it.
+// NOTE: This function is kept for backwards compatibility with tests.
+// Production code now uses Tap TUI.
+func promptForBaseURL(defaultURL, providerName string) (string, error) {
+	baseURL, err := ui.PromptWithDefault("Base URL", defaultURL)
+	if err != nil {
+		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
+			"reading base URL", err)
+	}
+	if err := validateBaseURL(baseURL, providerName); err != nil {
+		return "", err
+	}
+	return baseURL, nil
 }
 
 func init() {

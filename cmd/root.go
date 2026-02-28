@@ -81,7 +81,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		dir := getConfigDir()
 		if dir == "" {
 			cmd.Println("Error: config directory not found")
-			_ = cmd.Help() // Ignoring error - Help() rarely fails and we're exiting anyway
+			_ = cmd.Help()
 			return
 		}
 
@@ -95,90 +95,57 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			return
 		}
 
-		if cfg.DefaultProvider == "" {
-			// If args provided, try to use the first arg as provider name
-			if len(args) > 0 {
-				// Let switchCmd.Run handle provider validation and errors
-				switchCmd.Run(cmd, args)
-				return
-			}
-
-			cmd.Println("No default provider set.")
-			cmd.Println()
-			cmd.Println("Usage:")
-			cmd.Println("  kairo setup        # Configure providers")
-			cmd.Println("  kairo default <provider>  # Set default provider")
-			cmd.Println("  kairo <provider> [args]   # Switch and run Claude")
+		if len(cfg.Providers) == 0 {
+			cmd.Println("No providers configured. Run 'kairo setup' to get started.")
 			return
 		}
 
-		switchCmd.Run(cmd, append([]string{cfg.DefaultProvider}, args...))
+		// If no arguments, list providers
+		if len(args) == 0 {
+			if cfg.DefaultProvider == "" {
+				cmd.Println("No default provider set.")
+				cmd.Println()
+				cmd.Println("Usage:")
+				cmd.Println("  kairo setup            # Configure providers")
+				cmd.Println("  kairo edit <provider> # Configure a provider")
+				cmd.Println("  kairo list             # List providers")
+				cmd.Println("  kairo <provider>       # Use specific provider")
+				return
+			}
+			// For now, just show help message
+			cmd.Printf("Default provider: %s\n", cfg.DefaultProvider)
+			cmd.Println("Usage:")
+			cmd.Println("  kairo <provider> [args]  # Use specific provider")
+			return
+		}
+
+		// First argument should be a provider name
+		providerName := args[0]
+		provider, ok := cfg.Providers[providerName]
+		if !ok {
+			cmd.Printf("Error: provider '%s' not configured\n", providerName)
+			cmd.Println("Run 'kairo list' to see configured providers")
+			return
+		}
+
+		// Execute with the specified provider
+		cmd.Printf("Provider '%s' (%s) - execution not yet implemented\n", providerName, provider.Name)
 	},
 }
 
 // Execute runs the kairo CLI application.
-// It processes command-line arguments, handles provider name shortcuts,
-// and executes the appropriate Cobra command.
+// It processes command-line arguments and executes the appropriate Cobra command.
 // Returns an error if command execution fails.
 func Execute() error {
 	args := os.Args[1:]
-
-	// Check if the first non-flag argument is a provider name (not a subcommand)
-	firstArg := findFirstNonFlagArg(args)
-	finalArgs := args
-
-	// Allow Cobra's completion hidden commands to pass through
-	if firstArg == "__complete" || firstArg == "__completeNoDesc" {
-		// Do nothing, let Cobra handle completion
-	} else if firstArg != "" && !isKnownSubcommand(firstArg) {
-		// This looks like a provider name - convert to switch command
-		// Let switchCmd handle validation and error messages
-		finalArgs = append([]string{"switch"}, args...)
-	}
 
 	// Clean up args after execution to prevent test pollution
 	defer func() {
 		rootCmd.SetArgs(nil)
 	}()
 
-	rootCmd.SetArgs(finalArgs)
+	rootCmd.SetArgs(args)
 	return rootCmd.Execute()
-}
-
-// findFirstNonFlagArg returns the first argument that's not a flag
-func findFirstNonFlagArg(args []string) string {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		// Skip flags
-		if len(arg) > 0 && arg[0] == '-' {
-			// Skip flag value if it's a separate argument
-			if (arg == "--config" || arg == "--harness") && i+1 < len(args) {
-				i++
-			}
-			continue
-		}
-		return arg
-	}
-	return ""
-}
-
-// isKnownSubcommand checks if the given name is a known subcommand
-func isKnownSubcommand(name string) bool {
-	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == name {
-			return true
-		}
-		for _, alias := range cmd.Aliases {
-			if alias == name {
-				return true
-			}
-		}
-	}
-	// Allow Cobra's completion hidden commands to pass through
-	if name == "__complete" || name == "__completeNoDesc" {
-		return true
-	}
-	return false
 }
 
 func init() {
@@ -187,22 +154,6 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
-	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
-
-	// Invalidate cache on config-modifying commands
-	setupCmd.PreRun = func(cmd *cobra.Command, args []string) {
-		dir := getConfigDir()
-		if dir != "" {
-			configCache.Invalidate(dir)
-		}
-	}
-
-	configCmd.PreRun = func(cmd *cobra.Command, args []string) {
-		dir := getConfigDir()
-		if dir != "" {
-			configCache.Invalidate(dir)
-		}
-	}
 }
 
 // handleConfigError provides user-friendly guidance for config errors.

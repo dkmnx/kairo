@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -9,29 +9,19 @@ import (
 	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
 	"github.com/spf13/cobra"
+	"github.com/yarlson/tap"
 )
 
-var configCmd = &cobra.Command{
-	Use:   "config <provider>",
-	Short: "Configure a provider",
-	Long:  "Configure a provider with API key, base URL, and model",
-	Args:  cobra.ExactArgs(1),
+var editCmd = &cobra.Command{
+	Use:   "edit [provider]",
+	Short: "Edit provider configuration",
+	Long:  "Add or update a provider configuration with API key, base URL, and model. If no provider is specified, shows an interactive list.",
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		providerName := args[0]
-
-		isCustom := providerName == "custom"
-		isBuiltIn := providers.IsBuiltInProvider(providerName)
-		if !isCustom && !isBuiltIn {
-			ui.PrintError(fmt.Sprintf("Unknown provider: '%s'", providerName))
-			ui.PrintInfo("Available: anthropic, zai, minimax, kimi, deepseek, custom")
-			return
-		}
-
 		dir := getConfigDir()
 		if dir == "" {
 			ui.PrintError("Config directory not found")
@@ -48,8 +38,6 @@ var configCmd = &cobra.Command{
 			return
 		}
 
-		builtinDef, _ := providers.GetBuiltInProvider(providerName)
-
 		cfg, err := configCache.Get(dir)
 		if err != nil && !os.IsNotExist(err) {
 			handleConfigError(cmd, err)
@@ -61,6 +49,41 @@ var configCmd = &cobra.Command{
 			}
 		}
 
+		var providerName string
+		if len(args) == 0 {
+			// Interactive selection using Tap
+			providerList := providers.GetProviderList()
+			providerList = append(providerList, "custom")
+
+			// Convert to tap.SelectOption format
+			options := make([]tap.SelectOption[string], len(providerList))
+			for i, name := range providerList {
+				options[i] = tap.SelectOption[string]{Value: name, Label: name}
+			}
+
+			selected := tap.Select(context.Background(), tap.SelectOptions[string]{
+				Message: "Select provider to configure",
+				Options: options,
+			})
+			providerName = selected
+			if providerName == "" {
+				ui.PrintInfo("Operation cancelled")
+				return
+			}
+		} else {
+			providerName = args[0]
+		}
+
+		isCustom := providerName == "custom"
+		isBuiltIn := providers.IsBuiltInProvider(providerName)
+		if !isCustom && !isBuiltIn {
+			ui.PrintError(fmt.Sprintf("Unknown provider: '%s'", providerName))
+			ui.PrintInfo("Available: anthropic, zai, minimax, kimi, deepseek, custom")
+			return
+		}
+
+		builtinDef, _ := providers.GetBuiltInProvider(providerName)
+
 		provider, exists := cfg.Providers[providerName]
 		if !exists {
 			provider = config.Provider{
@@ -70,42 +93,40 @@ var configCmd = &cobra.Command{
 
 		ui.PrintHeader(fmt.Sprintf("Configuring %s", provider.Name))
 
-		apiKey, err := ui.PromptSecret("API Key")
-		if err != nil {
-			if errors.Is(err, ui.ErrUserCancelled) {
-				cmd.Println("\nConfiguration cancelled.")
-				return
-			}
-			ui.PrintError(fmt.Sprintf("Error reading API key: %v", err))
-			return
-		}
+		apiKey := tap.Password(context.Background(), tap.PasswordOptions{
+			Message: "API Key",
+		})
 		if err := validate.ValidateAPIKey(apiKey, provider.Name); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}
 
-		provider.BaseURL, err = promptWithDefaultAndValidate("Base URL", provider.BaseURL, builtinDef.BaseURL, func(value string) error {
-			// Built-in providers may allow empty base URL (e.g., anthropic)
-			// Custom providers must have a valid base URL
-			if isCustom && value == "" {
-				return validate.ValidateAPIKey(value, "base_url") // Reuse to get "cannot be empty" error
-			}
-			return validate.ValidateURL(value, provider.Name)
+		baseURLDefault := provider.BaseURL
+		if baseURLDefault == "" && builtinDef.BaseURL != "" {
+			baseURLDefault = builtinDef.BaseURL
+		}
+
+		provider.BaseURL = tap.Text(context.Background(), tap.TextOptions{
+			Message:     "Base URL",
+			Placeholder: baseURLDefault,
 		})
-		if err != nil {
+
+		if err := validate.ValidateURL(provider.BaseURL, provider.Name); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}
 
-		provider.Model, err = promptWithDefaultAndValidate("Model", provider.Model, builtinDef.Model, func(value string) error {
-			// Built-in providers may allow empty model (e.g., anthropic)
-			// Custom providers must have a valid model
-			if isCustom && value == "" {
-				return validate.ValidateAPIKey(value, "model") // Reuse to get "cannot be empty" error
-			}
-			return validate.ValidateProviderModel(value, provider.Name)
+		modelDefault := provider.Model
+		if modelDefault == "" && builtinDef.Model != "" {
+			modelDefault = builtinDef.Model
+		}
+
+		provider.Model = tap.Text(context.Background(), tap.TextOptions{
+			Message:     "Model",
+			Placeholder: modelDefault,
 		})
-		if err != nil {
+
+		if err := validate.ValidateProviderModel(provider.Model, provider.Name); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}
@@ -202,30 +223,5 @@ var configCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(configCmd)
-}
-
-func promptWithDefaultAndValidate(fieldName, currentValue, defaultValue string, validator func(string) error) (string, error) {
-	promptValue := currentValue
-	if defaultValue != "" && currentValue == "" {
-		promptValue = defaultValue
-	}
-
-	value, err := ui.PromptWithDefault(fieldName, promptValue)
-	if err != nil {
-		if err == ui.ErrUserCancelled {
-			return "", kairoerrors.NewError(kairoerrors.RuntimeError,
-				"user cancelled input")
-		}
-		return "", kairoerrors.WrapError(kairoerrors.RuntimeError,
-			"failed to read input", err)
-	}
-
-	if validator != nil {
-		if err := validator(value); err != nil {
-			return "", err
-		}
-	}
-
-	return value, nil
+	rootCmd.AddCommand(editCmd)
 }
