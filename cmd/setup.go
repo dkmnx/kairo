@@ -547,7 +547,10 @@ var setupCmd = &cobra.Command{
 		}
 
 		_, exists := cfg.Providers[providerName]
-		configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath, exists)
+		if _, _, err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath, exists); err != nil {
+			ui.PrintError(err.Error())
+			return
+		}
 	},
 }
 
