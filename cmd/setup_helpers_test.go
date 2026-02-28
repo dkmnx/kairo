@@ -199,6 +199,54 @@ func TestSaveProviderConfigFile(t *testing.T) {
 			t.Errorf("Provider name = %q, want 'Test Provider'", savedProvider.Name)
 		}
 	})
+
+	t.Run("saves provider without setting default", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &config.Config{
+			DefaultProvider: "",
+			Providers:       make(map[string]config.Provider),
+		}
+
+		provider := config.Provider{
+			Name:    "Test Provider",
+			BaseURL: "https://test.com",
+			Model:   "test-model",
+		}
+
+		err := saveProviderConfigFile(tmpDir, cfg, "testprovider", provider, false)
+		if err != nil {
+			t.Fatalf("saveProviderConfigFile() error = %v", err)
+		}
+
+		if cfg.DefaultProvider != "" {
+			t.Errorf("DefaultProvider = %q, want empty", cfg.DefaultProvider)
+		}
+	})
+
+	t.Run("does not override existing default when setAsDefault is true", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &config.Config{
+			DefaultProvider: "existing",
+			Providers:       make(map[string]config.Provider),
+		}
+
+		provider := config.Provider{
+			Name:    "Test Provider",
+			BaseURL: "https://test.com",
+			Model:   "test-model",
+		}
+
+		err := saveProviderConfigFile(tmpDir, cfg, "newprovider", provider, true)
+		if err != nil {
+			t.Fatalf("saveProviderConfigFile() error = %v", err)
+		}
+
+		if cfg.DefaultProvider != "existing" {
+			t.Errorf("DefaultProvider = %q, want 'existing'", cfg.DefaultProvider)
+		}
+	})
 }
 
 func TestValidateAPIKey(t *testing.T) {
