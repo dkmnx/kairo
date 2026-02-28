@@ -287,7 +287,7 @@ func TestParseIntOrZero(t *testing.T) {
 func TestProviderStatusIcon(t *testing.T) {
 	cfg := &config.Config{
 		Providers: map[string]config.Provider{
-			"anthropic": {Name: "Native Anthropic"},
+			"zai": {Name: "Z.AI"},
 		},
 	}
 
@@ -299,15 +299,15 @@ func TestProviderStatusIcon(t *testing.T) {
 		wantIcon string
 	}{
 		{
-			name:     "anthropic configured",
-			provider: "anthropic",
-			secrets:  map[string]string{},
+			name:     "zai configured",
+			provider: "zai",
+			secrets:  map[string]string{"ZAI_API_KEY": "key"},
 			cfg:      cfg,
 			wantIcon: "[x]",
 		},
 		{
-			name:     "anthropic not configured",
-			provider: "anthropic",
+			name:     "zai not configured",
+			provider: "zai",
 			secrets:  map[string]string{},
 			cfg:      &config.Config{Providers: map[string]config.Provider{}},
 			wantIcon: "  ",
@@ -503,7 +503,6 @@ func TestProviderEnvVarSetup(t *testing.T) {
 		provider     string
 		wantEnvCount int
 	}{
-		{"anthropic has no env vars", "anthropic", 0},
 		{"zai has env vars", "zai", 1},
 		{"minimax has env vars", "minimax", 2},
 		{"kimi has env vars", "kimi", 2},
@@ -966,7 +965,6 @@ func TestParseProviderSelection(t *testing.T) {
 		{"out of range", "99", false},
 		{"negative", "-1", false},
 		{"text", "abc", false},
-		{"valid anthropic", "anthropic", true},
 		{"valid zai", "zai", true},
 		{"valid minimax", "minimax", true},
 		{"valid custom", "custom", true},
@@ -986,34 +984,6 @@ func TestParseProviderSelection(t *testing.T) {
 				t.Errorf("parseProviderSelection(%q) returned non-empty name %q when ok=false", tt.selection, name)
 			}
 		})
-	}
-}
-
-func TestConfigureAnthropic(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	cfg := &config.Config{
-		Providers: make(map[string]config.Provider),
-	}
-	err := configureAnthropic(tmpDir, cfg, "anthropic")
-	if err != nil {
-		t.Errorf("configureAnthropic() error = %v", err)
-	}
-
-	provider, ok := cfg.Providers["anthropic"]
-	if !ok {
-		t.Fatal("anthropic provider not found")
-	}
-	if provider.Name != "Native Anthropic" {
-		t.Errorf("Name = %q, want %q", provider.Name, "Native Anthropic")
-	}
-
-	loadedCfg, err := config.LoadConfig(tmpDir)
-	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
-	}
-	if _, ok := loadedCfg.Providers["anthropic"]; !ok {
-		t.Error("anthropic provider not saved to disk")
 	}
 }
 
@@ -1357,7 +1327,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, details, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
+		providerName, details, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath, false)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1477,7 +1447,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
+		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath, false)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1570,7 +1540,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath)
+		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath, false)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1629,7 +1599,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, _, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath)
+		providerName, _, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath, false)
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1756,10 +1726,6 @@ func TestSetup_ProviderNameReservedWords(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "anthropic",
-			wantErr: true, // Reserved - built-in provider
-		},
-		{
 			name:    "zai",
 			wantErr: true, // Reserved - built-in provider
 		},
@@ -1778,10 +1744,6 @@ func TestSetup_ProviderNameReservedWords(t *testing.T) {
 		{
 			name:    "custom",
 			wantErr: true, // Reserved - built-in provider
-		},
-		{
-			name:    "Anthropic",
-			wantErr: true, // Reserved - case-insensitive
 		},
 		{
 			name:    "ZAI",

@@ -92,19 +92,16 @@ qwen --version
 ### Setup
 
 ```bash
-# Interactive setup
+# Interactive setup wizard (can configure new or edit existing providers)
 kairo setup
 
-# Configure a provider
-kairo config zai
+# List configured providers
+kairo list
 
-# Test provider
-kairo test zai
+# Use specific provider
+kairo zai "Help me write a function"
 
-# Switch and query
-kairo switch zai "Help me write a function"
-
-# Or use default provider
+# Or use default provider (if set)
 kairo -- "Quick question"
 ```
 
@@ -196,43 +193,23 @@ kairo metrics reset
 
 ## Commands
 
-### Provider Management
+### Core Commands
 
-| Command                          | Description                          |
-| -------------------------------- | ------------------------------------ |
-| `kairo setup`                    | Interactive setup wizard             |
-| `kairo config <provider>`        | Configure a provider                 |
-| `kairo list`                     | List configured providers            |
-| `kairo status`                   | Test all providers                   |
-| `kairo test <provider>`          | Test specific provider               |
-| `kairo default <provider>`       | Get/set default provider             |
-| `kairo reset <provider>`         | Remove provider config               |
-| `kairo reset all`                | Remove all provider configs          |
+| Command                    | Description                          |
+| -------------------------- | ------------------------------------ |
+| `kairo setup`              | Interactive TUI setup wizard         |
+| `kairo delete [provider]`  | Delete provider configuration        |
+| `kairo list`               | List configured providers            |
+| `kairo <provider> [args]`  | Execute with specific provider       |
+| `kairo` (no args)          | Execute with default provider        |
 
-### Execution
+### Utilities
 
-| Command                                   | Description                          |
-| ----------------------------------------- | ------------------------------------ |
-| `kairo switch <provider>`                 | Switch and exec CLI (claude or qwen) |
-| `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                |
-| `kairo harness get`                       | Get current default harness          |
-| `kairo harness set <harness>`             | Set default harness (claude or qwen) |
-| `kairo <provider> [args]`                 | Shorthand for switch                 |
-| `kairo -- "query"`                        | Query mode (default provider)        |
-
-### Maintenance
-
-| Command                         | Description                        |
-| ------------------------------- | ---------------------------------- |
-| `kairo rotate`                  | Rotate encryption key              |
-| `kairo backup`                  | Create backup of configuration     |
-| `kairo restore <file>`          | Restore from backup                |
-| `kairo recover`                 | Generate/restore recovery phrase   |
-| `kairo audit`                   | View/export audit logs             |
-| `kairo metrics`                 | View performance metrics           |
-| `kairo update`                  | Check for updates                  |
-| `kairo completion <shell>`      | Shell completion                   |
-| `kairo version`                 | Show version info                  |
+| Command                    | Description                          |
+| -------------------------- | ------------------------------------ |
+| `kairo update`             | Check for new version                |
+| `kairo harness [get        | set]`                                | Manage default harness (claude/qwen) |
+| `kairo version`            | Show version info                    |
 
 ## Configuration
 

@@ -41,7 +41,7 @@ func ClearScreen() {
 }
 
 func PrintSuccess(msg string) {
-	fmt.Printf("%s✓%s %s%s\n", Green, Reset, msg, Reset)
+	fmt.Printf("\n%s✓%s %s%s\n", Green, Reset, msg, Reset)
 }
 
 func PrintWarn(msg string) {

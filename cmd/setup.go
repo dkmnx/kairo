@@ -178,8 +178,61 @@ func LoadAndDecryptSecrets(dir string) (map[string]string, string, string, error
 //
 // Thread Safety: Not thread-safe (uses Tap which reads from stdin)
 // Security Notes: This is a user-facing interactive function. Input is validated by Tap.
-func promptForProvider() string {
+func promptForProvider(cfg *config.Config) string {
+	if len(cfg.Providers) > 0 {
+		// Has configured providers - show them + setup new option
+		// Get names of configured providers
+		providerNames := make([]string, 0, len(cfg.Providers))
+		for name := range cfg.Providers {
+			providerNames = append(providerNames, name)
+		}
+
+		// Add "Setup new provider" as last option
+		providerNames = append(providerNames, "Setup new provider")
+
+		// Convert to tap.SelectOption format
+		options := make([]tap.SelectOption[string], len(providerNames))
+		for i, name := range providerNames {
+			options[i] = tap.SelectOption[string]{Value: name, Label: name}
+		}
+
+		fmt.Println()
+
+		tap.Intro("Setup Provider", tap.MessageOptions{
+			Hint: "Configure new provider or edit existing from Kairo",
+		})
+
+		selected := tap.Select(context.Background(), tap.SelectOptions[string]{
+			Message: "Select provider to edit or setup new",
+			Options: options,
+		})
+
+		// Check if "Setup new provider" was selected
+		if selected == "Setup new provider" {
+			// Prompt for provider to configure (setup flow)
+			providerList := providers.GetProviderList()
+			// Add "custom" option
+			providerList = append(providerList, "custom")
+
+			// Convert to tap.SelectOption format
+			options := make([]tap.SelectOption[string], len(providerList))
+			for i, name := range providerList {
+				options[i] = tap.SelectOption[string]{Value: name, Label: name}
+			}
+
+			selected = tap.Select(context.Background(), tap.SelectOptions[string]{
+				Message: "Select provider to configure",
+				Options: options,
+			})
+		}
+
+		return selected
+	}
+
+	// No configured providers - go directly to provider selection (setup flow)
 	providerList := providers.GetProviderList()
+	// Add "custom" option
+	providerList = append(providerList, "custom")
 
 	// Convert to tap.SelectOption format
 	options := make([]tap.SelectOption[string], len(providerList))
@@ -209,41 +262,7 @@ func parseProviderSelection(selection string) (string, bool) {
 	return "", false
 }
 
-// configureAnthropic configures the Native Anthropic provider with default settings.
-//
-// This function sets up the Anthropic provider with empty base URL and model,
-// indicating it will use Anthropic's default endpoints. It saves the
-// configuration and displays a success message to the user.
-//
-// Parameters:
-//   - dir: Configuration directory where config.yaml should be saved
-//   - cfg: Existing configuration object to update
-//   - providerName: Name of provider to configure (should be "anthropic")
-//
-// Returns:
-//   - error: Returns error if configuration cannot be saved
-//
-// Error conditions:
-//   - Returns error when config file cannot be written (e.g., permissions, disk full)
-//
-// Thread Safety: Not thread-safe (modifies global config, file I/O)
-// Security Notes: No sensitive data handled. Uses default Anthropic endpoints (no custom URL needed).
-func configureAnthropic(dir string, cfg *config.Config, providerName string) error {
-	def, _ := providers.GetBuiltInProvider(providerName)
-	cfg.Providers[providerName] = config.Provider{
-		Name:    def.Name,
-		BaseURL: "",
-		Model:   "",
-	}
-	if err := config.SaveConfig(dir, cfg); err != nil {
-		return err
-	}
-	ui.PrintSuccess("Native Anthropic is ready to use!")
-	ui.PrintInfo(fmt.Sprintf("Run 'kairo %s' or just 'kairo' to use it.", providerName))
-	return nil
-}
-
-func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string) (string, map[string]interface{}, error) {
+func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string, isEdit bool) (string, map[string]interface{}, error) {
 	// Handle custom provider name
 	if providerName == "custom" {
 		customName := tap.Text(context.Background(), tap.TextOptions{
@@ -256,50 +275,197 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		providerName = validatedName
 	}
 
+	// Get built-in provider definition if available
+	// Error is intentionally ignored - custom providers will return an error,
+	// which is expected. We'll use the providerName directly in that case.
 	def, _ := providers.GetBuiltInProvider(providerName)
 	if def.Name == "" {
 		def.Name = providerName
 	}
 
-	// Prompt for configuration details
-	ui.PrintInfo("")
-	ui.PrintHeader(fmt.Sprintf("%s Configuration", def.Name))
+	// Check if provider already exists
+	provider, exists := cfg.Providers[providerName]
 
-	apiKey := tap.Password(context.Background(), tap.PasswordOptions{
-		Message: "API Key",
-	})
+	// Prompt for configuration details
+	if isEdit && exists {
+		// Edit mode - show "Editing" header
+		tap.Message(fmt.Sprintf("Editing %s", provider.Name), tap.MessageOptions{
+			Hint: "Press Enter to keep current values",
+		})
+	} else {
+		// Setup mode - show "Configuration" header
+		ui.PrintInfo("")
+		ui.PrintHeader(fmt.Sprintf("%s Configuration", def.Name))
+	}
+
+	// API Key prompt
+	var apiKey string
+	if isEdit && exists {
+		// Edit mode - confirm before prompting
+		modifyAPIKey := tap.Confirm(context.Background(), tap.ConfirmOptions{
+			Message: "Modify API key?",
+		})
+		if modifyAPIKey {
+			apiKey = tap.Password(context.Background(), tap.PasswordOptions{
+				Message: "New API Key",
+			})
+		} else {
+			// Keep existing API key from secrets
+			apiKey = secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))]
+		}
+	} else {
+		// Setup mode - always prompt
+		apiKey = tap.Password(context.Background(), tap.PasswordOptions{
+			Message: "API Key",
+		})
+	}
 	if err := validateAPIKey(apiKey, def.Name); err != nil {
 		return "", nil, err
 	}
 
-	baseURL := tap.Text(context.Background(), tap.TextOptions{
-		Message:     "Base URL",
-		Placeholder: def.BaseURL,
-	})
-	if err := validateBaseURL(baseURL, def.Name); err != nil {
+	// Base URL prompt
+	var baseURLDefault string
+	if isEdit && exists {
+		// Edit mode - use existing value as default
+		if provider.BaseURL != "" {
+			baseURLDefault = provider.BaseURL
+		} else {
+			if def.BaseURL != "" {
+				baseURLDefault = def.BaseURL
+			}
+		}
+
+		if baseURLDefault != "" {
+			modifyBaseURL := tap.Confirm(context.Background(), tap.ConfirmOptions{
+				Message: fmt.Sprintf("Modify Base URL? (current: %s)", baseURLDefault),
+			})
+			if modifyBaseURL {
+				provider.BaseURL = tap.Text(context.Background(), tap.TextOptions{
+					Message:      "New Base URL",
+					DefaultValue: baseURLDefault,
+					Placeholder:  baseURLDefault,
+				})
+			} else {
+				provider.BaseURL = baseURLDefault
+			}
+		} else {
+			provider.BaseURL = tap.Text(context.Background(), tap.TextOptions{
+				Message:     "Base URL",
+				Placeholder: def.BaseURL,
+			})
+			provider.BaseURL = strings.TrimSpace(provider.BaseURL)
+			if provider.BaseURL == "" {
+				provider.BaseURL = def.BaseURL
+			}
+		}
+	} else {
+		// Setup mode - prompt with default from definition
+		baseURL := def.BaseURL
+
+		baseURL = tap.Text(context.Background(), tap.TextOptions{
+			Message:      "Base URL",
+			DefaultValue: baseURL,
+			Placeholder:  baseURL,
+		})
+		// Use default value if user pressed Enter (empty input)
+		baseURL = strings.TrimSpace(baseURL)
+		if baseURL == "" {
+			baseURL = def.BaseURL
+		}
+
+		// Build provider config for URL
+		if !exists {
+			provider = config.Provider{
+				Name:    def.Name,
+				BaseURL: baseURL,
+			}
+		} else {
+			provider.BaseURL = baseURL
+		}
+	}
+
+	if err := validateBaseURL(provider.BaseURL, def.Name); err != nil {
 		return "", nil, err
 	}
 
-	model := tap.Text(context.Background(), tap.TextOptions{
-		Message:     "Model",
-		Placeholder: def.Model,
-	})
-	if err := validate.ValidateProviderModel(model, def.Name); err != nil {
+	// Model prompt
+	var modelDefault string
+	if isEdit && exists {
+		// Edit mode - use existing value as default
+		if provider.Model != "" {
+			modelDefault = provider.Model
+		} else {
+			if def.Model != "" {
+				modelDefault = def.Model
+			}
+		}
+
+		if modelDefault != "" {
+			modifyModel := tap.Confirm(context.Background(), tap.ConfirmOptions{
+				Message: fmt.Sprintf("Modify Model? (current: %s)", modelDefault),
+			})
+			if modifyModel {
+				provider.Model = tap.Text(context.Background(), tap.TextOptions{
+					Message:      "New Model",
+					DefaultValue: modelDefault,
+					Placeholder:  modelDefault,
+				})
+				provider.Model = strings.TrimSpace(provider.Model)
+				if provider.Model == "" {
+					provider.Model = modelDefault
+				}
+			}
+			// If not modified, keep existing value
+		} else {
+			provider.Model = tap.Text(context.Background(), tap.TextOptions{
+				Message:     "Model",
+				Placeholder: def.Model,
+			})
+			provider.Model = strings.TrimSpace(provider.Model)
+			if provider.Model == "" {
+				provider.Model = def.Model
+			}
+		}
+	} else {
+		// Setup mode - prompt with default from definition
+		model := def.Model
+
+		model = tap.Text(context.Background(), tap.TextOptions{
+			Message:      "Model",
+			DefaultValue: model,
+			Placeholder:  model,
+		})
+		// Use default value if user pressed Enter (empty input)
+		model = strings.TrimSpace(model)
+		if model == "" {
+			model = def.Model
+		}
+
+		if !exists {
+			provider = config.Provider{
+				Name:  def.Name,
+				Model: model,
+			}
+		} else {
+			provider.Model = model
+		}
+	}
+
+	if err := validate.ValidateProviderModel(provider.Model, def.Name); err != nil {
 		return "", nil, err
 	}
 
 	// Validate model is non-empty for custom providers
 	// Built-in providers like anthropic may use empty values
 	if !providers.IsBuiltInProvider(providerName) {
-		model = strings.TrimSpace(model)
-		if model == "" {
+		provider.Model = strings.TrimSpace(provider.Model)
+		if provider.Model == "" {
 			return "", nil, kairoerrors.NewError(kairoerrors.ValidationError,
 				"model name is required for custom providers")
 		}
 	}
 
 	// Build and save provider configuration
-	provider := buildProviderConfig(def, baseURL, model)
 	setAsDefault := cfg.DefaultProvider == ""
 	if err := saveProviderConfigFile(dir, cfg, providerName, provider, setAsDefault); err != nil {
 		return "", nil, err
@@ -314,24 +480,28 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	}
 
 	// Prepare audit details
-	details := map[string]interface{}{
-		"display_name": def.Name,
-		"base_url":     baseURL,
-		"model":        model,
+	details := map[string]any{
+		"display_name": provider.Name,
+		"base_url":     provider.BaseURL,
+		"model":        provider.Model,
 	}
 	if setAsDefault {
 		details["set_as_default"] = "true"
 	}
+	if isEdit && exists {
+		details["action"] = "edit"
+	}
 
-	ui.PrintSuccess(fmt.Sprintf("%s configured successfully", def.Name))
-	ui.PrintInfo(fmt.Sprintf("Run 'kairo %s' to use this provider", providerName))
+	tap.Outro(fmt.Sprintf("%s configured successfully", provider.Name), tap.MessageOptions{
+		Hint: fmt.Sprintf("Run 'kairo %s' to use this provider", providerName),
+	})
 	return providerName, details, nil
 }
 
 var setupCmd = &cobra.Command{
 	Use:   "setup",
-	Short: "Interactive setup wizard",
-	Long:  "Run the interactive setup wizard to configure providers",
+	Short: "Interactive setup and edit wizard",
+	Long:  "Run the interactive wizard to configure new providers or edit existing ones. Select a provider to edit or choose 'Setup new provider' to add a new provider.",
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := getConfigDir()
 		if dir == "" {
@@ -362,7 +532,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		providerName := promptForProvider()
+		providerName := promptForProvider(cfg)
 		if providerName == "" {
 			ui.PrintInfo("Setup cancelled")
 			return
@@ -370,28 +540,14 @@ var setupCmd = &cobra.Command{
 
 		var configuredProvider string
 		var auditDetails map[string]interface{}
-		if !providers.RequiresAPIKey(providerName) {
-			if err := configureAnthropic(dir, cfg, providerName); err != nil {
-				ui.PrintError(err.Error())
-				return
-			}
-			configuredProvider = providerName
-			auditDetails = map[string]interface{}{
-				"display_name": "Native Anthropic",
-				"type":         "builtin_no_api_key",
-			}
-			if cfg.DefaultProvider == providerName {
-				auditDetails["set_as_default"] = "true"
-			}
-		} else {
-			provider, details, err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath)
-			if err != nil {
-				ui.PrintError(err.Error())
-				return
-			}
-			configuredProvider = provider
-			auditDetails = details
+		_, exists := cfg.Providers[providerName]
+		provider, details, err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath, exists)
+		if err != nil {
+			ui.PrintError(err.Error())
+			return
 		}
+		configuredProvider = provider
+		auditDetails = details
 
 		if configuredProvider != "" {
 			if err := logAuditEvent(dir, func(logger *audit.Logger) error {

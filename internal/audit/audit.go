@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -76,11 +77,27 @@ func NewLogger(configDir string) (*Logger, error) {
 }
 
 // generateSessionID generates a unique session identifier.
+// Uses crypto/rand for cryptographic security with timestamp fallback.
 func generateSessionID() string {
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {
-		// Fallback to timestamp if crypto/rand fails
-		return hex.EncodeToString([]byte(time.Now().String()))
+		// Fallback if crypto/rand fails: combine multiple unpredictable values
+		// This is less secure than crypto/rand but still unpredictable
+		pid := os.Getpid()
+		gid := strconv.Itoa(os.Getpid()) + strconv.Itoa(int(time.Now().UnixNano()))
+		hostname := "unknown"
+		if h, err := os.Hostname(); err == nil {
+			hostname = h
+		}
+		// Combine PID, timestamp, hostname for entropy
+		seed := hostname + strconv.Itoa(pid) + gid
+		// Create a simple hash-like identifier
+		sum := 0
+		for _, c := range seed {
+			sum = sum*31 + int(c)
+		}
+		// Convert to hex string
+		return fmt.Sprintf("%08x%08x", uint32(sum), uint32(time.Now().UnixNano()))
 	}
 	return hex.EncodeToString(b)
 }
