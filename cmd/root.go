@@ -118,7 +118,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			return
 		}
 
-		// If no arguments, list providers
+		// If no arguments, list providers or launch default with harness flag
 		if len(args) == 0 {
 			if cfg.DefaultProvider == "" {
 				cmd.Println("No default provider set.")
@@ -130,11 +130,15 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 				cmd.Println("  kairo <provider>       # Use specific provider")
 				return
 			}
-			// For now, just show help message
-			cmd.Printf("Default provider: %s\n", cfg.DefaultProvider)
-			cmd.Println("Usage:")
-			cmd.Println("  kairo <provider> [args]  # Use specific provider")
-			return
+			// If harness flag is set, launch with default provider
+			if harnessFlag != "" {
+				args = []string{cfg.DefaultProvider}
+			} else {
+				cmd.Printf("Default provider: %s\n", cfg.DefaultProvider)
+				cmd.Println("Usage:")
+				cmd.Println("  kairo <provider> [args]  # Use specific provider")
+				return
+			}
 		}
 
 		// First argument should be a provider name
