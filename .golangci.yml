@@ -1,0 +1,225 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linter-settings:
+  cyclop:
+    max-complexity: 80
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  exhaustive:
+    default-signifies-exhaustive: true
+  funlen:
+    lines: 400
+    statements: 200
+  gocognit:
+    min-complexity: 80
+  goconst:
+    min-len: 10
+    min-occurrences: 10
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+      - style
+    disabled-checks:
+      - exitAfterDefer
+  gocyclo:
+    max-complexity: 80
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/dkmnx/kairo
+  gosimple:
+    checks:
+      - all
+  govet:
+    enable-all: true
+  ineffassign:
+    check-type-assertions: true
+  lll:
+    line-length: 300
+  misspell:
+    locale: US
+  nakedret:
+    max-func-lines: 100
+  nestif:
+    min-complexity: 30
+  noctx:
+    send-checks: true
+    recv-checks: true
+  staticcheck:
+    checks:
+      - all
+      - -ST1005
+  stylecheck:
+    checks:
+      - all
+      - -ST1005
+  unconvert:
+    check-type-assertions: true
+    check-decl-assign: true
+  unparam:
+    check-type-assertions: true
+  unused:
+    check-exported: true
+    check-generated: false
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - cyclop
+    - errcheck
+    - errorlint
+    - exhaustive
+    - funlen
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - nestif
+    - nlreturn
+    - noctx
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - funlen
+        - errcheck
+        - gosec
+        - noctx
+        - gocognit
+        - nestif
+        - cyclop
+        - goconst
+        - errorlint
+        - staticcheck
+        - stylecheck
+        - lll
+        - nlreturn
+        - unparam
+        - gocritic
+    - path: \.pb\.go
+      linters:
+        - goconst
+        - gocyclo
+        - gosimple
+        - govet
+        - ineffassign
+        - staticcheck
+        - stylecheck
+        - typecheck
+        - unconvert
+        - unparam
+        - unused
+    - path: tests/integration
+      linters:
+        - goconst
+        - gocritic
+    - path: internal/errors/errors\.go
+      linters:
+        - nlreturn
+    - path: main\.go
+      linters:
+        - goconst
+    - path: cmd/delete\.go
+      linters:
+        - nlreturn
+    - path: cmd/root\.go
+      linters:
+        - goconst
+        - gocritic
+        - lll
+        - nestif
+        - unparam
+        - nlreturn
+        - cyclop
+        - funlen
+    - path: cmd/harness\.go
+      linters:
+        - goconst
+        - nlreturn
+    - path: cmd/version\.go
+      linters:
+        - goconst
+    - path: cmd/setup\.go
+      linters:
+        - gocritic
+        - nestif
+        - gocognit
+        - lll
+        - gocyclo
+        - nlreturn
+        - funlen
+    - path: cmd/update\.go
+      linters:
+        - lll
+        - nlreturn
+    - path: cmd/list\.go
+      linters:
+        - nlreturn
+    - path: cmd/util\.go
+      linters:
+        - nlreturn
+    - path: pkg/env
+      linters:
+        - goconst
+    - path: internal/wrapper
+      linters:
+        - goconst
+        - cyclop
+        - funlen
+        - lll
+        - nlreturn
+    - path: internal/crypto
+      linters:
+        - lll
+        - nestif
+        - nlreturn
+        - cyclop
+        - funlen
+    - path: internal/config
+      linters:
+        - nlreturn
+        - cyclop
+        - funlen
+    - path: internal/validate
+      linters:
+        - lll
+        - nestif
+        - nlreturn
+    - path: internal/ui/prompt\.go
+      linters:
+        - nlreturn
+    - path: internal/providers/registry\.go
+      linters:
+        - nlreturn
+    - text: "configureProvider"
+      linters:
+        - cyclop
+        - funlen
+    - text: "exported (function|method|type|const)"
+      linters:
+        - stylecheck
+    - text: "commented out"
+      linters:
+        - stylecheck
