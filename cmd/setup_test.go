@@ -18,6 +18,25 @@ import (
 	"github.com/dkmnx/kairo/internal/validate"
 )
 
+// providerStatusIcon returns a status indicator for a provider's configuration.
+// This is a test helper that mirrors the logic used in production for display purposes.
+func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider string) string {
+	if !providers.RequiresAPIKey(provider) {
+		if _, exists := cfg.Providers[provider]; exists {
+			return ui.Green + "[x]" + ui.Reset
+		}
+		return "  "
+	}
+
+	apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(provider))
+	for k := range secrets {
+		if k == apiKeyKey {
+			return ui.Green + "[x]" + ui.Reset
+		}
+	}
+	return "  "
+}
+
 func TestPrintBanner(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1021,192 +1040,8 @@ func TestPromptForProvider(t *testing.T) {
 	})
 }
 
-func TestPromptForAPIKey(t *testing.T) {
-	t.Run("returns valid API key", func(t *testing.T) {
-		pr, pw, _ := os.Pipe()
-		defer pr.Close()
-		defer pw.Close()
-
-		go func() {
-			_, _ = pw.WriteString("sk-test-api-key-123456\n")
-			pw.Close()
-		}()
-
-		time.Sleep(10 * time.Millisecond)
-
-		originalStdin := os.Stdin
-		os.Stdin = pr
-		defer func() { os.Stdin = originalStdin }()
-
-		buf := new(bytes.Buffer)
-		originalStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		apiKey, err := legacyPromptForAPIKey("Z.AI")
-
-		w.Close()
-		_, _ = buf.ReadFrom(r)
-		os.Stdout = originalStdout
-
-		// term.ReadPassword requires TTY; skip gracefully if not available
-		if err != nil {
-			t.Skipf("promptForAPIKey requires TTY: %v", err)
-		}
-
-		if apiKey != "sk-test-api-key-123456" {
-			t.Errorf("promptForAPIKey() = %q, want 'sk-test-api-key-123456'", apiKey)
-		}
-	})
-
-	t.Run("returns error for invalid API key (too short)", func(t *testing.T) {
-		pr, pw, _ := os.Pipe()
-		defer pr.Close()
-		defer pw.Close()
-
-		go func() {
-			_, _ = pw.WriteString("short\n")
-			pw.Close()
-		}()
-
-		time.Sleep(10 * time.Millisecond)
-
-		originalStdin := os.Stdin
-		os.Stdin = pr
-		defer func() { os.Stdin = originalStdin }()
-
-		buf := new(bytes.Buffer)
-		originalStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		_, err := legacyPromptForAPIKey("Z.AI")
-
-		w.Close()
-		_, _ = buf.ReadFrom(r)
-		os.Stdout = originalStdout
-
-		// In non-TTY environment, we get TTY error instead of validation error
-		// This is acceptable - we skip the test in that case
-		if err != nil {
-			// Check if it's a TTY-related error
-			if containsString(err.Error(), "inappropriate ioctl") {
-				t.Skipf("promptForAPIKey requires TTY: %v", err)
-			}
-		}
-
-		// If we got past TTY check, validation should fail
-		if err == nil {
-			t.Error("promptForAPIKey() should return error for short API key")
-		}
-	})
-}
-
-func TestPromptForBaseURL(t *testing.T) {
-	t.Run("returns custom URL", func(t *testing.T) {
-		pr, pw, _ := os.Pipe()
-		defer pr.Close()
-		defer pw.Close()
-
-		go func() {
-			_, _ = pw.WriteString("https://custom.api.com/v1\n")
-			pw.Close()
-		}()
-
-		time.Sleep(10 * time.Millisecond)
-
-		originalStdin := os.Stdin
-		os.Stdin = pr
-		defer func() { os.Stdin = originalStdin }()
-
-		buf := new(bytes.Buffer)
-		originalStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		baseURL, err := legacyPromptForBaseURL("https://api.z.ai/api/anthropic", "Z.AI")
-
-		w.Close()
-		_, _ = buf.ReadFrom(r)
-		os.Stdout = originalStdout
-
-		if err != nil {
-			t.Errorf("promptForBaseURL() error = %v", err)
-		}
-
-		if baseURL != "https://custom.api.com/v1" {
-			t.Errorf("promptForBaseURL() = %q, want 'https://custom.api.com/v1'", baseURL)
-		}
-	})
-
-	t.Run("uses default URL when input is empty", func(t *testing.T) {
-		pr, pw, _ := os.Pipe()
-		defer pr.Close()
-		defer pw.Close()
-
-		go func() {
-			_, _ = pw.WriteString("\n")
-			pw.Close()
-		}()
-
-		time.Sleep(10 * time.Millisecond)
-
-		originalStdin := os.Stdin
-		os.Stdin = pr
-		defer func() { os.Stdin = originalStdin }()
-
-		buf := new(bytes.Buffer)
-		originalStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		baseURL, err := legacyPromptForBaseURL("https://api.z.ai/api/anthropic", "Z.AI")
-
-		w.Close()
-		_, _ = buf.ReadFrom(r)
-		os.Stdout = originalStdout
-
-		if err != nil {
-			t.Errorf("promptForBaseURL() error = %v", err)
-		}
-
-		if baseURL != "https://api.z.ai/api/anthropic" {
-			t.Errorf("promptForBaseURL() = %q, want default URL", baseURL)
-		}
-	})
-
-	t.Run("returns error for invalid URL", func(t *testing.T) {
-		pr, pw, _ := os.Pipe()
-		defer pr.Close()
-		defer pw.Close()
-
-		go func() {
-			_, _ = pw.WriteString("not-a-valid-url\n")
-			pw.Close()
-		}()
-
-		time.Sleep(10 * time.Millisecond)
-
-		originalStdin := os.Stdin
-		os.Stdin = pr
-		defer func() { os.Stdin = originalStdin }()
-
-		buf := new(bytes.Buffer)
-		originalStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		_, err := legacyPromptForBaseURL("", "Custom")
-
-		w.Close()
-		_, _ = buf.ReadFrom(r)
-		os.Stdout = originalStdout
-
-		if err == nil {
-			t.Error("promptForBaseURL() should return error for invalid URL")
-		}
-	})
-}
+// Note: Legacy prompt tests removed as they tested non-production code paths.
+// The production code now uses Tap TUI which requires manual TTY interaction.
 
 func TestSetupAuditDetails(t *testing.T) {
 	t.Run("details map contains all required fields", func(t *testing.T) {
