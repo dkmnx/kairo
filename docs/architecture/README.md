@@ -305,7 +305,7 @@ flowchart TB
 | Feature          | Linux/macOS                 | Windows                    |
 | ---------------- | --------------------------- | -------------------------- |
 | Config Directory | `~/.config/kairo/`          | `%APPDATA%\kairo\`         |
-| Install Script   | `install.sh` (curl \        | sh)                        | `install.ps1` (PowerShell) |
+| Install Script   | `install.sh` (curl,sh)      | `install.ps1` (PowerShell) |
 | Token Passing    | Shell wrapper (`#!/bin/sh`) | Batch script (`.bat`)      |
 | Shell Completion | bash, zsh, fish             | PowerShell                 |
 
