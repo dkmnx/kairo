@@ -25,9 +25,9 @@ var execCommandContext = exec.CommandContext
 var exitProcess = os.Exit
 
 // parseIntOrZero parses a string to int, returning 0 on invalid input.
-func parseIntOrZero(s string) int {
+func parseIntOrZero(input string) int {
 	var result int
-	for _, c := range s {
+	for _, c := range input {
 		if c < '0' || c > '9' {
 			return 0
 		}

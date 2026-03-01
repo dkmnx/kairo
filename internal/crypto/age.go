@@ -114,7 +114,7 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 			WithContext("path", tempPath)
 	}
 
-	w, err := age.Encrypt(file, recipient)
+	encryptor, err := age.Encrypt(file, recipient)
 	if err != nil {
 		file.Close()
 		_ = os.Remove(tempPath) // Clean up temp file on error
@@ -123,16 +123,16 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 			WithContext("secrets_path", secretsPath)
 	}
 
-	_, err = w.Write([]byte(secrets))
+	_, err = encryptor.Write([]byte(secrets))
 	if err != nil {
-		w.Close()
+		encryptor.Close()
 		file.Close()
 		_ = os.Remove(tempPath) // Clean up temp file on error
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to encrypt secrets", err)
 	}
 
-	if err := w.Close(); err != nil {
+	if err := encryptor.Close(); err != nil {
 		file.Close()
 		_ = os.Remove(tempPath) // Clean up temp file on error
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
@@ -178,7 +178,7 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 	}
 	defer file.Close()
 
-	r, err := age.Decrypt(file, identity)
+	decryptor, err := age.Decrypt(file, identity)
 	if err != nil {
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets file", err).
@@ -187,7 +187,7 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 	}
 
 	var buf bytes.Buffer
-	_, err = buf.ReadFrom(r)
+	_, err = buf.ReadFrom(decryptor)
 	if err != nil {
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to read decrypted content", err)
@@ -268,7 +268,7 @@ func DecryptSecretsBytes(secretsPath, keyPath string) (*SecretBytes, error) {
 	}
 	defer file.Close()
 
-	r, err := age.Decrypt(file, identity)
+	decryptor, err := age.Decrypt(file, identity)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets file", err).
@@ -277,7 +277,7 @@ func DecryptSecretsBytes(secretsPath, keyPath string) (*SecretBytes, error) {
 	}
 
 	var buf bytes.Buffer
-	_, err = buf.ReadFrom(r)
+	_, err = buf.ReadFrom(decryptor)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to read decrypted content", err)

@@ -181,9 +181,9 @@ func TestSaveProviderConfigFile(t *testing.T) {
 			Model:   "test-model",
 		}
 
-		err := saveProviderConfigFile(tmpDir, cfg, "testprovider", provider, true)
+		err := addAndSaveProvider(tmpDir, cfg, "testprovider", provider, true)
 		if err != nil {
-			t.Fatalf("saveProviderConfigFile() error = %v", err)
+			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
 
 		if cfg.DefaultProvider != "testprovider" {
@@ -214,9 +214,9 @@ func TestSaveProviderConfigFile(t *testing.T) {
 			Model:   "test-model",
 		}
 
-		err := saveProviderConfigFile(tmpDir, cfg, "testprovider", provider, false)
+		err := addAndSaveProvider(tmpDir, cfg, "testprovider", provider, false)
 		if err != nil {
-			t.Fatalf("saveProviderConfigFile() error = %v", err)
+			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
 
 		if cfg.DefaultProvider != "" {
@@ -238,41 +238,13 @@ func TestSaveProviderConfigFile(t *testing.T) {
 			Model:   "test-model",
 		}
 
-		err := saveProviderConfigFile(tmpDir, cfg, "newprovider", provider, true)
+		err := addAndSaveProvider(tmpDir, cfg, "newprovider", provider, true)
 		if err != nil {
-			t.Fatalf("saveProviderConfigFile() error = %v", err)
+			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
 
 		if cfg.DefaultProvider != "existing" {
 			t.Errorf("DefaultProvider = %q, want 'existing'", cfg.DefaultProvider)
-		}
-	})
-}
-
-func TestValidateAPIKey(t *testing.T) {
-	t.Run("delegates to validate.ValidateAPIKey", func(t *testing.T) {
-		// This test ensures our wrapper works correctly
-		err := validateAPIKey("short", "Test Provider")
-		if err == nil {
-			t.Error("Should return error for short key")
-		}
-
-		// Check it's the right validation error type
-		if !strings.Contains(err.Error(), "API key") {
-			t.Errorf("Error should mention API key, got: %v", err)
-		}
-	})
-}
-
-func TestValidateBaseURL(t *testing.T) {
-	t.Run("delegates to validate.ValidateURL", func(t *testing.T) {
-		err := validateBaseURL("http://insecure.com", "Test Provider")
-		if err == nil {
-			t.Error("Should return error for http URL")
-		}
-
-		if !strings.Contains(err.Error(), "HTTPS") {
-			t.Errorf("Error should mention HTTPS, got: %v", err)
 		}
 	})
 }
