@@ -16,36 +16,36 @@ We selected filippo.io/age as our encryption library.
 
 ### Why filippo.io/age?
 
-| Aspect | filippo.io/age | golang.org/x/crypto | crypto/twofish |
-|--------|----------------|---------------------|----------------|
-| API complexity | Low | Medium | High |
-| Dependencies | None | None | None |
-| Testing | Extensive | Extensive | Minimal |
-| Documentation | Good | Good | Fair |
-| Maintenance | Active | Stable | Inactive |
-| Age format | Native | No | No |
-| Go version | Go 1.18+ | Go 1.18+ | Go 1.18+ |
+| Aspect         | filippo.io/age | golang.org/x/crypto | crypto/twofish |
+| -------------- | -------------- | ------------------- | -------------- |
+| API complexity | Low            | Medium              | High           |
+| Dependencies   | None           | None                | None           |
+| Testing        | Extensive      | Extensive           | Minimal        |
+| Documentation  | Good           | Good                | Fair           |
+| Maintenance    | Active         | Stable              | Inactive       |
+| Age format     | Native         | No                  | No             |
+| Go version     | Go 1.18+       | Go 1.18+            | Go 1.18+       |
 
 ### Comparison with alternatives
 
 #### filippo.io/age vs golang.org/x/crypto/nacl/secretbox
 
-| Factor | age | secretbox |
-|--------|-----|-----------|
-| Key format | Text-based | Binary |
-| Key rotation | Native support | Manual implementation needed |
-| File format | Standard (.age) | Custom |
-| Error handling | User-friendly | Low-level |
-| Deployment | Single dependency | Single dependency |
+| Factor         | age               | secretbox                    |
+| -------------- | ----------------- | ---------------------------- |
+| Key format     | Text-based        | Binary                       |
+| Key rotation   | Native support    | Manual implementation needed |
+| File format    | Standard (.age)   | Custom                       |
+| Error handling | User-friendly     | Low-level                    |
+| Deployment     | Single dependency | Single dependency            |
 
 #### filippo.io/age vs gpg
 
-| Factor | age | gpg |
-|--------|-----|-----|
-| Dependencies | age binary | Requires gnupg installation |
-| Password prompt | No | Yes (by default) |
-| Key management | Simple | Complex (public/private keys) |
-| Performance | Fast | Slow (for small data) |
+| Factor          | age        | gpg                           |
+| --------------- | ---------- | ----------------------------- |
+| Dependencies    | age binary | Requires gnupg installation   |
+| Password prompt | No         | Yes (by default)              |
+| Key management  | Simple     | Complex (public/private keys) |
+| Performance     | Fast       | Slow (for small data)         |
 
 ## Consequences
 

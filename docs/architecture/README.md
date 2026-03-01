@@ -103,7 +103,7 @@ kairo/
 │   ├── ui/              # UI utilities
 │   ├── validate/        # Input validation
 │   ├── version/         # Version information
-│   └── wrapper/        # Secure wrapper scripts
+│   └── wrapper/         # Secure wrapper scripts
 ├── pkg/                 # Reusable utilities
 │   └── env/             # Environment helpers
 ├── docs/                # Documentation

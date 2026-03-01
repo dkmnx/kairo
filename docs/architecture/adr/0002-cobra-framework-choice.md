@@ -16,15 +16,15 @@ We chose **Cobra** (`github.com/spf13/cobra`) for the CLI framework.
 
 ### Why Cobra?
 
-| Feature         | Cobra        | uvloop/urcli   | kingpin   | docopt   |
-| --------------- | ------------ | -------------- | --------- | -------- |
-| Subcommands     | Full support | Limited        | Yes       | Limited  |
-| Flag management | Built-in     | Custom         | Yes       | Custom   |
-| Help generation | Automatic    | Manual         | Yes       | Manual   |
-| Completion      | Built-in     | Limited        | Yes       | Manual   |
-| Stack depth     | Low          | Low            | Low       | Low      |
-| Ecosystem       | Large        | Small          | Medium    | Small    |
-| Learning curve  | Moderate     | Low            | Low       | High     |
+| Feature         | Cobra        | uvloop/urcli | kingpin | docopt  |
+| --------------- | ------------ | ------------ | ------- | ------- |
+| Subcommands     | Full support | Limited      | Yes     | Limited |
+| Flag management | Built-in     | Custom       | Yes     | Custom  |
+| Help generation | Automatic    | Manual       | Yes     | Manual  |
+| Completion      | Built-in     | Limited      | Yes     | Manual  |
+| Stack depth     | Low          | Low          | Low     | Low     |
+| Ecosystem       | Large        | Small        | Medium  | Small   |
+| Learning curve  | Moderate     | Low          | Low     | High    |
 
 ### Why not alternatives?
 
