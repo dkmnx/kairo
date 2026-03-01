@@ -103,7 +103,6 @@ Age (X25519) encryption for secrets management.
 | `EnsureKeyExists()`     | Generate key if missing       |
 | `EncryptSecrets()`      | Encrypt API keys to file      |
 | `DecryptSecrets()`      | Decrypt secrets from file     |
-| `RotateKey()`           | Regenerate key/re-encrypt     |
 
 **Security Model:**
 
