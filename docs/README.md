@@ -28,6 +28,7 @@ Documentation for Kairo - Go CLI wrapper for Claude/Qwen Code with X25519 encryp
 
 - [System Architecture](architecture/README.md) - Overview, components, data flow
 - [Wrapper Scripts](architecture/wrapper-scripts.md) - Security design for token passing
+- [ADRs](architecture/adr/) - Architecture decision records
 
 ## Reference
 
