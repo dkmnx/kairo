@@ -343,6 +343,13 @@ type HarnessWrapperParams struct {
 	EnvVarName    string // Optional: set for Qwen compatibility
 }
 
+// BuildWrapperCommandParams holds parameters for building a wrapper command.
+type BuildWrapperCommandParams struct {
+	Ctx           context.Context
+	WrapperScript string
+	IsWindows     bool
+}
+
 // runHarnessWithWrapper executes a harness CLI using an auth wrapper script.
 // Handles wrapper script generation, context setup, signal handling, and command execution.
 func runHarnessWithWrapper(params HarnessWrapperParams) error {
@@ -370,7 +377,11 @@ func runHarnessWithWrapper(params HarnessWrapperParams) error {
 	defer cancel()
 	setupSignalHandler(cancel)
 
-	execCmd := buildWrapperCommand(ctx, wrapperScript, useCmdExe)
+	execCmd := buildWrapperCommand(BuildWrapperCommandParams{
+		Ctx:           ctx,
+		WrapperScript: wrapperScript,
+		IsWindows:     useCmdExe,
+	})
 	execCmd.Env = params.ProviderEnv
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
@@ -380,11 +391,11 @@ func runHarnessWithWrapper(params HarnessWrapperParams) error {
 }
 
 // buildWrapperCommand creates the appropriate exec.Cmd for the wrapper script.
-func buildWrapperCommand(ctx context.Context, wrapperScript string, useCmdExe bool) *exec.Cmd {
-	if useCmdExe {
-		return execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
+func buildWrapperCommand(params BuildWrapperCommandParams) *exec.Cmd {
+	if params.IsWindows {
+		return execCommandContext(params.Ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", params.WrapperScript)
 	}
-	return execCommandContext(ctx, wrapperScript)
+	return execCommandContext(params.Ctx, params.WrapperScript)
 }
 
 func executeWithAuth(cfg ExecutionConfig) {

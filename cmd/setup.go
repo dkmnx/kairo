@@ -33,7 +33,6 @@ func validateCustomProviderName(name string) (string, error) {
 		return "", kairoerrors.NewError(kairoerrors.ValidationError,
 			"provider name is required")
 	}
-	// Check maximum length
 	if len(name) > validate.MaxProviderNameLength {
 		return "", kairoerrors.NewError(kairoerrors.ValidationError,
 			fmt.Sprintf("provider name must be at most %d characters (got %d)", validate.MaxProviderNameLength, len(name)))
@@ -42,7 +41,7 @@ func validateCustomProviderName(name string) (string, error) {
 		return "", kairoerrors.NewError(kairoerrors.ValidationError,
 			"provider name must start with a letter and contain only alphanumeric characters, underscores, and hyphens")
 	}
-	// Check for reserved provider names (case-insensitive)
+	// Case-insensitive check to prevent shadowing built-in providers
 	lowerName := strings.ToLower(name)
 	if providers.IsBuiltInProvider(lowerName) {
 		return "", kairoerrors.NewError(kairoerrors.ValidationError,
@@ -105,10 +104,6 @@ func loadOrInitializeConfig(configDir string) (*config.Config, error) {
 	return cfg, nil
 }
 
-// LoadSecrets loads and decrypts secrets from the specified directory.
-// Returns the secrets map, secrets file path, key file path, and any error.
-// Returns nil map with error if secrets file cannot be decrypted.
-// Returns empty map with nil error if secrets file doesn't exist (first-time setup).
 // LoadAndDecryptSecrets loads and decrypts secrets from the specified directory.
 // Returns secrets map, secrets path, and key path. If secrets file doesn't exist
 // or decryption fails, returns empty secrets map with appropriate error handling.
@@ -207,32 +202,46 @@ func parseProviderSelection(selection string) (string, bool) {
 	return "", false
 }
 
+// SaveProviderParams holds all parameters for saving provider configuration.
+type SaveProviderParams struct {
+	ConfigDir    string
+	Cfg          *config.Config
+	ProviderName string
+	Provider     config.Provider
+	APIKey       string
+	Secrets      map[string]string
+	SecretsPath  string
+	KeyPath      string
+	IsEdit       bool
+	WasExisting  bool
+}
+
 // saveProviderConfiguration saves the provider configuration and secrets.
 // Returns audit details for logging.
-func saveProviderConfiguration(configDir string, cfg *config.Config, providerName string, provider config.Provider, apiKey string, secrets map[string]string, secretsPath, keyPath string, isEdit, wasExisting bool) (map[string]interface{}, error) {
-	setAsDefault := cfg.DefaultProvider == ""
-	if err := addAndSaveProvider(configDir, cfg, providerName, provider, setAsDefault); err != nil {
+func saveProviderConfiguration(params SaveProviderParams) (map[string]interface{}, error) {
+	setAsDefault := params.Cfg.DefaultProvider == ""
+	if err := addAndSaveProvider(params.ConfigDir, params.Cfg, params.ProviderName, params.Provider, setAsDefault); err != nil {
 		return nil, err
 	}
 
 	// Save secrets
-	secrets[apiKeyEnvVarName(providerName)] = apiKey
-	secretsContent := config.FormatSecrets(secrets)
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+	params.Secrets[apiKeyEnvVarName(params.ProviderName)] = params.APIKey
+	secretsContent := config.FormatSecrets(params.Secrets)
+	if err := crypto.EncryptSecrets(params.SecretsPath, params.KeyPath, secretsContent); err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"saving API key", err)
 	}
 
 	// Prepare audit details
 	details := map[string]any{
-		"display_name": provider.Name,
-		"base_url":     provider.BaseURL,
-		"model":        provider.Model,
+		"display_name": params.Provider.Name,
+		"base_url":     params.Provider.BaseURL,
+		"model":        params.Provider.Model,
 	}
 	if setAsDefault {
 		details["set_as_default"] = "true"
 	}
-	if isEdit && wasExisting {
+	if params.IsEdit && params.WasExisting {
 		details["action"] = "edit"
 	}
 
@@ -370,42 +379,63 @@ func promptForModel(provider config.Provider, definition providers.ProviderDefin
 	})
 }
 
-// buildProviderConfigFromInput creates a Provider config from user input.
-func buildProviderConfigFromInput(definition providers.ProviderDefinition, baseURL, model string, exists bool, existing config.Provider) config.Provider {
-	if !exists {
-		return config.Provider{
-			Name:    definition.Name,
-			BaseURL: baseURL,
-			Model:   model,
-		}
-	}
-	existing.BaseURL = baseURL
-	existing.Model = model
-	return existing
+// BuildProviderConfigParams holds parameters for building provider config from user input.
+type BuildProviderConfigParams struct {
+	Definition providers.ProviderDefinition
+	BaseURL    string
+	Model      string
+	Exists     bool
+	Existing   config.Provider
 }
 
-func configureProvider(configDir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string, isEdit bool) (string, map[string]interface{}, error) {
-	validatedName, err := resolveProviderName(providerName)
+// buildProviderConfigFromInput creates a Provider config from user input.
+func buildProviderConfigFromInput(params BuildProviderConfigParams) config.Provider {
+	if !params.Exists {
+		return config.Provider{
+			Name:    params.Definition.Name,
+			BaseURL: params.BaseURL,
+			Model:   params.Model,
+		}
+	}
+	params.Existing.BaseURL = params.BaseURL
+	params.Existing.Model = params.Model
+	return params.Existing
+}
+
+// ConfigureProviderParams holds all parameters for configuring a provider.
+type ConfigureProviderParams struct {
+	ConfigDir    string
+	Cfg          *config.Config
+	ProviderName string
+	Secrets      map[string]string
+	SecretsPath  string
+	KeyPath      string
+	IsEdit       bool
+}
+
+// configureProvider configures a provider with interactive prompts.
+func configureProvider(params ConfigureProviderParams) (string, map[string]interface{}, error) {
+	validatedName, err := resolveProviderName(params.ProviderName)
 	if err != nil {
 		return "", nil, err
 	}
 
 	definition := getProviderDefinition(validatedName)
-	provider, exists := cfg.Providers[validatedName]
+	provider, exists := params.Cfg.Providers[validatedName]
 
-	displayProviderHeader(provider, definition, isEdit, exists)
+	displayProviderHeader(provider, definition, params.IsEdit, exists)
 
-	apiKey := promptForAPIKey(validatedName, secrets, isEdit, exists)
+	apiKey := promptForAPIKey(validatedName, params.Secrets, params.IsEdit, exists)
 	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
 		return "", nil, err
 	}
 
-	baseURL := promptForBaseURL(provider, definition, isEdit, exists)
+	baseURL := promptForBaseURL(provider, definition, params.IsEdit, exists)
 	if err := validate.ValidateURL(baseURL, definition.Name); err != nil {
 		return "", nil, err
 	}
 
-	model := promptForModel(provider, definition, isEdit, exists)
+	model := promptForModel(provider, definition, params.IsEdit, exists)
 	if err := validate.ValidateProviderModel(model, definition.Name); err != nil {
 		return "", nil, err
 	}
@@ -418,9 +448,26 @@ func configureProvider(configDir string, cfg *config.Config, providerName string
 		}
 	}
 
-	provider = buildProviderConfigFromInput(definition, baseURL, model, exists, provider)
+	provider = buildProviderConfigFromInput(BuildProviderConfigParams{
+		Definition: definition,
+		BaseURL:    baseURL,
+		Model:      model,
+		Exists:     exists,
+		Existing:   provider,
+	})
 
-	details, err := saveProviderConfiguration(configDir, cfg, validatedName, provider, apiKey, secrets, secretsPath, keyPath, isEdit, exists)
+	details, err := saveProviderConfiguration(SaveProviderParams{
+		ConfigDir:    params.ConfigDir,
+		Cfg:          params.Cfg,
+		ProviderName: validatedName,
+		Provider:     provider,
+		APIKey:       apiKey,
+		Secrets:      params.Secrets,
+		SecretsPath:  params.SecretsPath,
+		KeyPath:      params.KeyPath,
+		IsEdit:       params.IsEdit,
+		WasExisting:  exists,
+	})
 	if err != nil {
 		return "", nil, err
 	}
@@ -472,7 +519,15 @@ var setupCmd = &cobra.Command{
 		}
 
 		_, exists := cfg.Providers[providerName]
-		if _, _, err := configureProvider(configDir, cfg, providerName, secrets, secretsPath, keyPath, exists); err != nil {
+		if _, _, err := configureProvider(ConfigureProviderParams{
+			ConfigDir:    configDir,
+			Cfg:          cfg,
+			ProviderName: providerName,
+			Secrets:      secrets,
+			SecretsPath:  secretsPath,
+			KeyPath:      keyPath,
+			IsEdit:       exists,
+		}); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}
