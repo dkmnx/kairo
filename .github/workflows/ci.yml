@@ -95,7 +95,6 @@ jobs:
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: moderate
-          allow-licenses: GPL-2.0-only, GPL-3.0-only, AGPL-3.0-only
 
   build-test:
     name: Build and Test (Go ${{ matrix.go-version }})
