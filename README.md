@@ -16,7 +16,7 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/dkmnx/kairo/ci.yml?branch=main&style=flat-square)](https://github.com/dkmnx/kairo/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-**Go CLI wrapper for Claude/Qwen Code with X25519 encryption and audit logging.**
+**Go CLI wrapper for Claude/Qwen Code with X25519 encryption.**
 
 ## Overview
 
@@ -25,7 +25,6 @@ Kairo provides multi-provider API management with secure credential storage:
 - **Multi-Harness**: Claude Code (default), Qwen Code
 - **Secure Encryption**: Age (X25519) for all API keys
 - **Key Rotation**: Periodic encryption key regeneration
-- **Audit Logging**: Track all configuration changes
 - **Cross-Platform**: Linux, macOS, Windows
 
 ## Quick Start
@@ -80,11 +79,9 @@ flowchart TB
 
     CLI --> Config
     CLI --> Crypto
-    CLI --> Audit
     Config --> YAML
     Crypto --> AGE
     Crypto --> KEY
-    Audit --> LOG
 ```
 
 ## Commands
@@ -117,7 +114,6 @@ Full reference: [docs/reference/configuration.md](docs/reference/configuration.m
 | `config.yaml` | Provider configurations |
 | `secrets.age` | Encrypted API keys      |
 | `age.key`     | Encryption private key  |
-| `audit.log`   | Change history          |
 
 ## Security
 
