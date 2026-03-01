@@ -193,37 +193,46 @@ func handleConfigError(cmd *cobra.Command, err error) {
 	// This can appear in two forms:
 	// 1. Raw YAML error: "field X not found in type config.Config"
 	// 2. Wrapped error: "configuration file contains field(s) not recognized"
-	if (strings.Contains(errStr, "field") && strings.Contains(errStr, "not found in type")) ||
-		strings.Contains(errStr, "configuration file contains field(s) not recognized") ||
-		strings.Contains(errStr, "your installed kairo binary is outdated") {
-		cmd.Println("Error: Your kairo binary is outdated and cannot read your configuration file.")
-		cmd.Println()
-		cmd.Println("The configuration file contains newer fields that this version doesn't recognize.")
-		cmd.Println()
-		cmd.Println("How to fix:")
-		cmd.Println("  Run the installation script for your platform:")
-		cmd.Println()
-
-		// Display platform-specific installation script
-		switch runtime.GOOS {
-		case "windows":
-			cmd.Println("    irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex")
-		default: // linux, darwin (macOS)
-			cmd.Println("    curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh")
-		}
-
-		cmd.Println()
-		cmd.Println("  For manual installation, see:")
-		cmd.Println("    https://github.com/dkmnx/kairo/blob/main/docs/guides/user-guide.md#manual-installation")
-		cmd.Println()
-		if verbose {
-			cmd.Printf("Technical details: %v\n", err)
-		}
+	if isOutdatedBinaryError(errStr) {
+		promptUpgrade(cmd, err)
 		return
 	}
 
 	// Default error handling
 	cmd.Printf("Error loading config: %v\n", err)
+}
+
+// isOutdatedBinaryError checks if the error indicates an outdated binary.
+func isOutdatedBinaryError(errStr string) bool {
+	return (strings.Contains(errStr, "field") && strings.Contains(errStr, "not found in type")) ||
+		strings.Contains(errStr, "configuration file contains field(s) not recognized") ||
+		strings.Contains(errStr, "your installed kairo binary is outdated")
+}
+
+// promptUpgrade provides upgrade instructions for outdated binaries.
+func promptUpgrade(cmd *cobra.Command, err error) {
+	cmd.Println("Error: Your kairo binary is outdated and cannot read your configuration file.")
+	cmd.Println()
+	cmd.Println("The configuration file contains newer fields that this version doesn't recognize.")
+	cmd.Println()
+	cmd.Println("How to fix:")
+	cmd.Println("  Run the installation script for your platform:")
+	cmd.Println()
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd.Println("    irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex")
+	default: // linux, darwin (macOS)
+		cmd.Println("    curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh")
+	}
+
+	cmd.Println()
+	cmd.Println("  For manual installation, see:")
+	cmd.Println("    https://github.com/dkmnx/kairo/blob/main/docs/guides/user-guide.md#manual-installation")
+	cmd.Println()
+	if verbose {
+		cmd.Printf("Technical details: %v\n", err)
+	}
 }
 
 func splitArgs(args []string) ([]string, []string) {
@@ -235,6 +244,36 @@ func splitArgs(args []string) ([]string, []string) {
 	return args, nil
 }
 
+// getProviderFromArgs extracts provider name and remaining args from command args
+func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
+	kairoArgs, harnessArgs := splitArgs(args)
+
+	if len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "" {
+		args = []string{cfg.DefaultProvider}
+		harnessArgs = kairoArgs
+	} else if len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0] {
+		args = append([]string{args[0]}, kairoArgs...)
+	} else if len(args) > 1 {
+		harnessArgs = args[1:]
+		args = args[:1]
+	}
+
+	providerName := args[0]
+
+	if strings.HasPrefix(providerName, "-") {
+		if cfg.DefaultProvider == "" {
+			cmd.Println("Error: No default provider set and first argument looks like a flag")
+			cmd.Println("Run 'kairo setup' to configure a provider")
+			return "", nil
+		}
+		providerName = cfg.DefaultProvider
+	}
+
+	return providerName, harnessArgs
+}
+
+// resolveProviderAndArgs determines which provider to use and separates harness arguments.
+// Returns: (kairoArgs, harnessArgs, providerName)
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
 	if len(args) == 0 {
 		if cfg.DefaultProvider == "" {
@@ -257,42 +296,14 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 		}
 	}
 
-	kairoArgs, harnessArgs := splitArgs(args)
-
-	if len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "" {
-		args = []string{cfg.DefaultProvider}
-		harnessArgs = kairoArgs
-	} else if len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0] {
-		args = append([]string{args[0]}, kairoArgs...)
-	} else if len(args) > 1 {
-		harnessArgs = args[1:]
-		args = args[:1]
-	}
-
-	providerName := args[0]
-
-	if strings.HasPrefix(providerName, "-") {
-		if cfg.DefaultProvider == "" {
-			cmd.Println("Error: No default provider set and first argument looks like a flag")
-			cmd.Println("Run 'kairo setup' to configure a provider")
-			return nil, nil, ""
-		}
-		providerName = cfg.DefaultProvider
-	}
-
+	providerName, harnessArgs := getProviderFromArgs(cmd, cfg, args)
 	return args, harnessArgs, providerName
 }
 
+// buildProviderEnvironment builds the environment variables for a provider.
+// Returns: (providerEnv, secrets, error)
 func buildProviderEnvironment(configDir string, provider config.Provider, providerName string) ([]string, map[string]string, error) {
-	builtInEnvVars := []string{
-		fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),
-		fmt.Sprintf("%s=%s", envModel, provider.Model),
-		fmt.Sprintf("%s=%s", envHaikuModel, provider.Model),
-		fmt.Sprintf("%s=%s", envSonnetModel, provider.Model),
-		fmt.Sprintf("%s=%s", envOpusModel, provider.Model),
-		fmt.Sprintf("%s=%s", envSmallFast, provider.Model),
-		"NODE_OPTIONS=--no-deprecation",
-	}
+	builtInEnvVars := buildBuiltInEnvVars(provider)
 
 	secrets, _, _, err := LoadAndDecryptSecrets(configDir)
 	if err != nil {
@@ -302,13 +313,32 @@ func buildProviderEnvironment(configDir string, provider config.Provider, provid
 		secrets = make(map[string]string)
 	}
 
+	secretsEnvVars := buildSecretsEnvVars(secrets)
+
+	providerEnv := mergeEnvVars(os.Environ(), builtInEnvVars, provider.EnvVars, secretsEnvVars)
+	return providerEnv, secrets, nil
+}
+
+// buildBuiltInEnvVars creates environment variables from provider configuration.
+func buildBuiltInEnvVars(provider config.Provider) []string {
+	return []string{
+		fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),
+		fmt.Sprintf("%s=%s", envModel, provider.Model),
+		fmt.Sprintf("%s=%s", envHaikuModel, provider.Model),
+		fmt.Sprintf("%s=%s", envSonnetModel, provider.Model),
+		fmt.Sprintf("%s=%s", envOpusModel, provider.Model),
+		fmt.Sprintf("%s=%s", envSmallFast, provider.Model),
+		"NODE_OPTIONS=--no-deprecation",
+	}
+}
+
+// buildSecretsEnvVars converts secrets map to environment variable strings.
+func buildSecretsEnvVars(secrets map[string]string) []string {
 	secretsEnvVars := make([]string, 0, len(secrets))
 	for key, value := range secrets {
 		secretsEnvVars = append(secretsEnvVars, fmt.Sprintf("%s=%s", key, value))
 	}
-
-	providerEnv := mergeEnvVars(os.Environ(), builtInEnvVars, provider.EnvVars, secretsEnvVars)
-	return providerEnv, secrets, nil
+	return secretsEnvVars
 }
 
 // apiKeyEnvVarName formats the environment variable name for a provider's API key.
