@@ -98,11 +98,11 @@ flowchart TB
 | `kairo delete <provider>`  | Delete provider                |
 | `kairo <provider> [args]`  | Execute with specific provider |
 | `kairo -- [args]`          | Execute with default provider  |
-| `kairo harness get`        | Get current harness           |
-| `kairo harness set <name>`  | Set default harness           |
-| `kairo update`             | Update to latest version      |
+| `kairo harness get`        | Get current harness            |
+| `kairo harness set <name>` | Set default harness            |
+| `kairo update`             | Update to latest version       |
 | `kairo version`            | Show version                   |
-| `kairo completion <shell>`  | Generate shell completion      |
+| `kairo completion <shell>` | Generate shell completion      |
 
 Full reference: [docs/reference/configuration.md](docs/reference/configuration.md)
 

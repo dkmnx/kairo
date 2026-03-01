@@ -37,7 +37,7 @@ go vet ./...
 
 ## Project Structure
 
-```
+```text
 kairo/
 ├── cmd/           # CLI commands (Cobra)
 ├── internal/      # Business logic

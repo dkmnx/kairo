@@ -30,17 +30,21 @@ just lint
 
 ```markdown
 ## Summary
+
 Brief description
 
 ## Type
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Documentation
 
 ## Testing
+
 How tested
 
 ## Checklist
+
 - [ ] Code follows style
 - [ ] Tests pass
 - [ ] Docs updated
@@ -48,7 +52,7 @@ How tested
 
 ### Commit Messages
 
-```
+```text
 type(scope): description
 
 body
@@ -58,7 +62,7 @@ Types: feat, fix, docs, style, refactor, test, chore
 
 Example:
 
-```
+```text
 feat(providers): add DeepSeek provider
 
 Add DeepSeek AI as built-in provider.

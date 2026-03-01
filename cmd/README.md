@@ -112,15 +112,7 @@ go test -v ./cmd/... -run Integration
 | `-v, --verbose` | Enable verbose output                           |
 | `-h, --help`    | Show help for command                           |
 | `--config`      | Config directory (default is platform-specific) |
-
-## Global Flags
-
-| Flag            | Purpose                                         |
-| --------------- | ----------------------------------------------- |
-| `-v, --verbose` | Enable verbose output                           |
-| `-h, --help`    | Show help for command                           |
-| `--config`      | Config directory (default is platform-specific) |
-| `--harness`     | CLI harness to use (claude or qwen)            |
+| `--harness`     | CLI harness to use (claude or qwen)             |
 
 ## Banner Display
 
