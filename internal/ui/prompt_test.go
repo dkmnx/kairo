@@ -535,7 +535,7 @@ func TestPrintBanner(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("1.0.0-dev", "claude-sonnet-4-20250514", "Z.AI")
+		PrintBanner("1.0.0-dev", config.Provider{Model: "claude-sonnet-4-20250514", Name: "Z.AI"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -575,7 +575,7 @@ func TestPrintBanner(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("2.0.0", "custom-model", "mycustomprovider")
+		PrintBanner("2.0.0", config.Provider{Model: "custom-model", Name: "mycustomprovider"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -611,7 +611,7 @@ func TestPrintProviderOption(t *testing.T) {
 		}
 		secrets := map[string]string{"ZAI_API_KEY": "test-key"}
 
-		PrintProviderOption(1, "Z.AI", cfg, secrets, "zai")
+		PrintProviderOption(ProviderOption{Number: 1, Name: "Z.AI", Config: cfg, Secrets: secrets, Provider: "zai"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -641,7 +641,7 @@ func TestPrintProviderOption(t *testing.T) {
 		}
 		secrets := map[string]string{}
 
-		PrintProviderOption(2, "Z.AI", cfg, secrets, "zai")
+		PrintProviderOption(ProviderOption{Number: 2, Name: "Z.AI", Config: cfg, Secrets: secrets, Provider: "zai"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -673,7 +673,7 @@ func TestPrintProviderOption(t *testing.T) {
 			"ZAI_API_KEY": "sk-test-key-123",
 		}
 
-		PrintProviderOption(3, "Z.AI", cfg, secrets, "zai")
+		PrintProviderOption(ProviderOption{Number: 3, Name: "Z.AI", Config: cfg, Secrets: secrets, Provider: "zai"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -699,7 +699,7 @@ func TestPrintProviderOption(t *testing.T) {
 			"zai_api_key": "sk-test-key", // lowercase key
 		}
 
-		PrintProviderOption(4, "Z.AI", cfg, secrets, "zai")
+		PrintProviderOption(ProviderOption{Number: 4, Name: "Z.AI", Config: cfg, Secrets: secrets, Provider: "zai"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
