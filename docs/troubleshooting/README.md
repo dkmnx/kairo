@@ -53,7 +53,7 @@ Provider not configured.
 
 ```bash
 kairo list
-kairo config <provider>
+kairo setup
 ```
 
 ## Provider Issues
@@ -106,9 +106,14 @@ Install Claude Code: <https://claude.com/downloads>
 ### Execution Failed
 
 ```bash
-kairo test <provider>
-kairo switch <provider>
-kairo default
+# Reconfigure provider
+kairo setup
+
+# Set a default provider
+kairo default <provider>
+
+# Test by running with a provider
+kairo <provider> "test query"
 ```
 
 ## Shell Completion

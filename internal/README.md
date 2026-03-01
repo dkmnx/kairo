@@ -240,8 +240,8 @@ Update `internal/validate/api_key.go` for provider-specific validation.
 
 ```bash
 go test ./internal/providers/...
-kairo config newprovider
-kairo test newprovider
+kairo setup
+kairo newprovider "Your query"
 ```
 
 ## Error Handling
