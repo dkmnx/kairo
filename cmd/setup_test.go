@@ -1123,7 +1123,15 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, details, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath, false)
+		providerName, details, err := configureProvider(ConfigureProviderParams{
+			ConfigDir:    tmpDir,
+			Cfg:          cfg,
+			ProviderName: "zai",
+			Secrets:      secrets,
+			SecretsPath:  secretsPath,
+			KeyPath:      keyPath,
+			IsEdit:       false,
+		})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1243,7 +1251,15 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath, false)
+		providerName, _, err := configureProvider(ConfigureProviderParams{
+			ConfigDir:    tmpDir,
+			Cfg:          cfg,
+			ProviderName: "custom",
+			Secrets:      secrets,
+			SecretsPath:  secretsPath,
+			KeyPath:      keyPath,
+			IsEdit:       false,
+		})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1336,7 +1352,15 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, _, err := configureProvider(tmpDir, cfg, "custom", secrets, secretsPath, keyPath, false)
+		providerName, _, err := configureProvider(ConfigureProviderParams{
+			ConfigDir:    tmpDir,
+			Cfg:          cfg,
+			ProviderName: "custom",
+			Secrets:      secrets,
+			SecretsPath:  secretsPath,
+			KeyPath:      keyPath,
+			IsEdit:       false,
+		})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1395,7 +1419,15 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, _, err := configureProvider(tmpDir, cfg, "zai", secrets, secretsPath, keyPath, false)
+		providerName, _, err := configureProvider(ConfigureProviderParams{
+			ConfigDir:    tmpDir,
+			Cfg:          cfg,
+			ProviderName: "zai",
+			Secrets:      secrets,
+			SecretsPath:  secretsPath,
+			KeyPath:      keyPath,
+			IsEdit:       false,
+		})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
