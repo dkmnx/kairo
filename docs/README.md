@@ -1,6 +1,6 @@
 # Kairo Documentation
 
-Documentation for Kairo - Go CLI wrapper for Claude/Qwen Code with X25519 encryption and audit logging.
+Documentation for Kairo - Go CLI wrapper for Claude/Qwen Code with X25519 encryption.
 
 ## Quick Links
 

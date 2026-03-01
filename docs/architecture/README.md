@@ -8,7 +8,6 @@ Kairo is a Go CLI tool for managing Claude Code API providers with:
 
 - **Age (X25519) encryption** for secure API key storage
 - **Multi-provider support** for switching between providers
-- **Audit logging** for tracking configuration changes
 
 ## System Architecture
 
@@ -50,11 +49,9 @@ flowchart TB
     Commands --> Config
     Commands --> Crypto
     Commands --> Validate
-    Commands --> Audit
     Config --> ConfigFile
     Crypto --> SecretsAge
     Crypto --> AgeKey
-    Audit --> AuditLog
     Config --> Providers
     Commands --> APIs
     Commands --> Claude
@@ -96,11 +93,9 @@ kairo/
 │   ├── harness.go       # Harness management
 │   ├── update.go        # Update CLI
 │   ├── version.go       # Version info
-│   ├── completion.go     # Shell completion
-│   ├── audit_helpers.go # Audit logging helpers
-│   └── util.go         # Utility functions
+│   ├── completion.go    # Shell completion
+│   └── util.go          # Utility functions
 ├── internal/            # Business logic
-│   ├── audit/           # Audit logging
 │   ├── config/          # Config loading & caching
 │   ├── crypto/          # age encryption
 │   ├── errors/          # Typed errors
@@ -155,7 +150,6 @@ flowchart TB
         ConfigFile[config]
         SecretsFile[secrets.age]
         KeyFile[age.key]
-        AuditFile[audit.log]
     end
 
     X25519 --> Generate
@@ -166,36 +160,6 @@ flowchart TB
     Perms --> ConfigFile
     Perms --> SecretsFile
     Perms --> KeyFile
-    Perms --> AuditFile
-```
-
-## Audit Logging
-
-```mermaid
-flowchart TB
-    subgraph Commands
-        SetupCmd[setup]
-        DeleteCmd[delete]
-        SwitchCmd[provider execution]
-    end
-
-    subgraph Audit
-        ChangeTracker[Change Tracker]
-        LogFormatter[Log Formatter]
-        FileWriter[File Writer]
-    end
-
-    subgraph Output
-        AuditLog[audit.log]
-    end
-
-    SetupCmd --> ChangeTracker
-    DeleteCmd --> ChangeTracker
-    SwitchCmd --> ChangeTracker
-
-    ChangeTracker --> LogFormatter
-    LogFormatter --> FileWriter
-    FileWriter --> AuditLog
 ```
 
 ## Configuration Schema
@@ -296,7 +260,6 @@ flowchart TB
 
 - Provider registry pattern
 - Configurable via environment
-- Exportable audit logs
 - Modular architecture
 
 ## Cross-Platform Support
@@ -342,7 +305,7 @@ flowchart TB
 | Feature          | Linux/macOS                 | Windows                    |
 | ---------------- | --------------------------- | -------------------------- |
 | Config Directory | `~/.config/kairo/`          | `%APPDATA%\kairo\`         |
-| Install Script   | `install.sh` (curl \| sh)   | `install.ps1` (PowerShell) |
+| Install Script   | `install.sh` (curl \        | sh)                        | `install.ps1` (PowerShell) |
 | Token Passing    | Shell wrapper (`#!/bin/sh`) | Batch script (`.bat`)      |
 | Shell Completion | bash, zsh, fish             | PowerShell                 |
 
