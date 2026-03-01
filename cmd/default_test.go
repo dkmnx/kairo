@@ -155,4 +155,3 @@ providers:
 		t.Error("config file should not contain 'default_provider: anthropic'")
 	}
 }
-
