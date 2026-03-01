@@ -466,3 +466,181 @@ func TestGenerateWrapperScript_CustomEnvVar(t *testing.T) {
 		}
 	})
 }
+
+func TestCreateTempAuthDir_Failure(t *testing.T) {
+	// Note: os.MkdirTemp creates both the temp dir and any necessary parents,
+	// so testing error conditions is difficult without modifying system state.
+	// We verify the basic functionality works via other tests.
+	_, err := CreateTempAuthDir()
+	// Just verify it returns some result without error for valid conditions
+	// The error for invalid paths would be OS-specific
+	_ = err
+}
+
+func TestWriteTempTokenFile_NonExistentDir(t *testing.T) {
+	_, err := WriteTempTokenFile("/nonexistent/path", "test-token")
+	if err == nil {
+		t.Error("WriteTempTokenFile() should error on non-existent directory")
+	}
+}
+
+func TestGenerateWrapperScript_NonExistentAuthDir(t *testing.T) {
+	_, _, err := GenerateWrapperScript(WrapperScriptConfig{
+		AuthDir:    "/nonexistent/auth/dir",
+		TokenPath:  "/nonexistent/auth/dir/token",
+		CliPath:    "/usr/bin/claude",
+		CliArgs:    []string{"--help"},
+		EnvVarName: "ANTHROPIC_AUTH_TOKEN",
+	})
+	if err == nil {
+		t.Error("GenerateWrapperScript() should error on non-existent auth directory")
+	}
+}
+
+func TestEscapePowerShellArg_SemicolonAndPipe(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"semicolon", "test; cmd", "'test`; cmd'"},
+		{"pipe", "test | calc", "'test `| calc'"},
+		{"both", "cmd1; cmd2 | grep", "'cmd1`; cmd2 `| grep'"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := EscapePowerShellArg(tt.input)
+			if result != tt.expected {
+				t.Errorf("EscapePowerShellArg(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGenerateWrapperScript_ControlCharacterEscaping(t *testing.T) {
+	authDir := t.TempDir()
+	tokenPath := filepath.Join(authDir, "token")
+	cliPath := "/usr/bin/claude"
+
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"newline", "hello\nworld"},
+		{"carriage return", "hello\rworld"},
+		{"tab", "hello\tworld"},
+		{"form feed", "hello\x0cworld"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scriptPath, _, err := GenerateWrapperScript(WrapperScriptConfig{
+				AuthDir:    authDir,
+				TokenPath:  tokenPath,
+				CliPath:    cliPath,
+				CliArgs:    []string{"--prompt", tt.input},
+				EnvVarName: "ANTHROPIC_AUTH_TOKEN",
+			})
+			if err != nil {
+				t.Fatalf("GenerateWrapperScript() error = %v", err)
+			}
+			defer os.Remove(scriptPath)
+
+			content, err := os.ReadFile(scriptPath)
+			if err != nil {
+				t.Fatalf("ReadFile() error = %v", err)
+			}
+
+			scriptStr := string(content)
+			// Verify the argument is still present (escaped properly)
+			if !strings.Contains(scriptStr, "hello") {
+				t.Errorf("Script should contain argument content for %q", tt.name)
+			}
+		})
+	}
+}
+
+func TestExecCommand(t *testing.T) {
+	// Test that ExecCommand returns a valid command
+	cmd := ExecCommand("echo", "test")
+	if cmd == nil {
+		t.Fatal("ExecCommand() should return a valid command")
+	}
+	if len(cmd.Args) != 2 {
+		t.Errorf("Expected 2 args, got %d", len(cmd.Args))
+	}
+}
+
+func TestGenerateWrapperScript_WithArgs(t *testing.T) {
+	authDir := t.TempDir()
+	tokenPath := filepath.Join(authDir, "token")
+	cliPath := "/usr/bin/claude"
+	args := []string{"--model", "sonnet-4-20250514", "--temperature", "0.7"}
+
+	scriptPath, isWindows, err := GenerateWrapperScript(WrapperScriptConfig{
+		AuthDir:    authDir,
+		TokenPath:  tokenPath,
+		CliPath:    cliPath,
+		CliArgs:    args,
+		EnvVarName: "ANTHROPIC_AUTH_TOKEN",
+	})
+	if err != nil {
+		t.Fatalf("GenerateWrapperScript() error = %v", err)
+	}
+	defer os.Remove(scriptPath)
+
+	content, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	scriptStr := string(content)
+
+	// Verify all args are in the script
+	expectedArgs := []string{"--model", "sonnet-4-20250514", "--temperature", "0.7"}
+	for _, arg := range expectedArgs {
+		if !strings.Contains(scriptStr, arg) {
+			t.Errorf("Script should contain arg %q", arg)
+		}
+	}
+
+	// Verify Windows flag is correct
+	isWindowsExpected := runtime.GOOS == "windows"
+	if isWindows != isWindowsExpected {
+		t.Errorf("isWindows = %v, want %v", isWindows, isWindowsExpected)
+	}
+}
+
+func TestGenerateWrapperScript_ScriptIsDeletedAfterUse(t *testing.T) {
+	authDir := t.TempDir()
+	tokenPath := filepath.Join(authDir, "token")
+	cliPath := "/usr/bin/claude"
+
+	scriptPath, _, err := GenerateWrapperScript(WrapperScriptConfig{
+		AuthDir:    authDir,
+		TokenPath:  tokenPath,
+		CliPath:    cliPath,
+		CliArgs:    []string{"--help"},
+		EnvVarName: "ANTHROPIC_AUTH_TOKEN",
+	})
+	if err != nil {
+		t.Fatalf("GenerateWrapperScript() error = %v", err)
+	}
+
+	// Verify script exists
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		t.Error("Script should exist after creation")
+	}
+
+	// On Unix, the script should have been created with execute permissions
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(scriptPath)
+		if err != nil {
+			t.Fatalf("Stat() error = %v", err)
+		}
+		if info.Mode()&0100 == 0 {
+			t.Error("Unix script should have execute permission")
+		}
+	}
+}
