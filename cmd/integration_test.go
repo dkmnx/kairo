@@ -86,114 +86,7 @@ func TestFullProviderConfigurationWorkflow(t *testing.T) {
 	}
 }
 
-func TestKeyRotationWithMultipleProviders(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	cfg := &config.Config{
-		DefaultProvider: "minimax",
-		Providers: map[string]config.Provider{
-			"zai":     {Name: "Z.AI"},
-			"minimax": {Name: "MiniMax"},
-			"kimi":    {Name: "Kimi"},
-		},
-	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
-		t.Fatal(err)
-	}
-
-	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
-		t.Fatal(err)
-	}
-
-	secrets := `ZAI_API_KEY=zai-secret
-MINIMAX_API_KEY=minimax-secret
-KIMI_API_KEY=kimi-secret
-`
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secrets); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := crypto.RotateKey(tmpDir); err != nil {
-		t.Fatalf("RotateKey() error = %v", err)
-	}
-
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
-	if err != nil {
-		t.Fatalf("DecryptSecrets() after rotation error = %v", err)
-	}
-
-	if decrypted != secrets {
-		t.Errorf("decrypted = %q, want %q", decrypted, secrets)
-	}
-
-	loadedCfg, err := config.LoadConfig(tmpDir)
-	if err != nil {
-		t.Fatalf("LoadConfig() after rotation error = %v", err)
-	}
-
-	if loadedCfg.DefaultProvider != "minimax" {
-		t.Errorf("DefaultProvider = %q, want %q", loadedCfg.DefaultProvider, "minimax")
-	}
-
-	if len(loadedCfg.Providers) != 3 {
-		t.Errorf("loaded %d providers, want 3", len(loadedCfg.Providers))
-	}
-}
-
-func TestProviderStatusAfterKeyRotation(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	cfg := &config.Config{
-		Providers: map[string]config.Provider{
-			"anthropic": {Name: "Native Anthropic"},
-			"zai":       {Name: "Z.AI"},
-		},
-	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
-		t.Fatal(err)
-	}
-
-	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
-		t.Fatal(err)
-	}
-
-	secrets := "ZAI_API_KEY=zai-key\n"
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secrets); err != nil {
-		t.Fatal(err)
-	}
-
-	secretsMap, _ := crypto.DecryptSecrets(secretsPath, keyPath)
-	parsedSecrets := config.ParseSecrets(secretsMap)
-
-	if !isProviderConfiguredForTest(cfg, parsedSecrets, "zai") {
-		t.Error("zai should be configured before rotation")
-	}
-
-	if !isProviderConfiguredForTest(cfg, parsedSecrets, "anthropic") {
-		t.Error("anthropic should be configured before rotation")
-	}
-
-	if err := crypto.RotateKey(tmpDir); err != nil {
-		t.Fatal(err)
-	}
-
-	decrypted, _ := crypto.DecryptSecrets(secretsPath, keyPath)
-	rotatedSecrets := config.ParseSecrets(decrypted)
-
-	if !isProviderConfiguredForTest(cfg, rotatedSecrets, "zai") {
-		t.Error("zai should still be configured after rotation")
-	}
-
-	if !isProviderConfiguredForTest(cfg, rotatedSecrets, "anthropic") {
-		t.Error("anthropic should still be configured after rotation")
-	}
-}
-
-func TestCustomProviderSecretsAfterRotation(t *testing.T) {
+func TestCustomProviderConfigPersistence(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	providerName := "mycustom"
@@ -217,10 +110,7 @@ func TestCustomProviderSecretsAfterRotation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := crypto.RotateKey(tmpDir); err != nil {
-		t.Fatalf("RotateKey() error = %v", err)
-	}
-
+	// Test config persistence without key rotation
 	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("DecryptSecrets() error = %v", err)

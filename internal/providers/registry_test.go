@@ -8,7 +8,7 @@ import (
 func TestGetProviderList(t *testing.T) {
 	providers := GetProviderList()
 
-	expected := []string{"anthropic", "custom", "deepseek", "kimi", "minimax", "zai"}
+	expected := []string{"deepseek", "kimi", "minimax", "zai"}
 
 	if len(providers) != len(expected) {
 		t.Errorf("GetProviderList() returned %d providers, want %d", len(providers), len(expected))
@@ -27,7 +27,7 @@ func TestGetProviderList(t *testing.T) {
 func TestGetProviderListContainsAllBuiltIns(t *testing.T) {
 	providers := GetProviderList()
 
-	allBuiltins := []string{"anthropic", "zai", "minimax", "kimi", "deepseek", "custom"}
+	allBuiltins := []string{"zai", "minimax", "kimi", "deepseek"}
 
 	for _, name := range allBuiltins {
 		found := false
@@ -61,7 +61,6 @@ func TestRequiresAPIKey(t *testing.T) {
 		provider string
 		want     bool
 	}{
-		{"anthropic does not require API key", "anthropic", false},
 		{"zai requires API key", "zai", true},
 		{"minimax requires API key", "minimax", true},
 		{"kimi requires API key", "kimi", true},
@@ -86,7 +85,6 @@ func TestIsBuiltInProvider(t *testing.T) {
 		provider string
 		want     bool
 	}{
-		{"anthropic is built-in", "anthropic", true},
 		{"zai is built-in", "zai", true},
 		{"minimax is built-in", "minimax", true},
 		{"kimi is built-in", "kimi", true},
@@ -118,15 +116,6 @@ func TestGetBuiltInProvider(t *testing.T) {
 		wantModel    string
 		wantRequires bool
 	}{
-		{
-			name:         "anthropic returns correct definition",
-			provider:     "anthropic",
-			wantExists:   true,
-			wantName:     "Native Anthropic",
-			wantBaseURL:  "",
-			wantModel:    "",
-			wantRequires: false,
-		},
 		{
 			name:         "zai returns correct definition",
 			provider:     "zai",
@@ -224,7 +213,6 @@ func TestBuiltInProviderEnvVars(t *testing.T) {
 		wantVars  int
 		hasPrefix string
 	}{
-		{"anthropic has no env vars", "anthropic", 0, ""},
 		{"zai has env vars", "zai", 1, "ANTHROPIC_DEFAULT_HAIKU_MODEL"},
 		{"minimax has env vars", "minimax", 2, "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT"},
 		{"kimi has env vars", "kimi", 2, "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT"},

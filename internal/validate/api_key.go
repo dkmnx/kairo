@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 type KeyFormat struct {
@@ -54,9 +56,8 @@ func mustParseCIDR(s string) net.IPNet {
 
 func ValidateAPIKey(key string, providerName string) error {
 	if strings.TrimSpace(key) == "" {
-		return &ValidationError{
-			msg: fmt.Sprintf("%s API key cannot be empty or whitespace", providerName),
-		}
+		return kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("%s API key cannot be empty or whitespace", providerName))
 	}
 
 	format, knownProvider := providerKeyFormats[providerName]
@@ -65,23 +66,20 @@ func ValidateAPIKey(key string, providerName string) error {
 	}
 
 	if len(key) < format.MinLength {
-		return &ValidationError{
-			msg: fmt.Sprintf("%s API key too short (minimum %d characters, got %d)", providerName, format.MinLength, len(key)),
-		}
+		return kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("%s API key too short (minimum %d characters, got %d)", providerName, format.MinLength, len(key)))
 	}
 
 	if format.Prefix != "" && !strings.HasPrefix(key, format.Prefix) {
-		return &ValidationError{
-			msg: fmt.Sprintf("%s API key must start with '%s'", providerName, format.Prefix),
-		}
+		return kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("%s API key must start with '%s'", providerName, format.Prefix))
 	}
 
 	if format.Pattern != "" {
 		matched, err := regexp.MatchString(format.Pattern, key)
 		if err != nil || !matched {
-			return &ValidationError{
-				msg: fmt.Sprintf("%s API key format is invalid", providerName),
-			}
+			return kairoerrors.NewError(kairoerrors.ValidationError,
+				fmt.Sprintf("%s API key format is invalid", providerName))
 		}
 	}
 
@@ -90,35 +88,30 @@ func ValidateAPIKey(key string, providerName string) error {
 
 func ValidateURL(rawURL string, providerName string) error {
 	if rawURL == "" {
-		return &ValidationError{
-			msg: fmt.Sprintf("%s BaseURL cannot be empty", providerName),
-		}
+		return kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("%s BaseURL cannot be empty", providerName))
 	}
 
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return &ValidationError{
-			msg: fmt.Sprintf("%s BaseURL is not a valid URL: %v", providerName, err),
-		}
+		return kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("%s BaseURL is not a valid URL: %v", providerName, err))
 	}
 
 	if parsed.Scheme != "https" {
-		return &ValidationError{
-			msg: fmt.Sprintf("%s BaseURL must use HTTPS protocol", providerName),
-		}
+		return kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("%s BaseURL must use HTTPS protocol", providerName))
 	}
 
 	host := parsed.Hostname()
 	if host == "" {
-		return &ValidationError{
-			msg: fmt.Sprintf("%s BaseURL missing host component", providerName),
-		}
+		return kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("%s BaseURL missing host component", providerName))
 	}
 
 	if isBlockedHost(host) {
-		return &ValidationError{
-			msg: fmt.Sprintf("%s BaseURL cannot use blocked host: %s (localhost/private IPs not allowed)", providerName, host),
-		}
+		return kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("%s BaseURL cannot use blocked host: %s (localhost/private IPs not allowed)", providerName, host))
 	}
 
 	return nil
@@ -148,21 +141,4 @@ func isPrivateIP(ip net.IP) bool {
 		private172.Contains(ip) ||
 		private192.Contains(ip) ||
 		linkLocal.Contains(ip)
-}
-
-var (
-	ErrInvalidAPIKey = &ValidationError{msg: "API key validation failed"}
-	ErrInvalidURL    = &ValidationError{msg: "invalid URL: must be HTTPS and not use blocked hosts"}
-)
-
-type ValidationError struct {
-	msg string
-}
-
-func (e *ValidationError) Error() string {
-	return e.msg
-}
-
-func NewValidationError(msg string) error {
-	return &ValidationError{msg: msg}
 }

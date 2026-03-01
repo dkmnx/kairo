@@ -529,13 +529,13 @@ func TestPromptWithDefault(t *testing.T) {
 }
 
 func TestPrintBanner(t *testing.T) {
-	t.Run("prints banner with version and provider", func(t *testing.T) {
+	t.Run("prints banner with version model and provider", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 		originalStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("1.0.0-dev", "Z.AI")
+		PrintBanner("1.0.0-dev", config.Provider{Model: "claude-sonnet-4-20250514", Name: "Z.AI"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -543,9 +543,9 @@ func TestPrintBanner(t *testing.T) {
 
 		output := buf.String()
 
-		// Check for ASCII art characters
-		if !strings.Contains(output, "████") {
-			t.Error("PrintBanner should contain ASCII art characters")
+		// Check for kairo prefix
+		if !strings.Contains(output, "kairo") {
+			t.Error("PrintBanner should contain kairo")
 		}
 
 		// Check for version
@@ -553,24 +553,29 @@ func TestPrintBanner(t *testing.T) {
 			t.Error("PrintBanner should display version")
 		}
 
+		// Check for model
+		if !strings.Contains(output, "claude-sonnet-4-20250514") {
+			t.Error("PrintBanner should display model")
+		}
+
 		// Check for provider
 		if !strings.Contains(output, "Z.AI") {
 			t.Error("PrintBanner should display provider name")
 		}
 
-		// Check for bold formatting
-		if !strings.Contains(output, Bold) {
-			t.Error("PrintBanner should use bold formatting")
+		// Check for gray formatting
+		if !strings.Contains(output, Gray) {
+			t.Error("PrintBanner should use gray formatting")
 		}
 	})
 
-	t.Run("handles custom provider name", func(t *testing.T) {
+	t.Run("handles custom provider and model", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 		originalStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("2.0.0", "mycustomprovider")
+		PrintBanner("2.0.0", config.Provider{Model: "custom-model", Name: "mycustomprovider"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -580,6 +585,10 @@ func TestPrintBanner(t *testing.T) {
 
 		if !strings.Contains(output, "2.0.0") {
 			t.Error("PrintBanner should display custom version")
+		}
+
+		if !strings.Contains(output, "custom-model") {
+			t.Error("PrintBanner should display custom model")
 		}
 
 		if !strings.Contains(output, "mycustomprovider") {
@@ -597,12 +606,12 @@ func TestPrintProviderOption(t *testing.T) {
 
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
-				"anthropic": {Name: "Native Anthropic"},
+				"zai": {Name: "Z.AI"},
 			},
 		}
-		secrets := map[string]string{}
+		secrets := map[string]string{"ZAI_API_KEY": "test-key"}
 
-		PrintProviderOption(1, "Native Anthropic", cfg, secrets, "anthropic")
+		PrintProviderOption(ProviderOption{Number: 1, Name: "Z.AI", Config: cfg, Secrets: secrets, Provider: "zai"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -613,7 +622,7 @@ func TestPrintProviderOption(t *testing.T) {
 		if !strings.Contains(output, "✓") {
 			t.Error("PrintProviderOption should show checkmark for configured provider")
 		}
-		if !strings.Contains(output, "Native Anthropic") {
+		if !strings.Contains(output, "Z.AI") {
 			t.Error("PrintProviderOption should display provider name")
 		}
 		if !strings.Contains(output, "1.") {
@@ -632,7 +641,7 @@ func TestPrintProviderOption(t *testing.T) {
 		}
 		secrets := map[string]string{}
 
-		PrintProviderOption(2, "Z.AI", cfg, secrets, "zai")
+		PrintProviderOption(ProviderOption{Number: 2, Name: "Z.AI", Config: cfg, Secrets: secrets, Provider: "zai"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -664,7 +673,7 @@ func TestPrintProviderOption(t *testing.T) {
 			"ZAI_API_KEY": "sk-test-key-123",
 		}
 
-		PrintProviderOption(3, "Z.AI", cfg, secrets, "zai")
+		PrintProviderOption(ProviderOption{Number: 3, Name: "Z.AI", Config: cfg, Secrets: secrets, Provider: "zai"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -690,7 +699,7 @@ func TestPrintProviderOption(t *testing.T) {
 			"zai_api_key": "sk-test-key", // lowercase key
 		}
 
-		PrintProviderOption(4, "Z.AI", cfg, secrets, "zai")
+		PrintProviderOption(ProviderOption{Number: 4, Name: "Z.AI", Config: cfg, Secrets: secrets, Provider: "zai"})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -705,29 +714,29 @@ func TestPrintProviderOption(t *testing.T) {
 }
 
 func TestIsProviderConfigured(t *testing.T) {
-	t.Run("anthropic configured without API key", func(t *testing.T) {
+	t.Run("custom configured with API key", func(t *testing.T) {
 		cfg := &config.Config{
 			Providers: map[string]config.Provider{
-				"anthropic": {Name: "Native Anthropic"},
+				"custom": {Name: "Custom Provider"},
 			},
 		}
-		secrets := map[string]string{}
+		secrets := map[string]string{"CUSTOM_API_KEY": "test-key"}
 
-		result := isProviderConfigured(cfg, secrets, "anthropic")
+		result := isProviderConfigured(cfg, secrets, "custom")
 		if !result {
-			t.Error("isProviderConfigured should return true for configured anthropic")
+			t.Error("isProviderConfigured should return true for configured custom with API key")
 		}
 	})
 
-	t.Run("anthropic not configured", func(t *testing.T) {
+	t.Run("custom not configured", func(t *testing.T) {
 		cfg := &config.Config{
 			Providers: make(map[string]config.Provider),
 		}
 		secrets := map[string]string{}
 
-		result := isProviderConfigured(cfg, secrets, "anthropic")
+		result := isProviderConfigured(cfg, secrets, "custom")
 		if result {
-			t.Error("isProviderConfigured should return false for unconfigured anthropic")
+			t.Error("isProviderConfigured should return false for unconfigured custom")
 		}
 	})
 
@@ -831,10 +840,10 @@ func TestIsProviderConfigured(t *testing.T) {
 }
 
 func TestProviderRequirements(t *testing.T) {
-	t.Run("anthropic does not require API key", func(t *testing.T) {
-		requiresKey := providers.RequiresAPIKey("anthropic")
-		if requiresKey {
-			t.Error("anthropic should not require API key")
+	t.Run("custom requires API key", func(t *testing.T) {
+		requiresKey := providers.RequiresAPIKey("custom")
+		if !requiresKey {
+			t.Error("custom should require API key")
 		}
 	})
 

@@ -1,10 +1,13 @@
 package validate
 
 import (
+	"errors"
 	"net"
 	"net/url"
 	"strings"
 	"testing"
+
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
@@ -79,38 +82,20 @@ func TestURLValidation(t *testing.T) {
 }
 
 func TestValidationError(t *testing.T) {
-	t.Run("NewValidationError creates correct error", func(t *testing.T) {
-		msg := "test error message"
-		err := NewValidationError(msg)
+	// Note: ValidationError was replaced with kairoerrors.KairoError
+	// Validation errors now use kairoerrors.ValidationError type
+	t.Run("validation errors use KairoError type", func(t *testing.T) {
+		err := ValidateAPIKey("", "test")
 		if err == nil {
-			t.Fatal("NewValidationError returned nil")
+			t.Fatal("Expected validation error")
 		}
-		if err.Error() != msg {
-			t.Errorf("Error() = %q, want %q", err.Error(), msg)
+		// Verify error is a KairoError with ValidationError type
+		var kErr *kairoerrors.KairoError
+		if !errors.As(err, &kErr) {
+			t.Errorf("Expected KairoError, got %T", err)
 		}
-	})
-
-	t.Run("ValidationError type assertion", func(t *testing.T) {
-		err := NewValidationError("test")
-		_, ok := err.(*ValidationError)
-		if !ok {
-			t.Error("Error should be of type *ValidationError")
-		}
-	})
-
-	t.Run("ErrInvalidAPIKey is ValidationError", func(t *testing.T) {
-		var _ error = ErrInvalidAPIKey
-		_, ok := any(ErrInvalidAPIKey).(*ValidationError)
-		if !ok {
-			t.Error("ErrInvalidAPIKey should be of type *ValidationError")
-		}
-	})
-
-	t.Run("ErrInvalidURL is ValidationError", func(t *testing.T) {
-		var _ error = ErrInvalidURL
-		_, ok := any(ErrInvalidURL).(*ValidationError)
-		if !ok {
-			t.Error("ErrInvalidURL should be of type *ValidationError")
+		if kErr.Type != kairoerrors.ValidationError {
+			t.Errorf("Expected ValidationError type, got %v", kErr.Type)
 		}
 	})
 }

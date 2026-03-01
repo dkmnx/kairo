@@ -68,8 +68,8 @@ func migrateConfigFile(configDir string) (bool, error) {
 	}
 
 	// Verify it's valid YAML
-	var testCfg Config
-	if err := yaml.Unmarshal(data, &testCfg); err != nil {
+	var tempCfg Config
+	if err := yaml.Unmarshal(data, &tempCfg); err != nil {
 		return false, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"old config file is not valid YAML, cannot migrate", err)
 	}
