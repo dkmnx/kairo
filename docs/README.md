@@ -4,15 +4,15 @@ Documentation for Kairo - Go CLI wrapper for Claude/Qwen Code with X25519 encryp
 
 ## Quick Links
 
-| Resource                                         | Description                  |
-| ------------------------------------------------ | ---------------------------- |
-| [User Guide](guides/user-guide.md)               | Installation and basic usage |
-| [Development Guide](guides/development-guide.md) | Build, test, contribute      |
-| [Architecture](architecture/README.md)           | System design and diagrams   |
-| [Troubleshooting](troubleshooting/README.md)     | Common issues and solutions  |
-| [Contributing](contributing/README.md)           | Contribution workflow        |
-| [Configuration Reference](reference/configuration.md) | Config files and options    |
-| [Provider Reference](reference/providers.md)        | Built-in providers         |
+| Resource                                              | Description                  |
+| ----------------------------------------------------- | ---------------------------- |
+| [User Guide](guides/user-guide.md)                    | Installation and basic usage |
+| [Development Guide](guides/development-guide.md)      | Build, test, contribute      |
+| [Architecture](architecture/README.md)                | System design and diagrams   |
+| [Troubleshooting](troubleshooting/README.md)          | Common issues and solutions  |
+| [Contributing](contributing/README.md)                | Contribution workflow        |
+| [Configuration Reference](reference/configuration.md) | Config files and options     |
+| [Provider Reference](reference/providers.md)          | Built-in providers           |
 
 ## Guides
 

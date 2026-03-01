@@ -1,14 +1,10 @@
 {
   "config": {
-    "MD013": {
-      "line_length": 120,
-      "heading_line_length": 80,
-      "code_block_line_length": 120,
-      "tables": false
-    },
+    "MD013": false,
     "MD041": false,
     "MD060": {
-      "style": "aligned"
-    }
-  }
+      "style": "aligned",
+    },
+  },
+  "ignores": ["CHANGELOG.md"],
 }
