@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/dkmnx/kairo/internal/audit"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/validate"
@@ -183,9 +181,9 @@ func TestSaveProviderConfigFile(t *testing.T) {
 			Model:   "test-model",
 		}
 
-		err := saveProviderConfigFile(tmpDir, cfg, "testprovider", provider, true)
+		err := addAndSaveProvider(tmpDir, cfg, "testprovider", provider, true)
 		if err != nil {
-			t.Fatalf("saveProviderConfigFile() error = %v", err)
+			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
 
 		if cfg.DefaultProvider != "testprovider" {
@@ -201,73 +199,52 @@ func TestSaveProviderConfigFile(t *testing.T) {
 			t.Errorf("Provider name = %q, want 'Test Provider'", savedProvider.Name)
 		}
 	})
-}
 
-func TestValidateAPIKey(t *testing.T) {
-	t.Run("delegates to validate.ValidateAPIKey", func(t *testing.T) {
-		// This test ensures our wrapper works correctly
-		err := validateAPIKey("short", "Test Provider")
-		if err == nil {
-			t.Error("Should return error for short key")
-		}
-
-		// Check it's the right validation error type
-		if !strings.Contains(err.Error(), "API key") {
-			t.Errorf("Error should mention API key, got: %v", err)
-		}
-	})
-}
-
-func TestValidateBaseURL(t *testing.T) {
-	t.Run("delegates to validate.ValidateURL", func(t *testing.T) {
-		err := validateBaseURL("http://insecure.com", "Test Provider")
-		if err == nil {
-			t.Error("Should return error for http URL")
-		}
-
-		if !strings.Contains(err.Error(), "HTTPS") {
-			t.Errorf("Error should mention HTTPS, got: %v", err)
-		}
-	})
-}
-
-func TestAuditLoggerErrorHandling(t *testing.T) {
-	t.Run("logAuditEvent returns error on invalid directory", func(t *testing.T) {
-		nonExistentDir := "/this/directory/does/not/exist/xyz123"
-
-		err := logAuditEvent(nonExistentDir, func(l *audit.Logger) error {
-			return nil
-		})
-
-		if err == nil {
-			t.Error("logAuditEvent should return error when directory doesn't exist")
-		}
-	})
-
-	t.Run("logAuditEvent returns error on logging failure", func(t *testing.T) {
+	t.Run("saves provider without setting default", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		err := logAuditEvent(tmpDir, func(l *audit.Logger) error {
-			return fmt.Errorf("test logging error")
-		})
-
-		if err == nil {
-			t.Error("logAuditEvent should return error when logFunc returns error")
+		cfg := &config.Config{
+			DefaultProvider: "",
+			Providers:       make(map[string]config.Provider),
 		}
-		if !strings.Contains(err.Error(), "test logging error") {
-			t.Errorf("Error should contain original error message, got: %v", err)
+
+		provider := config.Provider{
+			Name:    "Test Provider",
+			BaseURL: "https://test.com",
+			Model:   "test-model",
 		}
-	})
 
-	t.Run("logAuditEvent succeeds with valid logger and logFunc", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		err := logAuditEvent(tmpDir, func(l *audit.Logger) error {
-			return l.LogSetup("test-provider")
-		})
-
+		err := addAndSaveProvider(tmpDir, cfg, "testprovider", provider, false)
 		if err != nil {
-			t.Errorf("logAuditEvent should succeed with valid input, got: %v", err)
+			t.Fatalf("addAndSaveProvider() error = %v", err)
+		}
+
+		if cfg.DefaultProvider != "" {
+			t.Errorf("DefaultProvider = %q, want empty", cfg.DefaultProvider)
+		}
+	})
+
+	t.Run("does not override existing default when setAsDefault is true", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &config.Config{
+			DefaultProvider: "existing",
+			Providers:       make(map[string]config.Provider),
+		}
+
+		provider := config.Provider{
+			Name:    "Test Provider",
+			BaseURL: "https://test.com",
+			Model:   "test-model",
+		}
+
+		err := addAndSaveProvider(tmpDir, cfg, "newprovider", provider, true)
+		if err != nil {
+			t.Fatalf("addAndSaveProvider() error = %v", err)
+		}
+
+		if cfg.DefaultProvider != "existing" {
+			t.Errorf("DefaultProvider = %q, want 'existing'", cfg.DefaultProvider)
 		}
 	})
 }

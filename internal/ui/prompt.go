@@ -41,7 +41,7 @@ func ClearScreen() {
 }
 
 func PrintSuccess(msg string) {
-	fmt.Printf("%s✓%s %s%s\n", Green, Reset, msg, Reset)
+	fmt.Printf("\n%s✓%s %s%s\n", Green, Reset, msg, Reset)
 }
 
 func PrintWarn(msg string) {
@@ -159,12 +159,20 @@ func PromptWithDefault(prompt, defaultVal string) (string, error) {
 	return input, nil
 }
 
-func PrintProviderOption(number int, name string, cfg *config.Config, secrets map[string]string, provider string) {
-	configured := isProviderConfigured(cfg, secrets, provider)
+type ProviderOption struct {
+	Number   int
+	Name     string
+	Config   *config.Config
+	Secrets  map[string]string
+	Provider string
+}
+
+func PrintProviderOption(opts ProviderOption) {
+	configured := isProviderConfigured(opts.Config, opts.Secrets, opts.Provider)
 	if configured {
-		fmt.Printf("  %d. %s✓%s %s\n", number, Green, Reset, name)
+		fmt.Printf("  %d. %s✓%s %s\n", opts.Number, Green, Reset, opts.Name)
 	} else {
-		fmt.Printf("  %d.   %s\n", number, name)
+		fmt.Printf("  %d.   %s\n", opts.Number, opts.Name)
 	}
 }
 
@@ -183,16 +191,9 @@ func isProviderConfigured(cfg *config.Config, secrets map[string]string, provide
 	return false
 }
 
-func PrintBanner(version, provider string) {
-	banner := ` █████                 ███
-░░███                 ░░░
- ░███ █████  ██████   ████  ████████   ██████
- ░███░░███  ░░░░░███ ░░███ ░░███░░███ ███░░███
- ░██████░    ███████  ░███  ░███ ░░░ ░███ ░███
- ░███░░███  ███░░███  ░███  ░███     ░███ ░███
- ████ █████░░████████ █████ █████    ░░██████
-░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░      ░░░░░░   ` + version + ` - ` + provider
-	fmt.Printf("%s%s\n", Bold, banner)
+func PrintBanner(version string, provider config.Provider) {
+	banner := fmt.Sprintf("kairo %s - %s - %s", version, provider.Model, provider.Name)
+	fmt.Printf("%s%s%s\n", Gray, banner, Reset)
 }
 
 // Confirm prompts the user for a yes/no confirmation.

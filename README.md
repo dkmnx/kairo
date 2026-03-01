@@ -16,112 +16,61 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/dkmnx/kairo/ci.yml?branch=main&style=flat-square)](https://github.com/dkmnx/kairo/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-**Anthropic-powered CLI for multi-provider management with X25519 encryption and integrated audit trails.**
+**Go CLI wrapper for Claude/Qwen Code with X25519 encryption and audit logging.**
 
-## Prerequisites
+## Overview
 
-### Required: Claude Code CLI or Qwen Code CLI
+Kairo provides multi-provider API management with secure credential storage:
 
-Kairo acts as a wrapper around Claude Code or Qwen Code CLI to enable multi-provider support. You need to install at least one of them.
-
-**Install Claude Code:**
-
-- Visit: <https://claude.com/product/claude-code>
-- Or via package managers:
-
-  ```bash
-  # Homebrew (macOS)
-  brew install --cask claude-code
-
-  # npm
-  npm install -g @anthropic-ai/claude-code
-  ```
-
-**Install Qwen Code:**
-
-- Visit: <https://qwenlm.github.io/qwen-code-docs/>
-- Or via package managers:
-
-  ```bash
-  # npm
-  npm install -g @qwen-code/qwen-code@latest
-  ```
-
-**Configure Qwen Code:**
-
-Qwen Code requires model providers to be configured in `~/.qwen/settings.json`. Create this file with your providers:
-
-> Note: Only Anthropic API providers are supported.
-
-```json
-{
-  "modelProviders": {
-    "anthropic": [
-      {
-        "id": "glm-4.7",
-        "name": "GLM-4.7 [Z.AI Coding Plan] - Anthropic",
-        "envKey": "ANTHROPIC_API_KEY",
-        "baseUrl": "https://api.z.ai/api/anthropic"
-      }
-    ]
-  }
-}
-```
-
-Kairo automatically sets `ANTHROPIC_API_KEY` when using the Qwen harness.
-
-**Verify installation:**
-
-```bash
-claude --version
-# or
-qwen --version
-```
+- **Multi-Harness**: Claude Code (default), Qwen Code
+- **Secure Encryption**: Age (X25519) for all API keys
+- **Key Rotation**: Periodic encryption key regeneration
+- **Audit Logging**: Track all configuration changes
+- **Cross-Platform**: Linux, macOS, Windows
 
 ## Quick Start
 
 ### Install
 
-| Platform      | Command                                                                                   |
-| ------------- | ----------------------------------------------------------------------------------------- |
-| Linux/macOS   | `curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh \| sh`   |
-| Windows       | `irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 \| iex`       |
+| Platform    | Command                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------- |
+| Linux/macOS | `curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh \| sh` |
+| Windows     | `irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 \| iex`     |
 
-[Manual Installation](docs/guides/user-guide.md#manual-installation) | [Build from Source](docs/guides/development-guide.md#building)
+### Prerequisites
+
+Kairo requires Claude Code or Qwen Code CLI:
+
+```bash
+# Claude Code
+npm install -g @anthropic-ai/claude-code
+
+# Qwen Code
+npm install -g @qwen-code/qwen-code@latest
+```
 
 ### Setup
 
 ```bash
-# Interactive setup
-kairo setup
-
-# Configure a provider
-kairo config zai
-
-# Test provider
-kairo test zai
-
-# Switch and query
-kairo switch zai "Help me write a function"
-
-# Or use default provider
-kairo -- "Quick question"
+kairo setup          # Interactive setup wizard
+kairo list           # List configured providers
+kairo zai "query"    # Use specific provider
+kairo -- "query"     # Use default provider
 ```
 
-## System Architecture
+## Architecture
 
 ```mermaid
 flowchart TB
-    subgraph User[User]
+    subgraph User
         CLI[kairo CLI]
     end
 
-    subgraph Kairo
-        Config[config/] --> Providers[providers/]
-        Config --> Crypto[crypto/]
-        Config --> Audit[audit/]
-        Crypto --> Age[age X25519]
-        Audit --> Log[audit.log]
+    subgraph Core
+        Config[config/]
+        Crypto[crypto/ X25519]
+        Audit[audit/]
+        Providers[providers/]
     end
 
     subgraph Storage[~/.config/kairo/]
@@ -132,195 +81,71 @@ flowchart TB
     end
 
     CLI --> Config
-    CLI --> Providers
     CLI --> Crypto
     CLI --> Audit
+    Config --> YAML
     Crypto --> AGE
     Crypto --> KEY
-    Age --> KEY
+    Audit --> LOG
 ```
-
-## Features
-
-| Feature                | Description                              |
-| ---------------------- | ---------------------------------------- |
-| **Multi-Harness**      | Claude Code (default), Qwen Code         |
-| **Secure Encryption**  | Age (X25519) encryption for all API keys |
-| **Key Rotation**       | Regenerate encryption keys periodically  |
-| **Audit Logging**      | Track all configuration changes          |
-| **Cross-Platform**     | Linux, macOS, Windows support            |
-
-## Metrics
-
-Performance metrics are opt-in for privacy. When enabled, kairo tracks:
-
-- API call durations per provider
-- Configuration operation timing
-- Success/failure rates
-
-### Enabling Metrics
-
-```bash
-# Enable for current session
-kairo metrics enable
-
-# Or set environment variable
-export KAIRO_METRICS_ENABLED=true
-```
-
-### Viewing Metrics
-
-```bash
-# Display metrics in terminal
-kairo metrics
-
-# Export to JSON file
-kairo metrics --output metrics.json
-
-# Reset all metrics
-kairo metrics reset
-```
-
-### Metrics Reference
-
-| Metric            | Description                                |
-| ----------------- | ------------------------------------------ |
-| `operation`       | Type of operation (switch, config, etc.)   |
-| `provider`        | Provider name                              |
-| `count`           | Number of operations                       |
-| `total_duration`  | Cumulative time spent                      |
-| `avg_duration`    | Average operation time                     |
-| `min_duration`    | Fastest operation                          |
-| `max_duration`    | Slowest operation                          |
-| `failure_count`   | Number of failures                         |
 
 ## Commands
 
-### Provider Management
+| Command                    | Description                    |
+| -------------------------- | ------------------------------ |
+| `kairo setup`              | Interactive setup wizard       |
+| `kairo list`               | List configured providers      |
+| `kairo delete <provider>`  | Delete provider                |
+| `kairo <provider> [args]`  | Execute with specific provider |
+| `kairo -- [args]`          | Execute with default provider  |
+| `kairo harness get`        | Get current harness            |
+| `kairo harness set <name>` | Set default harness            |
+| `kairo update`             | Update to latest version       |
+| `kairo version`            | Show version                   |
+| `kairo completion <shell>` | Generate shell completion      |
 
-| Command                          | Description                          |
-| -------------------------------- | ------------------------------------ |
-| `kairo setup`                    | Interactive setup wizard             |
-| `kairo config <provider>`        | Configure a provider                 |
-| `kairo list`                     | List configured providers            |
-| `kairo status`                   | Test all providers                   |
-| `kairo test <provider>`          | Test specific provider               |
-| `kairo default <provider>`       | Get/set default provider             |
-| `kairo reset <provider>`         | Remove provider config               |
-| `kairo reset all`                | Remove all provider configs          |
-
-### Execution
-
-| Command                                   | Description                          |
-| ----------------------------------------- | ------------------------------------ |
-| `kairo switch <provider>`                 | Switch and exec CLI (claude or qwen) |
-| `kairo switch <provider> --harness qwen`  | Switch using Qwen CLI                |
-| `kairo harness get`                       | Get current default harness          |
-| `kairo harness set <harness>`             | Set default harness (claude or qwen) |
-| `kairo <provider> [args]`                 | Shorthand for switch                 |
-| `kairo -- "query"`                        | Query mode (default provider)        |
-
-### Maintenance
-
-| Command                         | Description                        |
-| ------------------------------- | ---------------------------------- |
-| `kairo rotate`                  | Rotate encryption key              |
-| `kairo backup`                  | Create backup of configuration     |
-| `kairo restore <file>`          | Restore from backup                |
-| `kairo recover`                 | Generate/restore recovery phrase   |
-| `kairo audit`                   | View/export audit logs             |
-| `kairo metrics`                 | View performance metrics           |
-| `kairo update`                  | Check for updates                  |
-| `kairo completion <shell>`      | Shell completion                   |
-| `kairo version`                 | Show version info                  |
+Full reference: [docs/reference/configuration.md](docs/reference/configuration.md)
 
 ## Configuration
 
-| OS         | Location                                     |
-| ---------- | -------------------------------------------- |
-| Linux      | `~/.config/kairo/`                           |
-| macOS      | `~/Library/Application Support/kairo/`       |
-| Windows    | `%APPDATA%\kairo\`                           |
+| OS      | Location                               |
+| ------- | -------------------------------------- |
+| Linux   | `~/.config/kairo/`                     |
+| macOS   | `~/Library/Application Support/kairo/` |
+| Windows | `%APPDATA%\kairo\`                     |
 
-| File          | Purpose                            | Permissions   |
-| ------------- | ---------------------------------- | ------------- |
-| `config.yaml` | Provider configurations (YAML)     | 0600          |
-| `secrets.age` | Encrypted API keys                 | 0600          |
-| `age.key`     | Encryption private key             | 0600          |
-| `audit.log`   | Configuration change history       | 0600          |
-
-## Documentation
-
-### User Guides
-
-| Guide                                                           | Description                  |
-| --------------------------------------------------------------- | ---------------------------- |
-| [User Guide](docs/guides/user-guide.md)                         | Installation and basic usage |
-| [Audit Guide](docs/guides/audit-guide.md)                       | Audit log usage              |
-| [Advanced Configuration](docs/guides/advanced-configuration.md) | Complex scenarios            |
-
-### Developer Resources
-
-| Resource                                                        | Description                      |
-| --------------------------------------------------------------- | -------------------------------- |
-| [Development Guide](docs/guides/development-guide.md)           | Setup and contribution           |
-| [Architecture](docs/architecture/README.md)                     | System design and diagrams       |
-| [Wrapper Scripts](docs/architecture/wrapper-scripts.md)         | Security design and rationale    |
-| [Contributing](docs/contributing/README.md)                     | Contribution workflow            |
-
-### Reference
-
-| Resource                                                        | Description                            |
-| --------------------------------------------------------------- | -------------------------------------- |
-| [Development Guide](docs/guides/development-guide.md)           | Setup and contribution                 |
-| [Architecture](docs/architecture/README.md)                     | System design and diagrams             |
-| [Wrapper Scripts](docs/architecture/wrapper-scripts.md)         | Security design and rationale          |
-| [Contributing](docs/contributing/README.md)                     | Contribution workflow                  |
-| [Troubleshooting](docs/troubleshooting/README.md)               | Common issues and solutions            |
-| [Changelog](CHANGELOG.md)                                       | Version history                        |
-
-## Building
-
-```bash
-# Build
-just build        # or: go build -o dist/kairo .
-
-# Test
-just test         # or: go test -race ./...
-
-# Lint
-just lint         # or: gofmt -w . && go vet ./...
-
-# Format
-just format       # or: gofmt -w .
-```
+| File          | Purpose                 |
+| ------------- | ----------------------- |
+| `config.yaml` | Provider configurations |
+| `secrets.age` | Encrypted API keys      |
+| `age.key`     | Encryption private key  |
+| `audit.log`   | Change history          |
 
 ## Security
 
-- Age (X25519) encryption for all API keys
+- X25519 encryption for all API keys
 - 0600 permissions on sensitive files
-- Secrets decrypted in-memory only
-- Secure wrapper scripts for both Claude and Qwen harnesses
-- Key generation on first run
-- Use `kairo rotate` for periodic key rotation
+- In-memory only decryption
+- Secure wrapper scripts for token passing
 
-## Project Structure
+See [Security Architecture](docs/architecture/README.md#security-architecture)
 
-```text
-kairo/
-├── cmd/           # CLI commands (Cobra)
-│   ├── setup.go   # Interactive wizard
-│   ├── config.go  # Provider configuration
-│   ├── switch.go  # Provider switching
-│   └── ...
-├── internal/      # Business logic
-│   ├── audit/     # Audit logging
-│   ├── config/    # YAML loading
-│   ├── crypto/    # Age encryption
-│   ├── providers/ # Provider registry
-│   └── ...
-└── pkg/           # Reusable utilities
-    └── env/       # Cross-platform config dir
+## Documentation
+
+- [User Guide](docs/guides/user-guide.md) - Installation and usage
+- [Development Guide](docs/guides/development-guide.md) - Setup and contribution
+- [Architecture](docs/architecture/README.md) - System design
+- [Troubleshooting](docs/troubleshooting/README.md) - Common issues
+
+Full documentation: [docs/README.md](docs/README.md)
+
+## Development
+
+```bash
+just build        # Build binary
+just test         # Run tests
+just lint         # Run linters
+just pre-release  # Format, lint, test
 ```
 
 ## Resources

@@ -91,32 +91,33 @@ sequenceDiagram
 ```text
 kairo/
 ├── cmd/                 # CLI commands (Cobra)
-│   ├── root.go          # Root command
-│   ├── setup.go         # Interactive setup
-│   ├── config.go        # Provider config
+│   ├── root.go          # Root command & provider execution
+│   ├── setup.go         # Interactive setup & edit
 │   ├── list.go          # List providers
-│   ├── status.go        # Test all providers
-│   ├── test.go          # Test provider
-│   ├── switch.go        # Switch & exec
-│   ├── default.go       # Default provider
-│   ├── reset.go         # Reset config
-│   ├── rotate.go        # Rotate key
-│   ├── audit.go         # Audit logs
-│   └── version.go       # Version info
+│   ├── delete.go        # Delete provider
+│   ├── harness.go       # Harness management
+│   ├── update.go        # Update CLI
+│   ├── version.go       # Version info
+│   ├── completion.go     # Shell completion
+│   ├── audit_helpers.go # Audit logging helpers
+│   └── util.go         # Utility functions
 ├── internal/            # Business logic
 │   ├── audit/           # Audit logging
-│   ├── config/          # Config loading
+│   ├── config/          # Config loading & caching
 │   ├── crypto/          # age encryption
 │   ├── errors/          # Typed errors
 │   ├── providers/       # Provider registry
 │   ├── ui/              # UI utilities
-│   └── validate/        # Input validation
+│   ├── validate/        # Input validation
+│   ├── version/         # Version information
+│   └── wrapper/        # Secure wrapper scripts
 ├── pkg/                 # Reusable utilities
 │   └── env/             # Environment helpers
 ├── docs/                # Documentation
 │   ├── architecture/    # This directory
 │   ├── contributing/    # Contribution guidelines
 │   ├── guides/          # User & dev guides
+│   ├── reference/       # Reference documentation
 │   └── troubleshooting/ # Common issues
 ├── scripts/             # Install scripts
 └── justfile             # Command runner
@@ -175,11 +176,9 @@ flowchart TB
 ```mermaid
 flowchart TB
     subgraph Commands
-        ConfigCmd[config]
-        SwitchCmd[switch]
-        DefaultCmd[default]
-        ResetCmd[reset]
-        RotateCmd[rotate]
+        SetupCmd[setup]
+        DeleteCmd[delete]
+        SwitchCmd[provider execution]
     end
 
     subgraph Audit
@@ -190,28 +189,23 @@ flowchart TB
 
     subgraph Output
         AuditLog[audit.log]
-        CSVExport[CSV Export]
-        JSONExport[JSON Export]
     end
 
-    ConfigCmd --> ChangeTracker
+    SetupCmd --> ChangeTracker
+    DeleteCmd --> ChangeTracker
     SwitchCmd --> ChangeTracker
-    DefaultCmd --> ChangeTracker
-    ResetCmd --> ChangeTracker
-    RotateCmd --> ChangeTracker
 
     ChangeTracker --> LogFormatter
     LogFormatter --> FileWriter
     FileWriter --> AuditLog
-    FileWriter --> CSVExport
-    FileWriter --> JSONExport
 ```
 
 ## Configuration Schema
 
 ```yaml
-# ~/.config/kairo/config
+# ~/.config/kairo/config.yaml
 default_provider: zai
+default_harness: claude
 providers:
   zai:
     name: Z.AI
@@ -221,20 +215,18 @@ providers:
       - ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash
   anthropic:
     name: Native Anthropic
-    base_url: ""
-    model: ""
 ```
 
 ## Provider Registry
 
-| Provider   | Base URL                   | Model           | API Key Required   |
-| ---------- | -------------------------- | --------------- | ------------------ |
-| anthropic  | -                          | -               | No                 |
-| zai        | api.z.ai/api/anthropic     | glm-4.7         | Yes                |
-| minimax    | api.minimax.io/anthropic   | MiniMax-M2.5    | Yes                |
-| kimi       | api.kimi.com/coding        | kimi-for-coding | Yes                |
-| deepseek   | api.deepseek.com/anthropic | deepseek-chat   | Yes                |
-| custom     | user-defined               | user-defined    | Yes                |
+| Provider  | Base URL                   | Model           | API Key Required |
+| --------- | -------------------------- | --------------- | ---------------- |
+| anthropic | -                          | -               | No               |
+| zai       | api.z.ai/api/anthropic     | glm-4.7         | Yes              |
+| minimax   | api.minimax.io/anthropic   | MiniMax-M2.5    | Yes              |
+| kimi      | api.kimi.com/coding        | kimi-for-coding | Yes              |
+| deepseek  | api.deepseek.com/anthropic | deepseek-chat   | Yes              |
+| custom    | user-defined               | user-defined    | Yes              |
 
 ## Error Handling
 

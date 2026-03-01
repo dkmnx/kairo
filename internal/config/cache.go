@@ -42,11 +42,15 @@ func (c *ConfigCache) Get(configDir string) (*Config, error) {
 	}
 	c.mu.RUnlock()
 
+	// Load config from file
 	cfg, err := LoadConfig(configDir)
 	if err != nil {
 		return nil, err
 	}
 
+	// Cache the loaded config
+	// Multiple concurrent loads will result in redundant I/O but correct results
+	// The last write will win, which is acceptable for this use case
 	c.mu.Lock()
 	c.entries[configDir] = &cachedConfig{
 		config:     cfg,
