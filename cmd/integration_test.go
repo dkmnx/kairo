@@ -182,7 +182,7 @@ func TestE2ESetupToSwitchWorkflow(t *testing.T) {
 	}
 
 	// Test: Add zai provider with API key via direct config manipulation
-	// (In real workflow, user would run 'kairo config zai')
+	// (In real workflow, user would run 'kairo setup')
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	secretsContent := "ZAI_API_KEY=sk-zai-test-key-12345\n"
 	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {

@@ -23,8 +23,8 @@ Native Anthropic API with ANTHROPIC_API_KEY from environment.
 # Set API key
 export ANTHROPIC_API_KEY=sk-ant-...
 
-# Configure
-kairo config anthropic
+# Configure with setup wizard
+kairo setup
 ```
 
 ### zai
@@ -32,8 +32,8 @@ kairo config anthropic
 Z.AI API - General purpose, high capability.
 
 ```bash
-kairo config zai
-# Enter API key: sk-ant-...
+# Configure with setup wizard
+kairo setup
 
 kairo zai "Your query"
 ```
@@ -43,8 +43,8 @@ kairo zai "Your query"
 MiniMax API - Fast responses, cost-effective.
 
 ```bash
-kairo config minimax
-# Enter API key...
+# Configure with setup wizard
+kairo setup
 
 kairo minimax "Your query"
 ```
@@ -54,8 +54,8 @@ kairo minimax "Your query"
 Moonshot AI (Kimi) - Specialized tasks.
 
 ```bash
-kairo config kimi
-# Enter API key...
+# Configure with setup wizard
+kairo setup
 
 kairo kimi "Your query"
 ```
@@ -65,8 +65,8 @@ kairo kimi "Your query"
 DeepSeek AI - Cost-effective, batch processing.
 
 ```bash
-kairo config deepseek
-# Enter API key...
+# Configure with setup wizard
+kairo setup
 
 kairo deepseek "Your query"
 ```
@@ -76,13 +76,14 @@ kairo deepseek "Your query"
 User-defined provider for self-hosted or custom APIs.
 
 ```bash
-kairo config custom
+# Configure with setup wizard
+kairo setup
 # Enter name: my-provider
 # Enter base URL: https://api.example.com/v1
 # Enter model: my-model
 # Enter API key: ...
 
-kairo switch my-provider "Your query"
+kairo my-provider "Your query"
 ```
 
 ## Custom Provider Requirements
@@ -111,8 +112,8 @@ var BuiltInProviders = map[string]ProviderDefinition{
 
 ```bash
 go test ./internal/providers/...
-kairo config newprovider
-kairo test newprovider
+kairo setup
+kairo newprovider "Your query"
 ```
 
 1. Update documentation
