@@ -14,7 +14,6 @@ CLI command implementations using the Cobra framework.
 | `update.go`        | Update to latest version                       |
 | `version.go`       | Display version information                    |
 | `completion.go`    | Shell completion support                       |
-| `audit_helpers.go` | Audit logging helpers                          |
 | `util.go`          | Utility functions                              |
 
 ## Command Architecture
@@ -158,11 +157,3 @@ kairo zai "Help me"
 ```
 
 This is handled in `root.go` by checking if the first argument is a valid provider name.
-
-## Audit Integration
-
-Configuration changes are logged internally:
-
-- `setup` - Logs provider setup and changes
-- `delete` - Logs provider removals
-- Provider execution - Logs provider usage

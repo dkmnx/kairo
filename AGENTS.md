@@ -2,14 +2,14 @@
 
 ## WHAT
 
-Go CLI wrapper for Claude/Qwen Code API providers with X25519 encryption and audit logging.
+Go CLI wrapper for Claude/Qwen Code API providers with X25519 encryption.
 
 **Tech Stack:** Go 1.25+, Cobra, age (filippo.io/age), YAML, Go testing
 
 **Key Directories:**
 
 - `cmd/` - CLI commands (Cobra) - see `cmd/root.go:1`
-- `internal/` - Business logic (audit, config, crypto, providers, ui, errors, validate)
+- `internal/` - Business logic (config, crypto, providers, ui, errors, validate)
 - `pkg/` - Reusable utilities (cross-platform config dir)
 - `docs/` - Architecture, guides, best practices
 
