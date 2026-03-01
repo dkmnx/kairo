@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-03-01
+
+### Added
+
+- Direct provider execution: use `kairo <provider> [args]` to switch and run in one command
+- Default provider execution: use `kairo -- [args]` or just `kairo` to run with default provider
+- Architecture Decision Records (ADRs) documenting key technical decisions
+- TUI integration for provider configuration (tap editor)
+
+### Changed
+
+- **[BREAKING]:** Simplified CLI command structure - removed 8 subcommands
+- **[BREAKING]:** `kairo config` functionality merged into `kairo setup`
+- **[BREAKING]:** `kairo reset` renamed to `kairo delete`
+- Banner simplified to text-only format with gray color
+- Increased test coverage across cmd, crypto, and wrapper packages
+
+### Removed
+
+- **[BREAKING]:** Audit logging (`kairo audit` command, internal/audit package)
+- **[BREAKING]:** Backup and restore (`kairo backup` command, internal/backup package)
+- **[BREAKING]:** Metrics tracking (`kairo metrics` command, internal/performance package)
+- **[BREAKING]:** Key recovery (`kairo recover` command, internal/recovery, internal/recoveryphrase packages)
+- **[BREAKING]:** Key rotation (`kairo rotate` command)
+- **[BREAKING]:** Provider status (`kairo status` command)
+- **[BREAKING]:** Provider testing (`kairo test` command)
+- **[BREAKING]:** Switch command (`kairo switch` - use `kairo <provider>` directly)
+- **[BREAKING]:** Standalone completion command (use shell builtin completion)
+- **[BREAKING]:** Obsolete documentation files (consolidated into reference structure)
+- Internal package: internal/config/cache.go
+- Internal package: internal/recovery/recovery.go
+- Internal package: internal/recoveryphrase/recoveryphrase.go
+- Integration tests for removed features
+
+### Fixed
+
+- Launch default provider when no arguments provided
+- Pass harness args correctly when using `--` separator
+- Check configureProvider error in setup command
+- Remove unused parameters from executeWithAuth and handleSecretsError
+- Resolve code review findings
+
+### Refactored
+
+- Reduced function complexity in cmd/root.go
+- Centralized error handling and removed unused crypto code
+- Use config structs for functions with >2 parameters
+- Extract promptForField to eliminate DRY violation
+- Split configureProvider into smaller functions
+- Improve naming consistency and remove dead code
+- Extract root.go Run into smaller helper functions
+- Remove config transaction file (cmd/config_tx.go)
+
 ## [1.10.1] - 2026-02-28
 
 ### Added
@@ -941,6 +994,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[2.0.0]: https://github.com/dkmnx/kairo/compare/v1.10.1...v2.0.0
 [1.10.1]: https://github.com/dkmnx/kairo/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/dkmnx/kairo/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/dkmnx/kairo/compare/v1.8.4...v1.9.0
