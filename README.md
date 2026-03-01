@@ -69,7 +69,6 @@ flowchart TB
     subgraph Core
         Config[config/]
         Crypto[crypto/ X25519]
-        Audit[audit/]
         Providers[providers/]
     end
 
@@ -77,7 +76,6 @@ flowchart TB
         YAML[config.yaml]
         AGE[secrets.age]
         KEY[age.key]
-        LOG[audit.log]
     end
 
     CLI --> Config
