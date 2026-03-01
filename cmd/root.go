@@ -281,19 +281,12 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 			cmd.Println()
 			cmd.Println("Usage:")
 			cmd.Println("  kairo setup            # Configure providers")
-			cmd.Println("  kairo edit <provider> # Configure a provider")
+			cmd.Println("  kairo default <name>   # Set default provider")
 			cmd.Println("  kairo list             # List providers")
 			cmd.Println("  kairo <provider>       # Use specific provider")
 			return nil, nil, ""
 		}
-		if harnessFlag != "" {
-			args = []string{cfg.DefaultProvider}
-		} else {
-			cmd.Printf("Default provider: %s\n", cfg.DefaultProvider)
-			cmd.Println("Usage:")
-			cmd.Println("  kairo <provider> [args]  # Use specific provider")
-			return nil, nil, ""
-		}
+		args = []string{cfg.DefaultProvider}
 	}
 
 	providerName, harnessArgs := getProviderFromArgs(cmd, cfg, args)
