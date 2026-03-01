@@ -19,9 +19,9 @@ import (
 	"github.com/yarlson/tap"
 )
 
-// validProviderName validates custom provider names to ensure they start with
-// a letter and contain only alphanumeric characters, underscores, and hyphens.
-var validProviderName = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
+// providerNamePattern matches valid custom provider names: starting with a letter
+// and containing only alphanumeric characters, underscores, and hyphens.
+var providerNamePattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 
 // Provider names must:
 // - Be 1-50 characters long
@@ -38,7 +38,7 @@ func validateCustomProviderName(name string) (string, error) {
 		return "", kairoerrors.NewError(kairoerrors.ValidationError,
 			fmt.Sprintf("provider name must be at most %d characters (got %d)", validate.MaxProviderNameLength, len(name)))
 	}
-	if !validProviderName.MatchString(name) {
+	if !providerNamePattern.MatchString(name) {
 		return "", kairoerrors.NewError(kairoerrors.ValidationError,
 			"provider name must start with a letter and contain only alphanumeric characters, underscores, and hyphens")
 	}
@@ -52,50 +52,30 @@ func validateCustomProviderName(name string) (string, error) {
 }
 
 // buildProviderConfig creates a Provider configuration from a ProviderDefinition.
-func buildProviderConfig(providerDef providers.ProviderDefinition, baseURL, model string) config.Provider {
+func buildProviderConfig(definition providers.ProviderDefinition, baseURL, model string) config.Provider {
 	provider := config.Provider{
-		Name:    providerDef.Name,
+		Name:    definition.Name,
 		BaseURL: baseURL,
 		Model:   model,
 	}
-	if len(providerDef.EnvVars) > 0 {
-		provider.EnvVars = providerDef.EnvVars
+	if len(definition.EnvVars) > 0 {
+		provider.EnvVars = definition.EnvVars
 	}
 	return provider
 }
 
 // addAndSaveProvider adds a provider to the config and saves it to disk.
 // If setAsDefault is true and no default provider is set, the provider becomes the default.
-func addAndSaveProvider(configDir string, appConfig *config.Config, providerName string, provider config.Provider, setAsDefault bool) error {
-	appConfig.Providers[providerName] = provider
-	if setAsDefault && appConfig.DefaultProvider == "" {
-		appConfig.DefaultProvider = providerName
+func addAndSaveProvider(configDir string, cfg *config.Config, providerName string, provider config.Provider, setAsDefault bool) error {
+	cfg.Providers[providerName] = provider
+	if setAsDefault && cfg.DefaultProvider == "" {
+		cfg.DefaultProvider = providerName
 	}
-	if err := config.SaveConfig(configDir, appConfig); err != nil {
+	if err := config.SaveConfig(configDir, cfg); err != nil {
 		return kairoerrors.WrapError(kairoerrors.ConfigError,
 			"saving config", err)
 	}
 	return nil
-}
-
-// providerStatusIcon returns a status indicator for a provider's configuration.
-// Note: This function is intentionally used only in tests (setup_test.go) to verify
-// provider status display logic. It remains exported for test coverage purposes.
-func providerStatusIcon(appConfig *config.Config, secrets map[string]string, provider string) string {
-	if !providers.RequiresAPIKey(provider) {
-		if _, exists := appConfig.Providers[provider]; exists {
-			return ui.Green + "[x]" + ui.Reset
-		}
-		return "  "
-	}
-
-	apiKeyKey := apiKeyEnvVarName(provider)
-	for k := range secrets {
-		if k == apiKeyKey {
-			return ui.Green + "[x]" + ui.Reset
-		}
-	}
-	return "  "
 }
 
 // ensureConfigDirectory creates the config directory and encryption key if they don't exist.
@@ -113,16 +93,16 @@ func ensureConfigDirectory(configDir string) error {
 
 // loadOrInitializeConfig loads an existing config or creates a new empty one.
 func loadOrInitializeConfig(configDir string) (*config.Config, error) {
-	appConfig, err := configCache.Get(configDir)
+	cfg, err := configCache.Get(configDir)
 	if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 		return nil, err
 	}
 	if err != nil {
-		appConfig = &config.Config{
+		cfg = &config.Config{
 			Providers: make(map[string]config.Provider),
 		}
 	}
-	return appConfig, nil
+	return cfg, nil
 }
 
 // LoadSecrets loads and decrypts secrets from the specified directory.
@@ -161,12 +141,12 @@ func buildProviderListOptions(providerList []string) []tap.SelectOption[string] 
 }
 
 // promptForProvider displays interactive provider selection menu using Tap TUI.
-func promptForProvider(appConfig *config.Config) string {
-	if len(appConfig.Providers) > 0 {
+func promptForProvider(cfg *config.Config) string {
+	if len(cfg.Providers) > 0 {
 		// Has configured providers - show them + setup new option
 		// Get names of configured providers
-		providerNames := make([]string, 0, len(appConfig.Providers))
-		for name := range appConfig.Providers {
+		providerNames := make([]string, 0, len(cfg.Providers))
+		for name := range cfg.Providers {
 			providerNames = append(providerNames, name)
 		}
 
@@ -229,9 +209,9 @@ func parseProviderSelection(selection string) (string, bool) {
 
 // saveProviderConfiguration saves the provider configuration and secrets.
 // Returns audit details for logging.
-func saveProviderConfiguration(configDir string, appConfig *config.Config, providerName string, provider config.Provider, apiKey string, secrets map[string]string, secretsPath, keyPath string, isEdit, wasExisting bool) (map[string]interface{}, error) {
-	setAsDefault := appConfig.DefaultProvider == ""
-	if err := addAndSaveProvider(configDir, appConfig, providerName, provider, setAsDefault); err != nil {
+func saveProviderConfiguration(configDir string, cfg *config.Config, providerName string, provider config.Provider, apiKey string, secrets map[string]string, secretsPath, keyPath string, isEdit, wasExisting bool) (map[string]interface{}, error) {
+	setAsDefault := cfg.DefaultProvider == ""
+	if err := addAndSaveProvider(configDir, cfg, providerName, provider, setAsDefault); err != nil {
 		return nil, err
 	}
 
@@ -273,21 +253,21 @@ func resolveProviderName(providerName string) (string, error) {
 
 // getProviderDefinition retrieves the provider definition, using providerName for custom providers.
 func getProviderDefinition(providerName string) providers.ProviderDefinition {
-	providerDef, _ := providers.GetBuiltInProvider(providerName)
-	if providerDef.Name == "" {
-		providerDef.Name = providerName
+	definition, _ := providers.GetBuiltInProvider(providerName)
+	if definition.Name == "" {
+		definition.Name = providerName
 	}
-	return providerDef
+	return definition
 }
 
 // displayProviderHeader shows the appropriate header based on edit/setup mode.
-func displayProviderHeader(provider config.Provider, providerDef providers.ProviderDefinition, isEdit, exists bool) {
+func displayProviderHeader(provider config.Provider, definition providers.ProviderDefinition, isEdit, exists bool) {
 	if isEdit && exists {
 		tap.Message(fmt.Sprintf("Editing %s", provider.Name), tap.MessageOptions{
 			Hint: "Press Enter to keep current values",
 		})
 	} else {
-		ui.PrintHeader(fmt.Sprintf("%s Configuration", providerDef.Name))
+		ui.PrintHeader(fmt.Sprintf("%s Configuration", definition.Name))
 	}
 }
 
@@ -317,101 +297,84 @@ func promptForAPIKey(providerName string, secrets map[string]string, isEdit, exi
 	})
 }
 
-// promptForBaseURL prompts for Base URL with edit mode support.
-func promptForBaseURL(provider config.Provider, providerDef providers.ProviderDefinition, isEdit, exists bool) string {
-	var baseURL string
+// promptFieldConfig holds configuration for prompting a provider field.
+type promptFieldConfig struct {
+	Label        string
+	CurrentValue string
+	DefaultValue string
+	IsEdit       bool
+	Exists       bool
+}
 
-	if isEdit && exists {
-		defaultURL := provider.BaseURL
-		if defaultURL == "" {
-			defaultURL = providerDef.BaseURL
+// promptForField prompts for a provider field with edit mode support.
+// Handles the common pattern of: edit confirmation -> text input -> fallback to default.
+func promptForField(cfg promptFieldConfig) string {
+	if cfg.IsEdit && cfg.Exists {
+		effectiveDefault := cfg.CurrentValue
+		if effectiveDefault == "" {
+			effectiveDefault = cfg.DefaultValue
 		}
 
-		if defaultURL != "" {
-			modifyBaseURL := tap.Confirm(context.Background(), tap.ConfirmOptions{
-				Message: fmt.Sprintf("Modify Base URL? (current: %s)", defaultURL),
+		if effectiveDefault != "" {
+			modifyField := tap.Confirm(context.Background(), tap.ConfirmOptions{
+				Message: fmt.Sprintf("Modify %s? (current: %s)", cfg.Label, effectiveDefault),
 			})
-			if modifyBaseURL {
-				baseURL = tap.Text(context.Background(), tap.TextOptions{
-					Message:      "New Base URL",
-					DefaultValue: defaultURL,
-					Placeholder:  defaultURL,
-				})
-			} else {
-				baseURL = defaultURL
+			if modifyField {
+				return strings.TrimSpace(tap.Text(context.Background(), tap.TextOptions{
+					Message:      fmt.Sprintf("New %s", cfg.Label),
+					DefaultValue: effectiveDefault,
+					Placeholder:  effectiveDefault,
+				}))
 			}
-		} else {
-			baseURL = tap.Text(context.Background(), tap.TextOptions{
-				Message:     "Base URL",
-				Placeholder: providerDef.BaseURL,
-			})
+			return effectiveDefault
 		}
-	} else {
-		baseURL = tap.Text(context.Background(), tap.TextOptions{
-			Message:      "Base URL",
-			DefaultValue: providerDef.BaseURL,
-			Placeholder:  providerDef.BaseURL,
-		})
+
+		return strings.TrimSpace(tap.Text(context.Background(), tap.TextOptions{
+			Message:     cfg.Label,
+			Placeholder: cfg.DefaultValue,
+		}))
 	}
 
-	baseURL = strings.TrimSpace(baseURL)
-	if baseURL == "" {
-		baseURL = providerDef.BaseURL
-	}
+	result := tap.Text(context.Background(), tap.TextOptions{
+		Message:      cfg.Label,
+		DefaultValue: cfg.DefaultValue,
+		Placeholder:  cfg.DefaultValue,
+	})
 
-	return baseURL
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return cfg.DefaultValue
+	}
+	return result
+}
+
+// promptForBaseURL prompts for Base URL with edit mode support.
+func promptForBaseURL(provider config.Provider, definition providers.ProviderDefinition, isEdit, exists bool) string {
+	return promptForField(promptFieldConfig{
+		Label:        "Base URL",
+		CurrentValue: provider.BaseURL,
+		DefaultValue: definition.BaseURL,
+		IsEdit:       isEdit,
+		Exists:       exists,
+	})
 }
 
 // promptForModel prompts for Model with edit mode support.
-func promptForModel(provider config.Provider, providerDef providers.ProviderDefinition, isEdit, exists bool) string {
-	var model string
-
-	if isEdit && exists {
-		defaultModel := provider.Model
-		if defaultModel == "" {
-			defaultModel = providerDef.Model
-		}
-
-		if defaultModel != "" {
-			modifyModel := tap.Confirm(context.Background(), tap.ConfirmOptions{
-				Message: fmt.Sprintf("Modify Model? (current: %s)", defaultModel),
-			})
-			if modifyModel {
-				model = tap.Text(context.Background(), tap.TextOptions{
-					Message:      "New Model",
-					DefaultValue: defaultModel,
-					Placeholder:  defaultModel,
-				})
-			} else {
-				model = defaultModel
-			}
-		} else {
-			model = tap.Text(context.Background(), tap.TextOptions{
-				Message:     "Model",
-				Placeholder: providerDef.Model,
-			})
-		}
-	} else {
-		model = tap.Text(context.Background(), tap.TextOptions{
-			Message:      "Model",
-			DefaultValue: providerDef.Model,
-			Placeholder:  providerDef.Model,
-		})
-	}
-
-	model = strings.TrimSpace(model)
-	if model == "" {
-		model = providerDef.Model
-	}
-
-	return model
+func promptForModel(provider config.Provider, definition providers.ProviderDefinition, isEdit, exists bool) string {
+	return promptForField(promptFieldConfig{
+		Label:        "Model",
+		CurrentValue: provider.Model,
+		DefaultValue: definition.Model,
+		IsEdit:       isEdit,
+		Exists:       exists,
+	})
 }
 
 // buildProviderConfigFromInput creates a Provider config from user input.
-func buildProviderConfigFromInput(providerDef providers.ProviderDefinition, baseURL, model string, exists bool, existing config.Provider) config.Provider {
+func buildProviderConfigFromInput(definition providers.ProviderDefinition, baseURL, model string, exists bool, existing config.Provider) config.Provider {
 	if !exists {
 		return config.Provider{
-			Name:    providerDef.Name,
+			Name:    definition.Name,
 			BaseURL: baseURL,
 			Model:   model,
 		}
@@ -421,29 +384,29 @@ func buildProviderConfigFromInput(providerDef providers.ProviderDefinition, base
 	return existing
 }
 
-func configureProvider(configDir string, appConfig *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string, isEdit bool) (string, map[string]interface{}, error) {
+func configureProvider(configDir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string, isEdit bool) (string, map[string]interface{}, error) {
 	validatedName, err := resolveProviderName(providerName)
 	if err != nil {
 		return "", nil, err
 	}
 
-	providerDef := getProviderDefinition(validatedName)
-	provider, exists := appConfig.Providers[validatedName]
+	definition := getProviderDefinition(validatedName)
+	provider, exists := cfg.Providers[validatedName]
 
-	displayProviderHeader(provider, providerDef, isEdit, exists)
+	displayProviderHeader(provider, definition, isEdit, exists)
 
 	apiKey := promptForAPIKey(validatedName, secrets, isEdit, exists)
-	if err := validate.ValidateAPIKey(apiKey, providerDef.Name); err != nil {
+	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
 		return "", nil, err
 	}
 
-	baseURL := promptForBaseURL(provider, providerDef, isEdit, exists)
-	if err := validate.ValidateURL(baseURL, providerDef.Name); err != nil {
+	baseURL := promptForBaseURL(provider, definition, isEdit, exists)
+	if err := validate.ValidateURL(baseURL, definition.Name); err != nil {
 		return "", nil, err
 	}
 
-	model := promptForModel(provider, providerDef, isEdit, exists)
-	if err := validate.ValidateProviderModel(model, providerDef.Name); err != nil {
+	model := promptForModel(provider, definition, isEdit, exists)
+	if err := validate.ValidateProviderModel(model, definition.Name); err != nil {
 		return "", nil, err
 	}
 
@@ -455,9 +418,9 @@ func configureProvider(configDir string, appConfig *config.Config, providerName 
 		}
 	}
 
-	provider = buildProviderConfigFromInput(providerDef, baseURL, model, exists, provider)
+	provider = buildProviderConfigFromInput(definition, baseURL, model, exists, provider)
 
-	details, err := saveProviderConfiguration(configDir, appConfig, validatedName, provider, apiKey, secrets, secretsPath, keyPath, isEdit, exists)
+	details, err := saveProviderConfiguration(configDir, cfg, validatedName, provider, apiKey, secrets, secretsPath, keyPath, isEdit, exists)
 	if err != nil {
 		return "", nil, err
 	}
@@ -488,7 +451,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		appConfig, err := loadOrInitializeConfig(configDir)
+		cfg, err := loadOrInitializeConfig(configDir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
@@ -502,48 +465,18 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		providerName := promptForProvider(appConfig)
+		providerName := promptForProvider(cfg)
 		if providerName == "" {
 			ui.PrintInfo("Setup cancelled")
 			return
 		}
 
-		_, exists := appConfig.Providers[providerName]
-		if _, _, err := configureProvider(configDir, appConfig, providerName, secrets, secretsPath, keyPath, exists); err != nil {
+		_, exists := cfg.Providers[providerName]
+		if _, _, err := configureProvider(configDir, cfg, providerName, secrets, secretsPath, keyPath, exists); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}
 	},
-}
-
-// legacyPromptForAPIKey prompts user for an API key and validates it.
-// NOTE: This function is kept for backwards compatibility with tests.
-// Production code now uses Tap TUI.
-func legacyPromptForAPIKey(providerName string) (string, error) {
-	apiKey, err := ui.PromptSecret("API Key")
-	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
-			"reading API key", err)
-	}
-	if err := validate.ValidateAPIKey(apiKey, providerName); err != nil {
-		return "", err
-	}
-	return apiKey, nil
-}
-
-// legacyPromptForBaseURL prompts user for a base URL and validates it.
-// NOTE: This function is kept for backwards compatibility with tests.
-// Production code now uses Tap TUI.
-func legacyPromptForBaseURL(defaultURL, providerName string) (string, error) {
-	baseURL, err := ui.PromptWithDefault("Base URL", defaultURL)
-	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
-			"reading base URL", err)
-	}
-	if err := validate.ValidateURL(baseURL, providerName); err != nil {
-		return "", err
-	}
-	return baseURL, nil
 }
 
 func init() {
