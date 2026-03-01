@@ -1043,7 +1043,7 @@ func TestPromptForAPIKey(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		apiKey, err := promptForAPIKey("Z.AI")
+		apiKey, err := legacyPromptForAPIKey("Z.AI")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1080,7 +1080,7 @@ func TestPromptForAPIKey(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		_, err := promptForAPIKey("Z.AI")
+		_, err := legacyPromptForAPIKey("Z.AI")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1124,7 +1124,7 @@ func TestPromptForBaseURL(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		baseURL, err := promptForBaseURL("https://api.z.ai/api/anthropic", "Z.AI")
+		baseURL, err := legacyPromptForBaseURL("https://api.z.ai/api/anthropic", "Z.AI")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1160,7 +1160,7 @@ func TestPromptForBaseURL(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		baseURL, err := promptForBaseURL("https://api.z.ai/api/anthropic", "Z.AI")
+		baseURL, err := legacyPromptForBaseURL("https://api.z.ai/api/anthropic", "Z.AI")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -1196,7 +1196,7 @@ func TestPromptForBaseURL(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		_, err := promptForBaseURL("", "Custom")
+		_, err := legacyPromptForBaseURL("", "Custom")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
