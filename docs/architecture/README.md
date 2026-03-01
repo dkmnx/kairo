@@ -30,14 +30,12 @@ flowchart TB
         Crypto[Encryption Service]
         Providers[Provider Registry]
         Validate[Input Validation]
-        Audit[Audit Logger]
     end
 
     subgraph Storage
         ConfigFile[config YAML]
         SecretsAge[secrets.age]
         AgeKey[age.key]
-        AuditLog[audit.log]
     end
 
     subgraph External
