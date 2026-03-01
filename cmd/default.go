@@ -18,6 +18,7 @@ var defaultCmd = &cobra.Command{
 		dir := getConfigDir()
 		if dir == "" {
 			ui.PrintError("Config directory not found")
+
 			return
 		}
 
@@ -29,9 +30,11 @@ var defaultCmd = &cobra.Command{
 				} else {
 					ui.PrintError(fmt.Sprintf("Provider '%s' not found in config", args[0]))
 				}
+
 				return
 			}
 			handleConfigError(cmd, err)
+
 			return
 		}
 
@@ -42,6 +45,7 @@ var defaultCmd = &cobra.Command{
 			} else {
 				ui.PrintSuccess(fmt.Sprintf("\nDefault provider: %s", cfg.DefaultProvider))
 			}
+
 			return
 		}
 
@@ -49,12 +53,14 @@ var defaultCmd = &cobra.Command{
 		if _, ok := cfg.Providers[providerName]; !ok {
 			ui.PrintError(fmt.Sprintf("Provider '%s' not configured", providerName))
 			ui.PrintInfo("Run 'kairo setup' to configure")
+
 			return
 		}
 
 		cfg.DefaultProvider = providerName
 		if err := config.SaveConfig(dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
+
 			return
 		}
 
