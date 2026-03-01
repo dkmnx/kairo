@@ -3,7 +3,6 @@
 // This package handles:
 //   - X25519 key generation (public/private key pairs)
 //   - Secret encryption/decryption for secure API key storage
-//   - Key rotation for periodic security best practices
 //   - Atomic key replacement to prevent partial state
 //
 // Thread Safety:
@@ -13,7 +12,6 @@
 // Security:
 //   - All key files use 0600 permissions (owner only)
 //   - Temporary files are created with secure defaults
-//   - Key rotation uses atomic operations to prevent data loss
 //   - Private key material is never logged or printed
 //
 // Memory Safety Limitation:
@@ -401,153 +399,4 @@ func EnsureKeyExists(configDir string) error {
 			WithContext("path", keyPath)
 	}
 	return GenerateKey(keyPath)
-}
-
-// RotateKey generates a new encryption key and re-encrypts all secrets with it.
-// The old key is replaced with the new key. This should be done periodically
-// as a security best practice.
-func RotateKey(configDir string) error {
-	keyPath := filepath.Join(configDir, config.KeyFileName)
-	secretsPath := filepath.Join(configDir, config.SecretsFileName)
-	backupKeyPath := keyPath + ".backup"
-
-	_, err := os.Stat(secretsPath)
-	if os.IsNotExist(err) {
-		return generateNewKeyAndReplace(keyPath)
-	}
-	if err != nil {
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to check secrets file status", err).
-			WithContext("path", secretsPath)
-	}
-
-	decrypted, err := DecryptSecrets(secretsPath, keyPath)
-	if err != nil {
-		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to decrypt secrets with old key during rotation", err).
-			WithContext("hint", "old key may be corrupted or invalid").
-			WithContext("secrets_path", secretsPath)
-	}
-
-	backupKeyData, err := os.ReadFile(keyPath)
-	if err != nil {
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to backup old key before rotation", err).
-			WithContext("path", keyPath)
-	}
-
-	if err := os.WriteFile(backupKeyPath, backupKeyData, 0600); err != nil {
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to write old key backup", err).
-			WithContext("path", backupKeyPath)
-	}
-
-	// Backup old secrets file before re-encryption
-	// This ensures recovery is possible if rotation is interrupted
-	backupSecretsPath := secretsPath + ".backup"
-	secretsData, err := os.ReadFile(secretsPath)
-	if err != nil {
-		// Clean up key backup if secrets backup fails
-		os.Remove(backupKeyPath)
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to read old secrets file for backup", err).
-			WithContext("path", secretsPath)
-	}
-	if err := os.WriteFile(backupSecretsPath, secretsData, 0600); err != nil {
-		// Clean up key backup if secrets backup fails
-		os.Remove(backupKeyPath)
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to write old secrets backup", err).
-			WithContext("path", backupSecretsPath)
-	}
-
-	if err := generateNewKeyAndReplace(keyPath); err != nil {
-		// Restore from backups if key generation fails
-		os.Remove(backupKeyPath)
-		os.Remove(backupSecretsPath)
-		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to generate and replace new encryption key", err).
-			WithContext("path", keyPath)
-	}
-
-	if err := EncryptSecrets(secretsPath, keyPath, decrypted); err != nil {
-		// Restore both key and secrets from backups if re-encryption fails
-		restoreKeyErr := os.Rename(backupKeyPath, keyPath)
-		restoreSecretsErr := os.Rename(backupSecretsPath, secretsPath)
-
-		if restoreKeyErr != nil || restoreSecretsErr != nil {
-			// CRITICAL: Re-encryption failed AND restoration failed
-			// User has backups available for manual recovery
-			return kairoerrors.WrapError(kairoerrors.CryptoError,
-				"CRITICAL: failed to re-encrypt secrets and failed to restore from backups", err).
-				WithContext("key_restore_error", errorOrNil(restoreKeyErr)).
-				WithContext("secrets_restore_error", errorOrNil(restoreSecretsErr)).
-				WithContext("key_backup_path", backupKeyPath).
-				WithContext("secrets_backup_path", backupSecretsPath).
-				WithContext("hint", "manual recovery from backup files required")
-		}
-
-		// Restoration succeeded, but log that rotation was rolled back
-		os.Remove(backupKeyPath)
-		os.Remove(backupSecretsPath)
-		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to re-encrypt secrets with new key, both key and secrets restored from backups", err).
-			WithContext("key_backup_path", backupKeyPath).
-			WithContext("secrets_backup_path", backupSecretsPath)
-	}
-
-	// Rotation successful - clean up backups
-	os.Remove(backupKeyPath)
-	os.Remove(backupSecretsPath)
-	return nil
-}
-
-// errorOrNil returns string representation of error or "nil" if error is nil
-func errorOrNil(err error) string {
-	if err == nil {
-		return "nil"
-	}
-	return err.Error()
-}
-
-// generateNewKeyAndReplace generates a new X25519 key and atomically replaces the old key.
-//
-// This function generates a temporary new key file, then uses os.Rename
-// to atomically replace the old key with the new one. If the rename
-// fails, the temporary file is cleaned up. This ensures that key
-// replacement is atomic - either completely succeeds or fails without leaving
-// partial state.
-//
-// Parameters:
-//   - keyPath: Path to existing age.key file to be replaced
-//
-// Returns:
-//   - error: Returns error if key generation or replacement fails
-//
-// Error conditions:
-//   - Returns error when new key cannot be generated (e.g., disk full, permissions)
-//   - Returns error when temporary file cannot be renamed to target (e.g., permissions)
-//   - Note: If rename fails, temporary file is cleaned up before returning error
-//
-// Thread Safety: Not thread-safe (file I/O operations)
-// Security Notes: Uses atomic rename operation to prevent partial state. Both old and new key files should have 0600 permissions (owner only).
-func generateNewKeyAndReplace(keyPath string) error {
-	newKeyPath := keyPath + ".new"
-	if err := GenerateKey(newKeyPath); err != nil {
-		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to generate temporary new key", err).
-			WithContext("path", newKeyPath).
-			WithContext("target_path", keyPath)
-	}
-
-	if err := os.Rename(newKeyPath, keyPath); err != nil {
-		os.Remove(newKeyPath)
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to replace old key with new key", err).
-			WithContext("from", newKeyPath).
-			WithContext("to", keyPath).
-			WithContext("hint", "check file permissions")
-	}
-
-	return nil
 }
