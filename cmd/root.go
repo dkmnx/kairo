@@ -138,7 +138,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			return
 		}
 
-		apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
+		apiKeyKey := apiKeyEnvVarName(providerName)
 		if apiKey, hasKey := secrets[apiKeyKey]; hasKey {
 			executeWithAuth(ExecutionConfig{
 				Cmd:           cmd,
@@ -164,8 +164,6 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 }
 
 // Execute runs the kairo CLI application.
-// It processes command-line arguments and executes the appropriate Cobra command.
-// Returns an error if command execution fails.
 func Execute() error {
 	args := os.Args[1:]
 
@@ -311,6 +309,11 @@ func buildProviderEnvironment(configDir string, provider config.Provider, provid
 
 	providerEnv := mergeEnvVars(os.Environ(), builtInEnvVars, provider.EnvVars, secretsEnvVars)
 	return providerEnv, secrets, nil
+}
+
+// apiKeyEnvVarName formats the environment variable name for a provider's API key.
+func apiKeyEnvVarName(providerName string) string {
+	return fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
 }
 
 func handleSecretsError(err error) {
