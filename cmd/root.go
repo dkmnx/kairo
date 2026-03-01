@@ -54,10 +54,10 @@ func getVerbose() bool {
 	return verbose
 }
 
-func setVerbose(v bool) {
+func setVerbose(enabled bool) {
 	verboseMu.Lock()
 	defer verboseMu.Unlock()
-	verbose = v
+	verbose = enabled
 }
 
 func setConfigDir(dir string) {
@@ -95,14 +95,14 @@ encrypted secrets management using age encryption.
 Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, kairoversion.Date),
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := getConfigDir()
-		if dir == "" {
+		configDir := getConfigDir()
+		if configDir == "" {
 			cmd.Println("Error: config directory not found")
 			_ = cmd.Help()
 			return
 		}
 
-		cfg, err := configCache.Get(dir)
+		cfg, err := configCache.Get(configDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
@@ -132,7 +132,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
 
-		providerEnv, secrets, err := buildProviderEnvironment(dir, provider, providerName)
+		providerEnv, secrets, err := buildProviderEnvironment(configDir, provider, providerName)
 		if err != nil {
 			handleSecretsError(err)
 			return
@@ -285,7 +285,7 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 	return args, harnessArgs, providerName
 }
 
-func buildProviderEnvironment(dir string, provider config.Provider, providerName string) ([]string, map[string]string, error) {
+func buildProviderEnvironment(configDir string, provider config.Provider, providerName string) ([]string, map[string]string, error) {
 	builtInEnvVars := []string{
 		fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),
 		fmt.Sprintf("%s=%s", envModel, provider.Model),
@@ -296,7 +296,7 @@ func buildProviderEnvironment(dir string, provider config.Provider, providerName
 		"NODE_OPTIONS=--no-deprecation",
 	}
 
-	secrets, _, _, err := LoadAndDecryptSecrets(dir)
+	secrets, _, _, err := LoadAndDecryptSecrets(configDir)
 	if err != nil {
 		if providers.RequiresAPIKey(providerName) {
 			return nil, nil, err
@@ -329,6 +329,42 @@ type ExecutionConfig struct {
 	APIKey        string
 }
 
+// runHarnessWithWrapper executes a harness CLI using an auth wrapper script.
+// Handles wrapper script generation, context setup, signal handling, and command execution.
+func runHarnessWithWrapper(authDir, tokenPath, harnessBinary string, cliArgs []string, providerEnv []string, provider config.Provider, wrapperCfg wrapper.WrapperScriptConfig) error {
+	harnessPath, err := lookPath(harnessBinary)
+	if err != nil {
+		return fmt.Errorf("'%s' command not found in PATH", harnessBinary)
+	}
+
+	wrapperCfg.CliPath = harnessPath
+	wrapperCfg.CliArgs = cliArgs
+	wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(wrapperCfg)
+	if err != nil {
+		return fmt.Errorf("generating wrapper script: %w", err)
+	}
+
+	ui.ClearScreen()
+	ui.PrintBanner(kairoversion.Version, provider)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	setupSignalHandler(cancel)
+
+	var execCmd *exec.Cmd
+	if useCmdExe {
+		execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
+	} else {
+		execCmd = execCommandContext(ctx, wrapperScript)
+	}
+	execCmd.Env = providerEnv
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	return execCmd.Run()
+}
+
 func executeWithAuth(cfg ExecutionConfig) {
 	authDir, err := wrapper.CreateTempAuthDir()
 	if err != nil {
@@ -355,86 +391,23 @@ func executeWithAuth(cfg ExecutionConfig) {
 	if cfg.HarnessToUse == "qwen" {
 		cliArgs = append([]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model}, cliArgs...)
 
-		ui.ClearScreen()
-		ui.PrintBanner(kairoversion.Version, cfg.Provider)
-
-		qwenPath, err := lookPath(cfg.HarnessBinary)
-		if err != nil {
-			cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
-			cfg.Cmd.Printf("Please install %s CLI or use 'kairo harness set claude'\n", cfg.HarnessToUse)
-			return
-		}
-
-		wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(wrapper.WrapperScriptConfig{
+		err = runHarnessWithWrapper(authDir, tokenPath, cfg.HarnessBinary, cliArgs, cfg.ProviderEnv, cfg.Provider, wrapper.WrapperScriptConfig{
 			AuthDir:    authDir,
 			TokenPath:  tokenPath,
-			CliPath:    qwenPath,
-			CliArgs:    cliArgs,
 			EnvVarName: "ANTHROPIC_API_KEY",
 		})
 		if err != nil {
-			cfg.Cmd.Printf("Error generating wrapper script: %v\n", err)
-			return
-		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		setupSignalHandler(cancel)
-
-		var execCmd *exec.Cmd
-		if useCmdExe {
-			execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
-		} else {
-			execCmd = execCommandContext(ctx, wrapperScript)
-		}
-		execCmd.Env = cfg.ProviderEnv
-		execCmd.Stdin = os.Stdin
-		execCmd.Stdout = os.Stdout
-		execCmd.Stderr = os.Stderr
-
-		if err := execCmd.Run(); err != nil {
 			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
 			exitProcess(1)
 		}
 		return
 	}
 
-	claudePath, err := lookPath(cfg.HarnessBinary)
-	if err != nil {
-		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
-		return
-	}
-
-	wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(wrapper.WrapperScriptConfig{
+	err = runHarnessWithWrapper(authDir, tokenPath, cfg.HarnessBinary, cliArgs, cfg.ProviderEnv, cfg.Provider, wrapper.WrapperScriptConfig{
 		AuthDir:   authDir,
 		TokenPath: tokenPath,
-		CliPath:   claudePath,
-		CliArgs:   cliArgs,
 	})
 	if err != nil {
-		cfg.Cmd.Printf("Error generating wrapper script: %v\n", err)
-		return
-	}
-
-	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, cfg.Provider)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	setupSignalHandler(cancel)
-
-	var execCmd *exec.Cmd
-	if useCmdExe {
-		execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
-	} else {
-		execCmd = execCommandContext(ctx, wrapperScript)
-	}
-	execCmd.Env = cfg.ProviderEnv
-	execCmd.Stdin = os.Stdin
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
-
-	if err := execCmd.Run(); err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
 		exitProcess(1)
 	}

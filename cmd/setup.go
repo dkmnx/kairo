@@ -53,48 +53,38 @@ func validateCustomProviderName(name string) (string, error) {
 }
 
 // buildProviderConfig creates a Provider configuration from a ProviderDefinition.
-func buildProviderConfig(def providers.ProviderDefinition, baseURL, model string) config.Provider {
+func buildProviderConfig(providerDef providers.ProviderDefinition, baseURL, model string) config.Provider {
 	provider := config.Provider{
-		Name:    def.Name,
+		Name:    providerDef.Name,
 		BaseURL: baseURL,
 		Model:   model,
 	}
-	if len(def.EnvVars) > 0 {
-		provider.EnvVars = def.EnvVars
+	if len(providerDef.EnvVars) > 0 {
+		provider.EnvVars = providerDef.EnvVars
 	}
 	return provider
 }
 
-// saveProviderConfigFile saves a provider configuration to the config file.
+// addAndSaveProvider adds a provider to the config and saves it to disk.
 // If setAsDefault is true and no default provider is set, the provider becomes the default.
-func saveProviderConfigFile(dir string, cfg *config.Config, providerName string, provider config.Provider, setAsDefault bool) error {
-	cfg.Providers[providerName] = provider
-	if setAsDefault && cfg.DefaultProvider == "" {
-		cfg.DefaultProvider = providerName
+func addAndSaveProvider(configDir string, appConfig *config.Config, providerName string, provider config.Provider, setAsDefault bool) error {
+	appConfig.Providers[providerName] = provider
+	if setAsDefault && appConfig.DefaultProvider == "" {
+		appConfig.DefaultProvider = providerName
 	}
-	if err := config.SaveConfig(dir, cfg); err != nil {
+	if err := config.SaveConfig(configDir, appConfig); err != nil {
 		return kairoerrors.WrapError(kairoerrors.ConfigError,
 			"saving config", err)
 	}
 	return nil
 }
 
-// validateAPIKey is a wrapper around validate.ValidateAPIKey for consistency.
-func validateAPIKey(key, providerName string) error {
-	return validate.ValidateAPIKey(key, providerName)
-}
-
-// validateBaseURL is a wrapper around validate.ValidateURL for consistency.
-func validateBaseURL(url, providerName string) error {
-	return validate.ValidateURL(url, providerName)
-}
-
 // providerStatusIcon returns a status indicator for a provider's configuration.
 // Note: This function is intentionally used only in tests (setup_test.go) to verify
 // provider status display logic. It remains exported for test coverage purposes.
-func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider string) string {
+func providerStatusIcon(appConfig *config.Config, secrets map[string]string, provider string) string {
 	if !providers.RequiresAPIKey(provider) {
-		if _, exists := cfg.Providers[provider]; exists {
+		if _, exists := appConfig.Providers[provider]; exists {
 			return ui.Green + "[x]" + ui.Reset
 		}
 		return "  "
@@ -110,12 +100,12 @@ func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider 
 }
 
 // ensureConfigDirectory creates the config directory and encryption key if they don't exist.
-func ensureConfigDirectory(dir string) error {
-	if err := os.MkdirAll(dir, 0700); err != nil {
+func ensureConfigDirectory(configDir string) error {
+	if err := os.MkdirAll(configDir, 0700); err != nil {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"creating config directory", err)
 	}
-	if err := crypto.EnsureKeyExists(dir); err != nil {
+	if err := crypto.EnsureKeyExists(configDir); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"creating encryption key", err)
 	}
@@ -123,17 +113,17 @@ func ensureConfigDirectory(dir string) error {
 }
 
 // loadOrInitializeConfig loads an existing config or creates a new empty one.
-func loadOrInitializeConfig(dir string) (*config.Config, error) {
-	cfg, err := configCache.Get(dir)
+func loadOrInitializeConfig(configDir string) (*config.Config, error) {
+	appConfig, err := configCache.Get(configDir)
 	if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 		return nil, err
 	}
 	if err != nil {
-		cfg = &config.Config{
+		appConfig = &config.Config{
 			Providers: make(map[string]config.Provider),
 		}
 	}
-	return cfg, nil
+	return appConfig, nil
 }
 
 // LoadSecrets loads and decrypts secrets from the specified directory.
@@ -143,9 +133,9 @@ func loadOrInitializeConfig(dir string) (*config.Config, error) {
 // LoadAndDecryptSecrets loads and decrypts secrets from the specified directory.
 // Returns secrets map, secrets path, and key path. If secrets file doesn't exist
 // or decryption fails, returns empty secrets map with appropriate error handling.
-func LoadAndDecryptSecrets(dir string) (map[string]string, string, string, error) {
-	secretsPath := filepath.Join(dir, config.SecretsFileName)
-	keyPath := filepath.Join(dir, config.KeyFileName)
+func LoadAndDecryptSecrets(configDir string) (map[string]string, string, string, error) {
+	secretsPath := filepath.Join(configDir, config.SecretsFileName)
+	keyPath := filepath.Join(configDir, config.KeyFileName)
 
 	secrets := make(map[string]string)
 
@@ -162,38 +152,28 @@ func LoadAndDecryptSecrets(dir string) (map[string]string, string, string, error
 	return secrets, secretsPath, keyPath, nil
 }
 
+// buildProviderListOptions converts a provider list to Tap SelectOptions format.
+func buildProviderListOptions(providerList []string) []tap.SelectOption[string] {
+	options := make([]tap.SelectOption[string], len(providerList))
+	for i, name := range providerList {
+		options[i] = tap.SelectOption[string]{Value: name, Label: name}
+	}
+	return options
+}
+
 // promptForProvider displays interactive provider selection menu using Tap TUI.
-//
-// This function presents a list of available providers to the user using Tap
-// and returns the selected provider name, or empty string if user cancels.
-//
-// Parameters:
-//   - none (function uses providers.GetProviderList() internally)
-//
-// Returns:
-//   - string: Selected provider name, or empty string if user chose to exit
-//
-// Error conditions: None (returns empty string on cancellation)
-//
-// Thread Safety: Not thread-safe (uses Tap which reads from stdin)
-// Security Notes: This is a user-facing interactive function. Input is validated by Tap.
-func promptForProvider(cfg *config.Config) string {
-	if len(cfg.Providers) > 0 {
+func promptForProvider(appConfig *config.Config) string {
+	if len(appConfig.Providers) > 0 {
 		// Has configured providers - show them + setup new option
 		// Get names of configured providers
-		providerNames := make([]string, 0, len(cfg.Providers))
-		for name := range cfg.Providers {
+		providerNames := make([]string, 0, len(appConfig.Providers))
+		for name := range appConfig.Providers {
 			providerNames = append(providerNames, name)
 		}
 
 		// Add "Setup new provider" as last option
 		providerNames = append(providerNames, "Setup new provider")
-
-		// Convert to tap.SelectOption format
-		options := make([]tap.SelectOption[string], len(providerNames))
-		for i, name := range providerNames {
-			options[i] = tap.SelectOption[string]{Value: name, Label: name}
-		}
+		options := buildProviderListOptions(providerNames)
 
 		fmt.Println()
 
@@ -208,16 +188,9 @@ func promptForProvider(cfg *config.Config) string {
 
 		// Check if "Setup new provider" was selected
 		if selected == "Setup new provider" {
-			// Prompt for provider to configure (setup flow)
 			providerList := providers.GetProviderList()
-			// Add "custom" option
 			providerList = append(providerList, "custom")
-
-			// Convert to tap.SelectOption format
-			options := make([]tap.SelectOption[string], len(providerList))
-			for i, name := range providerList {
-				options[i] = tap.SelectOption[string]{Value: name, Label: name}
-			}
+			options = buildProviderListOptions(providerList)
 
 			selected = tap.Select(context.Background(), tap.SelectOptions[string]{
 				Message: "Select provider to configure",
@@ -230,14 +203,8 @@ func promptForProvider(cfg *config.Config) string {
 
 	// No configured providers - go directly to provider selection (setup flow)
 	providerList := providers.GetProviderList()
-	// Add "custom" option
 	providerList = append(providerList, "custom")
-
-	// Convert to tap.SelectOption format
-	options := make([]tap.SelectOption[string], len(providerList))
-	for i, name := range providerList {
-		options[i] = tap.SelectOption[string]{Value: name, Label: name}
-	}
+	options := buildProviderListOptions(providerList)
 
 	selected := tap.Select(context.Background(), tap.SelectOptions[string]{
 		Message: "Select provider to configure",
@@ -261,7 +228,39 @@ func parseProviderSelection(selection string) (string, bool) {
 	return "", false
 }
 
-func configureProvider(dir string, cfg *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string, isEdit bool) (string, map[string]interface{}, error) {
+// saveProviderConfiguration saves the provider configuration and secrets.
+// Returns audit details for logging.
+func saveProviderConfiguration(configDir string, appConfig *config.Config, providerName string, provider config.Provider, apiKey string, secrets map[string]string, secretsPath, keyPath string, isEdit, wasExisting bool) (map[string]interface{}, error) {
+	setAsDefault := appConfig.DefaultProvider == ""
+	if err := addAndSaveProvider(configDir, appConfig, providerName, provider, setAsDefault); err != nil {
+		return nil, err
+	}
+
+	// Save secrets
+	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
+	secretsContent := config.FormatSecrets(secrets)
+	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+			"saving API key", err)
+	}
+
+	// Prepare audit details
+	details := map[string]any{
+		"display_name": provider.Name,
+		"base_url":     provider.BaseURL,
+		"model":        provider.Model,
+	}
+	if setAsDefault {
+		details["set_as_default"] = "true"
+	}
+	if isEdit && wasExisting {
+		details["action"] = "edit"
+	}
+
+	return details, nil
+}
+
+func configureProvider(configDir string, appConfig *config.Config, providerName string, secrets map[string]string, secretsPath, keyPath string, isEdit bool) (string, map[string]interface{}, error) {
 	// Handle custom provider name
 	if providerName == "custom" {
 		customName := tap.Text(context.Background(), tap.TextOptions{
@@ -277,13 +276,13 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	// Get built-in provider definition if available
 	// Error is intentionally ignored - custom providers will return an error,
 	// which is expected. We'll use the providerName directly in that case.
-	def, _ := providers.GetBuiltInProvider(providerName)
-	if def.Name == "" {
-		def.Name = providerName
+	providerDef, _ := providers.GetBuiltInProvider(providerName)
+	if providerDef.Name == "" {
+		providerDef.Name = providerName
 	}
 
 	// Check if provider already exists
-	provider, exists := cfg.Providers[providerName]
+	provider, exists := appConfig.Providers[providerName]
 
 	// Prompt for configuration details
 	if isEdit && exists {
@@ -293,8 +292,7 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		})
 	} else {
 		// Setup mode - show "Configuration" header
-		ui.PrintInfo("")
-		ui.PrintHeader(fmt.Sprintf("%s Configuration", def.Name))
+		ui.PrintHeader(fmt.Sprintf("%s Configuration", providerDef.Name))
 	}
 
 	// API Key prompt
@@ -327,7 +325,7 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 			Message: "API Key",
 		})
 	}
-	if err := validateAPIKey(apiKey, def.Name); err != nil {
+	if err := validate.ValidateAPIKey(apiKey, providerDef.Name); err != nil {
 		return "", nil, err
 	}
 
@@ -338,8 +336,8 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		if provider.BaseURL != "" {
 			baseURLDefault = provider.BaseURL
 		} else {
-			if def.BaseURL != "" {
-				baseURLDefault = def.BaseURL
+			if providerDef.BaseURL != "" {
+				baseURLDefault = providerDef.BaseURL
 			}
 		}
 
@@ -359,16 +357,16 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		} else {
 			provider.BaseURL = tap.Text(context.Background(), tap.TextOptions{
 				Message:     "Base URL",
-				Placeholder: def.BaseURL,
+				Placeholder: providerDef.BaseURL,
 			})
 			provider.BaseURL = strings.TrimSpace(provider.BaseURL)
 			if provider.BaseURL == "" {
-				provider.BaseURL = def.BaseURL
+				provider.BaseURL = providerDef.BaseURL
 			}
 		}
 	} else {
 		// Setup mode - prompt with default from definition
-		baseURL := def.BaseURL
+		baseURL := providerDef.BaseURL
 
 		baseURL = tap.Text(context.Background(), tap.TextOptions{
 			Message:      "Base URL",
@@ -378,13 +376,13 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		// Use default value if user pressed Enter (empty input)
 		baseURL = strings.TrimSpace(baseURL)
 		if baseURL == "" {
-			baseURL = def.BaseURL
+			baseURL = providerDef.BaseURL
 		}
 
 		// Build provider config for URL
 		if !exists {
 			provider = config.Provider{
-				Name:    def.Name,
+				Name:    providerDef.Name,
 				BaseURL: baseURL,
 			}
 		} else {
@@ -392,7 +390,7 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		}
 	}
 
-	if err := validateBaseURL(provider.BaseURL, def.Name); err != nil {
+	if err := validate.ValidateURL(provider.BaseURL, providerDef.Name); err != nil {
 		return "", nil, err
 	}
 
@@ -403,8 +401,8 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		if provider.Model != "" {
 			modelDefault = provider.Model
 		} else {
-			if def.Model != "" {
-				modelDefault = def.Model
+			if providerDef.Model != "" {
+				modelDefault = providerDef.Model
 			}
 		}
 
@@ -427,16 +425,16 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		} else {
 			provider.Model = tap.Text(context.Background(), tap.TextOptions{
 				Message:     "Model",
-				Placeholder: def.Model,
+				Placeholder: providerDef.Model,
 			})
 			provider.Model = strings.TrimSpace(provider.Model)
 			if provider.Model == "" {
-				provider.Model = def.Model
+				provider.Model = providerDef.Model
 			}
 		}
 	} else {
 		// Setup mode - prompt with default from definition
-		model := def.Model
+		model := providerDef.Model
 
 		model = tap.Text(context.Background(), tap.TextOptions{
 			Message:      "Model",
@@ -446,12 +444,12 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		// Use default value if user pressed Enter (empty input)
 		model = strings.TrimSpace(model)
 		if model == "" {
-			model = def.Model
+			model = providerDef.Model
 		}
 
 		if !exists {
 			provider = config.Provider{
-				Name:  def.Name,
+				Name:  providerDef.Name,
 				Model: model,
 			}
 		} else {
@@ -459,7 +457,7 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 		}
 	}
 
-	if err := validate.ValidateProviderModel(provider.Model, def.Name); err != nil {
+	if err := validate.ValidateProviderModel(provider.Model, providerDef.Name); err != nil {
 		return "", nil, err
 	}
 
@@ -474,30 +472,9 @@ func configureProvider(dir string, cfg *config.Config, providerName string, secr
 	}
 
 	// Build and save provider configuration
-	setAsDefault := cfg.DefaultProvider == ""
-	if err := saveProviderConfigFile(dir, cfg, providerName, provider, setAsDefault); err != nil {
+	details, err := saveProviderConfiguration(configDir, appConfig, providerName, provider, apiKey, secrets, secretsPath, keyPath, isEdit, exists)
+	if err != nil {
 		return "", nil, err
-	}
-
-	// Save secrets
-	secrets[fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))] = apiKey
-	secretsContent := config.FormatSecrets(secrets)
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
-		return "", nil, kairoerrors.WrapError(kairoerrors.CryptoError,
-			"saving API key", err)
-	}
-
-	// Prepare audit details
-	details := map[string]any{
-		"display_name": provider.Name,
-		"base_url":     provider.BaseURL,
-		"model":        provider.Model,
-	}
-	if setAsDefault {
-		details["set_as_default"] = "true"
-	}
-	if isEdit && exists {
-		details["action"] = "edit"
 	}
 
 	tap.Outro(fmt.Sprintf("%s configured successfully", provider.Name), tap.MessageOptions{
@@ -511,28 +488,28 @@ var setupCmd = &cobra.Command{
 	Short: "Interactive setup and edit wizard",
 	Long:  "Run the interactive wizard to configure new providers or edit existing ones. Select a provider to edit or choose 'Setup new provider' to add a new provider.",
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := getConfigDir()
-		if dir == "" {
+		configDir := getConfigDir()
+		if configDir == "" {
 			home, err := os.UserHomeDir()
 			if err != nil {
 				ui.PrintError("Cannot find home directory")
 				return
 			}
-			dir = filepath.Join(home, ".config", "kairo")
+			configDir = filepath.Join(home, ".config", "kairo")
 		}
 
-		if err := ensureConfigDirectory(dir); err != nil {
+		if err := ensureConfigDirectory(configDir); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}
 
-		cfg, err := loadOrInitializeConfig(dir)
+		appConfig, err := loadOrInitializeConfig(configDir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 			return
 		}
 
-		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(dir)
+		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(configDir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
 			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
@@ -540,14 +517,14 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		providerName := promptForProvider(cfg)
+		providerName := promptForProvider(appConfig)
 		if providerName == "" {
 			ui.PrintInfo("Setup cancelled")
 			return
 		}
 
-		_, exists := cfg.Providers[providerName]
-		if _, _, err := configureProvider(dir, cfg, providerName, secrets, secretsPath, keyPath, exists); err != nil {
+		_, exists := appConfig.Providers[providerName]
+		if _, _, err := configureProvider(configDir, appConfig, providerName, secrets, secretsPath, keyPath, exists); err != nil {
 			ui.PrintError(err.Error())
 			return
 		}
@@ -563,7 +540,7 @@ func promptForAPIKey(providerName string) (string, error) {
 		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
 			"reading API key", err)
 	}
-	if err := validateAPIKey(apiKey, providerName); err != nil {
+	if err := validate.ValidateAPIKey(apiKey, providerName); err != nil {
 		return "", err
 	}
 	return apiKey, nil
@@ -578,7 +555,7 @@ func promptForBaseURL(defaultURL, providerName string) (string, error) {
 		return "", kairoerrors.WrapError(kairoerrors.ValidationError,
 			"reading base URL", err)
 	}
-	if err := validateBaseURL(baseURL, providerName); err != nil {
+	if err := validate.ValidateURL(baseURL, providerName); err != nil {
 		return "", err
 	}
 	return baseURL, nil

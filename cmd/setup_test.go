@@ -15,6 +15,7 @@ import (
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
+	"github.com/dkmnx/kairo/internal/validate"
 )
 
 func TestPrintBanner(t *testing.T) {
@@ -1844,17 +1845,17 @@ func TestSetup_ValidateBaseURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateBaseURL(tt.url, tt.providerName)
+			err := validate.ValidateURL(tt.url, tt.providerName)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateBaseURL(%q) error = %v, wantErr %v", tt.url, err, tt.wantErr)
+				t.Errorf("validate.ValidateURL(%q) error = %v, wantErr %v", tt.url, err, tt.wantErr)
 			}
 
 			if tt.wantErr && tt.errContains != "" {
 				if err == nil {
-					t.Errorf("validateBaseURL(%q) expected error containing %q, got nil", tt.url, tt.errContains)
+					t.Errorf("validate.ValidateURL(%q) expected error containing %q, got nil", tt.url, tt.errContains)
 				} else if !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(tt.errContains)) {
-					t.Errorf("validateBaseURL(%q) error = %q, want error containing %q", tt.url, err.Error(), tt.errContains)
+					t.Errorf("validate.ValidateURL(%q) error = %q, want error containing %q", tt.url, err.Error(), tt.errContains)
 				}
 			}
 		})
