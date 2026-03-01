@@ -21,23 +21,26 @@ func TestPrintBanner(t *testing.T) {
 	tests := []struct {
 		name     string
 		version  string
-		model    string
-		provider string
+		provider config.Provider
 		wantSub  string
 	}{
 		{
-			name:     "banner with version model and provider",
-			version:  "v0.1.0",
-			model:    "claude-sonnet-4-20250514",
-			provider: "MiniMax",
-			wantSub:  "kairo v0.1.0 - claude-sonnet-4-20250514 - MiniMax",
+			name:    "banner with version model and provider",
+			version: "v0.1.0",
+			provider: config.Provider{
+				Model: "claude-sonnet-4-20250514",
+				Name:  "MiniMax",
+			},
+			wantSub: "kairo v0.1.0 - claude-sonnet-4-20250514 - MiniMax",
 		},
 		{
-			name:     "banner with custom provider and model",
-			version:  "vdev",
-			model:    "custom-model",
-			provider: "Custom Provider",
-			wantSub:  "kairo vdev - custom-model - Custom Provider",
+			name:    "banner with custom provider and model",
+			version: "vdev",
+			provider: config.Provider{
+				Model: "custom-model",
+				Name:  "Custom Provider",
+			},
+			wantSub: "kairo vdev - custom-model - Custom Provider",
 		},
 	}
 
@@ -49,7 +52,7 @@ func TestPrintBanner(t *testing.T) {
 
 			done := make(chan struct{})
 			go func() {
-				ui.PrintBanner(tt.version, tt.model, tt.provider)
+				ui.PrintBanner(tt.version, tt.provider)
 				w.Close()
 				close(done)
 			}()
@@ -95,8 +98,8 @@ func TestPrintProviderOptionConfigured(t *testing.T) {
 	secrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
 	secretsMap := config.ParseSecrets(secrets)
 
-	ui.PrintProviderOption(1, "Native Anthropic", cfg, secretsMap, "anthropic")
-	ui.PrintProviderOption(2, "MiniMax", cfg, secretsMap, "minimax")
+	ui.PrintProviderOption(ui.ProviderOption{Number: 1, Name: "Native Anthropic", Config: cfg, Secrets: secretsMap, Provider: "anthropic"})
+	ui.PrintProviderOption(ui.ProviderOption{Number: 2, Name: "MiniMax", Config: cfg, Secrets: secretsMap, Provider: "minimax"})
 }
 
 func TestPrintProviderOptionNotConfigured(t *testing.T) {
@@ -123,8 +126,8 @@ func TestPrintProviderOptionNotConfigured(t *testing.T) {
 	secrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
 	secretsMap := config.ParseSecrets(secrets)
 
-	ui.PrintProviderOption(1, "Native Anthropic", cfg, secretsMap, "anthropic")
-	ui.PrintProviderOption(2, "Kimi", cfg, secretsMap, "kimi")
+	ui.PrintProviderOption(ui.ProviderOption{Number: 1, Name: "Native Anthropic", Config: cfg, Secrets: secretsMap, Provider: "anthropic"})
+	ui.PrintProviderOption(ui.ProviderOption{Number: 2, Name: "Kimi", Config: cfg, Secrets: secretsMap, Provider: "kimi"})
 }
 
 func TestIsProviderConfigured(t *testing.T) {

@@ -134,17 +134,32 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 
 		providerEnv, secrets, err := buildProviderEnvironment(dir, provider, providerName)
 		if err != nil {
-			handleSecretsError(cmd, err)
+			handleSecretsError(err)
 			return
 		}
 
 		apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
 		if apiKey, hasKey := secrets[apiKeyKey]; hasKey {
-			executeWithAuth(cmd, providerEnv, harnessToUse, harnessBinary, provider, harnessArgs, apiKey)
+			executeWithAuth(ExecutionConfig{
+				Cmd:           cmd,
+				ProviderEnv:   providerEnv,
+				HarnessToUse:  harnessToUse,
+				HarnessBinary: harnessBinary,
+				Provider:      provider,
+				HarnessArgs:   harnessArgs,
+				APIKey:        apiKey,
+			})
 			return
 		}
 
-		executeWithoutAuth(cmd, providerEnv, harnessToUse, harnessBinary, provider, harnessArgs)
+		executeWithoutAuth(ExecutionConfig{
+			Cmd:           cmd,
+			ProviderEnv:   providerEnv,
+			HarnessToUse:  harnessToUse,
+			HarnessBinary: harnessBinary,
+			Provider:      provider,
+			HarnessArgs:   harnessArgs,
+		})
 	},
 }
 
@@ -298,16 +313,26 @@ func buildProviderEnvironment(dir string, provider config.Provider, providerName
 	return providerEnv, secrets, nil
 }
 
-func handleSecretsError(cmd *cobra.Command, err error) {
+func handleSecretsError(err error) {
 	ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
 	ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
 	ui.PrintInfo("Use --verbose for more details.")
 }
 
-func executeWithAuth(cmd *cobra.Command, providerEnv []string, harnessToUse, harnessBinary string, provider config.Provider, harnessArgs []string, apiKey string) {
+type ExecutionConfig struct {
+	Cmd           *cobra.Command
+	ProviderEnv   []string
+	HarnessToUse  string
+	HarnessBinary string
+	Provider      config.Provider
+	HarnessArgs   []string
+	APIKey        string
+}
+
+func executeWithAuth(cfg ExecutionConfig) {
 	authDir, err := wrapper.CreateTempAuthDir()
 	if err != nil {
-		cmd.Printf("Error creating auth directory: %v\n", err)
+		cfg.Cmd.Printf("Error creating auth directory: %v\n", err)
 		return
 	}
 
@@ -319,30 +344,36 @@ func executeWithAuth(cmd *cobra.Command, providerEnv []string, harnessToUse, har
 	}
 	defer cleanup()
 
-	tokenPath, err := wrapper.WriteTempTokenFile(authDir, apiKey)
+	tokenPath, err := wrapper.WriteTempTokenFile(authDir, cfg.APIKey)
 	if err != nil {
-		cmd.Printf("Error creating secure token file: %v\n", err)
+		cfg.Cmd.Printf("Error creating secure token file: %v\n", err)
 		return
 	}
 
-	cliArgs := harnessArgs
+	cliArgs := cfg.HarnessArgs
 
-	if harnessToUse == "qwen" {
-		cliArgs = append([]string{"--auth-type", "anthropic", "--model", provider.Model}, cliArgs...)
+	if cfg.HarnessToUse == "qwen" {
+		cliArgs = append([]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model}, cliArgs...)
 
 		ui.ClearScreen()
-		ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
+		ui.PrintBanner(kairoversion.Version, cfg.Provider)
 
-		qwenPath, err := lookPath(harnessBinary)
+		qwenPath, err := lookPath(cfg.HarnessBinary)
 		if err != nil {
-			cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
-			cmd.Printf("Please install %s CLI or use 'kairo harness set claude'\n", harnessToUse)
+			cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
+			cfg.Cmd.Printf("Please install %s CLI or use 'kairo harness set claude'\n", cfg.HarnessToUse)
 			return
 		}
 
-		wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, qwenPath, cliArgs, "ANTHROPIC_API_KEY")
+		wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(wrapper.WrapperScriptConfig{
+			AuthDir:    authDir,
+			TokenPath:  tokenPath,
+			CliPath:    qwenPath,
+			CliArgs:    cliArgs,
+			EnvVarName: "ANTHROPIC_API_KEY",
+		})
 		if err != nil {
-			cmd.Printf("Error generating wrapper script: %v\n", err)
+			cfg.Cmd.Printf("Error generating wrapper script: %v\n", err)
 			return
 		}
 
@@ -356,32 +387,37 @@ func executeWithAuth(cmd *cobra.Command, providerEnv []string, harnessToUse, har
 		} else {
 			execCmd = execCommandContext(ctx, wrapperScript)
 		}
-		execCmd.Env = providerEnv
+		execCmd.Env = cfg.ProviderEnv
 		execCmd.Stdin = os.Stdin
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr
 
 		if err := execCmd.Run(); err != nil {
-			cmd.Printf("Error running Qwen: %v\n", err)
+			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
 			exitProcess(1)
 		}
 		return
 	}
 
-	claudePath, err := lookPath(harnessBinary)
+	claudePath, err := lookPath(cfg.HarnessBinary)
 	if err != nil {
-		cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
+		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
 		return
 	}
 
-	wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(authDir, tokenPath, claudePath, cliArgs)
+	wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(wrapper.WrapperScriptConfig{
+		AuthDir:   authDir,
+		TokenPath: tokenPath,
+		CliPath:   claudePath,
+		CliArgs:   cliArgs,
+	})
 	if err != nil {
-		cmd.Printf("Error generating wrapper script: %v\n", err)
+		cfg.Cmd.Printf("Error generating wrapper script: %v\n", err)
 		return
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
+	ui.PrintBanner(kairoversion.Version, cfg.Provider)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -393,47 +429,47 @@ func executeWithAuth(cmd *cobra.Command, providerEnv []string, harnessToUse, har
 	} else {
 		execCmd = execCommandContext(ctx, wrapperScript)
 	}
-	execCmd.Env = providerEnv
+	execCmd.Env = cfg.ProviderEnv
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 
 	if err := execCmd.Run(); err != nil {
-		cmd.Printf("Error running Claude: %v\n", err)
+		cfg.Cmd.Printf("Error running Claude: %v\n", err)
 		exitProcess(1)
 	}
 }
 
-func executeWithoutAuth(cmd *cobra.Command, providerEnv []string, harnessToUse, harnessBinary string, provider config.Provider, harnessArgs []string) {
-	cliArgs := harnessArgs
+func executeWithoutAuth(cfg ExecutionConfig) {
+	cliArgs := cfg.HarnessArgs
 
-	if harnessToUse == "qwen" {
+	if cfg.HarnessToUse == "qwen" {
 		ui.PrintError("API key not found for provider")
 		ui.PrintInfo("Qwen Code requires API keys to be set in environment variables.")
 		return
 	}
 
-	claudePath, err := lookPath(harnessBinary)
+	claudePath, err := lookPath(cfg.HarnessBinary)
 	if err != nil {
-		cmd.Printf("Error: '%s' command not found in PATH\n", harnessBinary)
+		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
 		return
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, provider.Model, provider.Name)
+	ui.PrintBanner(kairoversion.Version, cfg.Provider)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	setupSignalHandler(cancel)
 
 	execCmd := execCommandContext(ctx, claudePath, cliArgs...)
-	execCmd.Env = providerEnv
+	execCmd.Env = cfg.ProviderEnv
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 
 	if err := execCmd.Run(); err != nil {
-		cmd.Printf("Error running Claude: %v\n", err)
+		cfg.Cmd.Printf("Error running Claude: %v\n", err)
 		exitProcess(1)
 	}
 }
