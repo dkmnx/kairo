@@ -329,40 +329,59 @@ type ExecutionConfig struct {
 	APIKey        string
 }
 
+// HarnessWrapperParams holds all parameters for running a harness with auth wrapper.
+type HarnessWrapperParams struct {
+	AuthDir       string
+	TokenPath     string
+	HarnessBinary string
+	CliArgs       []string
+	ProviderEnv   []string
+	Provider      config.Provider
+	EnvVarName    string // Optional: set for Qwen compatibility
+}
+
 // runHarnessWithWrapper executes a harness CLI using an auth wrapper script.
 // Handles wrapper script generation, context setup, signal handling, and command execution.
-func runHarnessWithWrapper(authDir, tokenPath, harnessBinary string, cliArgs []string, providerEnv []string, provider config.Provider, wrapperCfg wrapper.WrapperScriptConfig) error {
-	harnessPath, err := lookPath(harnessBinary)
+func runHarnessWithWrapper(params HarnessWrapperParams) error {
+	harnessPath, err := lookPath(params.HarnessBinary)
 	if err != nil {
-		return fmt.Errorf("'%s' command not found in PATH", harnessBinary)
+		return fmt.Errorf("'%s' command not found in PATH", params.HarnessBinary)
 	}
 
-	wrapperCfg.CliPath = harnessPath
-	wrapperCfg.CliArgs = cliArgs
+	wrapperCfg := wrapper.WrapperScriptConfig{
+		AuthDir:    params.AuthDir,
+		TokenPath:  params.TokenPath,
+		CliPath:    harnessPath,
+		CliArgs:    params.CliArgs,
+		EnvVarName: params.EnvVarName,
+	}
 	wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(wrapperCfg)
 	if err != nil {
 		return fmt.Errorf("generating wrapper script: %w", err)
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, provider)
+	ui.PrintBanner(kairoversion.Version, params.Provider)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	setupSignalHandler(cancel)
 
-	var execCmd *exec.Cmd
-	if useCmdExe {
-		execCmd = execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
-	} else {
-		execCmd = execCommandContext(ctx, wrapperScript)
-	}
-	execCmd.Env = providerEnv
+	execCmd := buildWrapperCommand(ctx, wrapperScript, useCmdExe)
+	execCmd.Env = params.ProviderEnv
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 
 	return execCmd.Run()
+}
+
+// buildWrapperCommand creates the appropriate exec.Cmd for the wrapper script.
+func buildWrapperCommand(ctx context.Context, wrapperScript string, useCmdExe bool) *exec.Cmd {
+	if useCmdExe {
+		return execCommandContext(ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", wrapperScript)
+	}
+	return execCommandContext(ctx, wrapperScript)
 }
 
 func executeWithAuth(cfg ExecutionConfig) {
@@ -387,15 +406,20 @@ func executeWithAuth(cfg ExecutionConfig) {
 	}
 
 	cliArgs := cfg.HarnessArgs
+	wrapperParams := HarnessWrapperParams{
+		AuthDir:       authDir,
+		TokenPath:     tokenPath,
+		HarnessBinary: cfg.HarnessBinary,
+		CliArgs:       cliArgs,
+		ProviderEnv:   cfg.ProviderEnv,
+		Provider:      cfg.Provider,
+	}
 
 	if cfg.HarnessToUse == "qwen" {
-		cliArgs = append([]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model}, cliArgs...)
+		wrapperParams.CliArgs = append([]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model}, wrapperParams.CliArgs...)
+		wrapperParams.EnvVarName = "ANTHROPIC_API_KEY"
 
-		err = runHarnessWithWrapper(authDir, tokenPath, cfg.HarnessBinary, cliArgs, cfg.ProviderEnv, cfg.Provider, wrapper.WrapperScriptConfig{
-			AuthDir:    authDir,
-			TokenPath:  tokenPath,
-			EnvVarName: "ANTHROPIC_API_KEY",
-		})
+		err = runHarnessWithWrapper(wrapperParams)
 		if err != nil {
 			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
 			exitProcess(1)
@@ -403,10 +427,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 		return
 	}
 
-	err = runHarnessWithWrapper(authDir, tokenPath, cfg.HarnessBinary, cliArgs, cfg.ProviderEnv, cfg.Provider, wrapper.WrapperScriptConfig{
-		AuthDir:   authDir,
-		TokenPath: tokenPath,
-	})
+	err = runHarnessWithWrapper(wrapperParams)
 	if err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
 		exitProcess(1)
