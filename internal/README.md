@@ -9,9 +9,6 @@ flowchart TB
     subgraph cmd[CLI Layer]
         Root[root.go]
         Setup[setup.go]
-        Config[config.go]
-        Switch[switch.go]
-        Audit[audit.go]
     end
 
     subgraph internal[Internal Layer]
@@ -23,48 +20,15 @@ flowchart TB
         ConfigBL[config/]
         Crypto[crypto/]
         Providers[providers/]
-        AuditBL[audit/]
     end
 
     Root --> Setup
-    Root --> Config
-    Root --> Switch
-    Root --> Audit
     Setup --> ConfigBL
-    Config --> ConfigBL
-    Config --> Crypto
-    Switch --> Providers
-    Switch --> Crypto
-    Audit --> AuditBL
     ConfigBL --> UI
     ConfigBL --> Validate
 ```
 
 ## Packages
-
-### audit/
-
-Audit logging for configuration changes.
-
-| Function           | Purpose                    |
-| ------------------ | -------------------------- |
-| `NewLogger()`      | Create audit logger        |
-| `LogConfig()`      | Log config changes         |
-| `LogDefault()`     | Log default changes        |
-| `LogReset()`       | Log provider resets        |
-| `LogRotate()`      | Log key rotations          |
-| `LogSetup()`       | Log provider setup         |
-| `LogSwitch()`      | Log provider switches      |
-| `ListEntries()`    | Read audit entries         |
-| `ExportCSV()`      | Export to CSV format       |
-| `ExportJSON()`     | Export to JSON format      |
-
-**Key Types:**
-
-- `AuditEntry` - Individual log entry with timestamp, event, provider, action
-- `Change` - Field-level change tracking (field, old, new values)
-
-**See:** [docs/guides/audit-guide.md](../guides/audit-guide.md)
 
 ### config/
 
@@ -210,7 +174,6 @@ go test -race ./internal/config/...
 go test -race ./internal/crypto/...
 go test -race ./internal/providers/...
 go test -race ./internal/validate/...
-go test -race ./internal/audit/...
 
 # With coverage
 go test -coverprofile=coverage.out ./internal/...

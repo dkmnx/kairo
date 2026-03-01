@@ -1123,7 +1123,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, details, err := configureProvider(ConfigureProviderParams{
+		providerName, err := configureProvider(ConfigureProviderParams{
 			ConfigDir:    tmpDir,
 			Cfg:          cfg,
 			ProviderName: "zai",
@@ -1148,34 +1148,6 @@ func TestConfigureProvider(t *testing.T) {
 
 		if providerName != "zai" {
 			t.Errorf("configureProvider() returned %q, want 'zai'", providerName)
-		}
-
-		if details == nil {
-			t.Error("configureProvider() details should not be nil")
-		} else {
-			// Check that details contain expected fields
-			if details["display_name"] == nil {
-				t.Error("configureProvider() details should contain display_name")
-			}
-			if details["base_url"] == nil {
-				t.Error("configureProvider() details should contain base_url")
-			}
-			if details["model"] == nil {
-				t.Error("configureProvider() details should contain model")
-			}
-			if details["api_key"] == nil {
-				t.Error("configureProvider() details should contain api_key")
-			} else {
-				// Verify API key is masked
-				apiKey := details["api_key"].(string)
-				if !strings.Contains(apiKey, "********") {
-					t.Errorf("API key should be masked with asterisks, got %q", apiKey)
-				}
-				// Verify full API key is not exposed
-				if apiKey == "sk-test123456789" {
-					t.Error("API key should be masked, not exposed in plain text")
-				}
-			}
 		}
 
 		// Check that provider was saved
@@ -1251,7 +1223,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, _, err := configureProvider(ConfigureProviderParams{
+		providerName, err := configureProvider(ConfigureProviderParams{
 			ConfigDir:    tmpDir,
 			Cfg:          cfg,
 			ProviderName: "custom",
@@ -1352,7 +1324,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, _, err := configureProvider(ConfigureProviderParams{
+		providerName, err := configureProvider(ConfigureProviderParams{
 			ConfigDir:    tmpDir,
 			Cfg:          cfg,
 			ProviderName: "custom",
@@ -1419,7 +1391,7 @@ func TestConfigureProvider(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		providerName, _, err := configureProvider(ConfigureProviderParams{
+		providerName, err := configureProvider(ConfigureProviderParams{
 			ConfigDir:    tmpDir,
 			Cfg:          cfg,
 			ProviderName: "zai",

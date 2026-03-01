@@ -79,7 +79,6 @@ All sensitive files use 0600 permissions:
 | `config`      | Provider configurations (YAML) |
 | `secrets.age` | Encrypted API keys             |
 | `age.key`     | Encryption private key         |
-| `audit.log`   | Configuration change history   |
 
 **See:** [docs/architecture/README.md#security](../docs/architecture/README.md#security) for security details.
 

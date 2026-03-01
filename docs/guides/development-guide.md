@@ -41,7 +41,6 @@ go vet ./...
 kairo/
 ├── cmd/           # CLI commands (Cobra)
 ├── internal/      # Business logic
-│   ├── audit/     # Audit logging
 │   ├── config/    # YAML loading
 │   ├── crypto/    # age encryption
 │   ├── errors/    # Typed errors

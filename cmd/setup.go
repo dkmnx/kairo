@@ -217,35 +217,21 @@ type SaveProviderParams struct {
 }
 
 // saveProviderConfiguration saves the provider configuration and secrets.
-// Returns audit details for logging.
-func saveProviderConfiguration(params SaveProviderParams) (map[string]interface{}, error) {
+func saveProviderConfiguration(params SaveProviderParams) error {
 	setAsDefault := params.Cfg.DefaultProvider == ""
 	if err := addAndSaveProvider(params.ConfigDir, params.Cfg, params.ProviderName, params.Provider, setAsDefault); err != nil {
-		return nil, err
+		return err
 	}
 
 	// Save secrets
 	params.Secrets[apiKeyEnvVarName(params.ProviderName)] = params.APIKey
 	secretsContent := config.FormatSecrets(params.Secrets)
 	if err := crypto.EncryptSecrets(params.SecretsPath, params.KeyPath, secretsContent); err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"saving API key", err)
 	}
 
-	// Prepare audit details
-	details := map[string]any{
-		"display_name": params.Provider.Name,
-		"base_url":     params.Provider.BaseURL,
-		"model":        params.Provider.Model,
-	}
-	if setAsDefault {
-		details["set_as_default"] = "true"
-	}
-	if params.IsEdit && params.WasExisting {
-		details["action"] = "edit"
-	}
-
-	return details, nil
+	return nil
 }
 
 // resolveProviderName handles custom provider name input and validation.
@@ -414,10 +400,10 @@ type ConfigureProviderParams struct {
 }
 
 // configureProvider configures a provider with interactive prompts.
-func configureProvider(params ConfigureProviderParams) (string, map[string]interface{}, error) {
+func configureProvider(params ConfigureProviderParams) (string, error) {
 	validatedName, err := resolveProviderName(params.ProviderName)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	definition := getProviderDefinition(validatedName)
@@ -427,23 +413,23 @@ func configureProvider(params ConfigureProviderParams) (string, map[string]inter
 
 	apiKey := promptForAPIKey(validatedName, params.Secrets, params.IsEdit, exists)
 	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	baseURL := promptForBaseURL(provider, definition, params.IsEdit, exists)
 	if err := validate.ValidateURL(baseURL, definition.Name); err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	model := promptForModel(provider, definition, params.IsEdit, exists)
 	if err := validate.ValidateProviderModel(model, definition.Name); err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	if !providers.IsBuiltInProvider(validatedName) {
 		model = strings.TrimSpace(model)
 		if model == "" {
-			return "", nil, kairoerrors.NewError(kairoerrors.ValidationError,
+			return "", kairoerrors.NewError(kairoerrors.ValidationError,
 				"model name is required for custom providers")
 		}
 	}
@@ -456,7 +442,7 @@ func configureProvider(params ConfigureProviderParams) (string, map[string]inter
 		Existing:   provider,
 	})
 
-	details, err := saveProviderConfiguration(SaveProviderParams{
+	if err := saveProviderConfiguration(SaveProviderParams{
 		ConfigDir:    params.ConfigDir,
 		Cfg:          params.Cfg,
 		ProviderName: validatedName,
@@ -467,15 +453,14 @@ func configureProvider(params ConfigureProviderParams) (string, map[string]inter
 		KeyPath:      params.KeyPath,
 		IsEdit:       params.IsEdit,
 		WasExisting:  exists,
-	})
-	if err != nil {
-		return "", nil, err
+	}); err != nil {
+		return "", err
 	}
 
 	tap.Outro(fmt.Sprintf("%s configured successfully", provider.Name), tap.MessageOptions{
 		Hint: fmt.Sprintf("Run 'kairo %s' to use this provider", validatedName),
 	})
-	return validatedName, details, nil
+	return validatedName, nil
 }
 
 var setupCmd = &cobra.Command{
@@ -519,7 +504,7 @@ var setupCmd = &cobra.Command{
 		}
 
 		_, exists := cfg.Providers[providerName]
-		if _, _, err := configureProvider(ConfigureProviderParams{
+		if _, err := configureProvider(ConfigureProviderParams{
 			ConfigDir:    configDir,
 			Cfg:          cfg,
 			ProviderName: providerName,
