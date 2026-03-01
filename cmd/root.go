@@ -134,13 +134,13 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 
 		providerEnv, secrets, err := buildProviderEnvironment(dir, provider, providerName)
 		if err != nil {
-			handleSecretsError(cmd, err, providerName)
+			handleSecretsError(cmd, err)
 			return
 		}
 
 		apiKeyKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
 		if apiKey, hasKey := secrets[apiKeyKey]; hasKey {
-			executeWithAuth(cmd, dir, providerEnv, harnessToUse, harnessBinary, provider, providerName, harnessArgs, apiKey)
+			executeWithAuth(cmd, providerEnv, harnessToUse, harnessBinary, provider, harnessArgs, apiKey)
 			return
 		}
 
@@ -298,13 +298,13 @@ func buildProviderEnvironment(dir string, provider config.Provider, providerName
 	return providerEnv, secrets, nil
 }
 
-func handleSecretsError(cmd *cobra.Command, err error, providerName string) {
+func handleSecretsError(cmd *cobra.Command, err error) {
 	ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
 	ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
 	ui.PrintInfo("Use --verbose for more details.")
 }
 
-func executeWithAuth(cmd *cobra.Command, dir string, providerEnv []string, harnessToUse, harnessBinary string, provider config.Provider, providerName string, harnessArgs []string, apiKey string) {
+func executeWithAuth(cmd *cobra.Command, providerEnv []string, harnessToUse, harnessBinary string, provider config.Provider, harnessArgs []string, apiKey string) {
 	authDir, err := wrapper.CreateTempAuthDir()
 	if err != nil {
 		cmd.Printf("Error creating auth directory: %v\n", err)
