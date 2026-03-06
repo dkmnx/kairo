@@ -77,22 +77,26 @@ func TestLoadConfigUnknownFields(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	unknownFieldsYAML := `default_provider: zai
-unknown_field: should_be_rejected
+	// Test that deprecated/unknown fields are tolerated for backward compatibility
+	// The 'version' field is deprecated but old configs may still have it
+	configWithDeprecatedField := `default_provider: zai
+version: "1.0.0"
 providers:
   zai:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
     model: glm-4.7
-    unknown_provider_field: should_also_be_rejected
 `
-	if err := os.WriteFile(configPath, []byte(unknownFieldsYAML), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte(configWithDeprecatedField), 0600); err != nil {
 		t.Fatal(err)
 	}
 
-	_, err := LoadConfig(tmpDir)
-	if err == nil {
-		t.Error("LoadConfig() should error on unknown fields in YAML (strict mode)")
+	cfg, err := LoadConfig(tmpDir)
+	if err != nil {
+		t.Errorf("LoadConfig() should tolerate deprecated fields for backward compatibility: %v", err)
+	}
+	if cfg.DefaultProvider != "zai" {
+		t.Errorf("expected default_provider to be 'zai', got %q", cfg.DefaultProvider)
 	}
 }
 

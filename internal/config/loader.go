@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"gopkg.in/yaml.v3"
@@ -15,9 +14,6 @@ type Config struct {
 	DefaultProvider string              `yaml:"default_provider"`
 	Providers       map[string]Provider `yaml:"providers"`
 	DefaultModels   map[string]string   `yaml:"default_models"`
-	// Version is deprecated and kept for backward compatibility with existing configs.
-	// It is no longer used but cannot be removed without breaking existing configs.
-	Version string `yaml:"version,omitempty"`
 	// DefaultHarness specifies the default CLI harness to use (claude or qwen).
 	DefaultHarness string `yaml:"default_harness,omitempty"`
 }
@@ -123,17 +119,8 @@ func LoadConfig(configDir string) (*Config, error) {
 
 	var cfg Config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(true)
+	decoder.KnownFields(false) // Allow deprecated 'version' field for backward compatibility
 	if err := decoder.Decode(&cfg); err != nil {
-		// Check for unknown field errors and provide helpful guidance
-		errStr := err.Error()
-		if containsUnknownField(errStr) {
-			return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
-				"configuration file contains field(s) not recognized by this kairo version", err).
-				WithContext("path", configPath).
-				WithContext("hint", "your installed kairo binary is outdated - rebuild and reinstall from source")
-		}
-
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"failed to parse configuration file (invalid YAML)", err).
 			WithContext("path", configPath).
@@ -169,12 +156,4 @@ func SaveConfig(configDir string, cfg *Config) error {
 	}
 
 	return nil
-}
-
-// containsUnknownField checks if the error message indicates an unknown YAML field.
-// This pattern appears when the config file contains fields that don't exist
-// in the current Config struct, typically due to an outdated binary.
-func containsUnknownField(errStr string) bool {
-	return strings.Contains(errStr, "field") &&
-		strings.Contains(errStr, "not found in type")
 }
