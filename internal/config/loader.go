@@ -47,6 +47,7 @@ func migrateConfigFile(configDir string) (bool, error) {
 			// No old config to migrate
 			return false, nil
 		}
+
 		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to check old config file", err)
 	}
@@ -85,6 +86,7 @@ func migrateConfigFile(configDir string) (bool, error) {
 	if err := os.Rename(oldConfigPath, backupPath); err != nil {
 		// If rename fails, try to remove the new file and report error
 		os.Remove(newConfigPath)
+
 		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to backup old config file", err)
 	}
@@ -113,6 +115,7 @@ func LoadConfig(configDir string) (*Config, error) {
 		if os.IsNotExist(err) {
 			return nil, kairoerrors.ErrConfigNotFound
 		}
+
 		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to read configuration file", err).
 			WithContext("path", configPath)
@@ -130,6 +133,7 @@ func LoadConfig(configDir string) (*Config, error) {
 				WithContext("path", configPath).
 				WithContext("hint", "your installed kairo binary is outdated - rebuild and reinstall from source")
 		}
+
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"failed to parse configuration file (invalid YAML)", err).
 			WithContext("path", configPath).

@@ -23,11 +23,13 @@ func ParseSecrets(secrets string) map[string]string {
 			// Skip entries with empty keys or values, or newlines in key or value (malformed input)
 			if key == "" || value == "" || strings.Contains(key, "\n") || strings.Contains(value, "\n") {
 				log.Printf("Warning: skipping malformed secret entry: %q", line)
+
 				continue
 			}
 			result[key] = value
 		}
 	}
+
 	return result
 }
 
@@ -50,5 +52,6 @@ func FormatSecrets(secrets map[string]string) string {
 			builder.WriteString("\n")
 		}
 	}
+
 	return builder.String()
 }

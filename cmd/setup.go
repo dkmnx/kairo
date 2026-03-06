@@ -47,6 +47,7 @@ func validateCustomProviderName(name string) (string, error) {
 		return "", kairoerrors.NewError(kairoerrors.ValidationError,
 			fmt.Sprintf("reserved provider name: %s", lowerName))
 	}
+
 	return name, nil
 }
 
@@ -60,12 +61,19 @@ func buildProviderConfig(definition providers.ProviderDefinition, baseURL, model
 	if len(definition.EnvVars) > 0 {
 		provider.EnvVars = definition.EnvVars
 	}
+
 	return provider
 }
 
 // addAndSaveProvider adds a provider to the config and saves it to disk.
 // If setAsDefault is true and no default provider is set, the provider becomes the default.
-func addAndSaveProvider(configDir string, cfg *config.Config, providerName string, provider config.Provider, setAsDefault bool) error {
+func addAndSaveProvider(
+	configDir string,
+	cfg *config.Config,
+	providerName string,
+	provider config.Provider,
+	setAsDefault bool,
+) error {
 	cfg.Providers[providerName] = provider
 	if setAsDefault && cfg.DefaultProvider == "" {
 		cfg.DefaultProvider = providerName
@@ -74,6 +82,7 @@ func addAndSaveProvider(configDir string, cfg *config.Config, providerName strin
 		return kairoerrors.WrapError(kairoerrors.ConfigError,
 			"saving config", err)
 	}
+
 	return nil
 }
 
@@ -87,6 +96,7 @@ func ensureConfigDirectory(configDir string) error {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"creating encryption key", err)
 	}
+
 	return nil
 }
 
@@ -101,6 +111,7 @@ func loadOrInitializeConfig(configDir string) (*config.Config, error) {
 			Providers: make(map[string]config.Provider),
 		}
 	}
+
 	return cfg, nil
 }
 
@@ -123,6 +134,7 @@ func LoadAndDecryptSecrets(configDir string) (map[string]string, string, string,
 	}
 
 	secrets = config.ParseSecrets(existingSecrets)
+
 	return secrets, secretsPath, keyPath, nil
 }
 
@@ -132,6 +144,7 @@ func buildProviderListOptions(providerList []string) []tap.SelectOption[string] 
 	for i, name := range providerList {
 		options[i] = tap.SelectOption[string]{Value: name, Label: name}
 	}
+
 	return options
 }
 
@@ -219,7 +232,13 @@ type SaveProviderParams struct {
 // saveProviderConfiguration saves the provider configuration and secrets.
 func saveProviderConfiguration(params SaveProviderParams) error {
 	setAsDefault := params.Cfg.DefaultProvider == ""
-	if err := addAndSaveProvider(params.ConfigDir, params.Cfg, params.ProviderName, params.Provider, setAsDefault); err != nil {
+	if err := addAndSaveProvider(
+		params.ConfigDir,
+		params.Cfg,
+		params.ProviderName,
+		params.Provider,
+		setAsDefault,
+	); err != nil {
 		return err
 	}
 
@@ -243,6 +262,7 @@ func resolveProviderName(providerName string) (string, error) {
 	customName := tap.Text(context.Background(), tap.TextOptions{
 		Message: "Provider name",
 	})
+
 	return validateCustomProviderName(customName)
 }
 
@@ -252,6 +272,7 @@ func getProviderDefinition(providerName string) providers.ProviderDefinition {
 	if definition.Name == "" {
 		definition.Name = providerName
 	}
+
 	return definition
 }
 
@@ -284,6 +305,7 @@ func promptForAPIKey(providerName string, secrets map[string]string, isEdit, exi
 				Message: "New API Key",
 			})
 		}
+
 		return existingKey
 	}
 
@@ -321,6 +343,7 @@ func promptForField(cfg promptFieldConfig) string {
 					Placeholder:  effectiveDefault,
 				}))
 			}
+
 			return effectiveDefault
 		}
 
@@ -340,6 +363,7 @@ func promptForField(cfg promptFieldConfig) string {
 	if result == "" {
 		return cfg.DefaultValue
 	}
+
 	return result
 }
 
@@ -385,6 +409,7 @@ func buildProviderConfigFromInput(params BuildProviderConfigParams) config.Provi
 	}
 	params.Existing.BaseURL = params.BaseURL
 	params.Existing.Model = params.Model
+
 	return params.Existing
 }
 
@@ -460,19 +485,22 @@ func configureProvider(params ConfigureProviderParams) (string, error) {
 	tap.Outro(fmt.Sprintf("%s configured successfully", provider.Name), tap.MessageOptions{
 		Hint: fmt.Sprintf("Run 'kairo %s' to use this provider", validatedName),
 	})
+
 	return validatedName, nil
 }
 
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Interactive setup and edit wizard",
-	Long:  "Run the interactive wizard to configure new providers or edit existing ones. Select a provider to edit or choose 'Setup new provider' to add a new provider.",
+	Long: "Run the interactive wizard to configure new providers or edit existing ones. " +
+		"Select a provider to edit or choose 'Setup new provider' to add a new provider.",
 	Run: func(cmd *cobra.Command, args []string) {
 		configDir := getConfigDir()
 		if configDir == "" {
 			home, err := os.UserHomeDir()
 			if err != nil {
 				ui.PrintError("Cannot find home directory")
+
 				return
 			}
 			configDir = filepath.Join(home, ".config", "kairo")
@@ -480,12 +508,14 @@ var setupCmd = &cobra.Command{
 
 		if err := ensureConfigDirectory(configDir); err != nil {
 			ui.PrintError(err.Error())
+
 			return
 		}
 
 		cfg, err := loadOrInitializeConfig(configDir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+
 			return
 		}
 
@@ -494,12 +524,14 @@ var setupCmd = &cobra.Command{
 			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
 			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
 			ui.PrintInfo("Use --verbose for more details.")
+
 			return
 		}
 
 		providerName := promptForProvider(cfg)
 		if providerName == "" {
 			ui.PrintInfo("Setup cancelled")
+
 			return
 		}
 
@@ -514,6 +546,7 @@ var setupCmd = &cobra.Command{
 			IsEdit:       exists,
 		}); err != nil {
 			ui.PrintError(err.Error())
+
 			return
 		}
 	},

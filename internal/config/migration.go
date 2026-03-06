@@ -22,6 +22,7 @@ func MigrateConfigOnUpdate(configDir string) ([]MigrationChange, error) {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
+
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"failed to load config for migration", err)
 	}
@@ -58,6 +59,7 @@ func MigrateConfigOnUpdate(configDir string) ([]MigrationChange, error) {
 				Old:      "",
 				New:      builtinDef.Model,
 			})
+
 			continue
 		}
 
@@ -99,5 +101,6 @@ func FormatMigrationChanges(changes []MigrationChange) string {
 	for _, c := range changes {
 		b.WriteString(fmt.Sprintf("\n  %s: %s -> %s", c.Provider, c.Old, c.New))
 	}
+
 	return b.String()
 }

@@ -38,6 +38,7 @@ func (c *ConfigCache) Get(configDir string) (*Config, error) {
 	if exists && time.Since(entry.loadedAt) < c.ttl {
 		cfg := entry.config
 		c.mu.RUnlock()
+
 		return cfg, nil
 	}
 	c.mu.RUnlock()

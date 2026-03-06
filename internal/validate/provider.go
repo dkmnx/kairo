@@ -59,6 +59,7 @@ func ValidateCrossProviderConfig(cfg *config.Config) error {
 			for _, s := range sources {
 				if s.value != firstValue {
 					allSame = false
+
 					break
 				}
 			}
@@ -81,26 +82,38 @@ func ValidateProviderModel(providerName, modelName string) error {
 		return nil // Empty model is allowed (will use provider default)
 	}
 
-	// Check if this is a built-in provider
-	if def, ok := providers.GetBuiltInProvider(providerName); ok {
-		// If provider has a default model, do basic validation
-		if def.Model != "" {
-			// Check model name length (most LLM model names are reasonable length)
-			if len(modelName) > MaxModelNameLength {
-				return kairoerrors.NewError(kairoerrors.ValidationError,
-					fmt.Sprintf("model name '%s' for provider '%s' is too long (max %d characters)", modelName, providerName, MaxModelNameLength)).
-					WithContext("model", modelName).
-					WithContext("provider", providerName)
-			}
-			// Check for valid characters (alphanumeric, hyphens, underscores, dots)
-			for _, r := range modelName {
-				if !isValidModelRune(r) {
-					return kairoerrors.NewError(kairoerrors.ValidationError,
-						fmt.Sprintf("model name '%s' for provider '%s' contains invalid characters", modelName, providerName)).
-						WithContext("model", modelName).
-						WithContext("provider", providerName)
-				}
-			}
+	def, ok := providers.GetBuiltInProvider(providerName)
+	if !ok {
+		return nil // Not a built-in provider, skip validation
+	}
+
+	if def.Model == "" {
+		return nil // Provider has no default model, skip validation
+	}
+
+	if err := validateModelName(modelName, providerName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateModelName validates the model name length and characters.
+func validateModelName(modelName, providerName string) error {
+	if len(modelName) > MaxModelNameLength {
+		return kairoerrors.NewError(kairoerrors.ValidationError,
+			fmt.Sprintf("model name '%s' for provider '%s' is too long (max %d characters)",
+				modelName, providerName, MaxModelNameLength)).
+			WithContext("model", modelName).
+			WithContext("provider", providerName)
+	}
+
+	for _, r := range modelName {
+		if !isValidModelRune(r) {
+			return kairoerrors.NewError(kairoerrors.ValidationError,
+				fmt.Sprintf("model name '%s' for provider '%s' contains invalid characters", modelName, providerName)).
+				WithContext("model", modelName).
+				WithContext("provider", providerName)
 		}
 	}
 
