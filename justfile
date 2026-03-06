@@ -173,7 +173,7 @@ deps:
         echo "goreleaser already installed"; \
     else \
         echo "Installing goreleaser..."; \
-        go install github.com/goreleaser/goreleaser@v1.26.0 2>&1 || \
+        go install github.com/goreleaser/goreleaser/v2@latest 2>&1 || \
         echo "⚠️  goreleaser installation failed (requires Go 1.26+ for full installation)"; \
         echo "   goreleaser is only needed for releases. Skipping for now."; \
     fi
@@ -221,7 +221,7 @@ release:
             goreleaser release --clean; \
         fi; \
     else \
-        echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
+        echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser/v2@latest"; \
     fi
 
 # Create local snapshot build
@@ -230,7 +230,7 @@ release-local:
     @if command -v goreleaser >/dev/null 2>&1; then \
         goreleaser release --clean --snapshot; \
     else \
-        echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
+        echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser/v2@latest"; \
     fi
 
 # Build without publishing (dry-run)
@@ -239,7 +239,7 @@ release-dry-run:
     @if command -v goreleaser >/dev/null 2>&1; then \
         goreleaser release --clean --snapshot --skip=publish; \
     else \
-        echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser@latest"; \
+        echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser/v2@latest"; \
     fi
 
 # Display help message

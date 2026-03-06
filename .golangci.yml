@@ -184,3 +184,6 @@ issues:
     - text: "configureProvider"
       linters:
         - funlen
+    - text: "EncryptSecrets"
+      linters:
+        - funlen
