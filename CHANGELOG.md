@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Update Go version from 1.25.x to 1.26 across all workflows and dependencies
+- Update golangci-lint from v1.62.0 to v1.64.8
+- Update actions/checkout from v4 to v5 across all GitHub Actions workflows
+- Update cosign from v2.5.2 to v3.6.0 in release workflow
+- Update goreleaser reference from v1.26.0 to v2 in justfile
+- Reduce linter exclusions and refactor code to fix complexity issues
+- Remove deprecated `Config.Version` field from config struct and loader
+- Improve cmd package test coverage
+
+### Removed
+
+- Audit logging feature and internal/audit package
+- Audit references from documentation files
+
+### Fixed
+
+- CI lint failures by adding `EncryptSecrets` to funlen linter exclusion list
+- Table formatting in architecture documentation
+- Obsolete references to deleted commands (config/switch/test) in documentation
+
 ## [2.0.0] - 2026-03-01
 
 ### Added
