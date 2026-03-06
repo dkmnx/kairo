@@ -45,15 +45,13 @@ func TestBuildProviderListOptions(t *testing.T) {
 func TestBuildProviderConfigFromInput(t *testing.T) {
 	tests := []struct {
 		name        string
-		exists      bool
 		input       BuildProviderConfigParams
 		wantName    string
 		wantBaseURL string
 		wantModel   string
 	}{
 		{
-			name:   "new provider",
-			exists: false,
+			name: "new provider",
 			input: BuildProviderConfigParams{
 				Definition: providers.ProviderDefinition{
 					Name:    "test",
@@ -62,14 +60,14 @@ func TestBuildProviderConfigFromInput(t *testing.T) {
 				},
 				BaseURL: "https://api.test.com",
 				Model:   "test-model",
+				Exists:  false,
 			},
 			wantName:    "test",
 			wantBaseURL: "https://api.test.com",
 			wantModel:   "test-model",
 		},
 		{
-			name:   "existing provider",
-			exists: true,
+			name: "existing provider",
 			input: BuildProviderConfigParams{
 				Existing: config.Provider{
 					Name:    "existing",
@@ -78,6 +76,7 @@ func TestBuildProviderConfigFromInput(t *testing.T) {
 				},
 				BaseURL: "https://new.com",
 				Model:   "new-model",
+				Exists:  true,
 			},
 			wantName:    "existing",
 			wantBaseURL: "https://new.com",
