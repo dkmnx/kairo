@@ -44,12 +44,12 @@ func TestBuildProviderListOptions(t *testing.T) {
 // TestBuildProviderConfigFromInput tests building provider config from input
 func TestBuildProviderConfigFromInput(t *testing.T) {
 	tests := []struct {
-		name       string
-		exists     bool
-		input      BuildProviderConfigParams
-		wantName   string
+		name        string
+		exists      bool
+		input       BuildProviderConfigParams
+		wantName    string
 		wantBaseURL string
-		wantModel  string
+		wantModel   string
 	}{
 		{
 			name:   "new provider",
@@ -63,9 +63,9 @@ func TestBuildProviderConfigFromInput(t *testing.T) {
 				BaseURL: "https://api.test.com",
 				Model:   "test-model",
 			},
-			wantName:   "test",
+			wantName:    "test",
 			wantBaseURL: "https://api.test.com",
-			wantModel:  "test-model",
+			wantModel:   "test-model",
 		},
 		{
 			name:   "existing provider",
@@ -79,9 +79,9 @@ func TestBuildProviderConfigFromInput(t *testing.T) {
 				BaseURL: "https://new.com",
 				Model:   "new-model",
 			},
-			wantName:   "existing",
+			wantName:    "existing",
 			wantBaseURL: "https://new.com",
-			wantModel:  "new-model",
+			wantModel:   "new-model",
 		},
 	}
 
@@ -129,33 +129,33 @@ func TestBuildSecretsEnvVars(t *testing.T) {
 // TestSplitArgs tests splitArgs function
 func TestSplitArgs(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    []string
-		wantKairo []string
+		name        string
+		input       []string
+		wantKairo   []string
 		wantHarness []string
 	}{
 		{
-			name:     "no separator",
-			input:    []string{"arg1", "arg2"},
-			wantKairo: []string{"arg1", "arg2"},
+			name:        "no separator",
+			input:       []string{"arg1", "arg2"},
+			wantKairo:   []string{"arg1", "arg2"},
 			wantHarness: nil,
 		},
 		{
-			name:     "with separator",
-			input:    []string{"arg1", "--", "arg2", "arg3"},
-			wantKairo: []string{"arg1"},
+			name:        "with separator",
+			input:       []string{"arg1", "--", "arg2", "arg3"},
+			wantKairo:   []string{"arg1"},
 			wantHarness: []string{"arg2", "arg3"},
 		},
 		{
-			name:     "empty args",
-			input:    []string{},
-			wantKairo: []string{},
+			name:        "empty args",
+			input:       []string{},
+			wantKairo:   []string{},
 			wantHarness: nil,
 		},
 		{
-			name:     "separator at start",
-			input:    []string{"--", "arg1"},
-			wantKairo: []string{},
+			name:        "separator at start",
+			input:       []string{"--", "arg1"},
+			wantKairo:   []string{},
 			wantHarness: []string{"arg1"},
 		},
 	}
