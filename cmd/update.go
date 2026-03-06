@@ -33,6 +33,7 @@ func getEnvFunc(key string) (string, bool) {
 	if value != "" {
 		return value, true
 	}
+
 	return "", false
 }
 
@@ -46,6 +47,7 @@ func getLatestReleaseURL() string {
 	if url, ok := envGetter("KAIRO_UPDATE_URL"); ok && url != "" {
 		return url
 	}
+
 	return defaultUpdateURL
 }
 
@@ -98,12 +100,13 @@ func versionGreaterThan(current, latest string) bool {
 	if err != nil {
 		return false
 	}
+
 	return c.LessThan(l)
 }
 
 // isWindows checks if the given OS is Windows
 func isWindows(goos string) bool {
-	return goos == "windows"
+	return goos == windowsGOOS
 }
 
 // getInstallScriptURL returns the appropriate install script URL based on OS and version tag
@@ -111,6 +114,7 @@ func getInstallScriptURL(goos, tag string) string {
 	if isWindows(goos) {
 		return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.ps1", tag)
 	}
+
 	return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.sh", tag)
 }
 
@@ -138,7 +142,7 @@ func downloadToTempFile(url string) (string, error) {
 	}
 
 	ext := ".sh"
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsGOOS {
 		ext = ".ps1"
 	}
 	tempFile, err := os.CreateTemp("", "kairo-install-*"+ext)
@@ -151,12 +155,14 @@ func downloadToTempFile(url string) (string, error) {
 	if err != nil {
 		tempFile.Close()
 		os.Remove(tempFile.Name())
+
 		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
 			"failed to write to temp file", err)
 	}
 
 	if err := tempFile.Close(); err != nil {
 		os.Remove(tempFile.Name())
+
 		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to close temp file", err)
 	}
@@ -166,7 +172,7 @@ func downloadToTempFile(url string) (string, error) {
 
 // runInstallScript executes the downloaded install script
 func runInstallScript(scriptPath string) error {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsGOOS {
 		pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 		pwshCmd.Stdout = os.Stdout
 		pwshCmd.Stderr = os.Stderr
@@ -210,22 +216,26 @@ This command will:
 1. Check GitHub for the latest release
 2. Download and run the platform-appropriate install script from the release tag
 
-Security: The install script is downloaded from the specific release tag to ensure the script matches the version being installed.`,
+Security: The install script is downloaded from the specific release tag
+to ensure the script matches the version being installed.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentVersion := version.Version
 		if currentVersion == "dev" {
 			cmd.Println("Cannot update development version")
+
 			return
 		}
 
 		latest, err := getLatestRelease()
 		if err != nil {
 			cmd.Printf("Error checking for updates: %v\n", err)
+
 			return
 		}
 
 		if !versionGreaterThan(currentVersion, latest.TagName) {
 			cmd.Printf("You are already on the latest version: %s\n", currentVersion)
+
 			return
 		}
 
@@ -236,10 +246,12 @@ Security: The install script is downloaded from the specific release tag to ensu
 		confirmed, err := ui.Confirm("Do you want to proceed with installation?")
 		if err != nil {
 			cmd.Printf("Error reading input: %v\n", err)
+
 			return
 		}
 		if !confirmed {
 			cmd.Println("Installation cancelled.")
+
 			return
 		}
 
@@ -248,6 +260,7 @@ Security: The install script is downloaded from the specific release tag to ensu
 		tempFile, err := downloadToTempFile(installScriptURL)
 		if err != nil {
 			cmd.Printf("Error downloading install script: %v\n", err)
+
 			return
 		}
 		defer os.Remove(tempFile)
@@ -256,6 +269,7 @@ Security: The install script is downloaded from the specific release tag to ensu
 
 		if err := runInstallScript(tempFile); err != nil {
 			cmd.Printf("Error during installation: %v\n", err)
+
 			return
 		}
 

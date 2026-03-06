@@ -51,6 +51,7 @@ func mustParseCIDR(s string) net.IPNet {
 	if err != nil {
 		panic(fmt.Sprintf("invalid CIDR %s: %v", s, err))
 	}
+
 	return *ipnet
 }
 

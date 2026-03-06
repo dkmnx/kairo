@@ -64,6 +64,7 @@ func GenerateKey(keyPath string) error {
 	if err != nil {
 		keyFile.Close()
 		_ = os.Remove(tempKeyPath) // Clean up temp file on error
+
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to write key to file", err).
 			WithContext("path", tempKeyPath)
@@ -71,6 +72,7 @@ func GenerateKey(keyPath string) error {
 
 	if err := keyFile.Close(); err != nil {
 		_ = os.Remove(tempKeyPath) // Clean up temp file on error
+
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to close temporary key file", err).
 			WithContext("path", tempKeyPath)
@@ -81,6 +83,7 @@ func GenerateKey(keyPath string) error {
 	// exposed after it's fully written with correct permissions
 	if err := os.Rename(tempKeyPath, keyPath); err != nil {
 		_ = os.Remove(tempKeyPath) // Clean up temp file on error
+
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to rename temporary key file", err).
 			WithContext("temp_path", tempKeyPath).
@@ -116,6 +119,7 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 	if err != nil {
 		file.Close()
 		_ = os.Remove(tempPath) // Clean up temp file on error
+
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to initialize encryption", err).
 			WithContext("secrets_path", secretsPath)
@@ -126,6 +130,7 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 		encryptor.Close()
 		file.Close()
 		_ = os.Remove(tempPath) // Clean up temp file on error
+
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to encrypt secrets", err)
 	}
@@ -133,6 +138,7 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 	if err := encryptor.Close(); err != nil {
 		file.Close()
 		_ = os.Remove(tempPath) // Clean up temp file on error
+
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to finalize encryption", err).
 			WithContext("secrets_path", secretsPath)
@@ -141,6 +147,7 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 	// Close file handle
 	if err := file.Close(); err != nil {
 		_ = os.Remove(tempPath) // Clean up temp file on error
+
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to close temporary file", err).
 			WithContext("path", tempPath)
@@ -149,6 +156,7 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 	// Atomically rename temp file to actual path
 	if err := os.Rename(tempPath, secretsPath); err != nil {
 		_ = os.Remove(tempPath) // Clean up temp file on error
+
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to replace secrets file", err).
 			WithContext("temp_path", tempPath).
@@ -165,7 +173,8 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
 			WithContext("key_path", keyPath).
-			WithContext("hint", "If your key is lost, use 'kairo recover restore <phrase>' if you have a recovery phrase, or 'kairo backup restore <backup-file>' if you have a backup")
+			WithContext("hint", "If your key is lost, use 'kairo recover restore <phrase>' "+
+				"if you have a recovery phrase, or 'kairo backup restore <backup-file>' if you have a backup")
 	}
 
 	file, err := os.Open(secretsPath)
@@ -181,7 +190,8 @@ func DecryptSecrets(secretsPath, keyPath string) (string, error) {
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets file", err).
 			WithContext("path", secretsPath).
-			WithContext("hint", "Ensure your encryption key matches the one used for encryption. Try 'kairo recover restore' if you have a recovery phrase, or 'kairo backup restore' if you have a backup.")
+			WithContext("hint", "Ensure your encryption key matches the one used for encryption. "+
+				"Try 'kairo recover restore' if you have a recovery phrase, or 'kairo backup restore' if you have a backup.")
 	}
 
 	var buf bytes.Buffer
@@ -231,6 +241,7 @@ func (s *SecretBytes) Clear() {
 func (s *SecretBytes) Close() error {
 	s.Clear()
 	s.data = nil
+
 	return nil
 }
 
@@ -255,7 +266,8 @@ func DecryptSecretsBytes(secretsPath, keyPath string) (*SecretBytes, error) {
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
 			WithContext("key_path", keyPath).
-			WithContext("hint", "If your key is lost, use 'kairo recover restore <phrase>' if you have a recovery phrase, or 'kairo backup restore <backup-file>' if you have a backup")
+			WithContext("hint", "If your key is lost, use 'kairo recover restore <phrase>' "+
+				"if you have a recovery phrase, or 'kairo backup restore <backup-file>' if you have a backup")
 	}
 
 	file, err := os.Open(secretsPath)
@@ -271,7 +283,8 @@ func DecryptSecretsBytes(secretsPath, keyPath string) (*SecretBytes, error) {
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets file", err).
 			WithContext("path", secretsPath).
-			WithContext("hint", "Ensure your encryption key matches the one used for encryption. Try 'kairo recover restore' if you have a recovery phrase, or 'kairo backup restore' if you have a backup.")
+			WithContext("hint", "Ensure your encryption key matches the one used for encryption. "+
+				"Try 'kairo recover restore' if you have a recovery phrase, or 'kairo backup restore' if you have a backup.")
 	}
 
 	var buf bytes.Buffer
@@ -398,5 +411,6 @@ func EnsureKeyExists(configDir string) error {
 			"failed to check key file status", err).
 			WithContext("path", keyPath)
 	}
+
 	return GenerateKey(keyPath)
 }

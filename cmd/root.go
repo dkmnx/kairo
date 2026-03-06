@@ -51,27 +51,32 @@ var (
 func getVerbose() bool {
 	verboseMu.RLock()
 	defer verboseMu.RUnlock()
+
 	return verbose
 }
 
 func setVerbose(enabled bool) {
 	verboseMu.Lock()
 	defer verboseMu.Unlock()
+
 	verbose = enabled
 }
 
 func setConfigDir(dir string) {
 	configDirMu.Lock()
 	defer configDirMu.Unlock()
+
 	configDir = dir
 }
 
 func getConfigDir() string {
 	configDirMu.RLock()
 	defer configDirMu.RUnlock()
+
 	if configDir != "" {
 		return configDir
 	}
+
 	return env.GetConfigDir()
 }
 
@@ -82,6 +87,9 @@ const (
 	envSonnetModel = "ANTHROPIC_DEFAULT_SONNET_MODEL"
 	envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
 	envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
+
+	// windowsGOOS is the runtime.GOOS value for Windows platforms.
+	windowsGOOS = "windows"
 )
 
 var harnessFlag string
@@ -99,6 +107,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		if configDir == "" {
 			cmd.Println("Error: config directory not found")
 			_ = cmd.Help()
+
 			return
 		}
 
@@ -106,14 +115,17 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		if err != nil {
 			if os.IsNotExist(err) {
 				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
+
 				return
 			}
 			handleConfigError(cmd, err)
+
 			return
 		}
 
 		if len(cfg.Providers) == 0 {
 			cmd.Println("No providers configured. Run 'kairo setup' to get started.")
+
 			return
 		}
 
@@ -126,6 +138,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		if !ok {
 			cmd.Printf("Error: provider '%s' not configured\n", providerName)
 			cmd.Println("Run 'kairo list' to see configured providers")
+
 			return
 		}
 
@@ -135,6 +148,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		providerEnv, secrets, err := buildProviderEnvironment(configDir, provider, providerName)
 		if err != nil {
 			handleSecretsError(err)
+
 			return
 		}
 
@@ -149,6 +163,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 				HarnessArgs:   harnessArgs,
 				APIKey:        apiKey,
 			})
+
 			return
 		}
 
@@ -173,6 +188,7 @@ func Execute() error {
 	}()
 
 	rootCmd.SetArgs(args)
+
 	return rootCmd.Execute()
 }
 
@@ -195,6 +211,7 @@ func handleConfigError(cmd *cobra.Command, err error) {
 	// 2. Wrapped error: "configuration file contains field(s) not recognized"
 	if isOutdatedBinaryError(errStr) {
 		promptUpgrade(cmd, err)
+
 		return
 	}
 
@@ -220,7 +237,7 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 	cmd.Println()
 
 	switch runtime.GOOS {
-	case "windows":
+	case windowsGOOS:
 		cmd.Println("    irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex")
 	default: // linux, darwin (macOS)
 		cmd.Println("    curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh")
@@ -241,6 +258,7 @@ func splitArgs(args []string) ([]string, []string) {
 			return args[:i], args[i+1:]
 		}
 	}
+
 	return args, nil
 }
 
@@ -248,12 +266,17 @@ func splitArgs(args []string) ([]string, []string) {
 func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
 	kairoArgs, harnessArgs := splitArgs(args)
 
-	if len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "" {
+	// Determine argument handling strategy based on input pattern
+	switch {
+	case len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "":
+		// First arg looks like a flag and default provider is set - use default
 		args = []string{cfg.DefaultProvider}
 		harnessArgs = kairoArgs
-	} else if len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0] {
+	case len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0]:
+		// Kairo args differ from original args - prepend first arg
 		args = append([]string{args[0]}, kairoArgs...)
-	} else if len(args) > 1 {
+	case len(args) > 1:
+		// Multiple args - first is provider, rest are harness args
 		harnessArgs = args[1:]
 		args = args[:1]
 	}
@@ -264,6 +287,7 @@ func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) 
 		if cfg.DefaultProvider == "" {
 			cmd.Println("Error: No default provider set and first argument looks like a flag")
 			cmd.Println("Run 'kairo setup' to configure a provider")
+
 			return "", nil
 		}
 		providerName = cfg.DefaultProvider
@@ -284,18 +308,24 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 			cmd.Println("  kairo default <name>   # Set default provider")
 			cmd.Println("  kairo list             # List providers")
 			cmd.Println("  kairo <provider>       # Use specific provider")
+
 			return nil, nil, ""
 		}
 		args = []string{cfg.DefaultProvider}
 	}
 
 	providerName, harnessArgs := getProviderFromArgs(cmd, cfg, args)
+
 	return args, harnessArgs, providerName
 }
 
 // buildProviderEnvironment builds the environment variables for a provider.
 // Returns: (providerEnv, secrets, error)
-func buildProviderEnvironment(configDir string, provider config.Provider, providerName string) ([]string, map[string]string, error) {
+func buildProviderEnvironment(
+	configDir string,
+	provider config.Provider,
+	providerName string,
+) ([]string, map[string]string, error) {
 	builtInEnvVars := buildBuiltInEnvVars(provider)
 
 	secrets, _, _, err := LoadAndDecryptSecrets(configDir)
@@ -309,6 +339,7 @@ func buildProviderEnvironment(configDir string, provider config.Provider, provid
 	secretsEnvVars := buildSecretsEnvVars(secrets)
 
 	providerEnv := mergeEnvVars(os.Environ(), builtInEnvVars, provider.EnvVars, secretsEnvVars)
+
 	return providerEnv, secrets, nil
 }
 
@@ -331,6 +362,7 @@ func buildSecretsEnvVars(secrets map[string]string) []string {
 	for key, value := range secrets {
 		secretsEnvVars = append(secretsEnvVars, fmt.Sprintf("%s=%s", key, value))
 	}
+
 	return secretsEnvVars
 }
 
@@ -416,8 +448,17 @@ func runHarnessWithWrapper(params HarnessWrapperParams) error {
 // buildWrapperCommand creates the appropriate exec.Cmd for the wrapper script.
 func buildWrapperCommand(params BuildWrapperCommandParams) *exec.Cmd {
 	if params.IsWindows {
-		return execCommandContext(params.Ctx, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", params.WrapperScript)
+		return execCommandContext(
+			params.Ctx,
+			"powershell",
+			"-NoProfile",
+			"-ExecutionPolicy",
+			"Bypass",
+			"-File",
+			params.WrapperScript,
+		)
 	}
+
 	return execCommandContext(params.Ctx, params.WrapperScript)
 }
 
@@ -425,6 +466,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 	authDir, err := wrapper.CreateTempAuthDir()
 	if err != nil {
 		cfg.Cmd.Printf("Error creating auth directory: %v\n", err)
+
 		return
 	}
 
@@ -439,6 +481,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 	tokenPath, err := wrapper.WriteTempTokenFile(authDir, cfg.APIKey)
 	if err != nil {
 		cfg.Cmd.Printf("Error creating secure token file: %v\n", err)
+
 		return
 	}
 
@@ -453,7 +496,10 @@ func executeWithAuth(cfg ExecutionConfig) {
 	}
 
 	if cfg.HarnessToUse == "qwen" {
-		wrapperParams.CliArgs = append([]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model}, wrapperParams.CliArgs...)
+		wrapperParams.CliArgs = append(
+			[]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model},
+			wrapperParams.CliArgs...,
+		)
 		wrapperParams.EnvVarName = "ANTHROPIC_API_KEY"
 
 		err = runHarnessWithWrapper(wrapperParams)
@@ -461,6 +507,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
 			exitProcess(1)
 		}
+
 		return
 	}
 
@@ -477,12 +524,14 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	if cfg.HarnessToUse == "qwen" {
 		ui.PrintError("API key not found for provider")
 		ui.PrintInfo("Qwen Code requires API keys to be set in environment variables.")
+
 		return
 	}
 
 	claudePath, err := lookPath(cfg.HarnessBinary)
 	if err != nil {
 		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
+
 		return
 	}
 
