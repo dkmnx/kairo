@@ -277,13 +277,11 @@ func getProviderDefinition(providerName string) providers.ProviderDefinition {
 }
 
 // displayProviderHeader shows the appropriate header based on edit/setup mode.
-func displayProviderHeader(provider config.Provider, definition providers.ProviderDefinition, isEdit, exists bool) {
+func displayProviderHeader(provider config.Provider, isEdit, exists bool) {
 	if isEdit && exists {
 		tap.Message(fmt.Sprintf("Editing %s", provider.Name), tap.MessageOptions{
 			Hint: "Press Enter to keep current values",
 		})
-	} else {
-		ui.PrintHeader(fmt.Sprintf("%s Configuration", definition.Name))
 	}
 }
 
@@ -434,7 +432,7 @@ func configureProvider(params ConfigureProviderParams) (string, error) {
 	definition := getProviderDefinition(validatedName)
 	provider, exists := params.Cfg.Providers[validatedName]
 
-	displayProviderHeader(provider, definition, params.IsEdit, exists)
+	displayProviderHeader(provider, params.IsEdit, exists)
 
 	apiKey := promptForAPIKey(validatedName, params.Secrets, params.IsEdit, exists)
 	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
