@@ -1,6 +1,8 @@
 package config
 
 import (
+	"context"
+
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,9 +22,9 @@ func TestSaveConfigCreatesDirectory(t *testing.T) {
 		Providers: map[string]Provider{},
 	}
 
-	err := SaveConfig(subDir, cfg)
+	err := SaveConfig(context.Background(), subDir, cfg)
 	if err != nil {
-		t.Fatalf("SaveConfig() error = %v", err)
+		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 	}
 
 	// Verify config was saved
@@ -41,7 +43,7 @@ func TestSaveConfigOverwrites(t *testing.T) {
 		},
 	}
 
-	if err := SaveConfig(tmpDir, cfg1); err != nil {
+	if err := SaveConfig(context.Background(), tmpDir, cfg1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,12 +53,12 @@ func TestSaveConfigOverwrites(t *testing.T) {
 		},
 	}
 
-	if err := SaveConfig(tmpDir, cfg2); err != nil {
+	if err := SaveConfig(context.Background(), tmpDir, cfg2); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify second save overwrote first
-	loaded, err := LoadConfig(tmpDir)
+	loaded, err := LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,12 +79,12 @@ func TestSaveConfigEmpty(t *testing.T) {
 		Providers: map[string]Provider{},
 	}
 
-	err := SaveConfig(tmpDir, cfg)
+	err := SaveConfig(context.Background(), tmpDir, cfg)
 	if err != nil {
-		t.Fatalf("SaveConfig() error = %v", err)
+		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 	}
 
-	loaded, err := LoadConfig(tmpDir)
+	loaded, err := LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,12 +104,12 @@ func TestSaveConfigWithDefaultProvider(t *testing.T) {
 		DefaultProvider: "test",
 	}
 
-	err := SaveConfig(tmpDir, cfg)
+	err := SaveConfig(context.Background(), tmpDir, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	loaded, err := LoadConfig(tmpDir)
+	loaded, err := LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,12 +127,12 @@ func TestSaveConfigWithHarness(t *testing.T) {
 		DefaultHarness: "qwen",
 	}
 
-	err := SaveConfig(tmpDir, cfg)
+	err := SaveConfig(context.Background(), tmpDir, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	loaded, err := LoadConfig(tmpDir)
+	loaded, err := LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,10 +151,10 @@ func TestLoadConfigWithEmptyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := LoadConfig(tmpDir)
+	_, err := LoadConfig(context.Background(), tmpDir)
 	// Should handle empty file gracefully
 	if err != nil {
-		t.Logf("LoadConfig() error on empty file: %v", err)
+		t.Logf("LoadConfig(context.Background(), ) error on empty file: %v", err)
 	}
 }
 
@@ -165,9 +167,9 @@ func TestLoadConfigWithInvalidYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := LoadConfig(tmpDir)
+	_, err := LoadConfig(context.Background(), tmpDir)
 	if err == nil {
-		t.Error("LoadConfig() should error on invalid YAML")
+		t.Error("LoadConfig(context.Background(), ) should error on invalid YAML")
 	}
 }
 

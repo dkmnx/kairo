@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	"bytes"
 	"fmt"
 	"io"
@@ -102,20 +104,20 @@ func TestPrintProviderOptionConfigured(t *testing.T) {
 			"minimax":   {Name: "MiniMax"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, "MINIMAX_API_KEY=test-key\n"); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, "MINIMAX_API_KEY=test-key\n"); err != nil {
 		t.Fatal(err)
 	}
 
-	secrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
+	secrets, _ := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	secretsMap := config.ParseSecrets(secrets)
 
 	ui.PrintProviderOption(ui.ProviderOption{Number: 1, Name: "Native Anthropic", Config: cfg, Secrets: secretsMap, Provider: "anthropic"})
@@ -130,20 +132,20 @@ func TestPrintProviderOptionNotConfigured(t *testing.T) {
 			"anthropic": {Name: "Native Anthropic"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, ""); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	secrets, _ := crypto.DecryptSecrets(secretsPath, keyPath)
+	secrets, _ := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	secretsMap := config.ParseSecrets(secrets)
 
 	ui.PrintProviderOption(ui.ProviderOption{Number: 1, Name: "Native Anthropic", Config: cfg, Secrets: secretsMap, Provider: "anthropic"})
@@ -358,24 +360,24 @@ func TestParseSecretsForIntegration(t *testing.T) {
 			"minimax": {Name: "MiniMax"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsContent := "ZAI_API_KEY=zai-key\nMINIMAX_API_KEY=minimax-key\nDEEPSEEK_API_KEY=deepseek-key\n"
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatal(err)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets() error = %v", err)
+		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
 	secretsMap := config.ParseSecrets(decrypted)
@@ -401,24 +403,24 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 			"minimax": {Name: "MiniMax"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
 	existingSecrets := "ZAI_API_KEY=zai-secret-123\nMINIMAX_API_KEY=minimax-secret-456\n"
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, existingSecrets); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, existingSecrets); err != nil {
 		t.Fatal(err)
 	}
 
-	secretsContent, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	secretsContent, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets() error = %v", err)
+		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
 	secrets := config.ParseSecrets(secretsContent)
@@ -441,13 +443,13 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 		}
 	}
 
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
-		t.Fatalf("EncryptSecrets() error = %v", err)
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsBuilder.String()); err != nil {
+		t.Fatalf("EncryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets() error = %v", err)
+		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
 	secretsMap := config.ParseSecrets(decrypted)
@@ -602,16 +604,16 @@ func TestSwitchCmdProviderNotFound(t *testing.T) {
 			"minimax": {Name: "MiniMax", BaseURL: "https://api.minimax.io", Model: "test"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, "MINIMAX_API_KEY=test-key\n"); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, "MINIMAX_API_KEY=test-key\n"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -629,13 +631,13 @@ func TestCustomProviderKeyFormat(t *testing.T) {
 			"myprovider": {Name: "My Provider", BaseURL: "https://api.myprovider.com", Model: "model-1"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
@@ -652,13 +654,13 @@ func TestCustomProviderKeyFormat(t *testing.T) {
 		}
 	}
 
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder.String()); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsBuilder.String()); err != nil {
 		t.Fatal(err)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets() error = %v", err)
+		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
 	expectedKey := fmt.Sprintf("%s_API_KEY=", customName)
@@ -692,25 +694,25 @@ func TestCustomProviderKeyLookupInSwitch(t *testing.T) {
 		},
 		DefaultProvider: providerName,
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
 	apiKey := "sk-custom-key-abcdef"
 	secretsContent := fmt.Sprintf("%s_API_KEY=%s\n", providerName, apiKey)
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatal(err)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets() error = %v", err)
+		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
 	prefix := fmt.Sprintf("%s_API_KEY=", providerName)
@@ -764,7 +766,7 @@ func TestLoadOrInitializeConfigExisting(t *testing.T) {
 		},
 		DefaultProvider: "zai",
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
@@ -806,7 +808,7 @@ func TestLoadOrInitializeConfigError(t *testing.T) {
 			"test": {Name: "Test"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
@@ -823,22 +825,22 @@ func TestLoadAndDecryptSecrets(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cfg := &config.Config{}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, "ZAI_API_KEY=test-key\n"); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, "ZAI_API_KEY=test-key\n"); err != nil {
 		t.Fatal(err)
 	}
 
-	secrets, secretsOut, keyOut, err := LoadAndDecryptSecrets(tmpDir)
+	secrets, secretsOut, keyOut, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadAndDecryptSecrets() error = %v", err)
+		t.Fatalf("LoadAndDecryptSecrets(context.Background(), ) error = %v", err)
 	}
 	if secretsOut != secretsPath {
 		t.Errorf("secretsPath = %q, want %q", secretsOut, secretsPath)
@@ -855,13 +857,13 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cfg := &config.Config{}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
-	secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(tmpDir)
+	secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadAndDecryptSecrets() error = %v", err)
+		t.Fatalf("LoadAndDecryptSecrets(context.Background(), ) error = %v", err)
 	}
 	if len(secrets) != 0 {
 		t.Errorf("got %d secrets, want 0", len(secrets))
@@ -880,7 +882,7 @@ func TestLoadSecretsWithCorruptedFile(t *testing.T) {
 	keyPath := filepath.Join(tmpDir, "age.key")
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
@@ -888,7 +890,7 @@ func TestLoadSecretsWithCorruptedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, _, _, err := LoadAndDecryptSecrets(tmpDir)
+	secrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
 
 	if err == nil {
 		t.Fatal("Expected error for corrupted secrets file, got nil")
@@ -904,11 +906,11 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 	keyPath := filepath.Join(tmpDir, "age.key")
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, "ZAI_API_KEY=test-key\n"); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, "ZAI_API_KEY=test-key\n"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -916,7 +918,7 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, _, _, err := LoadAndDecryptSecrets(tmpDir)
+	secrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
 
 	if err == nil {
 		t.Fatal("Expected error for corrupted key file, got nil")
@@ -1084,13 +1086,13 @@ func TestConfigureProvider(t *testing.T) {
 		cfg := &config.Config{
 			Providers: make(map[string]config.Provider),
 		}
-		if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 			t.Fatal(err)
 		}
 
 		secretsPath := filepath.Join(tmpDir, "secrets.age")
 		keyPath := filepath.Join(tmpDir, "age.key")
-		if err := crypto.GenerateKey(keyPath); err != nil {
+		if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1151,9 +1153,9 @@ func TestConfigureProvider(t *testing.T) {
 		}
 
 		// Check that provider was saved
-		loadedCfg, err := config.LoadConfig(tmpDir)
+		loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadConfig() error = %v", err)
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
 		provider, ok := loadedCfg.Providers["zai"]
@@ -1166,9 +1168,9 @@ func TestConfigureProvider(t *testing.T) {
 		}
 
 		// Check that secrets were saved
-		decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+		decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 		if err != nil {
-			t.Fatalf("DecryptSecrets() error = %v", err)
+			t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 		}
 
 		parsedSecrets := config.ParseSecrets(decrypted)
@@ -1182,13 +1184,13 @@ func TestConfigureProvider(t *testing.T) {
 		cfg := &config.Config{
 			Providers: make(map[string]config.Provider),
 		}
-		if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 			t.Fatal(err)
 		}
 
 		secretsPath := filepath.Join(tmpDir, "secrets.age")
 		keyPath := filepath.Join(tmpDir, "age.key")
-		if err := crypto.GenerateKey(keyPath); err != nil {
+		if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1251,9 +1253,9 @@ func TestConfigureProvider(t *testing.T) {
 		}
 
 		// Check that provider was saved
-		loadedCfg, err := config.LoadConfig(tmpDir)
+		loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadConfig() error = %v", err)
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
 		provider, ok := loadedCfg.Providers["mycustomprovider"]
@@ -1274,9 +1276,9 @@ func TestConfigureProvider(t *testing.T) {
 		}
 
 		// Check that secrets were saved
-		decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+		decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 		if err != nil {
-			t.Fatalf("DecryptSecrets() error = %v", err)
+			t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 		}
 
 		parsedSecrets := config.ParseSecrets(decrypted)
@@ -1290,13 +1292,13 @@ func TestConfigureProvider(t *testing.T) {
 		cfg := &config.Config{
 			Providers: make(map[string]config.Provider),
 		}
-		if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 			t.Fatal(err)
 		}
 
 		secretsPath := filepath.Join(tmpDir, "secrets.age")
 		keyPath := filepath.Join(tmpDir, "age.key")
-		if err := crypto.GenerateKey(keyPath); err != nil {
+		if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1357,13 +1359,13 @@ func TestConfigureProvider(t *testing.T) {
 		cfg := &config.Config{
 			Providers: make(map[string]config.Provider),
 		}
-		if err := config.SaveConfig(tmpDir, cfg); err != nil {
+		if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 			t.Fatal(err)
 		}
 
 		secretsPath := filepath.Join(tmpDir, "secrets.age")
 		keyPath := filepath.Join(tmpDir, "age.key")
-		if err := crypto.GenerateKey(keyPath); err != nil {
+		if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 			t.Fatal(err)
 		}
 

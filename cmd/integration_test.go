@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	"path/filepath"
 	"strings"
 	"testing"
@@ -16,13 +18,13 @@ func TestFullProviderConfigurationWorkflow(t *testing.T) {
 	cfg := &config.Config{
 		Providers: make(map[string]config.Provider),
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
@@ -54,26 +56,26 @@ func TestFullProviderConfigurationWorkflow(t *testing.T) {
 	}
 	cfg.DefaultProvider = "zai"
 
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsBuilder); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsBuilder); err != nil {
 		t.Fatal(err)
 	}
 
-	loadedCfg, err := config.LoadConfig(tmpDir)
+	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 
 	if len(loadedCfg.Providers) != len(providersToTest) {
 		t.Errorf("loaded %d providers, want %d", len(loadedCfg.Providers), len(providersToTest))
 	}
 
-	secrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	secrets, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets() error = %v", err)
+		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
 	parsedSecrets := config.ParseSecrets(secrets)
@@ -95,25 +97,25 @@ func TestCustomProviderConfigPersistence(t *testing.T) {
 			providerName: {Name: "My Custom", BaseURL: "https://api.custom.com", Model: "model-1"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
 	customKey := "MYCUSTOM_API_KEY=sk-custom-key"
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, customKey+"\n"); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, customKey+"\n"); err != nil {
 		t.Fatal(err)
 	}
 
 	// Test config persistence without key rotation
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets() error = %v", err)
+		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
 	if !contains(decrypted, customKey) {
@@ -161,20 +163,20 @@ func TestE2ESetupToSwitchWorkflow(t *testing.T) {
 			},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create key file
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify initial state: anthropic is default provider
-	loadedCfg, err := config.LoadConfig(tmpDir)
+	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 
 	if loadedCfg.DefaultProvider != "anthropic" {
@@ -185,7 +187,7 @@ func TestE2ESetupToSwitchWorkflow(t *testing.T) {
 	// (In real workflow, user would run 'kairo setup')
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	secretsContent := "ZAI_API_KEY=sk-zai-test-key-12345\n"
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatal(err)
 	}
 
@@ -195,23 +197,23 @@ func TestE2ESetupToSwitchWorkflow(t *testing.T) {
 		BaseURL: def.BaseURL,
 		Model:   def.Model,
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify zai provider and secrets were saved
-	loadedCfg, err = config.LoadConfig(tmpDir)
+	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error after adding zai = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error after adding zai = %v", err)
 	}
 
 	if _, exists := loadedCfg.Providers["zai"]; !exists {
 		t.Error("zai provider should exist in config")
 	}
 
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets() error = %v", err)
+		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
 	if !contains(decrypted, "ZAI_API_KEY") {
@@ -232,13 +234,13 @@ func TestE2ESetupToSwitchWorkflow(t *testing.T) {
 
 	// Test: Default provider switching
 	cfg.DefaultProvider = "zai"
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)
 	}
 
-	loadedCfg, err = config.LoadConfig(tmpDir)
+	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error after changing default = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error after changing default = %v", err)
 	}
 
 	if loadedCfg.DefaultProvider != "zai" {

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"context"
+
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,9 +28,9 @@ default_models:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(tmpDir)
+		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("MigrateConfigOnUpdate() error = %v", err)
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
 		// Verify changes were recorded
@@ -37,9 +39,9 @@ default_models:
 		}
 
 		// Verify config was updated
-		cfg, err := LoadConfig(tmpDir)
+		cfg, err := LoadConfig(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadConfig() error = %v", err)
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
 		provider, ok := cfg.Providers["minimax"]
@@ -74,18 +76,18 @@ providers:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(tmpDir)
+		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("MigrateConfigOnUpdate() error = %v", err)
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
 		if len(changes) == 0 {
 			t.Error("Expected migration changes for empty model")
 		}
 
-		cfg, err := LoadConfig(tmpDir)
+		cfg, err := LoadConfig(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadConfig() error = %v", err)
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
 		if cfg.Providers["minimax"].Model != "MiniMax-M2.5" {
@@ -111,9 +113,9 @@ default_models:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(tmpDir)
+		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("MigrateConfigOnUpdate() error = %v", err)
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
 		// No changes expected since already matches builtin
@@ -121,9 +123,9 @@ default_models:
 			t.Errorf("Expected no changes, got %d", len(changes))
 		}
 
-		cfg, err := LoadConfig(tmpDir)
+		cfg, err := LoadConfig(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadConfig() error = %v", err)
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
 		// Should remain unchanged
@@ -153,9 +155,9 @@ default_models:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(tmpDir)
+		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("MigrateConfigOnUpdate() error = %v", err)
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
 		// Should have changes since model differs from new builtin
@@ -163,9 +165,9 @@ default_models:
 			t.Error("Expected migration changes when user model differs from builtin")
 		}
 
-		cfg, err := LoadConfig(tmpDir)
+		cfg, err := LoadConfig(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadConfig() error = %v", err)
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
 		// Should be updated to new builtin
@@ -190,9 +192,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(tmpDir)
+		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("MigrateConfigOnUpdate() error = %v", err)
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
 		if len(changes) != 0 {
@@ -203,7 +205,7 @@ providers:
 	t.Run("NoMigrationWhenNoConfig", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		_, err := MigrateConfigOnUpdate(tmpDir)
+		_, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		// When config doesn't exist, LoadConfig returns ErrConfigNotFound
 		// which is not os.IsNotExist, so it returns an error
 		if err == nil {
@@ -222,9 +224,9 @@ providers: {}
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(tmpDir)
+		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("MigrateConfigOnUpdate() error = %v", err)
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
 		if len(changes) != 0 {
@@ -248,9 +250,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(tmpDir)
+		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("MigrateConfigOnUpdate() error = %v", err)
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
 		if len(changes) != 0 {

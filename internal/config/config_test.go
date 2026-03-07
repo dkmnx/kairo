@@ -1,6 +1,8 @@
 package config
 
 import (
+	"context"
+
 	"errors"
 	"os"
 	"path/filepath"
@@ -26,9 +28,9 @@ providers:
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadConfig(tmpDir)
+	cfg, err := LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 
 	if cfg.DefaultProvider != "zai" {
@@ -49,12 +51,12 @@ providers:
 
 func TestLoadConfigFileNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
-	_, err := LoadConfig(tmpDir)
+	_, err := LoadConfig(context.Background(), tmpDir)
 	if err == nil {
-		t.Error("LoadConfig() should error when file not found")
+		t.Error("LoadConfig(context.Background(), ) should error when file not found")
 	}
 	if !errors.Is(err, kairoerrors.ErrConfigNotFound) {
-		t.Errorf("LoadConfig() error = %v, want %v", err, kairoerrors.ErrConfigNotFound)
+		t.Errorf("LoadConfig(context.Background(), ) error = %v, want %v", err, kairoerrors.ErrConfigNotFound)
 	}
 }
 
@@ -67,9 +69,9 @@ func TestLoadConfigInvalidYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := LoadConfig(tmpDir)
+	_, err := LoadConfig(context.Background(), tmpDir)
 	if err == nil {
-		t.Error("LoadConfig() should error on invalid YAML")
+		t.Error("LoadConfig(context.Background(), ) should error on invalid YAML")
 	}
 }
 
@@ -91,9 +93,9 @@ providers:
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadConfig(tmpDir)
+	cfg, err := LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Errorf("LoadConfig() should tolerate deprecated fields for backward compatibility: %v", err)
+		t.Errorf("LoadConfig(context.Background(), ) should tolerate deprecated fields for backward compatibility: %v", err)
 	}
 	if cfg.DefaultProvider != "zai" {
 		t.Errorf("expected default_provider to be 'zai', got %q", cfg.DefaultProvider)
@@ -111,9 +113,9 @@ providers: {}
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadConfig(tmpDir)
+	cfg, err := LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 
 	if cfg.Providers == nil {
@@ -134,9 +136,9 @@ func TestLoadConfigNoProviders(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadConfig(tmpDir)
+	cfg, err := LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 
 	if cfg.Providers == nil {
@@ -159,9 +161,9 @@ func TestSaveConfig(t *testing.T) {
 		},
 	}
 
-	err := SaveConfig(tmpDir, cfg)
+	err := SaveConfig(context.Background(), tmpDir, cfg)
 	if err != nil {
-		t.Fatalf("SaveConfig() error = %v", err)
+		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 	}
 
 	data, err := os.ReadFile(configPath)
@@ -183,9 +185,9 @@ func TestSaveConfigCreatesFile(t *testing.T) {
 		Providers:       make(map[string]Provider),
 	}
 
-	err := SaveConfig(tmpDir, cfg)
+	err := SaveConfig(context.Background(), tmpDir, cfg)
 	if err != nil {
-		t.Fatalf("SaveConfig() error = %v", err)
+		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
@@ -202,9 +204,9 @@ func TestSaveConfigPermissions(t *testing.T) {
 		Providers:       make(map[string]Provider),
 	}
 
-	err := SaveConfig(tmpDir, cfg)
+	err := SaveConfig(context.Background(), tmpDir, cfg)
 	if err != nil {
-		t.Fatalf("SaveConfig() error = %v", err)
+		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 	}
 
 	info, err := os.Stat(configPath)
@@ -331,9 +333,9 @@ func TestMigrateConfigFile(t *testing.T) {
 	t.Run("NoMigrationWhenNoOldConfig", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile() error = %v", err)
+			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
 		}
 		if migrated {
 			t.Error("Expected no migration when old config doesn't exist")
@@ -365,9 +367,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile() error = %v", err)
+			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
 		}
 		if !migrated {
 			t.Error("Expected migration to occur")
@@ -421,9 +423,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile() error = %v", err)
+			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
 		}
 		if migrated {
 			t.Error("Should not migrate when new config already exists")
@@ -454,7 +456,7 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err == nil {
 			t.Error("Expected error when migrating invalid YAML")
 		}
@@ -492,9 +494,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile() error = %v", err)
+			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
 		}
 		if !migrated {
 			t.Error("Expected migration to occur")
@@ -528,9 +530,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		cfg, err := LoadConfig(tmpDir)
+		cfg, err := LoadConfig(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadConfig() error = %v", err)
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
 		if cfg.DefaultProvider != "zai" {
@@ -570,9 +572,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		cfg, err := LoadConfig(tmpDir)
+		cfg, err := LoadConfig(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadConfig() error = %v", err)
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
 		if cfg.DefaultProvider != "anthropic" {
@@ -637,9 +639,9 @@ func TestLoadConfigEmptyFile(t *testing.T) {
 	}
 
 	// Empty file should return error (not valid YAML)
-	_, err := LoadConfig(tmpDir)
+	_, err := LoadConfig(context.Background(), tmpDir)
 	if err == nil {
-		t.Error("LoadConfig() on empty file should error")
+		t.Error("LoadConfig(context.Background(), ) on empty file should error")
 	}
 }
 
@@ -653,9 +655,9 @@ func TestLoadConfigWhitespaceOnly(t *testing.T) {
 	}
 
 	// Whitespace-only file should return error (not valid YAML)
-	_, err := LoadConfig(tmpDir)
+	_, err := LoadConfig(context.Background(), tmpDir)
 	if err == nil {
-		t.Error("LoadConfig() on whitespace-only file should error")
+		t.Error("LoadConfig(context.Background(), ) on whitespace-only file should error")
 	}
 }
 
@@ -672,9 +674,9 @@ func TestLoadConfigCommentOnly(t *testing.T) {
 	}
 
 	// Comment-only file returns error (YAML parser requires content)
-	_, err := LoadConfig(tmpDir)
+	_, err := LoadConfig(context.Background(), tmpDir)
 	if err == nil {
-		t.Error("LoadConfig() on comment-only file should error")
+		t.Error("LoadConfig(context.Background(), ) on comment-only file should error")
 	}
 }
 
