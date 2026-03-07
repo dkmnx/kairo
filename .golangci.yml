@@ -187,3 +187,12 @@ issues:
     - text: "EncryptSecrets"
       linters:
         - funlen
+    # Context-aware functions with multiple cancellation checks
+    - text: "migrateConfigFile"
+      linters:
+        - funlen
+        - cyclop
+    - text: "LoadConfig"
+      linters:
+        - funlen
+        - cyclop

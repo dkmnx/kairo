@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 
@@ -32,9 +33,16 @@ type Provider struct {
 // - Old config file exists
 // - New config.yaml does not exist
 // - Migration succeeds
-func migrateConfigFile(configDir string) (bool, error) {
+func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 	oldConfigPath := filepath.Join(configDir, "config")
 	newConfigPath := filepath.Join(configDir, "config.yaml")
+
+	// Check for context cancellation before I/O operations
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err()
+	default:
+	}
 
 	// Check if old config exists
 	oldInfo, err := os.Stat(oldConfigPath)
@@ -46,6 +54,13 @@ func migrateConfigFile(configDir string) (bool, error) {
 
 		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to check old config file", err)
+	}
+
+	// Check for context cancellation before more I/O
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err()
+	default:
 	}
 
 	// Check if new config already exists
@@ -93,17 +108,32 @@ func migrateConfigFile(configDir string) (bool, error) {
 // LoadConfig reads and parses the configuration file from the specified directory.
 // Returns ErrConfigNotFound if the file doesn't exist.
 // Automatically migrates old "config" file to "config.yaml" if needed.
-func LoadConfig(configDir string) (*Config, error) {
+// The context can be used to cancel the operation or set timeouts.
+func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	configPath := filepath.Join(configDir, "config.yaml")
 
+	// Check for context cancellation before I/O operations
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	// Attempt migration if old config exists
-	_, migrateErr := migrateConfigFile(configDir)
+	_, migrateErr := migrateConfigFile(ctx, configDir)
 	if migrateErr != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"failed to migrate configuration file", migrateErr).
 			WithContext("old_path", filepath.Join(configDir, "config")).
 			WithContext("new_path", configPath).
 			WithContext("hint", "ensure you have write permissions in the config directory")
+	}
+
+	// Check for context cancellation before reading config
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
 	}
 
 	data, err := os.ReadFile(configPath)
@@ -139,7 +169,15 @@ func LoadConfig(configDir string) (*Config, error) {
 }
 
 // SaveConfig writes the configuration to the specified directory.
-func SaveConfig(configDir string, cfg *Config) error {
+// The context can be used to cancel the operation or set timeouts.
+func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
+	// Check for context cancellation before I/O operations
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	configPath := filepath.Join(configDir, "config.yaml")
 	data, err := yaml.Marshal(cfg)
 	if err != nil {

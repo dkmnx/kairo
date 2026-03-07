@@ -92,7 +92,20 @@ const (
 	windowsGOOS = "windows"
 )
 
-var harnessFlag string
+var (
+	harnessFlag string
+	// rootCtx is the root context for command execution
+	rootCtx context.Context
+)
+
+// getRootCtx returns the root context, initializing it if needed
+func getRootCtx() context.Context {
+	if rootCtx == nil {
+		rootCtx = context.Background()
+	}
+
+	return rootCtx
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "kairo",
@@ -111,7 +124,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			return
 		}
 
-		cfg, err := configCache.Get(configDir)
+		cfg, err := configCache.Get(getRootCtx(), configDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
@@ -328,7 +341,7 @@ func buildProviderEnvironment(
 ) ([]string, map[string]string, error) {
 	builtInEnvVars := buildBuiltInEnvVars(provider)
 
-	secrets, _, _, err := LoadAndDecryptSecrets(configDir)
+	secrets, _, _, err := LoadAndDecryptSecrets(getRootCtx(), configDir)
 	if err != nil {
 		if providers.RequiresAPIKey(providerName) {
 			return nil, nil, err

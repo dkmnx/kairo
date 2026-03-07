@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -16,8 +17,8 @@ type MigrationChange struct {
 	New      string
 }
 
-func MigrateConfigOnUpdate(configDir string) ([]MigrationChange, error) {
-	cfg, err := LoadConfig(configDir)
+func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationChange, error) {
+	cfg, err := LoadConfig(ctx, configDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -83,7 +84,7 @@ func MigrateConfigOnUpdate(configDir string) ([]MigrationChange, error) {
 	}
 
 	if len(changes) > 0 {
-		if err := SaveConfig(configDir, cfg); err != nil {
+		if err := SaveConfig(ctx, configDir, cfg); err != nil {
 			return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 				"failed to save config after migration", err)
 		}

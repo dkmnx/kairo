@@ -29,6 +29,7 @@ package crypto
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,7 +42,15 @@ import (
 // GenerateKey generates a new X25519 encryption key and saves it to the specified path.
 // Uses atomic writes: writes to a temporary file first, then renames it.
 // This ensures that the key file is secure even if interrupted during creation.
-func GenerateKey(keyPath string) error {
+// The context can be used to cancel the operation or set timeouts.
+func GenerateKey(ctx context.Context, keyPath string) error {
+	// Check for context cancellation before starting
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	key, err := age.GenerateX25519Identity()
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
@@ -96,8 +105,16 @@ func GenerateKey(keyPath string) error {
 // EncryptSecrets encrypts the given secrets string using age encryption and saves it to the specified path.
 // Uses atomic writes: writes to a temporary file first, then renames it.
 // This ensures that the original secrets file is not truncated if encryption fails.
-func EncryptSecrets(secretsPath, keyPath, secrets string) error {
-	recipient, err := loadRecipient(keyPath)
+// The context can be used to cancel the operation or set timeouts.
+func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) error {
+	// Check for context cancellation before starting
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	recipient, err := loadRecipient(ctx, keyPath)
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load encryption key", err).
@@ -167,8 +184,16 @@ func EncryptSecrets(secretsPath, keyPath, secrets string) error {
 }
 
 // DecryptSecrets decrypts the secrets file and returns the plaintext content.
-func DecryptSecrets(secretsPath, keyPath string) (string, error) {
-	identity, err := loadIdentity(keyPath)
+// The context can be used to cancel the operation or set timeouts.
+func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, error) {
+	// Check for context cancellation before starting
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+	}
+
+	identity, err := loadIdentity(ctx, keyPath)
 	if err != nil {
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
@@ -260,8 +285,16 @@ func (s *SecretBytes) Close() error {
 //
 // This function provides better memory safety than DecryptSecrets for applications
 // that need to explicitly clear sensitive data after use.
-func DecryptSecretsBytes(secretsPath, keyPath string) (*SecretBytes, error) {
-	identity, err := loadIdentity(keyPath)
+// The context can be used to cancel the operation or set timeouts.
+func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) (*SecretBytes, error) {
+	// Check for context cancellation before starting
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	identity, err := loadIdentity(ctx, keyPath)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
@@ -298,12 +331,15 @@ func DecryptSecretsBytes(secretsPath, keyPath string) (*SecretBytes, error) {
 	return &SecretBytes{data: buf.Bytes()}, nil
 }
 
+// loadRecipient reads and parses the X25519 recipient from an age key file.
+//
 // This function opens the key file, skips the identity line (first line),
 // and parses the recipient line (second line) which contains the public
 // key used for encryption. The recipient is required for encrypting
 // secrets that only this identity can decrypt.
 //
 // Parameters:
+//   - ctx: Context for cancellation and timeouts
 //   - keyPath: Path to the age.key file containing encryption keys
 //
 // Returns:
@@ -318,7 +354,14 @@ func DecryptSecretsBytes(secretsPath, keyPath string) (*SecretBytes, error) {
 //
 // Thread Safety: Not thread-safe (file I/O operations)
 // Security Notes: Key file should have 0600 permissions (owner only)
-func loadRecipient(keyPath string) (age.Recipient, error) {
+func loadRecipient(ctx context.Context, keyPath string) (age.Recipient, error) {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	file, err := os.Open(keyPath)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
@@ -359,6 +402,7 @@ func loadRecipient(keyPath string) (age.Recipient, error) {
 // recipient public key.
 //
 // Parameters:
+//   - ctx: Context for cancellation and timeouts
 //   - keyPath: Path to age.key file containing encryption keys
 //
 // Returns:
@@ -372,7 +416,14 @@ func loadRecipient(keyPath string) (age.Recipient, error) {
 //
 // Thread Safety: Not thread-safe (file I/O operations)
 // Security Notes: Key file should have 0600 permissions (owner only). Identity contains private key material.
-func loadIdentity(keyPath string) (age.Identity, error) {
+func loadIdentity(ctx context.Context, keyPath string) (age.Identity, error) {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	file, err := os.Open(keyPath)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
@@ -400,7 +451,8 @@ func loadIdentity(keyPath string) (age.Identity, error) {
 }
 
 // EnsureKeyExists generates a new encryption key if one doesn't exist at the specified directory.
-func EnsureKeyExists(configDir string) error {
+// The context can be used to cancel the operation or set timeouts.
+func EnsureKeyExists(ctx context.Context, configDir string) error {
 	keyPath := filepath.Join(configDir, config.KeyFileName)
 	_, err := os.Stat(keyPath)
 	if err == nil {
@@ -412,5 +464,5 @@ func EnsureKeyExists(configDir string) error {
 			WithContext("path", keyPath)
 	}
 
-	return GenerateKey(keyPath)
+	return GenerateKey(ctx, keyPath)
 }

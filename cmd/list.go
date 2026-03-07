@@ -23,7 +23,7 @@ var listCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := config.LoadConfig(dir)
+		cfg, err := config.LoadConfig(getRootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")
