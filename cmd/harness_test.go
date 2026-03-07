@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -32,9 +34,9 @@ func TestHarnessGetWithConfig(t *testing.T) {
 		DefaultModels:  make(map[string]string),
 		DefaultHarness: "qwen",
 	}
-	err := config.SaveConfig(tmpDir, cfg)
+	err := config.SaveConfig(context.Background(), tmpDir, cfg)
 	if err != nil {
-		t.Fatalf("SaveConfig() error = %v", err)
+		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 	}
 
 	rootCmd.SetArgs([]string{"harness", "get"})
@@ -57,9 +59,9 @@ func TestHarnessSetClaude(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	cfg, err := config.LoadConfig(tmpDir)
+	cfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 	if cfg.DefaultHarness != "claude" {
 		t.Errorf("DefaultHarness = %q, want %q", cfg.DefaultHarness, "claude")
@@ -79,9 +81,9 @@ func TestHarnessSetQwen(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	cfg, err := config.LoadConfig(tmpDir)
+	cfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 	if cfg.DefaultHarness != "qwen" {
 		t.Errorf("DefaultHarness = %q, want %q", cfg.DefaultHarness, "qwen")
@@ -130,9 +132,9 @@ func TestHarnessSetCaseInsensitive(t *testing.T) {
 				t.Fatalf("Execute() error = %v", err)
 			}
 
-			cfg, err := config.LoadConfig(tmpDir)
+			cfg, err := config.LoadConfig(context.Background(), tmpDir)
 			if err != nil {
-				t.Fatalf("LoadConfig() error = %v", err)
+				t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 			}
 			if cfg.DefaultHarness != tt.expected {
 				t.Errorf("DefaultHarness = %q, want %q", cfg.DefaultHarness, tt.expected)
@@ -199,14 +201,14 @@ func TestGetHarnessWithExistingConfig(t *testing.T) {
 		DefaultModels:  make(map[string]string),
 		DefaultHarness: "qwen",
 	}
-	err := config.SaveConfig(tmpDir, cfg)
+	err := config.SaveConfig(context.Background(), tmpDir, cfg)
 	if err != nil {
-		t.Fatalf("SaveConfig() error = %v", err)
+		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 	}
 
-	loadedCfg, err := config.LoadConfig(tmpDir)
+	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 
 	result := getHarness("", loadedCfg.DefaultHarness)

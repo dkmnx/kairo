@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	"os"
 	"path/filepath"
 	"testing"
@@ -69,9 +71,9 @@ providers:
 	}
 	t.Logf("After: configDir=%s", getConfigDir())
 
-	cfg, err := config.LoadConfig(tmpDir)
+	cfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 	if cfg.DefaultProvider != "zai" {
 		t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "zai")

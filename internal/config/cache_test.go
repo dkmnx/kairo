@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,7 +14,7 @@ func TestConfigCache(t *testing.T) {
 	cache := NewConfigCache(5 * time.Minute)
 
 	// First load - should return error (no config exists)
-	_, err := cache.Get("testdir")
+	_, err := cache.Get(context.Background(), "testdir")
 	if err == nil {
 		t.Error("Expected error for non-existent config")
 	}
@@ -38,7 +39,7 @@ providers: {}
 	}
 
 	// First load - should load from disk
-	cfg1, err := cache.Get(tmpDir)
+	cfg1, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
@@ -47,7 +48,7 @@ providers: {}
 	}
 
 	// Second load - should return cached config
-	cfg2, err := cache.Get(tmpDir)
+	cfg2, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() second call error = %v", err)
 	}
@@ -60,7 +61,7 @@ providers: {}
 	cache.Invalidate(tmpDir)
 
 	// Load again - should reload from disk
-	cfg3, err := cache.Get(tmpDir)
+	cfg3, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() after invalidation error = %v", err)
 	}
@@ -84,7 +85,7 @@ providers: {}
 	}
 
 	// Load to cache
-	cfg1, err := cache.Get(tmpDir)
+	cfg1, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
@@ -93,7 +94,7 @@ providers: {}
 	time.Sleep(150 * time.Millisecond)
 
 	// Load again - should reload (TTL expired)
-	cfg2, err := cache.Get(tmpDir)
+	cfg2, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() after TTL expiry error = %v", err)
 	}
@@ -120,7 +121,7 @@ providers: {}
 	done := make(chan bool)
 	for i := 0; i < 10; i++ {
 		go func() {
-			_, _ = cache.Get(tmpDir)
+			_, _ = cache.Get(context.Background(), tmpDir)
 			done <- true
 		}()
 	}
@@ -160,7 +161,7 @@ providers: {}
 			defer wg.Done()
 			// Invalidate and reload - simulates config modification
 			cache.Invalidate(tmpDir)
-			cfg, err := cache.Get(tmpDir)
+			cfg, err := cache.Get(context.Background(), tmpDir)
 			if err != nil {
 				errs <- err
 				return

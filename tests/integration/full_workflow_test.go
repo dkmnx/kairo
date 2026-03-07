@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"context"
+
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,17 +35,17 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 			},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to save initial config: %v", err)
 	}
 
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
 	// Verify initial state
-	loadedCfg, err := config.LoadConfig(tmpDir)
+	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
 	}
@@ -54,7 +56,7 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 	// Step 2: Configure Z.AI provider with API key
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	secretsContent := "ZAI_API_KEY=TEST-KEY-DO-NOT-USE-zai-001\n"
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("failed to encrypt secrets: %v", err)
 	}
 
@@ -64,12 +66,12 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		BaseURL: def.BaseURL,
 		Model:   def.Model,
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to save config with zai: %v", err)
 	}
 
 	// Verify zai provider configured
-	loadedCfg, err = config.LoadConfig(tmpDir)
+	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config after zai: %v", err)
 	}
@@ -79,7 +81,7 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 
 	// Step 3: Configure MiniMax provider
 	secretsContent += "MINIMAX_API_KEY=TEST-KEY-DO-NOT-USE-minimax-002\n"
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("failed to encrypt secrets with minimax: %v", err)
 	}
 
@@ -89,12 +91,12 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		BaseURL: def.BaseURL,
 		Model:   def.Model,
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to save config with minimax: %v", err)
 	}
 
 	// Verify both providers exist
-	loadedCfg, err = config.LoadConfig(tmpDir)
+	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config after minimax: %v", err)
 	}
@@ -104,11 +106,11 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 
 	// Step 4: Change default provider to zai
 	cfg.DefaultProvider = "zai"
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to update default provider: %v", err)
 	}
 
-	loadedCfg, err = config.LoadConfig(tmpDir)
+	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config after default change: %v", err)
 	}
@@ -117,7 +119,7 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 	}
 
 	// Step 5: Verify secrets are intact
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
 	}
@@ -142,17 +144,17 @@ func TestFullWorkflowHarnessSwitching(t *testing.T) {
 			"zai":       {Name: "Z.AI", BaseURL: "https://api.z.ai/api/anthropic", Model: "glm-4.7"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to save config: %v", err)
 	}
 
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
 	// Verify initial harness
-	loadedCfg, err := config.LoadConfig(tmpDir)
+	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
 	}
@@ -162,11 +164,11 @@ func TestFullWorkflowHarnessSwitching(t *testing.T) {
 
 	// Switch to qwen harness
 	cfg.DefaultHarness = "qwen"
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to update harness: %v", err)
 	}
 
-	loadedCfg, err = config.LoadConfig(tmpDir)
+	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config after harness change: %v", err)
 	}
@@ -176,11 +178,11 @@ func TestFullWorkflowHarnessSwitching(t *testing.T) {
 
 	// Switch back to claude
 	cfg.DefaultHarness = "claude"
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to switch back to claude: %v", err)
 	}
 
-	loadedCfg, err = config.LoadConfig(tmpDir)
+	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config after switching back: %v", err)
 	}
@@ -203,12 +205,12 @@ func TestFullWorkflowListAndStatus(t *testing.T) {
 			"deepseek":  {Name: "DeepSeek", BaseURL: "https://api.deepseek.com/v1", Model: "deepseek-chat"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to save config: %v", err)
 	}
 
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
@@ -217,12 +219,12 @@ func TestFullWorkflowListAndStatus(t *testing.T) {
 DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 `
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("failed to encrypt secrets: %v", err)
 	}
 
 	// Verify config
-	loadedCfg, err := config.LoadConfig(tmpDir)
+	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
 	}
@@ -241,7 +243,7 @@ DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 	}
 
 	// Verify secrets
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
 	}
@@ -270,12 +272,12 @@ func TestFullWorkflowRecoveryPhrase(t *testing.T) {
 			"anthropic": {Name: "Native Anthropic"},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to save config: %v", err)
 	}
 
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
@@ -313,23 +315,23 @@ func TestFullWorkflowCustomProvider(t *testing.T) {
 			},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to save config: %v", err)
 	}
 
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
 	secretsContent := "MYCUSTOM_API_KEY=TEST-KEY-DO-NOT-USE-custom-provider\n"
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("failed to encrypt secrets: %v", err)
 	}
 
 	// Verify custom provider
-	loadedCfg, err := config.LoadConfig(tmpDir)
+	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
 	}
@@ -350,7 +352,7 @@ func TestFullWorkflowCustomProvider(t *testing.T) {
 	}
 
 	// Verify secrets
-	decrypted, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
 	}
@@ -382,12 +384,12 @@ func TestFullWorkflowHarnessCLIExecution(t *testing.T) {
 			},
 		},
 	}
-	if err := config.SaveConfig(tmpDir, cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to save config: %v", err)
 	}
 
 	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(keyPath); err != nil {
+	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
