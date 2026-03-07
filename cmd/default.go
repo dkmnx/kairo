@@ -22,7 +22,7 @@ var defaultCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := configCache.Get(dir)
+		cfg, err := configCache.Get(getRootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				if len(args) == 0 {
@@ -58,7 +58,7 @@ var defaultCmd = &cobra.Command{
 		}
 
 		cfg.DefaultProvider = providerName
-		if err := config.SaveConfig(dir, cfg); err != nil {
+		if err := config.SaveConfig(getRootCtx(), dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 
 			return

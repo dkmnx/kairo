@@ -24,7 +24,7 @@ var harnessGetCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := configCache.Get(dir)
+		cfg, err := configCache.Get(getRootCtx(), dir)
 		if err != nil {
 			handleConfigError(cmd, err)
 			return
@@ -64,7 +64,7 @@ var harnessSetCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := configCache.Get(dir)
+		cfg, err := configCache.Get(getRootCtx(), dir)
 		if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 			handleConfigError(cmd, err)
 			return
@@ -77,7 +77,7 @@ var harnessSetCmd = &cobra.Command{
 		}
 
 		cfg.DefaultHarness = harnessName
-		if err := config.SaveConfig(dir, cfg); err != nil {
+		if err := config.SaveConfig(getRootCtx(), dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 			return
 		}

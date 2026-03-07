@@ -25,7 +25,7 @@ var deleteCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := config.LoadConfig(dir)
+		cfg, err := config.LoadConfig(getRootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")
@@ -96,7 +96,7 @@ var deleteCmd = &cobra.Command{
 			cfg.DefaultProvider = ""
 		}
 
-		if err := config.SaveConfig(dir, cfg); err != nil {
+		if err := config.SaveConfig(getRootCtx(), dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Saving config: %v", err))
 			return
 		}
@@ -104,7 +104,7 @@ var deleteCmd = &cobra.Command{
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
 
-		existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
+		existingSecrets, err := crypto.DecryptSecrets(getRootCtx(), secretsPath, keyPath)
 		if err == nil {
 			secrets := config.ParseSecrets(existingSecrets)
 			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(target)))
@@ -117,7 +117,7 @@ var deleteCmd = &cobra.Command{
 					ui.PrintWarn(fmt.Sprintf("Warning: Could not remove empty secrets file: %v", err))
 				}
 			} else {
-				if err := crypto.EncryptSecrets(secretsPath, keyPath, secretsContent); err != nil {
+				if err := crypto.EncryptSecrets(getRootCtx(), secretsPath, keyPath, secretsContent); err != nil {
 					ui.PrintWarn(fmt.Sprintf("Warning: Could not update secrets: %v", err))
 				}
 			}

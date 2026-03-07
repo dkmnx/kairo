@@ -8,6 +8,7 @@
 package config
 
 import (
+	"context"
 	"path/filepath"
 	"sync"
 	"time"
@@ -32,7 +33,7 @@ func NewConfigCache(ttl time.Duration) *ConfigCache {
 	}
 }
 
-func (c *ConfigCache) Get(configDir string) (*Config, error) {
+func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error) {
 	c.mu.RLock()
 	entry, exists := c.entries[configDir]
 	if exists && time.Since(entry.loadedAt) < c.ttl {
@@ -43,8 +44,8 @@ func (c *ConfigCache) Get(configDir string) (*Config, error) {
 	}
 	c.mu.RUnlock()
 
-	// Load config from file
-	cfg, err := LoadConfig(configDir)
+	// Load config from file with context support
+	cfg, err := LoadConfig(ctx, configDir)
 	if err != nil {
 		return nil, err
 	}

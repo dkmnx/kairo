@@ -275,7 +275,7 @@ to ensure the script matches the version being installed.`,
 
 		dir := getConfigDir()
 		if dir != "" {
-			changes, err := config.MigrateConfigOnUpdate(dir)
+			changes, err := config.MigrateConfigOnUpdate(context.Background(), dir)
 			if err != nil {
 				cmd.Printf("Warning: config migration failed: %v\n", err)
 			} else if len(changes) > 0 {

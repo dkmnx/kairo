@@ -78,7 +78,7 @@ func addAndSaveProvider(
 	if setAsDefault && cfg.DefaultProvider == "" {
 		cfg.DefaultProvider = providerName
 	}
-	if err := config.SaveConfig(configDir, cfg); err != nil {
+	if err := config.SaveConfig(getRootCtx(), configDir, cfg); err != nil {
 		return kairoerrors.WrapError(kairoerrors.ConfigError,
 			"saving config", err)
 	}
@@ -92,7 +92,7 @@ func ensureConfigDirectory(configDir string) error {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"creating config directory", err)
 	}
-	if err := crypto.EnsureKeyExists(configDir); err != nil {
+	if err := crypto.EnsureKeyExists(getRootCtx(), configDir); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"creating encryption key", err)
 	}
@@ -102,7 +102,7 @@ func ensureConfigDirectory(configDir string) error {
 
 // loadOrInitializeConfig loads an existing config or creates a new empty one.
 func loadOrInitializeConfig(configDir string) (*config.Config, error) {
-	cfg, err := configCache.Get(configDir)
+	cfg, err := configCache.Get(getRootCtx(), configDir)
 	if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func loadOrInitializeConfig(configDir string) (*config.Config, error) {
 // LoadAndDecryptSecrets loads and decrypts secrets from the specified directory.
 // Returns secrets map, secrets path, and key path. If secrets file doesn't exist
 // or decryption fails, returns empty secrets map with appropriate error handling.
-func LoadAndDecryptSecrets(configDir string) (map[string]string, string, string, error) {
+func LoadAndDecryptSecrets(ctx context.Context, configDir string) (map[string]string, string, string, error) {
 	secretsPath := filepath.Join(configDir, config.SecretsFileName)
 	keyPath := filepath.Join(configDir, config.KeyFileName)
 
@@ -128,7 +128,7 @@ func LoadAndDecryptSecrets(configDir string) (map[string]string, string, string,
 		return secrets, secretsPath, keyPath, nil
 	}
 
-	existingSecrets, err := crypto.DecryptSecrets(secretsPath, keyPath)
+	existingSecrets, err := crypto.DecryptSecrets(ctx, secretsPath, keyPath)
 	if err != nil {
 		return nil, secretsPath, keyPath, err
 	}
@@ -245,7 +245,7 @@ func saveProviderConfiguration(params SaveProviderParams) error {
 	// Save secrets
 	params.Secrets[apiKeyEnvVarName(params.ProviderName)] = params.APIKey
 	secretsContent := config.FormatSecrets(params.Secrets)
-	if err := crypto.EncryptSecrets(params.SecretsPath, params.KeyPath, secretsContent); err != nil {
+	if err := crypto.EncryptSecrets(getRootCtx(), params.SecretsPath, params.KeyPath, secretsContent); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"saving API key", err)
 	}
@@ -517,7 +517,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(configDir)
+		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(getRootCtx(), configDir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
 			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
