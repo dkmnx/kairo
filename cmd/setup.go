@@ -520,7 +520,7 @@ var setupCmd = &cobra.Command{
 		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(getRootCtx(), configDir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
-			ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
+			ui.PrintInfo("Your encryption key may be corrupted. Run 'kairo setup' to reconfigure your providers.")
 			ui.PrintInfo("Use --verbose for more details.")
 
 			return

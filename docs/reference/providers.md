@@ -4,28 +4,15 @@ Built-in and custom provider configurations.
 
 ## Built-in Providers
 
-| Provider  | Base URL                   | Model           | API Key |
-| --------- | -------------------------- | --------------- | ------- |
-| anthropic | -                          | -               | No      |
-| zai       | api.z.ai/api/anthropic     | glm-4.7         | Yes     |
-| minimax   | api.minimax.io/anthropic   | MiniMax-M2.5    | Yes     |
-| kimi      | api.kimi.com/coding        | kimi-for-coding | Yes     |
-| deepseek  | api.deepseek.com/anthropic | deepseek-chat   | Yes     |
-| custom    | user-defined               | user-defined    | Yes     |
+| Provider  | Base URL                       | Model             | API Key |
+| --------- | ------------------------------ | ----------------- | ------- |
+| zai       | api.z.ai/api/anthropic         | glm-4.7           | Yes     |
+| minimax   | api.minimax.io/anthropic       | MiniMax-M2.5      | Yes     |
+| deepseek  | api.deepseek.com/anthropic     | deepseek-chat     | Yes     |
+| kimi      | api.kimi.com/coding            | kimi-for-coding   | Yes     |
+| custom    | user-defined                   | user-defined      | Yes     |
 
 ## Provider Details
-
-### anthropic
-
-Native Anthropic API with ANTHROPIC_API_KEY from environment.
-
-```bash
-# Set API key
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# Configure with setup wizard
-kairo setup
-```
 
 ### zai
 

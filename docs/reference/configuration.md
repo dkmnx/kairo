@@ -75,7 +75,6 @@ Generated on first run using `age-keygen`.
 | ------------------------- | ------------------------- | ---------------- |
 | `KAIRO_CONFIG_DIR`        | Override config directory | Platform default |
 | `KAIRO_UPDATE_URL`        | Custom update check URL   | GitHub Releases  |
-| `KAIRO_METRICS_ENABLED`   | Enable metrics            | false            |
 | `KAIRO_SKIP_UPDATE_CHECK` | Disable update check      | -                |
 
 ## Provider Configuration
