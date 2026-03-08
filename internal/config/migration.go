@@ -64,8 +64,6 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationCh
 			continue
 		}
 
-		// Update model if user has explicitly set a model that differs from the new default
-		// This handles cases where the builtin default changed (e.g., model version upgrade)
 		if userModel != builtinDef.Model {
 			oldModel := userModel
 			provider.Model = builtinDef.Model
@@ -78,7 +76,6 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationCh
 				New:      builtinDef.Model,
 			})
 		} else {
-			// User's model already matches the new default, just ensure DefaultModels is set
 			cfg.DefaultModels[providerName] = builtinDef.Model
 		}
 	}

@@ -131,7 +131,7 @@ func TestEscapePowerShellArg_Basic(t *testing.T) {
 
 func TestGenerateWrapperScript_EmptyTokenPath(t *testing.T) {
 	authDir := t.TempDir()
-	_, _, err := GenerateWrapperScript(WrapperScriptConfig{AuthDir: authDir, TokenPath: "", CliPath: "/usr/bin/claude", CliArgs: []string{"--help"}})
+	_, _, err := GenerateWrapperScript(ScriptConfig{AuthDir: authDir, TokenPath: "", CliPath: "/usr/bin/claude", CliArgs: []string{"--help"}})
 	if err == nil {
 		t.Error("GenerateWrapperScript() should error on empty token path")
 	}
@@ -140,7 +140,7 @@ func TestGenerateWrapperScript_EmptyTokenPath(t *testing.T) {
 func TestGenerateWrapperScript_EmptyClaudePath(t *testing.T) {
 	authDir := t.TempDir()
 	tokenPath := filepath.Join(authDir, "token")
-	_, _, err := GenerateWrapperScript(WrapperScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: "", CliArgs: []string{"--help"}})
+	_, _, err := GenerateWrapperScript(ScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: "", CliArgs: []string{"--help"}})
 	if err == nil {
 		t.Error("GenerateWrapperScript() should error on empty claude path")
 	}
@@ -156,7 +156,7 @@ func TestGenerateWrapperScript_WindowsPath(t *testing.T) {
 	claudePath := `C:\Program Files\claude\claude.exe`
 	args := []string{"--help", "--verbose"}
 
-	scriptPath, useCmdExe, err := GenerateWrapperScript(WrapperScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: claudePath, CliArgs: args})
+	scriptPath, useCmdExe, err := GenerateWrapperScript(ScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: claudePath, CliArgs: args})
 	if err != nil {
 		t.Fatalf("GenerateWrapperScript() error = %v", err)
 	}
@@ -201,7 +201,7 @@ func TestGenerateWrapperScript_UnixPath(t *testing.T) {
 	claudePath := "/usr/local/bin/claude"
 	args := []string{"--help", "--verbose"}
 
-	scriptPath, useCmdExe, err := GenerateWrapperScript(WrapperScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: claudePath, CliArgs: args})
+	scriptPath, useCmdExe, err := GenerateWrapperScript(ScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: claudePath, CliArgs: args})
 	if err != nil {
 		t.Fatalf("GenerateWrapperScript() error = %v", err)
 	}
@@ -251,7 +251,7 @@ func TestGenerateWrapperScript_WithSpecialArgs(t *testing.T) {
 	claudePath := "/usr/bin/claude"
 	args := []string{"--prompt", "Hello 'World' and $HOME", `--option="value with spaces"`}
 
-	scriptPath, _, err := GenerateWrapperScript(WrapperScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: claudePath, CliArgs: args})
+	scriptPath, _, err := GenerateWrapperScript(ScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: claudePath, CliArgs: args})
 	if err != nil {
 		t.Fatalf("GenerateWrapperScript() error = %v", err)
 	}
@@ -357,7 +357,7 @@ func TestGenerateWrapperScript_WindowsWithSpecialArgs(t *testing.T) {
 		"--model", "sonnet-4-20250514",
 	}
 
-	scriptPath, _, err := GenerateWrapperScript(WrapperScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: claudePath, CliArgs: args})
+	scriptPath, _, err := GenerateWrapperScript(ScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: claudePath, CliArgs: args})
 	if err != nil {
 		t.Fatalf("GenerateWrapperScript() error = %v", err)
 	}
@@ -410,7 +410,7 @@ func TestGenerateWrapperScript_CustomEnvVar(t *testing.T) {
 	args := []string{"--help"}
 
 	t.Run("uses custom env var when provided", func(t *testing.T) {
-		scriptPath, _, err := GenerateWrapperScript(WrapperScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: cliPath, CliArgs: args, EnvVarName: "ANTHROPIC_API_KEY"})
+		scriptPath, _, err := GenerateWrapperScript(ScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: cliPath, CliArgs: args, EnvVarName: "ANTHROPIC_API_KEY"})
 		if err != nil {
 			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
@@ -431,7 +431,7 @@ func TestGenerateWrapperScript_CustomEnvVar(t *testing.T) {
 	})
 
 	t.Run("uses default auth token when not provided", func(t *testing.T) {
-		scriptPath, _, err := GenerateWrapperScript(WrapperScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: cliPath, CliArgs: args})
+		scriptPath, _, err := GenerateWrapperScript(ScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: cliPath, CliArgs: args})
 		if err != nil {
 			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
@@ -449,7 +449,7 @@ func TestGenerateWrapperScript_CustomEnvVar(t *testing.T) {
 	})
 
 	t.Run("uses empty string as default", func(t *testing.T) {
-		scriptPath, _, err := GenerateWrapperScript(WrapperScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: cliPath, CliArgs: args, EnvVarName: ""})
+		scriptPath, _, err := GenerateWrapperScript(ScriptConfig{AuthDir: authDir, TokenPath: tokenPath, CliPath: cliPath, CliArgs: args, EnvVarName: ""})
 		if err != nil {
 			t.Fatalf("GenerateWrapperScript() error = %v", err)
 		}
@@ -485,7 +485,7 @@ func TestWriteTempTokenFile_NonExistentDir(t *testing.T) {
 }
 
 func TestGenerateWrapperScript_NonExistentAuthDir(t *testing.T) {
-	_, _, err := GenerateWrapperScript(WrapperScriptConfig{
+	_, _, err := GenerateWrapperScript(ScriptConfig{
 		AuthDir:    "/nonexistent/auth/dir",
 		TokenPath:  "/nonexistent/auth/dir/token",
 		CliPath:    "/usr/bin/claude",
@@ -535,7 +535,7 @@ func TestGenerateWrapperScript_ControlCharacterEscaping(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			scriptPath, _, err := GenerateWrapperScript(WrapperScriptConfig{
+			scriptPath, _, err := GenerateWrapperScript(ScriptConfig{
 				AuthDir:    authDir,
 				TokenPath:  tokenPath,
 				CliPath:    cliPath,
@@ -578,7 +578,7 @@ func TestGenerateWrapperScript_WithArgs(t *testing.T) {
 	cliPath := "/usr/bin/claude"
 	args := []string{"--model", "sonnet-4-20250514", "--temperature", "0.7"}
 
-	scriptPath, isWindows, err := GenerateWrapperScript(WrapperScriptConfig{
+	scriptPath, isWindows, err := GenerateWrapperScript(ScriptConfig{
 		AuthDir:    authDir,
 		TokenPath:  tokenPath,
 		CliPath:    cliPath,
@@ -617,7 +617,7 @@ func TestGenerateWrapperScript_ScriptIsDeletedAfterUse(t *testing.T) {
 	tokenPath := filepath.Join(authDir, "token")
 	cliPath := "/usr/bin/claude"
 
-	scriptPath, _, err := GenerateWrapperScript(WrapperScriptConfig{
+	scriptPath, _, err := GenerateWrapperScript(ScriptConfig{
 		AuthDir:    authDir,
 		TokenPath:  tokenPath,
 		CliPath:    cliPath,

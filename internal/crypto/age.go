@@ -1,29 +1,4 @@
 // Package crypto provides encryption and key management operations using the age library.
-//
-// This package handles:
-//   - X25519 key generation (public/private key pairs)
-//   - Secret encryption/decryption for secure API key storage
-//   - Atomic key replacement to prevent partial state
-//
-// Thread Safety:
-//   - Key file operations are not thread-safe (file I/O)
-//   - Functions should not be called concurrently on same key files
-//
-// Security:
-//   - All key files use 0600 permissions (owner only)
-//   - Temporary files are created with secure defaults
-//   - Private key material is never logged or printed
-//
-// Memory Safety Limitation:
-//   - Decrypted secrets are returned as strings which are immutable in Go
-//   - This means decrypted data remains in memory until garbage collected
-//   - For applications requiring secure memory handling, consider using
-//     DecryptSecretsBytes which returns []byte that can be explicitly zeroed
-//
-// Performance:
-//   - Key generation uses X25519 (fast, secure curve)
-//   - Encryption uses age's efficient streaming API
-//   - Temporary key files are cleaned up on failure
 package crypto
 
 import (
@@ -39,12 +14,7 @@ import (
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
-// GenerateKey generates a new X25519 encryption key and saves it to the specified path.
-// Uses atomic writes: writes to a temporary file first, then renames it.
-// This ensures that the key file is secure even if interrupted during creation.
-// The context can be used to cancel the operation or set timeouts.
 func GenerateKey(ctx context.Context, keyPath string) error {
-	// Check for context cancellation before starting
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -58,8 +28,6 @@ func GenerateKey(ctx context.Context, keyPath string) error {
 			WithContext("path", keyPath)
 	}
 
-	// Write to temporary file first to ensure atomic operation
-	// This prevents incomplete or insecure key files if interrupted
 	tempKeyPath := keyPath + ".tmp"
 
 	keyFile, err := os.OpenFile(tempKeyPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
@@ -72,7 +40,7 @@ func GenerateKey(ctx context.Context, keyPath string) error {
 	_, err = fmt.Fprintf(keyFile, "%s\n%s\n", key.String(), key.Recipient().String())
 	if err != nil {
 		keyFile.Close()
-		_ = os.Remove(tempKeyPath) // Clean up temp file on error
+		_ = os.Remove(tempKeyPath)
 
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to write key to file", err).
@@ -80,18 +48,15 @@ func GenerateKey(ctx context.Context, keyPath string) error {
 	}
 
 	if err := keyFile.Close(); err != nil {
-		_ = os.Remove(tempKeyPath) // Clean up temp file on error
+		_ = os.Remove(tempKeyPath)
 
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to close temporary key file", err).
 			WithContext("path", tempKeyPath)
 	}
 
-	// Atomically rename temp file to actual path
-	// This is atomic on POSIX systems and ensures the key file is only
-	// exposed after it's fully written with correct permissions
 	if err := os.Rename(tempKeyPath, keyPath); err != nil {
-		_ = os.Remove(tempKeyPath) // Clean up temp file on error
+		_ = os.Remove(tempKeyPath)
 
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to rename temporary key file", err).
@@ -102,12 +67,7 @@ func GenerateKey(ctx context.Context, keyPath string) error {
 	return nil
 }
 
-// EncryptSecrets encrypts the given secrets string using age encryption and saves it to the specified path.
-// Uses atomic writes: writes to a temporary file first, then renames it.
-// This ensures that the original secrets file is not truncated if encryption fails.
-// The context can be used to cancel the operation or set timeouts.
 func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) error {
-	// Check for context cancellation before starting
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -122,7 +82,6 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 			WithContext("secrets_path", secretsPath)
 	}
 
-	// Write to temporary file first to avoid truncating original if encryption fails
 	tempPath := secretsPath + ".tmp"
 
 	file, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
@@ -135,7 +94,7 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 	encryptor, err := age.Encrypt(file, recipient)
 	if err != nil {
 		file.Close()
-		_ = os.Remove(tempPath) // Clean up temp file on error
+		_ = os.Remove(tempPath)
 
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to initialize encryption", err).
@@ -146,7 +105,7 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 	if err != nil {
 		encryptor.Close()
 		file.Close()
-		_ = os.Remove(tempPath) // Clean up temp file on error
+		_ = os.Remove(tempPath)
 
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to encrypt secrets", err)
@@ -154,25 +113,23 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 
 	if err := encryptor.Close(); err != nil {
 		file.Close()
-		_ = os.Remove(tempPath) // Clean up temp file on error
+		_ = os.Remove(tempPath)
 
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to finalize encryption", err).
 			WithContext("secrets_path", secretsPath)
 	}
 
-	// Close file handle
 	if err := file.Close(); err != nil {
-		_ = os.Remove(tempPath) // Clean up temp file on error
+		_ = os.Remove(tempPath)
 
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to close temporary file", err).
 			WithContext("path", tempPath)
 	}
 
-	// Atomically rename temp file to actual path
 	if err := os.Rename(tempPath, secretsPath); err != nil {
-		_ = os.Remove(tempPath) // Clean up temp file on error
+		_ = os.Remove(tempPath)
 
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to replace secrets file", err).
@@ -183,10 +140,7 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 	return nil
 }
 
-// DecryptSecrets decrypts the secrets file and returns the plaintext content.
-// The context can be used to cancel the operation or set timeouts.
 func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, error) {
-	// Check for context cancellation before starting
 	select {
 	case <-ctx.Done():
 		return "", ctx.Err()
@@ -229,30 +183,14 @@ func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, e
 	return buf.String(), nil
 }
 
-// SecretBytes wraps decrypted secret data with automatic memory zeroization.
-// It implements io.Closer so it can be used with defer for automatic cleanup.
-//
-// Usage:
-//
-//	defer secrets.Close()
-//	secrets, err := DecryptSecretsBytes(path, keyPath)
-//
-// _CONTENT := secrets.String()
-//
-// Close() automatically zeroizes the underlying byte slice to prevent secrets
-// from lingering in memory. After Close() is called, the secrets are not recoverable.
 type SecretBytes struct {
 	data []byte
 }
 
-// String returns the secrets as a string. The returned string is immutable
-// in Go, so it cannot be cleared from memory. Do not use for sensitive data
-// that requires explicit memory cleanup.
 func (s *SecretBytes) String() string {
 	return string(s.data)
 }
 
-// Clear explicitly zeroizes the secrets. Called automatically by Close().
 func (s *SecretBytes) Clear() {
 	if s.data != nil {
 		for i := range s.data {
@@ -261,8 +199,6 @@ func (s *SecretBytes) Clear() {
 	}
 }
 
-// Close zeroizes the secrets and clears the reference.
-// This method is safe to call multiple times.
 func (s *SecretBytes) Close() error {
 	s.Clear()
 	s.data = nil
@@ -270,24 +206,7 @@ func (s *SecretBytes) Close() error {
 	return nil
 }
 
-// DecryptSecretsBytes decrypts the secrets file and returns the plaintext wrapped in SecretBytes.
-// The SecretBytes type implements io.Closer and will automatically zeroize the memory
-// when Close() is called or when used with defer.
-//
-// Usage:
-//
-//	defer secrets.Close()
-//	secrets, err := DecryptSecretsBytes(path, keyPath)
-//	if err != nil {
-//	    return err
-//	}
-//	content := secrets.String()
-//
-// This function provides better memory safety than DecryptSecrets for applications
-// that need to explicitly clear sensitive data after use.
-// The context can be used to cancel the operation or set timeouts.
 func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) (*SecretBytes, error) {
-	// Check for context cancellation before starting
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -327,35 +246,10 @@ func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) (*Sec
 			"failed to read decrypted content", err)
 	}
 
-	// Return data wrapped in SecretBytes for automatic zeroization
 	return &SecretBytes{data: buf.Bytes()}, nil
 }
 
-// loadRecipient reads and parses the X25519 recipient from an age key file.
-//
-// This function opens the key file, skips the identity line (first line),
-// and parses the recipient line (second line) which contains the public
-// key used for encryption. The recipient is required for encrypting
-// secrets that only this identity can decrypt.
-//
-// Parameters:
-//   - ctx: Context for cancellation and timeouts
-//   - keyPath: Path to the age.key file containing encryption keys
-//
-// Returns:
-//   - age.Recipient: Parsed X25519 recipient for encryption operations
-//   - error: Returns error if file cannot be read or parsed
-//
-// Error conditions:
-//   - Returns error when key file cannot be opened (e.g., permissions, not found)
-//   - Returns error when key file is empty
-//   - Returns error when key file is missing recipient line (second line)
-//   - Returns error when recipient line cannot be parsed (e.g., malformed, corrupted)
-//
-// Thread Safety: Not thread-safe (file I/O operations)
-// Security Notes: Key file should have 0600 permissions (owner only)
 func loadRecipient(ctx context.Context, keyPath string) (age.Recipient, error) {
-	// Check for context cancellation
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -394,30 +288,7 @@ func loadRecipient(ctx context.Context, keyPath string) (age.Recipient, error) {
 	return recipient, nil
 }
 
-// loadIdentity reads and parses the X25519 identity from an age key file.
-//
-// This function opens the key file and parses the identity line (first line)
-// which contains the private key used for decryption. The identity is
-// required for decrypting secrets that were encrypted with the corresponding
-// recipient public key.
-//
-// Parameters:
-//   - ctx: Context for cancellation and timeouts
-//   - keyPath: Path to age.key file containing encryption keys
-//
-// Returns:
-//   - age.Identity: Parsed X25519 identity for decryption operations
-//   - error: Returns error if file cannot be read or parsed
-//
-// Error conditions:
-//   - Returns error when key file cannot be opened (e.g., permissions, not found)
-//   - Returns error when key file is empty
-//   - Returns error when identity line cannot be parsed (e.g., malformed, corrupted)
-//
-// Thread Safety: Not thread-safe (file I/O operations)
-// Security Notes: Key file should have 0600 permissions (owner only). Identity contains private key material.
 func loadIdentity(ctx context.Context, keyPath string) (age.Identity, error) {
-	// Check for context cancellation
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -450,8 +321,6 @@ func loadIdentity(ctx context.Context, keyPath string) (age.Identity, error) {
 	return identity, nil
 }
 
-// EnsureKeyExists generates a new encryption key if one doesn't exist at the specified directory.
-// The context can be used to cancel the operation or set timeouts.
 func EnsureKeyExists(ctx context.Context, configDir string) error {
 	keyPath := filepath.Join(configDir, config.KeyFileName)
 	_, err := os.Stat(keyPath)

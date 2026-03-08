@@ -426,7 +426,7 @@ func runHarnessWithWrapper(params HarnessWrapperParams) error {
 		return fmt.Errorf("'%s' command not found in PATH", params.HarnessBinary)
 	}
 
-	wrapperCfg := wrapper.WrapperScriptConfig{
+	wrapperCfg := wrapper.ScriptConfig{
 		AuthDir:    params.AuthDir,
 		TokenPath:  params.TokenPath,
 		CliPath:    harnessPath,

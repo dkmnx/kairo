@@ -1,10 +1,3 @@
-// Package config provides configuration loading, saving, and caching for Kairo.
-//
-// Cache Behavior:
-//   - ConfigCache is designed for CLI usage where processes are short-lived
-//   - Cache entries have a TTL (default 5 minutes) to balance freshness vs I/O
-//   - Cleanup() is available but typically not needed for CLI tools
-//   - For long-running processes, call Cleanup() periodically to prevent memory growth
 package config
 
 import (
@@ -44,15 +37,11 @@ func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error
 	}
 	c.mu.RUnlock()
 
-	// Load config from file with context support
 	cfg, err := LoadConfig(ctx, configDir)
 	if err != nil {
 		return nil, err
 	}
 
-	// Cache the loaded config
-	// Multiple concurrent loads will result in redundant I/O but correct results
-	// The last write will win, which is acceptable for this use case
 	c.mu.Lock()
 	c.entries[configDir] = &cachedConfig{
 		config:     cfg,
@@ -70,12 +59,6 @@ func (c *ConfigCache) Invalidate(configDir string) {
 	c.mu.Unlock()
 }
 
-// Cleanup removes all expired entries from the cache.
-//
-// Note: This method is typically not needed for CLI usage since the process
-// exits after each command, releasing all memory. It is provided for
-// long-running processes (e.g., daemons, services) that need to prevent
-// unbounded memory growth when processing many different config directories.
 func (c *ConfigCache) Cleanup() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
