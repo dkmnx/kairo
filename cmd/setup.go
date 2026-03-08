@@ -487,6 +487,10 @@ func configureProvider(params ConfigureProviderParams) (string, error) {
 	return validatedName, nil
 }
 
+var (
+	setupResetSecrets bool
+)
+
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Interactive setup and edit wizard",
@@ -519,11 +523,22 @@ var setupCmd = &cobra.Command{
 
 		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(getRootCtx(), configDir)
 		if err != nil {
-			ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
-			ui.PrintInfo("Your encryption key may be corrupted. Run 'kairo setup' to reconfigure your providers.")
-			ui.PrintInfo("Use --verbose for more details.")
+			if setupResetSecrets {
+				if err := resetSecrets(configDir, secretsPath, keyPath); err != nil {
+					ui.PrintError(fmt.Sprintf("Failed to reset secrets: %v", err))
+					ui.PrintInfo("Use --verbose for more details.")
 
-			return
+					return
+				}
+				secrets = make(map[string]string)
+			} else {
+				ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
+				ui.PrintInfo("Restore 'age.key' and 'secrets.age' from backup,")
+				ui.PrintInfo("or remove both files and run 'kairo setup --reset-secrets' to re-enter API keys.")
+				ui.PrintInfo("Use --verbose for more details.")
+
+				return
+			}
 		}
 
 		providerName := promptForProvider(cfg)
@@ -548,6 +563,43 @@ var setupCmd = &cobra.Command{
 			return
 		}
 	},
+}
+
+func init() {
+	setupCmd.Flags().BoolVar(&setupResetSecrets, "reset-secrets", false,
+		"Reset encrypted secrets by regenerating encryption key (requires re-entering API keys)")
+}
+
+// resetSecrets handles the --reset-secrets flag by removing old key and secrets files
+// and generating a fresh encryption key.
+func resetSecrets(configDir, secretsPath, keyPath string) error {
+	ui.PrintWarn("This will delete your current encryption key and encrypted secrets.")
+	ui.PrintInfo("You will need to re-enter all API keys.")
+	ui.PrintInfo("")
+
+	confirmed, err := ui.Confirm("Continue")
+	if err != nil || !confirmed {
+		return errors.New("operation cancelled by user")
+	}
+
+	if err := os.Remove(keyPath); err != nil && !os.IsNotExist(err) {
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to remove old key file", err)
+	}
+
+	if err := os.Remove(secretsPath); err != nil && !os.IsNotExist(err) {
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to remove old secrets file", err)
+	}
+
+	if err := crypto.EnsureKeyExists(getRootCtx(), configDir); err != nil {
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to generate new encryption key", err)
+	}
+
+	ui.PrintSuccess("Encryption key regenerated successfully")
+
+	return nil
 }
 
 func init() {
