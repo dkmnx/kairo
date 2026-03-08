@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--reset-secrets` flag for `kairo setup` to recover from corrupted encryption keys
+  - Safely removes old `age.key` and `secrets.age` files
+  - Regenerates fresh encryption key with user confirmation
+  - Provides clear recovery path instead of circular error messages
+
 ### Changed
 
 - Update Go version from 1.25.x to 1.26 across all workflows and dependencies
@@ -18,17 +25,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove deprecated `Config.Version` field from config struct and loader
 - Add `context.Context` support to config, cache, migration, and crypto operations for cancellation and timeout propagation
 - Improve cmd package test coverage
+- Update error messages in `cmd/root.go` and `cmd/setup.go` with accurate recovery instructions
 
 ### Removed
 
 - Audit logging feature and internal/audit package
 - Audit references from documentation files
+- Unused error variables for removed recovery/backup features:
+  - `ErrRecoveryPhraseTooLong`
+  - `ErrRecoveryPhraseTooShort`
+  - `ErrRecoveryPhraseInvalid`
+  - `ErrInvalidPathInBackup`
+- `KAIRO_METRICS_ENABLED` environment variable from documentation (feature removed in v2.0.0)
 
 ### Fixed
 
 - CI lint failures by adding `EncryptSecrets` to funlen linter exclusion list
 - Table formatting in architecture documentation
+- Documentation discrepancies: added missing `kairo default` command documentation
+- Removed references to missing `docs/best-practices.md` file
 - Obsolete references to deleted commands (config/switch/test) in documentation
+- Stale references to deprecated v1.x commands (`kairo recover`, `kairo backup`) in error messages and tests
 
 ## [2.0.0] - 2026-03-01
 
