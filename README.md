@@ -90,6 +90,7 @@ flowchart TB
 | -------------------------- | ------------------------------ |
 | `kairo setup`              | Interactive setup wizard       |
 | `kairo list`               | List configured providers      |
+| `kairo default [provider]` | Get or set default provider    |
 | `kairo delete <provider>`  | Delete provider                |
 | `kairo <provider> [args]`  | Execute with specific provider |
 | `kairo -- [args]`          | Execute with default provider  |

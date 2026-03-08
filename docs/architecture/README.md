@@ -8,6 +8,7 @@ Kairo is a Go CLI tool for managing Claude Code API providers with:
 
 - **Age (X25519) encryption** for secure API key storage
 - **Multi-provider support** for switching between providers
+- **Context support** for cancellation and timeout propagation in all operations
 
 ## System Architecture
 
@@ -93,7 +94,6 @@ kairo/
 │   ├── harness.go       # Harness management
 │   ├── update.go        # Update CLI
 │   ├── version.go       # Version info
-│   ├── completion.go    # Shell completion
 │   └── util.go          # Utility functions
 ├── internal/            # Business logic
 │   ├── config/          # Config loading & caching
@@ -181,14 +181,13 @@ providers:
 
 ## Provider Registry
 
-| Provider  | Base URL                   | Model           | API Key Required |
-| --------- | -------------------------- | --------------- | ---------------- |
-| anthropic | -                          | -               | No               |
-| zai       | api.z.ai/api/anthropic     | glm-4.7         | Yes              |
-| minimax   | api.minimax.io/anthropic   | MiniMax-M2.5    | Yes              |
-| kimi      | api.kimi.com/coding        | kimi-for-coding | Yes              |
-| deepseek  | api.deepseek.com/anthropic | deepseek-chat   | Yes              |
-| custom    | user-defined               | user-defined    | Yes              |
+| Provider | Base URL                   | Model           | API Key Required |
+| -------- | -------------------------- | --------------- | ---------------- |
+| zai      | api.z.ai/api/anthropic     | glm-4.7         | Yes              |
+| minimax  | api.minimax.io/anthropic   | MiniMax-M2.5    | Yes              |
+| deepseek | api.deepseek.com/anthropic | deepseek-chat   | Yes              |
+| kimi     | api.kimi.com/coding        | kimi-for-coding | Yes              |
+| custom   | user-defined               | user-defined    | Yes              |
 
 ## Error Handling
 
@@ -248,6 +247,7 @@ flowchart TB
 - Clear error messages with hints
 - Colored terminal output
 - Shell completion support
+- Context-aware operations with cancellation support
 
 ### 3. Maintainability
 
@@ -318,9 +318,9 @@ if runtime.GOOS == "windows" {
 }
 return filepath.Join(home, ".config", "kairo")
 
-// Cross-platform token passing (cmd/switch.go)
+// Cross-platform token passing (cmd/root.go)
 if isWindows {
-    // Generate .bat file with batch syntax
+    // Generate .ps1 file with PowerShell syntax
     scriptContent = "@echo off\r\n"
     // ...
 } else {
@@ -339,4 +339,4 @@ if runtime.GOOS == "windows" {
 }
 ```
 
-See also: [pkg/env](../pkg/README.md), [cmd/switch.go](../../cmd/switch.go)
+See also: [pkg/env](../pkg/README.md), [cmd/root.go](../../cmd/root.go), [internal/wrapper/wrapper.go](../../internal/wrapper/wrapper.go)
