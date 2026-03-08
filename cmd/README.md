@@ -9,11 +9,11 @@ CLI command implementations using the Cobra framework.
 | `root.go`          | Root command, provider execution, global flags |
 | `setup.go`         | Interactive setup and edit wizard              |
 | `list.go`          | List all configured providers                  |
+| `default.go`       | Get or set default provider                    |
 | `delete.go`        | Remove provider configurations                 |
 | `harness.go`       | Manage CLI harness (claude or qwen)            |
 | `update.go`        | Update to latest version                       |
 | `version.go`       | Display version information                    |
-| `completion.go`    | Shell completion support                       |
 | `util.go`          | Utility functions                              |
 
 ## Command Architecture
@@ -27,6 +27,7 @@ flowchart TB
 
     subgraph Configuration
         RootCmd --> Setup[setup]
+        RootCmd --> Default[default]
     end
 
     subgraph Provider Management
@@ -55,10 +56,11 @@ flowchart TB
 
 ### Provider Management
 
-| Command                   | Description                   |
-| ------------------------- | ----------------------------- |
-| `kairo list`              | List all configured providers |
-| `kairo delete <provider>` | Remove provider configuration |
+| Command                      | Description                          |
+| ---------------------------- | ------------------------------------ |
+| `kairo list`                 | List all configured providers        |
+| `kairo default [provider]`   | Get or set default provider          |
+| `kairo delete <provider>`    | Remove provider configuration        |
 
 ### Execution
 
