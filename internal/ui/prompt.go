@@ -14,7 +14,6 @@ import (
 	"golang.org/x/term"
 )
 
-// ErrUserCancelled is returned when the user cancels input (Ctrl+C or Ctrl+D)
 var ErrUserCancelled = errors.New("user cancelled input")
 
 const (
@@ -28,7 +27,6 @@ const (
 	Reset  = "\033[0m"
 )
 
-// ClearScreen clears the terminal screen using the appropriate command for the platform.
 func ClearScreen() {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
@@ -64,17 +62,14 @@ func PrintSection(msg string) {
 	fmt.Printf("\n%s=== %s ===%s\n", Bold, msg, Reset)
 }
 
-// PrintWhite prints a message in white (no color)
 func PrintWhite(msg string) {
 	fmt.Printf("%s%s%s\n", White, msg, Reset)
 }
 
-// PrintGray prints a message in gray
 func PrintGray(msg string) {
 	fmt.Printf("%s%s%s\n", Gray, msg, Reset)
 }
 
-// PrintDefault prints provider name with "(default)" indicator in gray
 func PrintDefault(msg string) {
 	fmt.Printf("%s%s %s(default)%s\n", White, msg, Gray, Reset)
 }
@@ -82,12 +77,10 @@ func PrintDefault(msg string) {
 func PromptSecret(prompt string) (string, error) {
 	fmt.Print(prompt)
 	fmt.Print(": ")
-	fd := int(os.Stdin.Fd())
-	password, err := term.ReadPassword(fd)
+	password, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 	if err != nil {
-		// Check if user cancelled (Ctrl+C or EOF)
-		if errors.Is(err, os.ErrClosed) || errors.Is(err, io.EOF) || isInterrupted(err) {
+		if isInterrupted(err) {
 			return "", ErrUserCancelled
 		}
 		return "", err
@@ -95,26 +88,20 @@ func PromptSecret(prompt string) (string, error) {
 	return string(password), nil
 }
 
-// isInterrupted checks if the error is from an interrupted read
 func isInterrupted(err error) bool {
 	if err == nil {
 		return false
 	}
-	return errors.Is(err, os.ErrClosed) || strings.Contains(err.Error(), "interrupted")
+	return errors.Is(err, os.ErrClosed) || errors.Is(err, io.EOF) || strings.Contains(err.Error(), "interrupted")
 }
 
-// isEmptyInput checks if the error indicates empty input (user just pressed Enter)
-// For fmt.Scanln, this is when the input contains a newline with no tokens
 func isEmptyInput(err error) bool {
 	if err == nil {
 		return false
 	}
-	// Not EOF or interrupted, treat as empty input (e.g., unexpected newline from fmt.Scanln)
 	return !errors.Is(err, io.EOF) && !isInterrupted(err)
 }
 
-// Prompt prompts the user for input and returns the input string.
-// Returns empty string and ErrUserCancelled if input cannot be read.
 func Prompt(prompt string) (string, error) {
 	fmt.Print(prompt)
 	fmt.Print(": ")
@@ -122,7 +109,6 @@ func Prompt(prompt string) (string, error) {
 	_, err := fmt.Scanln(&input)
 	if err != nil {
 		if isEmptyInput(err) {
-			// User just pressed Enter, return empty string (not an error)
 			return "", nil
 		}
 		if errors.Is(err, io.EOF) || isInterrupted(err) {
@@ -133,8 +119,6 @@ func Prompt(prompt string) (string, error) {
 	return input, nil
 }
 
-// PromptWithDefault prompts the user for input with a default value.
-// Returns the default value and ErrUserCancelled if input cannot be read.
 func PromptWithDefault(prompt, defaultVal string) (string, error) {
 	if defaultVal != "" {
 		prompt = fmt.Sprintf("%s [%s]", prompt, defaultVal)
@@ -145,7 +129,6 @@ func PromptWithDefault(prompt, defaultVal string) (string, error) {
 	_, err := fmt.Scanln(&input)
 	if err != nil {
 		if isEmptyInput(err) {
-			// User just pressed Enter, return default value (not an error)
 			return defaultVal, nil
 		}
 		if errors.Is(err, io.EOF) || isInterrupted(err) {
@@ -196,15 +179,12 @@ func PrintBanner(version string, provider config.Provider) {
 	fmt.Printf("%s%s%s\n", Gray, banner, Reset)
 }
 
-// Confirm prompts the user for a yes/no confirmation.
-// Returns true if the user answers yes/y (case-insensitive), false otherwise.
 func Confirm(prompt string) (bool, error) {
 	fmt.Printf("%s [y/N]: ", prompt)
 	var input string
 	_, err := fmt.Scanln(&input)
 	if err != nil {
 		if isEmptyInput(err) {
-			// User just pressed Enter, default to No (false, not an error)
 			return false, nil
 		}
 		if errors.Is(err, io.EOF) || isInterrupted(err) {

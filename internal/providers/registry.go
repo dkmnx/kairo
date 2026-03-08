@@ -1,9 +1,5 @@
 package providers
 
-// BuiltInProviders contains the definitions of all supported built-in providers.
-// Note: EnvVars are hardcoded configuration values defined by Kairo maintainers,
-// not user input. They contain only timeout/model settings - no sensitive data.
-// Provider-specific secrets (API keys) are stored separately in encrypted form.
 var BuiltInProviders = map[string]ProviderDefinition{
 	"zai": {
 		Name:           "Z.AI",
@@ -50,7 +46,6 @@ var BuiltInProviders = map[string]ProviderDefinition{
 	},
 }
 
-// ProviderDefinition contains the configuration for a provider.
 type ProviderDefinition struct {
 	Name           string
 	BaseURL        string
@@ -59,27 +54,22 @@ type ProviderDefinition struct {
 	RequiresAPIKey bool
 }
 
-// IsBuiltInProvider returns true if the given name is a built-in provider.
 func IsBuiltInProvider(name string) bool {
 	_, ok := BuiltInProviders[name]
 	return ok
 }
 
-// GetBuiltInProvider returns the provider definition and whether it exists.
 func GetBuiltInProvider(name string) (ProviderDefinition, bool) {
 	def, ok := BuiltInProviders[name]
 	return def, ok
 }
 
-// providerOrder defines the display order of providers in setup wizard.
 var providerOrder = []string{"zai", "minimax", "deepseek", "kimi"}
 
-// GetProviderList returns a list of all built-in provider names in display order.
 func GetProviderList() []string {
 	return providerOrder
 }
 
-// RequiresAPIKey returns true if the provider requires an API key to configure.
 func RequiresAPIKey(name string) bool {
 	def, ok := BuiltInProviders[name]
 	if !ok {

@@ -9,24 +9,12 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
-// Validation limits for provider and model names.
 const (
-	// MaxProviderNameLength is the maximum length for custom provider names.
-	// Most provider names are short identifiers (e.g., "anthropic", "openai").
 	MaxProviderNameLength = 50
-
-	// MaxModelNameLength is the maximum length for model names.
-	// Most LLM model names are reasonable length (e.g., "claude-3-opus-20240229").
-	MaxModelNameLength = 100
+	MaxModelNameLength    = 100
 )
 
-// validateCrossProviderConfig validates configuration across all providers to detect conflicts.
-//
-// This function checks for environment variable collisions where multiple providers
-// attempt to set the same environment variable with different values. Collisions
-// with identical values are allowed (idempotent).
 func ValidateCrossProviderConfig(cfg *config.Config) error {
-	// Build a map of env var names to their values and which providers set them
 	type envVarSource struct {
 		provider string
 		value    string
@@ -35,7 +23,6 @@ func ValidateCrossProviderConfig(cfg *config.Config) error {
 
 	for providerName, provider := range cfg.Providers {
 		for _, envVar := range provider.EnvVars {
-			// Parse env var to get key and value
 			parts := strings.SplitN(envVar, "=", 2)
 			if len(parts) != 2 {
 				continue
@@ -50,10 +37,8 @@ func ValidateCrossProviderConfig(cfg *config.Config) error {
 		}
 	}
 
-	// Check for collisions - env vars set by multiple providers with different values
 	for key, sources := range envVarMap {
 		if len(sources) > 1 {
-			// Check if all sources have the same value
 			firstValue := sources[0].value
 			allSame := true
 			for _, s := range sources {
@@ -74,21 +59,18 @@ func ValidateCrossProviderConfig(cfg *config.Config) error {
 	return nil
 }
 
-// ValidateProviderModel validates a model name against provider capabilities.
-// For built-in providers with default models, this ensures the model is reasonable.
-// Returns an error if the model name is invalid.
 func ValidateProviderModel(providerName, modelName string) error {
 	if modelName == "" {
-		return nil // Empty model is allowed (will use provider default)
+		return nil
 	}
 
 	def, ok := providers.GetBuiltInProvider(providerName)
 	if !ok {
-		return nil // Not a built-in provider, skip validation
+		return nil
 	}
 
 	if def.Model == "" {
-		return nil // Provider has no default model, skip validation
+		return nil
 	}
 
 	if err := validateModelName(modelName, providerName); err != nil {
@@ -98,7 +80,6 @@ func ValidateProviderModel(providerName, modelName string) error {
 	return nil
 }
 
-// validateModelName validates the model name length and characters.
 func validateModelName(modelName, providerName string) error {
 	if len(modelName) > MaxModelNameLength {
 		return kairoerrors.NewError(kairoerrors.ValidationError,
@@ -120,7 +101,6 @@ func validateModelName(modelName, providerName string) error {
 	return nil
 }
 
-// isValidModelRune returns true if the rune is valid in a model name.
 func isValidModelRune(r rune) bool {
 	return (r >= 'a' && r <= 'z') ||
 		(r >= 'A' && r <= 'Z') ||

@@ -17,10 +17,6 @@ type KeyFormat struct {
 	Pattern   string
 }
 
-// providerKeyFormats defines minimum key lengths per provider.
-// These are baseline security defaults; providers may have additional format requirements.
-// Note: Hardcoded values are intentional - they ensure baseline security without requiring
-// external configuration that could be accidentally weakened.
 var providerKeyFormats = map[string]KeyFormat{
 	"zai":      {MinLength: 32},
 	"minimax":  {MinLength: 32},
@@ -29,16 +25,6 @@ var providerKeyFormats = map[string]KeyFormat{
 	"custom":   {MinLength: 20},
 }
 
-// These CIDR ranges are hardcoded to ensure constant integrity.
-// The mustParseCIDR function validates them at compile time and will panic
-// if any of these are invalid. This is acceptable since inputs are
-// constant literals under our control - it catches developer errors
-// immediately rather than silently failing at runtime.
-//
-// Design rationale: Hardcoding prevents runtime parsing errors from user input
-// and guarantees that blocked IP ranges are correctly defined. Using a panic
-// for validation is safe here because the ranges are constants that should
-// never change at runtime.
 var (
 	private10  = mustParseCIDR("10.0.0.0/8")
 	private172 = mustParseCIDR("172.16.0.0/12")

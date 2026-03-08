@@ -10,16 +10,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config represents the application configuration.
 type Config struct {
 	DefaultProvider string              `yaml:"default_provider"`
 	Providers       map[string]Provider `yaml:"providers"`
 	DefaultModels   map[string]string   `yaml:"default_models"`
-	// DefaultHarness specifies the default CLI harness to use (claude or qwen).
-	DefaultHarness string `yaml:"default_harness,omitempty"`
+	DefaultHarness  string              `yaml:"default_harness,omitempty"`
 }
 
-// Provider represents a configured API provider.
 type Provider struct {
 	Name    string   `yaml:"name"`
 	BaseURL string   `yaml:"base_url"`
@@ -27,28 +24,19 @@ type Provider struct {
 	EnvVars []string `yaml:"env_vars"`
 }
 
-// migrateConfigFile migrates an old config file to the new config.yaml format.
-// Returns true if migration was performed, false if not needed.
-// Preserves the original file permissions and only migrates if:
-// - Old config file exists
-// - New config.yaml does not exist
-// - Migration succeeds
 func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 	oldConfigPath := filepath.Join(configDir, "config")
 	newConfigPath := filepath.Join(configDir, "config.yaml")
 
-	// Check for context cancellation before I/O operations
 	select {
 	case <-ctx.Done():
 		return false, ctx.Err()
 	default:
 	}
 
-	// Check if old config exists
 	oldInfo, err := os.Stat(oldConfigPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// No old config to migrate
 			return false, nil
 		}
 
@@ -56,46 +44,38 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 			"failed to check old config file", err)
 	}
 
-	// Check for context cancellation before more I/O
 	select {
 	case <-ctx.Done():
 		return false, ctx.Err()
 	default:
 	}
 
-	// Check if new config already exists
 	if _, err := os.Stat(newConfigPath); err == nil {
-		// New config exists, don't overwrite - keep both for safety
 		return false, nil
 	} else if !os.IsNotExist(err) {
 		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to check new config file", err)
 	}
 
-	// Read the old config file to verify it's valid YAML before migrating
 	data, err := os.ReadFile(oldConfigPath)
 	if err != nil {
 		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to read old config file", err)
 	}
 
-	// Verify it's valid YAML
 	var tempCfg Config
 	if err := yaml.Unmarshal(data, &tempCfg); err != nil {
 		return false, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"old config file is not valid YAML, cannot migrate", err)
 	}
 
-	// Write to new location with same permissions
 	if err := os.WriteFile(newConfigPath, data, oldInfo.Mode()); err != nil {
 		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to write migrated config file", err)
 	}
 
-	// Rename old file to .backup instead of deleting
 	backupPath := oldConfigPath + ".backup"
 	if err := os.Rename(oldConfigPath, backupPath); err != nil {
-		// If rename fails, try to remove the new file and report error
 		os.Remove(newConfigPath)
 
 		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
@@ -105,21 +85,15 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 	return true, nil
 }
 
-// LoadConfig reads and parses the configuration file from the specified directory.
-// Returns ErrConfigNotFound if the file doesn't exist.
-// Automatically migrates old "config" file to "config.yaml" if needed.
-// The context can be used to cancel the operation or set timeouts.
 func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	configPath := filepath.Join(configDir, "config.yaml")
 
-	// Check for context cancellation before I/O operations
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
 	}
 
-	// Attempt migration if old config exists
 	_, migrateErr := migrateConfigFile(ctx, configDir)
 	if migrateErr != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
@@ -129,7 +103,6 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 			WithContext("hint", "ensure you have write permissions in the config directory")
 	}
 
-	// Check for context cancellation before reading config
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -149,7 +122,7 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 
 	var cfg Config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(false) // Allow deprecated 'version' field for backward compatibility
+	decoder.KnownFields(false)
 	if err := decoder.Decode(&cfg); err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"failed to parse configuration file (invalid YAML)", err).
@@ -168,10 +141,7 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	return &cfg, nil
 }
 
-// SaveConfig writes the configuration to the specified directory.
-// The context can be used to cancel the operation or set timeouts.
 func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
-	// Check for context cancellation before I/O operations
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
