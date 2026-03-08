@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update goreleaser reference from v1.26.0 to v2 in justfile
 - Reduce linter exclusions and refactor code to fix complexity issues
 - Remove deprecated `Config.Version` field from config struct and loader
+- Add `context.Context` support to config, cache, migration, and crypto operations for cancellation and timeout propagation
 - Improve cmd package test coverage
 
 ### Removed
