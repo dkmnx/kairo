@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.0] - 2026-03-08
 
 ### Added
 
@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update Go version from 1.25.x to 1.26 across all workflows and dependencies
 - Update golangci-lint from v1.62.0 to v1.64.8
 - Update actions/checkout from v4 to v5 across all GitHub Actions workflows
-- Update cosign from v2.5.2 to v3.6.0 in release workflow
+- Update cosign from v2.5.2 to v3.0.5 in release workflow
 - Update goreleaser reference from v1.26.0 to v2 in justfile
 - Reduce linter exclusions and refactor code to fix complexity issues
 - Remove deprecated `Config.Version` field from config struct and loader
@@ -1036,6 +1036,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[2.1.0]: https://github.com/dkmnx/kairo/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/dkmnx/kairo/compare/v1.10.1...v2.0.0
 [1.10.1]: https://github.com/dkmnx/kairo/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/dkmnx/kairo/compare/v1.9.0...v1.10.0
