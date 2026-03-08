@@ -386,7 +386,8 @@ func apiKeyEnvVarName(providerName string) string {
 
 func handleSecretsError(err error) {
 	ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
-	ui.PrintInfo("Your encryption key may be corrupted. Run 'kairo setup' to reconfigure your providers.")
+	ui.PrintInfo("Restore 'age.key' and 'secrets.age' from backup,")
+	ui.PrintInfo("or remove both files and run 'kairo setup --reset-secrets' to re-enter API keys.")
 	ui.PrintInfo("Use --verbose for more details.")
 }
 
