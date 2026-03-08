@@ -261,8 +261,8 @@ DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 	}
 }
 
-// TestFullWorkflowRecoveryPhrase tests recovery phrase generation and storage.
-func TestFullWorkflowRecoveryPhrase(t *testing.T) {
+// TestFullWorkflowKeyPersistence tests key file persistence.
+func TestFullWorkflowKeyPersistence(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Setup initial config
@@ -281,7 +281,7 @@ func TestFullWorkflowRecoveryPhrase(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	// Read the key for recovery
+	// Read the key to verify persistence
 	keyData, err := os.ReadFile(keyPath)
 	if err != nil {
 		t.Fatalf("failed to read key: %v", err)

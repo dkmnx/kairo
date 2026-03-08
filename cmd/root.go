@@ -1,7 +1,7 @@
 // Package cmd implements the Kairo CLI application using the Cobra framework.
 //
 // Architecture:
-//   - Commands are defined in individual files (root.go, setup.go, switch.go, etc.)
+//   - Commands are defined in individual files (root.go, setup.go, default.go, etc.)
 //   - Global state (configDir, verbose) is managed via getter/setter functions
 //   - Command execution is orchestrated by rootCmd.Execute()
 //
@@ -386,7 +386,7 @@ func apiKeyEnvVarName(providerName string) string {
 
 func handleSecretsError(err error) {
 	ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
-	ui.PrintInfo("Your encryption key may be corrupted. Try 'kairo rotate' to fix.")
+	ui.PrintInfo("Your encryption key may be corrupted. Run 'kairo setup' to reconfigure your providers.")
 	ui.PrintInfo("Use --verbose for more details.")
 }
 

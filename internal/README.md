@@ -34,11 +34,11 @@ flowchart TB
 
 Configuration loading and saving with YAML support.
 
-| Function             | Purpose                    |
-| -------------------- | -------------------------- |
-| `LoadConfig()`       | Load YAML configuration    |
-| `SaveConfig()`       | Save YAML configuration    |
-| `ParseSecrets()`     | Parse secrets file         |
+| Function         | Purpose                 |
+| ---------------- | ----------------------- |
+| `LoadConfig()`   | Load YAML configuration |
+| `SaveConfig()`   | Save YAML configuration |
+| `ParseSecrets()` | Parse secrets file      |
 
 **Key Types:**
 
@@ -62,11 +62,11 @@ providers:
 
 Age (X25519) encryption for secrets management.
 
-| Function                | Purpose                       |
-| ----------------------- | ----------------------------- |
-| `EnsureKeyExists()`     | Generate key if missing       |
-| `EncryptSecrets()`      | Encrypt API keys to file      |
-| `DecryptSecrets()`      | Decrypt secrets from file     |
+| Function            | Purpose                   |
+| ------------------- | ------------------------- |
+| `EnsureKeyExists()` | Generate key if missing   |
+| `EncryptSecrets()`  | Encrypt API keys to file  |
+| `DecryptSecrets()`  | Decrypt secrets from file |
 
 **Security Model:**
 
@@ -87,23 +87,22 @@ Age (X25519) encryption for secrets management.
 
 Built-in provider definitions and registry.
 
-| Function                  | Purpose                         |
-| ------------------------- | ------------------------------- |
-| `GetBuiltInProvider()`    | Get provider definition         |
-| `IsBuiltInProvider()`     | Check if provider exists        |
-| `GetProviderList()`       | List all built-in providers     |
-| `RequiresAPIKey()`        | Check if API key required       |
+| Function               | Purpose                     |
+| ---------------------- | --------------------------- |
+| `GetBuiltInProvider()` | Get provider definition     |
+| `IsBuiltInProvider()`  | Check if provider exists    |
+| `GetProviderList()`    | List all built-in providers |
+| `RequiresAPIKey()`     | Check if API key required   |
 
 **Built-in Providers:**
 
-| Provider    | Base URL                       | Model             | API Key   |
-| ----------- | ------------------------------ | ----------------- | --------- |
-| anthropic   | -                              | -                 | No        |
-| zai         | api.z.ai/api/anthropic         | glm-4.7           | Yes       |
-| minimax     | api.minimax.io/anthropic       | MiniMax-M2.5      | Yes       |
-| kimi        | api.kimi.com/coding            | kimi-for-coding   | Yes       |
-| deepseek    | api.deepseek.com/anthropic     | deepseek-chat     | Yes       |
-| custom      | user-defined                   | user-defined      | Yes       |
+| Provider | Base URL                   | Model           | API Key |
+| -------- | -------------------------- | --------------- | ------- |
+| zai      | api.z.ai/api/anthropic     | glm-4.7         | Yes     |
+| minimax  | api.minimax.io/anthropic   | MiniMax-M2.5    | Yes     |
+| deepseek | api.deepseek.com/anthropic | deepseek-chat   | Yes     |
+| kimi     | api.kimi.com/coding        | kimi-for-coding | Yes     |
+| custom   | user-defined               | user-defined    | Yes     |
 
 ### Security: Wrapper Scripts
 
@@ -121,13 +120,13 @@ See: [docs/architecture/wrapper-scripts.md](../architecture/wrapper-scripts.md)
 
 Input validation for API keys, URLs, and provider names.
 
-| Function                        | Purpose                                      |
-| ------------------------------- | -------------------------------------------- |
-| `ValidateAPIKey()`              | Validate API key format                      |
-| `ValidateURL()`                 | Validate HTTPS URL                           |
-| `ValidateCustomName()`          | Validate custom provider name                |
-| `validateCrossProviderConfig()` | Detect environment variable collisions       |
-| `validateProviderModel()`       | Validate model names                         |
+| Function                        | Purpose                                |
+| ------------------------------- | -------------------------------------- |
+| `ValidateAPIKey()`              | Validate API key format                |
+| `ValidateURL()`                 | Validate HTTPS URL                     |
+| `ValidateCustomName()`          | Validate custom provider name          |
+| `validateCrossProviderConfig()` | Detect environment variable collisions |
+| `validateProviderModel()`       | Validate model names                   |
 
 **Validation Rules:**
 
@@ -145,15 +144,15 @@ Input validation for API keys, URLs, and provider names.
 
 Terminal UI utilities with colored formatting.
 
-| Function                | Purpose                           |
-| ----------------------- | --------------------------------- |
-| `PrintHeader()`         | Section header                    |
-| `PrintSuccess()`        | Green success message             |
-| `PrintWarn()`           | Yellow warning message            |
-| `PrintError()`          | Red error message                 |
-| `PrintInfo()`           | Gray info message                 |
-| `PromptSecret()`        | Password-style input              |
-| `PromptWithDefault()`   | Input with default value          |
+| Function              | Purpose                  |
+| --------------------- | ------------------------ |
+| `PrintHeader()`       | Section header           |
+| `PrintSuccess()`      | Green success message    |
+| `PrintWarn()`         | Yellow warning message   |
+| `PrintError()`        | Red error message        |
+| `PrintInfo()`         | Gray info message        |
+| `PromptSecret()`      | Password-style input     |
+| `PromptWithDefault()` | Input with default value |
 
 **Colors:**
 
@@ -197,7 +196,7 @@ var BuiltInProviders = map[string]ProviderDefinition{
 ```
 
 1. **Add validation (if needed):**
-Update `internal/validate/api_key.go` for provider-specific validation.
+   Update `internal/validate/api_key.go` for provider-specific validation.
 
 2. **Test:**
 
@@ -254,17 +253,14 @@ flowchart LR
 
 ## Dependencies
 
-| Package                          | Purpose                    |
-| -------------------------------- | -------------------------- |
-| `filippo.io/age`                 | X25519 encryption          |
-| `gopkg.in/yaml.v3`               | YAML parsing               |
-| `github.com/Masterminds/semver`  | Version comparison         |
+| Package                         | Purpose            |
+| ------------------------------- | ------------------ |
+| `filippo.io/age`                | X25519 encryption  |
+| `gopkg.in/yaml.v3`              | YAML parsing       |
+| `github.com/Masterminds/semver` | Version comparison |
 
 ## Additional Documentation
 
-- **[Best Practices Guide](../../docs/best-practices.md)** - Production deployment
-  and operational best practices for enterprise environments
 - **[Troubleshooting Guide](../../docs/troubleshooting/README.md)** - Common issues
   and solutions
-- **[Advanced Configuration](../../docs/guides/advanced-configuration.md)** -
-  Complex multi-provider scenarios
+- **[User Guide](../../docs/guides/user-guide.md)** - Usage and configuration guide

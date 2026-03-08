@@ -112,7 +112,7 @@ func TestCustomProviderConfigPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Test config persistence without key rotation
+	// Test config persistence without rotation
 	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
@@ -127,9 +127,9 @@ func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
 
-// TestE2ESetupToSwitchWorkflow tests the complete end-to-end workflow
-// from initial setup through provider switching.
-func TestE2ESetupToSwitchWorkflow(t *testing.T) {
+// TestE2ECompleteWorkflow tests the complete end-to-end workflow
+// from initial setup through provider execution.
+func TestE2ECompleteWorkflow(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Set up mock functions for testing
@@ -224,15 +224,15 @@ func TestE2ESetupToSwitchWorkflow(t *testing.T) {
 		t.Error("secrets should contain the API key")
 	}
 
-	// Test: Verify switch workflow can access both providers
-	// (In real workflow, running 'kairo zai' would switch to zai provider)
+	// Test: Verify both providers are configured
+	// (In real workflow, running 'kairo zai' would execute with zai provider)
 	for _, provider := range []string{"anthropic", "zai"} {
 		if _, exists := loadedCfg.Providers[provider]; !exists {
 			t.Errorf("Provider %q should be configured", provider)
 		}
 	}
 
-	// Test: Default provider switching
+	// Test: Default provider change
 	cfg.DefaultProvider = "zai"
 	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)

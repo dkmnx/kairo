@@ -152,8 +152,7 @@ func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, e
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
 			WithContext("key_path", keyPath).
-			WithContext("hint", "If your key is lost, use 'kairo recover restore <phrase>' "+
-				"if you have a recovery phrase, or 'kairo backup restore <backup-file>' if you have a backup")
+			WithContext("hint", "Ensure your encryption key file exists and is valid")
 	}
 
 	file, err := os.Open(secretsPath)
@@ -169,8 +168,7 @@ func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, e
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets file", err).
 			WithContext("path", secretsPath).
-			WithContext("hint", "Ensure your encryption key matches the one used for encryption. "+
-				"Try 'kairo recover restore' if you have a recovery phrase, or 'kairo backup restore' if you have a backup.")
+			WithContext("hint", "Ensure your encryption key matches the one used for encryption")
 	}
 
 	var buf bytes.Buffer
@@ -218,8 +216,7 @@ func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) (*Sec
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
 			WithContext("key_path", keyPath).
-			WithContext("hint", "If your key is lost, use 'kairo recover restore <phrase>' "+
-				"if you have a recovery phrase, or 'kairo backup restore <backup-file>' if you have a backup")
+			WithContext("hint", "Ensure your encryption key file exists and is valid")
 	}
 
 	file, err := os.Open(secretsPath)
@@ -235,8 +232,7 @@ func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) (*Sec
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets file", err).
 			WithContext("path", secretsPath).
-			WithContext("hint", "Ensure your encryption key matches the one used for encryption. "+
-				"Try 'kairo recover restore' if you have a recovery phrase, or 'kairo backup restore' if you have a backup.")
+			WithContext("hint", "Ensure your encryption key matches the one used for encryption")
 	}
 
 	var buf bytes.Buffer

@@ -23,19 +23,11 @@ var ErrProviderModelTooLong = errors.New("provider model name is too long")
 
 var ErrProviderModelInvalidChars = errors.New("provider model name contains invalid characters")
 
-var ErrRecoveryPhraseTooLong = errors.New("recovery phrase exceeds maximum length")
-
-var ErrRecoveryPhraseTooShort = errors.New("recovery phrase too short")
-
-var ErrRecoveryPhraseInvalid = errors.New("recovery phrase is invalid or contains typos")
-
 var ErrEmptyToken = errors.New("token cannot be empty")
 
 var ErrEmptyTokenPath = errors.New("token path cannot be empty")
 
 var ErrEmptyCLIPath = errors.New("cli path cannot be empty")
-
-var ErrInvalidPathInBackup = errors.New("invalid path in backup (may be path traversal attempt)")
 
 var ErrEnvVarCollision = errors.New("environment variable collision detected")
 
