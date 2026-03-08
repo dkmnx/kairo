@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/validate"
 )
@@ -306,6 +309,104 @@ func FuzzValidateCustomProviderName(f *testing.F) {
 		// Verify successful validation returns the original name
 		if err == nil && result != name {
 			t.Errorf("validateCustomProviderName() should return original name on success, got %q want %q", result, name)
+		}
+	})
+}
+
+func TestSaveProviderConfiguration(t *testing.T) {
+	t.Run("saves new provider and becomes default", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Generate key first
+		if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
+			t.Fatalf("EnsureKeyExists() error = %v", err)
+		}
+
+		cfg := &config.Config{
+			Providers: make(map[string]config.Provider),
+		}
+
+		secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
+		keyPath := filepath.Join(tmpDir, config.KeyFileName)
+
+		params := SaveProviderParams{
+			ConfigDir:    tmpDir,
+			Cfg:          cfg,
+			ProviderName: "testprovider",
+			Provider: config.Provider{
+				Name:    "Test Provider",
+				BaseURL: "https://test.com",
+				Model:   "test-model",
+			},
+			APIKey:      "test-api-key",
+			Secrets:     make(map[string]string),
+			SecretsPath: secretsPath,
+			KeyPath:     keyPath,
+			IsEdit:      false,
+		}
+
+		err := saveProviderConfiguration(params)
+		if err != nil {
+			t.Fatalf("saveProviderConfiguration() error = %v", err)
+		}
+
+		// Verify provider was saved
+		if cfg.DefaultProvider != "testprovider" {
+			t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "testprovider")
+		}
+
+		// Verify secrets were encrypted
+		loadedSecrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatalf("LoadAndDecryptSecrets() error = %v", err)
+		}
+		if loadedSecrets["TESTPROVIDER_API_KEY"] != "test-api-key" {
+			t.Errorf("Loaded API key = %q, want %q", loadedSecrets["TESTPROVIDER_API_KEY"], "test-api-key")
+		}
+	})
+
+	t.Run("saves provider without becoming default when default exists", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Generate key first
+		if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
+			t.Fatalf("EnsureKeyExists() error = %v", err)
+		}
+
+		cfg := &config.Config{
+			DefaultProvider: "existing",
+			Providers: map[string]config.Provider{
+				"existing": {Name: "Existing Provider"},
+			},
+		}
+
+		secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
+		keyPath := filepath.Join(tmpDir, config.KeyFileName)
+
+		params := SaveProviderParams{
+			ConfigDir:    tmpDir,
+			Cfg:          cfg,
+			ProviderName: "newprovider",
+			Provider: config.Provider{
+				Name:    "New Provider",
+				BaseURL: "https://new.com",
+				Model:   "new-model",
+			},
+			APIKey:      "new-api-key",
+			Secrets:     make(map[string]string),
+			SecretsPath: secretsPath,
+			KeyPath:     keyPath,
+			IsEdit:      false,
+		}
+
+		err := saveProviderConfiguration(params)
+		if err != nil {
+			t.Fatalf("saveProviderConfiguration() error = %v", err)
+		}
+
+		// Verify default was not changed
+		if cfg.DefaultProvider != "existing" {
+			t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "existing")
 		}
 	})
 }
