@@ -1,4 +1,4 @@
-package env
+package config
 
 import (
 	"os"
@@ -63,9 +63,6 @@ func TestGetConfigDirEmptyOverride(t *testing.T) {
 }
 
 func TestEnv_ConcurrentAccess(t *testing.T) {
-	// This test verifies that concurrent access to configDir is safe.
-	// Without proper synchronization (sync.RWMutex), -race would detect a data race.
-
 	t.Run("concurrent GetConfigDir calls are safe", func(t *testing.T) {
 		original := GetConfigDir()
 		defer SetConfigDir(original)
@@ -73,7 +70,6 @@ func TestEnv_ConcurrentAccess(t *testing.T) {
 		tmpDir := t.TempDir()
 		SetConfigDir(tmpDir)
 
-		// Simulate concurrent reads
 		done := make(chan bool)
 		for i := 0; i < 10; i++ {
 			go func() {
@@ -95,7 +91,6 @@ func TestEnv_ConcurrentAccess(t *testing.T) {
 
 		done := make(chan bool)
 
-		// Concurrent reads
 		for i := 0; i < 10; i++ {
 			go func() {
 				_ = GetConfigDir()
@@ -103,7 +98,6 @@ func TestEnv_ConcurrentAccess(t *testing.T) {
 			}()
 		}
 
-		// Concurrent writes
 		for i := 0; i < 5; i++ {
 			go func(n int) {
 				SetConfigDir(t.TempDir())
