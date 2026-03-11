@@ -87,8 +87,9 @@ const (
 	envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
 	envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
 
-	// windowsGOOS is the runtime.GOOS value for Windows platforms.
 	windowsGOOS = "windows"
+
+	configCacheTTL = 5 * time.Minute
 )
 
 var (
@@ -205,8 +206,7 @@ func Execute() error {
 }
 
 func init() {
-	// Initialize cache with 5 minute TTL
-	configCache = config.NewConfigCache(5 * time.Minute)
+	configCache = config.NewConfigCache(configCacheTTL)
 
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")

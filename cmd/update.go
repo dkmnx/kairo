@@ -22,6 +22,8 @@ import (
 const defaultUpdateURL = "https://api.github.com/repos/dkmnx/kairo/releases/latest"
 const requestTimeout = 10 * time.Second
 
+var httpClient *http.Client = http.DefaultClient
+
 type release struct {
 	TagName string `json:"tag_name"`
 	HTMLURL string `json:"html_url"`
@@ -64,7 +66,7 @@ func getLatestRelease() (*release, error) {
 
 	req.Header.Set("User-Agent", "kairo-cli")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
 			"failed to fetch release", err)
@@ -129,7 +131,7 @@ func downloadToTempFile(url string) (string, error) {
 			"failed to create download request", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
 			"failed to download", err)
