@@ -36,7 +36,6 @@ import (
 	"github.com/dkmnx/kairo/internal/ui"
 	kairoversion "github.com/dkmnx/kairo/internal/version"
 	"github.com/dkmnx/kairo/internal/wrapper"
-	"github.com/dkmnx/kairo/pkg/env"
 	"github.com/spf13/cobra"
 )
 
@@ -77,7 +76,7 @@ func getConfigDir() string {
 		return configDir
 	}
 
-	return env.GetConfigDir()
+	return config.GetConfigDir()
 }
 
 const (
