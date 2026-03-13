@@ -100,14 +100,15 @@ const (
 var (
 	harnessFlag string
 	// rootCtx is the root context for command execution
-	rootCtx context.Context
+	rootCtx     context.Context
+	rootCtxOnce sync.Once
 )
 
-// getRootCtx returns the root context, initializing it if needed
+// getRootCtx returns the root context, initializing it thread-safely on first call.
 func getRootCtx() context.Context {
-	if rootCtx == nil {
+	rootCtxOnce.Do(func() {
 		rootCtx = context.Background()
-	}
+	})
 
 	return rootCtx
 }

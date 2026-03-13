@@ -15,6 +15,34 @@ type KeyFormat struct {
 	MinLength int
 	Prefix    string
 	Pattern   string
+	compiled  *regexp.Regexp
+}
+
+// compilePattern compiles the regex pattern if not already compiled.
+func (kf *KeyFormat) compilePattern() error {
+	if kf.Pattern == "" {
+		return nil
+	}
+	if kf.compiled != nil {
+		return nil
+	}
+	compiled, err := regexp.Compile(kf.Pattern)
+	if err != nil {
+		return err
+	}
+	kf.compiled = compiled
+	return nil
+}
+
+// matchesPattern checks if the key matches the compiled pattern.
+func (kf *KeyFormat) matchesPattern(key string) (bool, error) {
+	if kf.Pattern == "" {
+		return true, nil
+	}
+	if err := kf.compilePattern(); err != nil {
+		return false, err
+	}
+	return kf.compiled.MatchString(key), nil
 }
 
 var providerKeyFormats = map[string]KeyFormat{
@@ -69,7 +97,7 @@ func ValidateAPIKey(key string, providerName string) error {
 	}
 
 	if format.Pattern != "" {
-		matched, err := regexp.MatchString(format.Pattern, key)
+		matched, err := format.matchesPattern(key)
 		if err != nil || !matched {
 			return kairoerrors.NewError(kairoerrors.ValidationError,
 				fmt.Sprintf("%s: API key format is invalid", providerName))

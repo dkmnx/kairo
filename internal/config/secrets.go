@@ -71,7 +71,7 @@ func ParseSecrets(secrets string) map[string]string {
 		if len(parts) == 2 {
 			key, value := parts[0], parts[1]
 			if key == "" || value == "" || strings.Contains(key, "\n") || strings.Contains(value, "\n") {
-				log.Printf("Warning: skipping malformed secret entry")
+				log.Printf("Warning: skipping malformed secret entry for key: %q", key)
 
 				continue
 			}
