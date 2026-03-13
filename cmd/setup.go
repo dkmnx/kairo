@@ -83,6 +83,8 @@ func addAndSaveProvider(
 			"saving config", err)
 	}
 
+	configCache.Invalidate(configDir)
+
 	return nil
 }
 
