@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	kairoversion "github.com/dkmnx/kairo/internal/version"
@@ -76,7 +77,11 @@ func getConfigDir() string {
 		return configDir
 	}
 
-	return config.GetConfigDir()
+	dir, err := config.GetConfigDir()
+	if err != nil {
+		return ""
+	}
+	return dir
 }
 
 const (
@@ -423,7 +428,8 @@ type BuildWrapperCommandParams struct {
 func runHarnessWithWrapper(params HarnessWrapperParams) error {
 	harnessPath, err := lookPath(params.HarnessBinary)
 	if err != nil {
-		return fmt.Errorf("'%s' command not found in PATH", params.HarnessBinary)
+		return kairoerrors.RuntimeErr(
+			fmt.Sprintf("'%s' command not found in PATH", params.HarnessBinary), nil)
 	}
 
 	wrapperCfg := wrapper.ScriptConfig{

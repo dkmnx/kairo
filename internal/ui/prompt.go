@@ -10,11 +10,10 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 	"golang.org/x/term"
 )
-
-var ErrUserCancelled = errors.New("user cancelled input")
 
 const (
 	Green  = "\033[0;32m"
@@ -81,7 +80,7 @@ func PromptSecret(prompt string) (string, error) {
 	fmt.Println()
 	if err != nil {
 		if isInterrupted(err) {
-			return "", ErrUserCancelled
+			return "", kairoerrors.ErrUserCancelled
 		}
 		return "", err
 	}
@@ -112,7 +111,7 @@ func Prompt(prompt string) (string, error) {
 			return "", nil
 		}
 		if errors.Is(err, io.EOF) || isInterrupted(err) {
-			return "", ErrUserCancelled
+			return "", kairoerrors.ErrUserCancelled
 		}
 		return "", err
 	}
@@ -132,7 +131,7 @@ func PromptWithDefault(prompt, defaultVal string) (string, error) {
 			return defaultVal, nil
 		}
 		if errors.Is(err, io.EOF) || isInterrupted(err) {
-			return defaultVal, ErrUserCancelled
+			return defaultVal, kairoerrors.ErrUserCancelled
 		}
 		return defaultVal, err
 	}
@@ -188,7 +187,7 @@ func Confirm(prompt string) (bool, error) {
 			return false, nil
 		}
 		if errors.Is(err, io.EOF) || isInterrupted(err) {
-			return false, ErrUserCancelled
+			return false, kairoerrors.ErrUserCancelled
 		}
 		return false, err
 	}

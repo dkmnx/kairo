@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 var (
@@ -12,18 +14,19 @@ var (
 	overriddenConfigDirMu sync.RWMutex
 )
 
-func GetConfigDir() string {
+func GetConfigDir() (string, error) {
 	overriddenConfigDirMu.RLock()
 	dir := overriddenConfigDir
 	overriddenConfigDirMu.RUnlock()
 
 	if dir != "" {
-		return dir
+		return dir, nil
 	}
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return ""
+		return "", kairoerrors.WrapError(kairoerrors.ConfigError,
+			"cannot determine home directory", err)
 	}
 
 	var defaultPath string
@@ -33,7 +36,7 @@ func GetConfigDir() string {
 		defaultPath = filepath.Join(home, ".config", "kairo")
 	}
 
-	return defaultPath
+	return defaultPath, nil
 }
 
 func SetConfigDir(dir string) {
