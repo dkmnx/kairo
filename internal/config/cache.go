@@ -4,7 +4,10 @@ import (
 	"context"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 type cachedConfig struct {
@@ -20,11 +23,13 @@ type CacheMetrics struct {
 }
 
 func (m *CacheMetrics) HitRate() float64 {
-	total := m.Hits + m.Misses
+	hits := atomic.LoadInt64(&m.Hits)
+	misses := atomic.LoadInt64(&m.Misses)
+	total := hits + misses
 	if total == 0 {
 		return 0
 	}
-	return float64(m.Hits) / float64(total)
+	return float64(hits) / float64(total)
 }
 
 type ConfigCache struct {
@@ -46,20 +51,20 @@ func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error
 	entry, exists := c.entries[configDir]
 	if exists && time.Since(entry.loadedAt) < c.ttl {
 		cfg := entry.config
-		c.metrics.Hits++
+		atomic.AddInt64(&c.metrics.Hits, 1)
 		c.mu.RUnlock()
 
 		return cfg, nil
 	}
 	c.mu.RUnlock()
 
-	c.mu.Lock()
-	c.metrics.Misses++
-	c.mu.Unlock()
+	atomic.AddInt64(&c.metrics.Misses, 1)
 
 	cfg, err := LoadConfig(ctx, configDir)
 	if err != nil {
-		return nil, err
+		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
+			"failed to load config from cache", err).
+			WithContext("config_dir", configDir)
 	}
 
 	c.mu.Lock()
@@ -76,7 +81,7 @@ func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error
 func (c *ConfigCache) Invalidate(configDir string) {
 	c.mu.Lock()
 	if _, exists := c.entries[configDir]; exists {
-		c.metrics.Evictions++
+		atomic.AddInt64(&c.metrics.Evictions, 1)
 	}
 	delete(c.entries, configDir)
 	c.mu.Unlock()
@@ -89,14 +94,16 @@ func (c *ConfigCache) Cleanup() {
 	now := time.Now()
 	for configDir, entry := range c.entries {
 		if now.Sub(entry.loadedAt) >= c.ttl {
-			c.metrics.Evictions++
+			atomic.AddInt64(&c.metrics.Evictions, 1)
 			delete(c.entries, configDir)
 		}
 	}
 }
 
 func (c *ConfigCache) GetMetrics() CacheMetrics {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.metrics
+	return CacheMetrics{
+		Hits:      atomic.LoadInt64(&c.metrics.Hits),
+		Misses:    atomic.LoadInt64(&c.metrics.Misses),
+		Evictions: atomic.LoadInt64(&c.metrics.Evictions),
+	}
 }
