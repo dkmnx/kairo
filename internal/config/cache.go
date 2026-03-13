@@ -29,6 +29,7 @@ func (m *CacheMetrics) HitRate() float64 {
 	if total == 0 {
 		return 0
 	}
+
 	return float64(hits) / float64(total)
 }
 

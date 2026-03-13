@@ -81,6 +81,7 @@ func getConfigDir() string {
 	if err != nil {
 		return ""
 	}
+
 	return dir
 }
 
@@ -515,7 +516,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 		Provider:      cfg.Provider,
 	}
 
-	if cfg.HarnessToUse == "qwen" {
+	if cfg.HarnessToUse == harnessQwen {
 		wrapperParams.CliArgs = append(
 			[]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model},
 			wrapperParams.CliArgs...,
@@ -541,7 +542,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 func executeWithoutAuth(cfg ExecutionConfig) {
 	cliArgs := cfg.HarnessArgs
 
-	if cfg.HarnessToUse == "qwen" {
+	if cfg.HarnessToUse == harnessQwen {
 		ui.PrintError("API key not found for provider")
 		ui.PrintInfo("Qwen Code requires API keys to be set in environment variables.")
 

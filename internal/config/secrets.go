@@ -18,6 +18,7 @@ func (s *SecretsMap) Get(key string) (string, bool) {
 	if !ok {
 		return "", false
 	}
+
 	return string(val), true
 }
 
@@ -57,6 +58,7 @@ func (s *SecretsMap) Clear() {
 
 func (s *SecretsMap) Close() error {
 	s.Clear()
+
 	return nil
 }
 
@@ -123,6 +125,7 @@ func FormatSecretsMap(secrets *SecretsMap) string {
 	var keys []string
 	secrets.Range(func(key, _ string) bool {
 		keys = append(keys, key)
+
 		return true
 	})
 	sort.Strings(keys)

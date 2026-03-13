@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -24,17 +23,6 @@ var execCommandContext = exec.CommandContext
 // exitProcess is the function used to terminate the process.
 // It can be replaced in tests to avoid actual exit calls.
 var exitProcess = os.Exit
-
-// contextCancelled returns true if the context has been cancelled.
-// Use this for early exit checks in I/O operations.
-func contextCancelled(ctx context.Context) bool {
-	select {
-	case <-ctx.Done():
-		return true
-	default:
-		return false
-	}
-}
 
 // parseIntOrZero parses a string to int, returning 0 on invalid input.
 func parseIntOrZero(input string) int {

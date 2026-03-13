@@ -31,6 +31,7 @@ func (kf *KeyFormat) compilePattern() error {
 		return err
 	}
 	kf.compiled = compiled
+
 	return nil
 }
 
@@ -42,6 +43,7 @@ func (kf *KeyFormat) matchesPattern(key string) (bool, error) {
 	if err := kf.compilePattern(); err != nil {
 		return false, err
 	}
+
 	return kf.compiled.MatchString(key), nil
 }
 
