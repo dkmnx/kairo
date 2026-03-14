@@ -6,7 +6,57 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/ui"
+	"github.com/spf13/cobra"
 )
+
+// requireConfigDir returns the config directory or prints an error and returns empty.
+// Use this when you need the config directory for reading.
+func requireConfigDir() string {
+	dir := getConfigDir()
+	if dir == "" {
+		ui.PrintError("Config directory not found")
+	}
+	return dir
+}
+
+// requireConfigDirWritable is like requireConfigDir but also ensures the directory exists.
+// Use this when you need to write to the config directory.
+func requireConfigDirWritable() string {
+	dir := requireConfigDir()
+	if dir == "" {
+		return ""
+	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		ui.PrintError("Error creating config directory: " + err.Error())
+		return ""
+	}
+	return dir
+}
+
+// loadConfigOrExit loads the config from the given directory.
+// It prints appropriate error messages and returns nil if config cannot be loaded.
+// Use when you need a config and want to exit early on error.
+func loadConfigOrExit(cmd *cobra.Command) *config.Config {
+	dir := requireConfigDir()
+	if dir == "" {
+		return nil
+	}
+
+	cfg, err := configCache.Get(getRootCtx(), dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			ui.PrintWarn("No providers configured")
+			ui.PrintInfo("Run 'kairo setup' to get started")
+			return nil
+		}
+		handleConfigError(cmd, err)
+		return nil
+	}
+	return cfg
+}
 
 // lookPath is the function used to search for executables in PATH.
 // It can be replaced in tests to avoid requiring actual executables.

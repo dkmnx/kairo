@@ -19,9 +19,8 @@ var deleteCmd = &cobra.Command{
 	Short: "Remove a provider configuration",
 	Long:  "Remove a provider from Kairo. If no provider is specified, shows an interactive list of configured providers.",
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := getConfigDir()
+		dir := requireConfigDir()
 		if dir == "" {
-			ui.PrintError("Config directory not found")
 			return
 		}
 
