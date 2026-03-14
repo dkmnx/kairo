@@ -47,11 +47,37 @@ func NewConfigCache(ttl time.Duration) *ConfigCache {
 	}
 }
 
+// deepCopyConfig creates a deep copy of a Config to prevent mutation of cached values.
+func deepCopyConfig(cfg *Config) *Config {
+	if cfg == nil {
+		return nil
+	}
+	providers := make(map[string]Provider, len(cfg.Providers))
+	for k, v := range cfg.Providers {
+		providers[k] = Provider{
+			Name:    v.Name,
+			BaseURL: v.BaseURL,
+			Model:   v.Model,
+			EnvVars: append([]string{}, v.EnvVars...),
+		}
+	}
+	defaultModels := make(map[string]string, len(cfg.DefaultModels))
+	for k, v := range cfg.DefaultModels {
+		defaultModels[k] = v
+	}
+	return &Config{
+		DefaultProvider: cfg.DefaultProvider,
+		Providers:       providers,
+		DefaultModels:   defaultModels,
+		DefaultHarness:  cfg.DefaultHarness,
+	}
+}
+
 func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error) {
 	c.mu.RLock()
 	entry, exists := c.entries[configDir]
 	if exists && time.Since(entry.loadedAt) < c.ttl {
-		cfg := entry.config
+		cfg := deepCopyConfig(entry.config)
 		atomic.AddInt64(&c.metrics.Hits, 1)
 		c.mu.RUnlock()
 
@@ -76,7 +102,7 @@ func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error
 	}
 	c.mu.Unlock()
 
-	return cfg, nil
+	return deepCopyConfig(cfg), nil
 }
 
 func (c *ConfigCache) Invalidate(configDir string) {
