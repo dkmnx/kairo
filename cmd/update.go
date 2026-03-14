@@ -110,7 +110,7 @@ func versionGreaterThan(current, latest string) bool {
 
 // isWindows checks if the given OS is Windows
 func isWindows(goos string) bool {
-	return goos == windowsGOOS
+	return goos == config.WindowsGOOS
 }
 
 // getInstallScriptURL returns the appropriate install script URL based on OS and version tag
@@ -146,7 +146,7 @@ func downloadToTempFile(url string) (string, error) {
 	}
 
 	ext := ".sh"
-	if runtime.GOOS == windowsGOOS {
+	if runtime.GOOS == config.WindowsGOOS {
 		ext = ".ps1"
 	}
 	tempFile, err := os.CreateTemp("", "kairo-install-*"+ext)
@@ -176,7 +176,7 @@ func downloadToTempFile(url string) (string, error) {
 
 // runInstallScript executes the downloaded install script
 func runInstallScript(scriptPath string) error {
-	if runtime.GOOS == windowsGOOS {
+	if runtime.GOOS == config.WindowsGOOS {
 		pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 		pwshCmd.Stdout = os.Stdout
 		pwshCmd.Stderr = os.Stderr
@@ -239,7 +239,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)`,
 
 		latest, err := getLatestRelease()
 		if err != nil {
-			cmd.Printf("Error checking for updates: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error checking for updates: %v", err))
 
 			return
 		}
@@ -256,7 +256,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)`,
 
 		confirmed, err := ui.Confirm("Do you want to proceed with installation?")
 		if err != nil {
-			cmd.Printf("Error reading input: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error reading input: %v", err))
 
 			return
 		}
@@ -270,7 +270,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)`,
 
 		tempFile, err := downloadToTempFile(installScriptURL)
 		if err != nil {
-			cmd.Printf("Error downloading install script: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error downloading install script: %v", err))
 
 			return
 		}
@@ -279,7 +279,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)`,
 		cmd.Printf("Running install script...\n\n")
 
 		if err := runInstallScript(tempFile); err != nil {
-			cmd.Printf("Error during installation: %v\n", err)
+			ui.PrintError(fmt.Sprintf("Error during installation: %v", err))
 
 			return
 		}

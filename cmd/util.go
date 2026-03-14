@@ -58,6 +58,13 @@ func loadConfigOrExit(cmd *cobra.Command) *config.Config {
 	return cfg
 }
 
+// printSecretsRecoveryHelp prints guidance for recovering from lost secrets.
+func printSecretsRecoveryHelp() {
+	ui.PrintInfo("Restore 'age.key' and 'secrets.age' from backup,")
+	ui.PrintInfo("or remove both files and run 'kairo setup --reset-secrets' to re-enter API keys.")
+	ui.PrintInfo("Use --verbose for more details.")
+}
+
 // lookPath is the function used to search for executables in PATH.
 // It can be replaced in tests to avoid requiring actual executables.
 var lookPath = exec.LookPath

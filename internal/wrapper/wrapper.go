@@ -8,11 +8,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
-)
-
-const (
-	windowsGOOS = "windows"
 )
 
 // CreateTempAuthDir creates a private temporary directory for storing auth files.
@@ -108,7 +105,7 @@ func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 		envVar = cfg.EnvVarName
 	}
 
-	isWindows := runtime.GOOS == windowsGOOS
+	isWindows := runtime.GOOS == config.WindowsGOOS
 
 	f, err := os.CreateTemp(cfg.AuthDir, "wrapper-")
 	if err != nil {

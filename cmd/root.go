@@ -93,8 +93,6 @@ const (
 	envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
 	envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
 
-	windowsGOOS = "windows"
-
 	configCacheTTL = 5 * time.Minute
 )
 
@@ -256,7 +254,7 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 	cmd.Println()
 
 	switch runtime.GOOS {
-	case windowsGOOS:
+	case config.WindowsGOOS:
 		cmd.Println("    irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex")
 	default: // linux, darwin (macOS)
 		cmd.Println("    curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh")
@@ -392,9 +390,7 @@ func apiKeyEnvVarName(providerName string) string {
 
 func handleSecretsError(err error) {
 	ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
-	ui.PrintInfo("Restore 'age.key' and 'secrets.age' from backup,")
-	ui.PrintInfo("or remove both files and run 'kairo setup --reset-secrets' to re-enter API keys.")
-	ui.PrintInfo("Use --verbose for more details.")
+	printSecretsRecoveryHelp()
 }
 
 type ExecutionConfig struct {
