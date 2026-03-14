@@ -9,7 +9,7 @@ import (
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
-const windowsGOOS = "windows"
+const WindowsGOOS = "windows"
 
 var (
 	overriddenConfigDir   string
@@ -32,7 +32,7 @@ func GetConfigDir() (string, error) {
 	}
 
 	var defaultPath string
-	if runtime.GOOS == windowsGOOS {
+	if runtime.GOOS == WindowsGOOS {
 		defaultPath = filepath.Join(home, "AppData", "Roaming", "kairo")
 	} else {
 		defaultPath = filepath.Join(home, ".config", "kairo")

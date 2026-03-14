@@ -535,9 +535,7 @@ var setupCmd = &cobra.Command{
 				secrets = make(map[string]string)
 			} else {
 				ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
-				ui.PrintInfo("Restore 'age.key' and 'secrets.age' from backup,")
-				ui.PrintInfo("or remove both files and run 'kairo setup --reset-secrets' to re-enter API keys.")
-				ui.PrintInfo("Use --verbose for more details.")
+				printSecretsRecoveryHelp()
 
 				return
 			}
