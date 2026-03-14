@@ -64,6 +64,8 @@ var defaultCmd = &cobra.Command{
 			return
 		}
 
+		configCache.Invalidate(dir)
+
 		ui.PrintSuccess(fmt.Sprintf("Default provider set to: %s", providerName))
 	},
 }

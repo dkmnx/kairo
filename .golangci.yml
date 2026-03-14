@@ -157,9 +157,6 @@ issues:
     - path: cmd/util\.go
       linters:
         - nlreturn
-    - path: pkg/env
-      linters:
-        - goconst
     - path: internal/ui/prompt\.go
       linters:
         - nlreturn

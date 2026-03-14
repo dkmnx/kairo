@@ -32,11 +32,11 @@ import (
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	kairoversion "github.com/dkmnx/kairo/internal/version"
 	"github.com/dkmnx/kairo/internal/wrapper"
-	"github.com/dkmnx/kairo/pkg/env"
 	"github.com/spf13/cobra"
 )
 
@@ -77,7 +77,12 @@ func getConfigDir() string {
 		return configDir
 	}
 
-	return env.GetConfigDir()
+	dir, err := config.GetConfigDir()
+	if err != nil {
+		return ""
+	}
+
+	return dir
 }
 
 const (
@@ -88,21 +93,23 @@ const (
 	envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
 	envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
 
-	// windowsGOOS is the runtime.GOOS value for Windows platforms.
 	windowsGOOS = "windows"
+
+	configCacheTTL = 5 * time.Minute
 )
 
 var (
 	harnessFlag string
 	// rootCtx is the root context for command execution
-	rootCtx context.Context
+	rootCtx     context.Context
+	rootCtxOnce sync.Once
 )
 
-// getRootCtx returns the root context, initializing it if needed
+// getRootCtx returns the root context, initializing it thread-safely on first call.
 func getRootCtx() context.Context {
-	if rootCtx == nil {
+	rootCtxOnce.Do(func() {
 		rootCtx = context.Background()
-	}
+	})
 
 	return rootCtx
 }
@@ -206,8 +213,7 @@ func Execute() error {
 }
 
 func init() {
-	// Initialize cache with 5 minute TTL
-	configCache = config.NewConfigCache(5 * time.Minute)
+	configCache = config.NewConfigCache(configCacheTTL)
 
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
@@ -424,7 +430,8 @@ type BuildWrapperCommandParams struct {
 func runHarnessWithWrapper(params HarnessWrapperParams) error {
 	harnessPath, err := lookPath(params.HarnessBinary)
 	if err != nil {
-		return fmt.Errorf("'%s' command not found in PATH", params.HarnessBinary)
+		return kairoerrors.RuntimeErr(
+			fmt.Sprintf("'%s' command not found in PATH", params.HarnessBinary), nil)
 	}
 
 	wrapperCfg := wrapper.ScriptConfig{
@@ -509,7 +516,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 		Provider:      cfg.Provider,
 	}
 
-	if cfg.HarnessToUse == "qwen" {
+	if cfg.HarnessToUse == harnessQwen {
 		wrapperParams.CliArgs = append(
 			[]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model},
 			wrapperParams.CliArgs...,
@@ -535,7 +542,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 func executeWithoutAuth(cfg ExecutionConfig) {
 	cliArgs := cfg.HarnessArgs
 
-	if cfg.HarnessToUse == "qwen" {
+	if cfg.HarnessToUse == harnessQwen {
 		ui.PrintError("API key not found for provider")
 		ui.PrintInfo("Qwen Code requires API keys to be set in environment variables.")
 

@@ -101,6 +101,8 @@ var deleteCmd = &cobra.Command{
 			return
 		}
 
+		configCache.Invalidate(dir)
+
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
 

@@ -12,6 +12,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	harnessClaude = "claude"
+	harnessQwen   = "qwen"
+)
+
+func isValidHarness(name string) bool {
+	return name == harnessClaude || name == harnessQwen
+}
+
 var harnessGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get current harness",
@@ -47,7 +56,7 @@ var harnessSetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		harnessName := strings.ToLower(args[0])
 
-		if harnessName != "claude" && harnessName != "qwen" {
+		if !isValidHarness(harnessName) {
 			ui.PrintError(fmt.Sprintf("Invalid harness: '%s'", args[0]))
 			ui.PrintInfo("Valid harnesses: claude, qwen")
 			return
@@ -82,6 +91,8 @@ var harnessSetCmd = &cobra.Command{
 			return
 		}
 
+		configCache.Invalidate(dir)
+
 		ui.PrintSuccess(fmt.Sprintf("Default harness set to: %s", harnessName))
 	},
 }
@@ -105,11 +116,11 @@ func getHarness(flagHarness, configHarness string) string {
 		harness = configHarness
 	}
 	if harness == "" {
-		return "claude"
+		return harnessClaude
 	}
-	if harness != "claude" && harness != "qwen" {
+	if !isValidHarness(harness) {
 		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", harness))
-		return "claude"
+		return harnessClaude
 	}
 	return harness
 }
@@ -117,11 +128,11 @@ func getHarness(flagHarness, configHarness string) string {
 // getHarnessBinary returns the CLI binary name for a given harness.
 func getHarnessBinary(harness string) string {
 	switch harness {
-	case "qwen":
-		return "qwen"
-	case "claude":
-		return "claude"
+	case harnessQwen:
+		return harnessQwen
+	case harnessClaude:
+		return harnessClaude
 	default:
-		return "claude"
+		return harnessClaude
 	}
 }
