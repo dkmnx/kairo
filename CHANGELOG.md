@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-03-14
+
+### Added
+
+- **SecretsMap type**: New secure map type for API key storage with memory safety
+  - Zeroes memory on delete/clear to prevent key remnants in memory
+  - Provides Get, Set, Delete, Range, Len, Clear, Close methods
+  - Added `ParseSecretsToSecureMap` and `FormatSecretsMap` functions
+- **Cache metrics**: Exposed cache hit/miss/eviction counts via `GetMetrics()`
+- **Secrets recovery helper**: New `printSecretsRecoveryHelp()` in cmd/util.go
+
+### Changed
+
+- **Config cache**: Return deep copies to prevent mutation of cached values
+- **API key validation**: Compile regex patterns once and cache for performance
+- **Error message format**: Standardized validation errors to use colon separator (e.g., "provider: message")
+- **pkg/env merge**: Consolidated pkg/env into internal/config for better encapsulation
+- **Go version**: Updated requirement from 1.25+ to 1.26+ in documentation
+
+### Fixed
+
+- **Race condition**: Fixed race condition in config cache with atomic metrics
+- **Config mutation**: Prevent accidental mutation of cached config values
+- **Cache error handling**: Improved error wrapping in cache Get method
+- **Documentation**: Fixed stale references in architecture documentation
+
 ## [2.1.0] - 2026-03-08
 
 ### Added
@@ -1036,6 +1062,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[2.1.1]: https://github.com/dkmnx/kairo/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/dkmnx/kairo/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/dkmnx/kairo/compare/v1.10.1...v2.0.0
 [1.10.1]: https://github.com/dkmnx/kairo/compare/v1.10.0...v1.10.1
