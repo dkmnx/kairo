@@ -16,9 +16,8 @@ var listCmd = &cobra.Command{
 	Short: "List configured providers",
 	Long:  "Display all configured providers and their status",
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := getConfigDir()
+		dir := requireConfigDir()
 		if dir == "" {
-			ui.PrintError("Config directory not found")
 			ui.PrintInfo("Run 'kairo setup' to configure providers")
 			return
 		}

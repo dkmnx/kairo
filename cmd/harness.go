@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -27,15 +26,8 @@ var harnessGetCmd = &cobra.Command{
 	Long:  "Get the currently configured default harness",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := getConfigDir()
-		if dir == "" {
-			ui.PrintError("Config directory not found")
-			return
-		}
-
-		cfg, err := configCache.Get(getRootCtx(), dir)
-		if err != nil {
-			handleConfigError(cmd, err)
+		cfg := loadConfigOrExit(cmd)
+		if cfg == nil {
 			return
 		}
 
@@ -62,14 +54,8 @@ var harnessSetCmd = &cobra.Command{
 			return
 		}
 
-		dir := getConfigDir()
+		dir := requireConfigDirWritable()
 		if dir == "" {
-			ui.PrintError("Config directory not found")
-			return
-		}
-
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			ui.PrintError(fmt.Sprintf("Error creating config directory: %v", err))
 			return
 		}
 
