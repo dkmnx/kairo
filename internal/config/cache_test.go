@@ -47,14 +47,17 @@ providers: {}
 		t.Errorf("DefaultProvider = %q, want %q", cfg1.DefaultProvider, "test")
 	}
 
-	// Second load - should return cached config
+	// Second load - should return cached config (deep copy to prevent mutation)
 	cfg2, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() second call error = %v", err)
 	}
-	// Should be the same pointer (cached)
-	if cfg1 != cfg2 {
-		t.Error("Second Get() should return cached config (same pointer)")
+	// Should be a different pointer (deep copy), but with equal values
+	if cfg1 == cfg2 {
+		t.Error("Second Get() should return a deep copy, not the same pointer")
+	}
+	if cfg1.DefaultProvider != cfg2.DefaultProvider {
+		t.Errorf("Second Get() DefaultProvider = %q, want %q", cfg2.DefaultProvider, cfg1.DefaultProvider)
 	}
 
 	// Invalidate
