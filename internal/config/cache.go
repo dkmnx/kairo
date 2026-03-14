@@ -65,6 +65,7 @@ func deepCopyConfig(cfg *Config) *Config {
 	for k, v := range cfg.DefaultModels {
 		defaultModels[k] = v
 	}
+
 	return &Config{
 		DefaultProvider: cfg.DefaultProvider,
 		Providers:       providers,
