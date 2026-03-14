@@ -37,7 +37,7 @@ func CreateTempAuthDir() (string, error) {
 func WriteTempTokenFile(authDir, token string) (string, error) {
 	if token == "" {
 		return "", kairoerrors.NewError(kairoerrors.ValidationError,
-			"token cannot be empty")
+			"wrapper: token cannot be empty")
 	}
 
 	f, err := os.CreateTemp(authDir, "token-")
@@ -96,11 +96,11 @@ type ScriptConfig struct {
 func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 	if cfg.TokenPath == "" {
 		return "", false, kairoerrors.NewError(kairoerrors.ValidationError,
-			"token path cannot be empty")
+			"wrapper: token path cannot be empty")
 	}
 	if cfg.CliPath == "" {
 		return "", false, kairoerrors.NewError(kairoerrors.ValidationError,
-			"cli path cannot be empty")
+			"wrapper: CLI path cannot be empty")
 	}
 
 	envVar := "ANTHROPIC_AUTH_TOKEN"

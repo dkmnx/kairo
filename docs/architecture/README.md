@@ -126,7 +126,7 @@ flowchart LR
     D --> E[Write secrets.age]
     F[Config Update] --> G[Write config YAML]
     G --> H[Set Permissions 0600]
-    H --> I[Log Audit Entry]
+
 ```
 
 ## Security Architecture
@@ -230,7 +230,6 @@ flowchart TB
 | Package                         | Purpose            |
 | ------------------------------- | ------------------ |
 | `github.com/Masterminds/semver` | Version comparison |
-| `github.com/stretchr/testify`   | Testing assertions |
 
 ## Design Principles
 
@@ -312,7 +311,7 @@ flowchart TB
 ### Key Cross-Platform Code
 
 ```go
-// Cross-platform config directory (pkg/env/env.go)
+// Cross-platform config directory (internal/config/config.go)
 if runtime.GOOS == "windows" {
     return filepath.Join(home, "AppData", "Roaming", "kairo")
 }
@@ -339,4 +338,4 @@ if runtime.GOOS == "windows" {
 }
 ```
 
-See also: [pkg/env](../pkg/README.md), [cmd/root.go](../../cmd/root.go), [internal/wrapper/wrapper.go](../../internal/wrapper/wrapper.go)
+See also: [cmd/root.go](../../cmd/root.go), [internal/wrapper/wrapper.go](../../internal/wrapper/wrapper.go)

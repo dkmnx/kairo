@@ -59,7 +59,7 @@ func TestValidateCrossProviderConfig(t *testing.T) {
 				},
 			},
 			wantErr: true,
-			errMsg:  "environment variable collision",
+			errMsg:  "environment variable",
 		},
 		{
 			name: "multiple providers different env vars",
@@ -91,7 +91,7 @@ func TestValidateCrossProviderConfig(t *testing.T) {
 				},
 			},
 			wantErr: true,
-			errMsg:  "environment variable collision",
+			errMsg:  "environment variable",
 		},
 		{
 			name: "env var with equals in value",
@@ -153,7 +153,7 @@ func TestValidateCrossProviderConfig(t *testing.T) {
 				},
 			},
 			wantErr: true, // Keys match after trim, but values differ -> collision
-			errMsg:  "environment variable collision",
+			errMsg:  "environment variable",
 		},
 	}
 

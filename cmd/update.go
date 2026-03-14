@@ -22,6 +22,10 @@ import (
 const defaultUpdateURL = "https://api.github.com/repos/dkmnx/kairo/releases/latest"
 const requestTimeout = 10 * time.Second
 
+var httpClient = &http.Client{
+	Timeout: requestTimeout,
+}
+
 type release struct {
 	TagName string `json:"tag_name"`
 	HTMLURL string `json:"html_url"`
@@ -64,7 +68,7 @@ func getLatestRelease() (*release, error) {
 
 	req.Header.Set("User-Agent", "kairo-cli")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
 			"failed to fetch release", err)
@@ -129,7 +133,7 @@ func downloadToTempFile(url string) (string, error) {
 			"failed to create download request", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
 			"failed to download", err)
@@ -216,8 +220,15 @@ This command will:
 1. Check GitHub for the latest release
 2. Download and run the platform-appropriate install script from the release tag
 
-Security: The install script is downloaded from the specific release tag
-to ensure the script matches the version being installed.`,
+Security considerations:
+- The install script is downloaded from the specific release tag to ensure
+  the script matches the version being installed.
+- You will be prompted for confirmation before installation.
+- The script is executed with your current user permissions.
+
+For manual verification, you can download and inspect the install script from:
+https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.sh (Unix)
+https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)`,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentVersion := version.Version
 		if currentVersion == "dev" {

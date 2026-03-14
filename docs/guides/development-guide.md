@@ -4,7 +4,7 @@ Setup, testing, and contribution workflow for Kairo.
 
 ## Prerequisites
 
-- Go 1.25+
+- Go 1.26+
 - Git
 
 ## Setup

@@ -83,6 +83,8 @@ func addAndSaveProvider(
 			"saving config", err)
 	}
 
+	configCache.Invalidate(configDir)
+
 	return nil
 }
 
@@ -568,6 +570,7 @@ var setupCmd = &cobra.Command{
 func init() {
 	setupCmd.Flags().BoolVar(&setupResetSecrets, "reset-secrets", false,
 		"Reset encrypted secrets by regenerating encryption key (requires re-entering API keys)")
+	rootCmd.AddCommand(setupCmd)
 }
 
 // resetSecrets handles the --reset-secrets flag by removing old key and secrets files
@@ -600,8 +603,4 @@ func resetSecrets(configDir, secretsPath, keyPath string) error {
 	ui.PrintSuccess("Encryption key regenerated successfully")
 
 	return nil
-}
-
-func init() {
-	rootCmd.AddCommand(setupCmd)
 }
