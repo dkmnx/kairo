@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/ui"
@@ -15,25 +14,16 @@ var defaultCmd = &cobra.Command{
 	Long:  "With no arguments, shows the current default provider. With a provider name, sets it as the default.",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := getConfigDir()
+		dir := requireConfigDir()
 		if dir == "" {
-			ui.PrintError("Config directory not found")
-
 			return
 		}
 
-		cfg, err := configCache.Get(getRootCtx(), dir)
-		if err != nil {
-			if os.IsNotExist(err) {
-				if len(args) == 0 {
-					ui.PrintWarn("No default provider configured")
-				} else {
-					ui.PrintError(fmt.Sprintf("Provider '%s' not found in config", args[0]))
-				}
-
-				return
+		cfg := loadConfigOrExit(cmd)
+		if cfg == nil {
+			if len(args) > 0 {
+				ui.PrintError(fmt.Sprintf("Provider '%s' not found in config", args[0]))
 			}
-			handleConfigError(cmd, err)
 
 			return
 		}
