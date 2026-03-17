@@ -79,26 +79,28 @@ func TestLoadConfigUnknownFields(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Test that deprecated/unknown fields are tolerated for backward compatibility
-	// The 'version' field is deprecated but old configs may still have it
-	configWithDeprecatedField := `default_provider: zai
-version: "1.0.0"
+	// Test that unknown fields are rejected with clear error message
+	// This helps users catch configuration typos and ensures forward compatibility
+	// (older binaries will fail gracefully when reading newer config formats)
+	configWithUnknownField := `default_provider: zai
+unknown_field: some_value
 providers:
   zai:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
     model: glm-4.7
 `
-	if err := os.WriteFile(configPath, []byte(configWithDeprecatedField), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte(configWithUnknownField), 0600); err != nil {
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadConfig(context.Background(), tmpDir)
-	if err != nil {
-		t.Errorf("LoadConfig(context.Background(), ) should tolerate deprecated fields for backward compatibility: %v", err)
+	_, err := LoadConfig(context.Background(), tmpDir)
+	if err == nil {
+		t.Error("LoadConfig(context.Background(), ) should reject unknown fields")
 	}
-	if cfg.DefaultProvider != "zai" {
-		t.Errorf("expected default_provider to be 'zai', got %q", cfg.DefaultProvider)
+	// Verify the error message is helpful
+	if err != nil && !strings.Contains(err.Error(), "unknown") {
+		t.Errorf("error message should mention 'unknown' field, got: %v", err)
 	}
 }
 
