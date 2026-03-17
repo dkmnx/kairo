@@ -8,15 +8,28 @@ import (
 
 func ParseSecrets(secrets string) map[string]string {
 	result := make(map[string]string)
-	for _, line := range strings.Split(secrets, "\n") {
+	for lineNum, line := range strings.Split(secrets, "\n") {
 		if line == "" {
 			continue
 		}
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) == 2 {
 			key, value := parts[0], parts[1]
-			if key == "" || value == "" || strings.Contains(key, "\n") || strings.Contains(value, "\n") {
-				log.Printf("Warning: skipping malformed secret entry: %q", line)
+			if key == "" {
+				// SECURITY: Do not log the value (which may contain a secret)
+				log.Printf("Warning: skipping malformed secret entry at line %d: empty key", lineNum+1)
+
+				continue
+			}
+			if value == "" {
+				// SECURITY: Do not log the key (which may be a secret identifier)
+				log.Printf("Warning: skipping malformed secret entry at line %d: empty value", lineNum+1)
+
+				continue
+			}
+			if strings.Contains(key, "\n") || strings.Contains(value, "\n") {
+				// SECURITY: Do not log the key or value
+				log.Printf("Warning: skipping malformed secret entry at line %d: contains newline", lineNum+1)
 
 				continue
 			}
