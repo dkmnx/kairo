@@ -13,7 +13,6 @@ import (
 
 const (
 	harnessClaude = "claude"
-	harnessQwen   = "qwen"
 )
 
 func isValidHarness(name string) bool {
