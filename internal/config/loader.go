@@ -122,7 +122,7 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 
 	var cfg Config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(false)
+	decoder.KnownFields(true)
 	if err := decoder.Decode(&cfg); err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"failed to parse configuration file (invalid YAML)", err).
