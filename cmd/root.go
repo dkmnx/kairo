@@ -334,6 +334,11 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 
 // buildProviderEnvironment builds the environment variables for a provider.
 // Returns: (providerEnv, secrets, error)
+//
+// SECURITY: Provider environment does NOT include any secrets from the encrypted
+// secrets file. Secrets are returned separately and should only be passed via the
+// secure wrapper script mechanism to avoid exposing credentials in child process
+// environments (/proc/<pid>/environ).
 func buildProviderEnvironment(
 	configDir string,
 	provider config.Provider,
@@ -349,9 +354,10 @@ func buildProviderEnvironment(
 		secrets = make(map[string]string)
 	}
 
-	secretsEnvVars := buildSecretsEnvVars(secrets)
-
-	providerEnv := mergeEnvVars(os.Environ(), builtInEnvVars, provider.EnvVars, secretsEnvVars)
+	// SECURITY: Do NOT include secrets in provider environment.
+	// Secrets are returned separately for secure injection via wrapper script.
+	// Only include built- in vars (from provider config) and non-secret provider EnvVars.
+	providerEnv := mergeEnvVars(os.Environ(), builtInEnvVars, provider.EnvVars)
 
 	return providerEnv, secrets, nil
 }
