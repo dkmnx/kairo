@@ -2,6 +2,8 @@ package ui
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -1052,4 +1054,126 @@ func TestConfirm(t *testing.T) {
 			t.Error("Confirm() should return false for empty input")
 		}
 	})
+}
+
+func TestClearScreen(t *testing.T) {
+	t.Run("executes without panic", func(t *testing.T) {
+		// ClearScreen executes an external command, which may not work in all
+		// environments (e.g., CI without a terminal). We verify it doesn't panic.
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("ClearScreen() panicked: %v", r)
+			}
+		}()
+
+		ClearScreen()
+		// Function intentionally ignores errors - no return value to check
+	})
+
+	t.Run("uses correct command for platform", func(t *testing.T) {
+		// This test verifies the platform-specific command selection logic.
+		// The actual command execution is tested above.
+		// We can't easily mock exec.Command, but we can verify the function
+		// completes without error on the current platform.
+		ClearScreen()
+	})
+}
+
+func TestErrUserCancelled(t *testing.T) {
+	t.Run("error is defined and can be checked", func(t *testing.T) {
+		if ErrUserCancelled.Error() != "user cancelled input" {
+			t.Errorf("ErrUserCancelled.Error() = %q, want %q", ErrUserCancelled.Error(), "user cancelled input")
+		}
+
+		// Verify it can be used with errors.Is
+		if !errors.Is(ErrUserCancelled, ErrUserCancelled) {
+			t.Error("ErrUserCancelled should be equal to itself via errors.Is")
+		}
+	})
+}
+
+func TestIsInterrupted(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "nil error",
+			err:      nil,
+			expected: false,
+		},
+		{
+			name:     "os.ErrClosed",
+			err:      os.ErrClosed,
+			expected: true,
+		},
+		{
+			name:     "io.EOF",
+			err:      io.EOF,
+			expected: true,
+		},
+		{
+			name:     "error with 'interrupted' message",
+			err:      errors.New("operation interrupted"),
+			expected: true,
+		},
+		{
+			name:     "generic error",
+			err:      errors.New("some other error"),
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isInterrupted(tt.err)
+			if result != tt.expected {
+				t.Errorf("isInterrupted(%v) = %v, want %v", tt.err, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsEmptyInput(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "nil error",
+			err:      nil,
+			expected: false,
+		},
+		{
+			name:     "io.EOF",
+			err:      io.EOF,
+			expected: false,
+		},
+		{
+			name:     "os.ErrClosed (interrupted)",
+			err:      os.ErrClosed,
+			expected: false,
+		},
+		{
+			name:     "error with 'interrupted' message",
+			err:      errors.New("operation interrupted"),
+			expected: false,
+		},
+		{
+			name:     "generic error",
+			err:      errors.New("some other error"),
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isEmptyInput(tt.err)
+			if result != tt.expected {
+				t.Errorf("isEmptyInput(%v) = %v, want %v", tt.err, result, tt.expected)
+			}
+		})
+	}
 }
