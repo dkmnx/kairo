@@ -9,12 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **YAML Config**: Config file parsing now rejects unknown fields with helpful error messages instead of silently ignoring them, helping users catch typos and ensuring forward compatibility with newer config versions
 - **Security**: Malformed secret entries now log only line number and issue type (e.g., "empty key", "empty value") instead of the raw line content, preventing potential exposure of secret values in logs
 - **Durability**: Config file writes now use atomic write pattern (temp file + rename) to prevent partial writes on interruption, matching the pattern used for secrets and key files
 
 ### Security
 
 - ParseSecrets no longer logs raw malformed secret entries that could contain sensitive values
+- Provider environment no longer includes decrypted secrets - secrets are now passed exclusively via secure wrapper script mechanism, preventing credentials from appearing in `/proc/<pid>/environ`
 
 ## [2.1.1] - 2026-03-14
 
