@@ -44,3 +44,5 @@ secrets.age
 ./config
 .env
 *.local.json
+# CocoIndex Code (ccc)
+/.cocoindex_code/
