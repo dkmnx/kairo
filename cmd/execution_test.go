@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/spf13/cobra"
 )
 
@@ -545,4 +546,126 @@ func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
 	if !exitProcessCalled {
 		t.Error("executeWithoutAuth() should call exitProcess on execution failure")
 	}
+}
+
+// TestBuildProviderEnvironment_NoAPIKeyRequired tests buildProviderEnvironment for providers that don't require API keys
+func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a provider that doesn't require API key
+	provider := config.Provider{
+		Name:    "Test Provider",
+		BaseURL: "https://test.com",
+		Model:   "test-model",
+		EnvVars: []string{"CUSTOM_VAR=value"},
+	}
+
+	// Generate key first
+	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
+		t.Fatalf("EnsureKeyExists() error = %v", err)
+	}
+
+	// Test with a provider that doesn't require API key (should not fail on missing secrets)
+	env, secrets, err := buildProviderEnvironment(tmpDir, provider, "ollama")
+	if err != nil {
+		t.Errorf("buildProviderEnvironment() for provider without API key should not error, got: %v", err)
+	}
+
+	if env == nil {
+		t.Error("buildProviderEnvironment() returned nil env for provider without API key")
+	}
+
+	if secrets == nil {
+		t.Error("buildProviderEnvironment() returned nil secrets map")
+	}
+}
+
+// TestBuildProviderEnvironment_WithProviderEnvVars tests buildProviderEnvironment includes provider EnvVars
+func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	provider := config.Provider{
+		Name:    "Test Provider",
+		BaseURL: "https://test.com",
+		Model:   "test-model",
+		EnvVars: []string{"PROVIDER_VAR=provider_value", "ANOTHER_VAR=another_value"},
+	}
+
+	// Generate key
+	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
+		t.Fatalf("EnsureKeyExists() error = %v", err)
+	}
+
+	env, _, err := buildProviderEnvironment(tmpDir, provider, "ollama")
+	if err != nil {
+		t.Fatalf("buildProviderEnvironment() error = %v", err)
+	}
+
+	// Check that provider env vars are included
+	envStr := strings.Join(env, "|")
+	if !strings.Contains(envStr, "PROVIDER_VAR=provider_value") {
+		t.Error("buildProviderEnvironment() should include provider EnvVars")
+	}
+	if !strings.Contains(envStr, "ANOTHER_VAR=another_value") {
+		t.Error("buildProviderEnvironment() should include all provider EnvVars")
+	}
+}
+
+// TestExecuteWithoutAuth_QwenNoAuth tests executeWithoutAuth for Qwen without API key
+func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
+	// Create a real cobra command for testing
+	cmd := &cobra.Command{}
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   []string{"TEST=value"},
+		HarnessToUse:  harnessQwen,
+		HarnessBinary: "qwen",
+		Provider: config.Provider{
+			Name:    "Qwen Provider",
+			BaseURL: "https://test.com",
+			Model:   "qwen-model",
+		},
+		HarnessArgs: []string{"--test"},
+	}
+
+	// Should print error and return without crashing
+	executeWithoutAuth(cfg)
+}
+
+// TestBuildBuiltInEnvVars_Extended tests additional cases for buildBuiltInEnvVars
+func TestBuildBuiltInEnvVars_Extended(t *testing.T) {
+	t.Run("provider with special characters in values", func(t *testing.T) {
+		provider := config.Provider{
+			Name:    "Test Provider",
+			BaseURL: "https://api.test.com/path?query=value",
+			Model:   "test-model-v1.0-beta",
+		}
+
+		envVars := buildBuiltInEnvVars(provider)
+		if len(envVars) == 0 {
+			t.Error("buildBuiltInEnvVars() returned empty slice")
+		}
+
+		// Verify all expected vars are present
+		hasBaseURL := false
+		hasModel := false
+		for _, v := range envVars {
+			if strings.HasPrefix(v, "ANTHROPIC_BASE_URL=") {
+				hasBaseURL = true
+			}
+			if strings.HasPrefix(v, "ANTHROPIC_MODEL=") {
+				hasModel = true
+			}
+		}
+
+		if !hasBaseURL {
+			t.Error("missing ANTHROPIC_BASE_URL")
+		}
+		if !hasModel {
+			t.Error("missing ANTHROPIC_MODEL")
+		}
+	})
 }
