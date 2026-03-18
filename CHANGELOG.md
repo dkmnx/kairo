@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-03-18
+
 ### Changed
 
 - **YAML Config**: Config file parsing now rejects unknown fields with helpful error messages instead of silently ignoring them, helping users catch typos and ensuring forward compatibility with newer config versions
@@ -1075,6 +1077,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[2.2.0]: https://github.com/dkmnx/kairo/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/dkmnx/kairo/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/dkmnx/kairo/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/dkmnx/kairo/compare/v1.10.1...v2.0.0
