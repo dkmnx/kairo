@@ -66,7 +66,7 @@ var (
 	private172  = mustParseCIDR("172.16.0.0/12")
 	private192  = mustParseCIDR("192.168.0.0/16")
 	linkLocal   = mustParseCIDR("169.254.0.0/16")
-	ulaIPv6     = mustParseCIDR("fc00::/7")   // Unique Local Address (ULA)
+	ulaIPv6     = mustParseCIDR("fc00::/7")  // Unique Local Address (ULA)
 	linkLocalV6 = mustParseCIDR("fe80::/10") // IPv6 link-local
 )
 
