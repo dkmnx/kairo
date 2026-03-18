@@ -29,6 +29,10 @@ func TestProviderValidation(t *testing.T) {
 		{"zai provider - valid key", "zai-api-key-" + string(make([]byte, 24)), "zai", false},
 		{"custom provider - short key", "short", "custom", true},
 		{"custom provider - valid key", "custom-key-" + string(make([]byte, 10)), "custom", false},
+		{"unknown provider - short key", "short", "unknownprovider", true},
+		{"unknown provider - valid key (20 chars)", "valid-api-key-12345678", "unknownprovider", false},
+		{"key at exact minimum length", "12345678901234567890", "TestProvider", false},
+		{"key just below minimum", "1234567890123456789", "TestProvider", true},
 	}
 
 	for _, tt := range tests {
@@ -45,6 +49,69 @@ func TestProviderValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateAPIKey_EdgeCases(t *testing.T) {
+	t.Run("empty provider name", func(t *testing.T) {
+		err := ValidateAPIKey("valid-key-with-20-chars", "")
+		if err != nil {
+			t.Errorf("ValidateAPIKey with empty provider name should not error for valid key, got: %v", err)
+		}
+	})
+
+	t.Run("key with only whitespace variations", func(t *testing.T) {
+		keys := []string{
+			" ",
+			"  ",
+			"\t",
+			"\n",
+			"\r\n",
+			" \t\n",
+		}
+		for _, key := range keys {
+			err := ValidateAPIKey(key, "TestProvider")
+			if err == nil {
+				t.Errorf("ValidateAPIKey(%q) should fail for whitespace-only key", key)
+			}
+		}
+	})
+
+	t.Run("unicode key handling", func(t *testing.T) {
+		// Unicode characters should be counted in length
+		longUnicodeKey := "日本語キー123456789012345678" // 20+ chars with unicode
+		err := ValidateAPIKey(longUnicodeKey, "TestProvider")
+		if err != nil {
+			t.Errorf("ValidateAPIKey with unicode should work for long enough key, got: %v", err)
+		}
+	})
+
+	t.Run("all known providers minimum lengths", func(t *testing.T) {
+		providerLengths := map[string]int{
+			"zai":      32,
+			"minimax":  32,
+			"kimi":     32,
+			"deepseek": 32,
+			"custom":   20,
+		}
+
+		for provider, minLen := range providerLengths {
+			t.Run(provider, func(t *testing.T) {
+				// Test key just under minimum
+				shortKey := strings.Repeat("a", minLen-1)
+				err := ValidateAPIKey(shortKey, provider)
+				if err == nil {
+					t.Errorf("ValidateAPIKey with %d chars should fail for %s (min %d)", minLen-1, provider, minLen)
+				}
+
+				// Test key at minimum
+				validKey := strings.Repeat("a", minLen)
+				err = ValidateAPIKey(validKey, provider)
+				if err != nil {
+					t.Errorf("ValidateAPIKey with %d chars should pass for %s (min %d), got: %v", minLen, provider, minLen, err)
+				}
+			})
+		}
+	})
 }
 
 func TestURLValidation(t *testing.T) {

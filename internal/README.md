@@ -179,31 +179,78 @@ go test -coverprofile=coverage.out ./internal/...
 go tool cover -func=coverage.out
 ```
 
-## Adding a New Provider
+## Adding a New Built-in Provider
 
-1. **Define in `providers/registry.go`:**
+Follow these steps to add a new built-in provider to Kairo:
+
+### Step 1: Add Provider Definition
+
+Edit `internal/providers/registry.go` and add the provider to `BuiltInProviders`:
 
 ```go
 var BuiltInProviders = map[string]ProviderDefinition{
     "newprovider": {
-        Name:           "New Provider",
+        Name:           "New Provider Display Name",
         BaseURL:        "https://api.newprovider.com/anthropic",
-        Model:          "new-model",
+        Model:          "default-model-name",
         RequiresAPIKey: true,
-        EnvVars:        []string{},
+        EnvVars:        []string{"OPTIONAL_ENV_VAR=value"},
     },
+    // ... existing providers
 }
 ```
 
-1. **Add validation (if needed):**
-   Update `internal/validate/api_key.go` for provider-specific validation.
+### Step 2: Add to Provider Order
 
-2. **Test:**
+Add the provider key to the `providerOrder` slice (controls display order in setup):
+
+```go
+var providerOrder = []string{"zai", "minimax", "deepseek", "kimi", "newprovider"}
+```
+
+### Step 3: Add API Key Validation (Optional)
+
+If the provider has specific API key format requirements, update `internal/validate/api_key.go`:
+
+```go
+var providerKeyFormats = map[string]KeyFormat{
+    "newprovider": {
+        MinLength: 32,
+        Prefix:    "np-",                    // Optional: required prefix
+        Pattern:   "^np-[a-zA-Z0-9]+$",      // Optional: regex pattern
+    },
+    // ... existing providers
+}
+```
+
+### Step 4: Test
+
+Run the provider and validation tests:
 
 ```bash
-go test ./internal/providers/...
-kairo setup
-kairo newprovider "Your query"
+go test ./internal/providers/... ./internal/validate/...
+```
+
+Test manually:
+
+```bash
+kairo setup        # Select new provider
+kairo newprovider  # Use new provider
+```
+
+### Example: Adding a Provider with Custom Env Vars
+
+```go
+"example": {
+    Name:           "Example AI",
+    BaseURL:        "https://api.example.ai/v1/anthropic",
+    Model:          "example-model-v1",
+    RequiresAPIKey: true,
+    EnvVars: []string{
+        "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT=180",
+        "ANTHROPIC_SMALL_FAST_MAX_TOKENS=8192",
+    },
+},
 ```
 
 ## Error Handling

@@ -4,7 +4,7 @@
 
 Go CLI wrapper for Claude/Qwen Code API providers with X25519 encryption.
 
-**Tech Stack:** Go 1.25+, Cobra, age (filippo.io/age), YAML, Go testing
+**Tech Stack:** Go 1.26+, Cobra, age (filippo.io/age), YAML, Go testing
 
 **Key Directories:**
 

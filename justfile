@@ -151,8 +151,8 @@ deps:
     @if command -v golangci-lint >/dev/null 2>&1; then \
         echo "golangci-lint already installed"; \
     else \
-        echo "Installing golangci-lint..."; \
-        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+        echo "Installing golangci-lint v1.64.8..."; \
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
     fi
     
     @if command -v pre-commit >/dev/null 2>&1; then \
