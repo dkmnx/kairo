@@ -1799,3 +1799,107 @@ func TestBuildProviderConfigFromInput_CustomProviderModel(t *testing.T) {
 		}
 	})
 }
+
+// TestResolveProviderName_NonCustom tests non-custom provider name resolution
+func TestResolveProviderName_NonCustom(t *testing.T) {
+	tests := []struct {
+		name         string
+		providerName string
+		want         string
+		wantErr      bool
+	}{
+		{
+			name:         "builtin provider zai",
+			providerName: "zai",
+			want:         "zai",
+			wantErr:      false,
+		},
+		{
+			name:         "builtin provider anthropic",
+			providerName: "anthropic",
+			want:         "anthropic",
+			wantErr:      false,
+		},
+		{
+			name:         "custom provider triggers interactive input",
+			providerName: "custom",
+			want:         "", // Would require TUI mocking
+			wantErr:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.providerName == "custom" {
+				// Skip - requires TUI mocking for tap.Text
+				t.Skip("requires TUI mocking")
+			}
+
+			got, err := resolveProviderName(tt.providerName)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("resolveProviderName() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("resolveProviderName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestEnsureConfigDirectory_ErrorPaths tests error handling in ensureConfigDirectory
+func TestEnsureConfigDirectory_ErrorPaths(t *testing.T) {
+	t.Run("invalid path with permission issue", func(t *testing.T) {
+		// Use a path that cannot be created (file as parent)
+		tmpFile, err := os.CreateTemp("", "notadir")
+		if err != nil {
+			t.Fatalf("Failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		// Try to create directory inside a file path (should fail)
+		invalidPath := filepath.Join(tmpFile.Name(), "config")
+		err = ensureConfigDirectory(invalidPath)
+		if err == nil {
+			t.Error("expected error for invalid config directory path")
+		}
+	})
+}
+
+// TestSaveProviderConfiguration_ValidationErrors tests error paths in saveProviderConfiguration
+func TestSaveProviderConfiguration_ValidationErrors(t *testing.T) {
+	t.Run("missing config directory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Create key but use invalid path for secrets
+		if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
+			t.Fatalf("EnsureKeyExists() error = %v", err)
+		}
+
+		cfg := &config.Config{
+			Providers: make(map[string]config.Provider),
+		}
+
+		params := SaveProviderParams{
+			ConfigDir:    "/nonexistent/path/that/cannot/be/created",
+			Cfg:          cfg,
+			ProviderName: "testprovider",
+			Provider: config.Provider{
+				Name:    "Test Provider",
+				BaseURL: "https://test.com",
+				Model:   "test-model",
+			},
+			APIKey:      "test-api-key",
+			Secrets:     make(map[string]string),
+			SecretsPath: filepath.Join(tmpDir, "secrets.age"),
+			KeyPath:     filepath.Join(tmpDir, "key.txt"),
+			IsEdit:      false,
+		}
+
+		err := saveProviderConfiguration(params)
+		if err == nil {
+			t.Error("expected error for invalid config directory")
+		}
+	})
+}
