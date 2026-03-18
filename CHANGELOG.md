@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - ParseSecrets no longer logs raw malformed secret entries that could contain sensitive values
+- Child processes spawned by Kairo no longer inherit secret environment variables (API keys are passed via wrapper script instead)
 
 ## [2.1.0] - 2026-03-08
 
