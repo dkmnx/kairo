@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -126,5 +127,69 @@ func TestSetupSignalHandler(t *testing.T) {
 		setupSignalHandler(func() {
 			// cancel callback
 		})
+	})
+}
+
+// TestPrintSecretsRecoveryHelp tests that printSecretsRecoveryHelp runs without panic
+func TestPrintSecretsRecoveryHelp(t *testing.T) {
+	// This test verifies the function doesn't panic
+	// Actual output goes to stdout via ui.PrintInfo which is a side-effect
+	printSecretsRecoveryHelp()
+}
+
+// TestRequireConfigDirWritable tests the requireConfigDirWritable function
+func TestRequireConfigDirWritable(t *testing.T) {
+	t.Run("creates directory when it doesn't exist", func(t *testing.T) {
+		// Save and restore original config dir
+		original := os.Getenv("KAIRO_CONFIG_DIR")
+		defer func() {
+			if original == "" {
+				os.Unsetenv("KAIRO_CONFIG_DIR")
+			} else {
+				os.Setenv("KAIRO_CONFIG_DIR", original)
+			}
+		}()
+
+		tmpDir := t.TempDir()
+		testConfigDir := filepath.Join(tmpDir, "kairo-config")
+
+		// Use setConfigDir to override the config directory
+		setConfigDir(testConfigDir)
+		defer setConfigDir("") // Reset after test
+
+		result := requireConfigDirWritable()
+		if result == "" {
+			t.Error("requireConfigDirWritable() should return path when directory can be created")
+		}
+
+		// Verify directory was created
+		if _, err := os.Stat(testConfigDir); os.IsNotExist(err) {
+			t.Error("requireConfigDirWritable() should create directory")
+		}
+	})
+
+	t.Run("returns empty when config dir not found", func(t *testing.T) {
+		// This is harder to test without mocking getConfigDir
+		// The function depends on getConfigDir which uses environment variables
+		// We test the happy path above; error path would require refactoring
+	})
+}
+
+// TestRequireConfigDir tests the requireConfigDir function
+func TestRequireConfigDir(t *testing.T) {
+	t.Run("returns config dir when set", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Use setConfigDir to override the config directory
+		setConfigDir(tmpDir)
+		defer setConfigDir("") // Reset after test
+
+		result := requireConfigDir()
+		if result == "" {
+			t.Error("requireConfigDir() should return path when config dir is set")
+		}
+		if result != tmpDir {
+			t.Errorf("requireConfigDir() = %q, want %q", result, tmpDir)
+		}
 	})
 }

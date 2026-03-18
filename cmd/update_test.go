@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -703,4 +704,69 @@ func TestDownloadToTempFileExtension(t *testing.T) {
 			t.Errorf("temp file %q should have %s extension on %s", tempFile, expectedExt, runtime.GOOS)
 		}
 	})
+}
+
+// TestRunInstallScript tests the runInstallScript function
+func TestRunInstallScript_Windows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Skipping Windows-specific test on non-Windows platform")
+	}
+
+	// Create a simple PowerShell script that succeeds
+	tmpDir := t.TempDir()
+	scriptPath := filepath.Join(tmpDir, "test.ps1")
+	scriptContent := "exit 0"
+	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0644); err != nil {
+		t.Fatalf("Failed to create test script: %v", err)
+	}
+
+	err := runInstallScript(scriptPath)
+	if err != nil {
+		t.Errorf("runInstallScript() error = %v", err)
+	}
+}
+
+func TestRunInstallScript_Unix(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping Unix-specific test on Windows")
+	}
+
+	// Create a simple shell script that succeeds
+	tmpDir := t.TempDir()
+	scriptPath := filepath.Join(tmpDir, "test.sh")
+	scriptContent := "#!/bin/sh\nexit 0"
+	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0644); err != nil {
+		t.Fatalf("Failed to create test script: %v", err)
+	}
+
+	err := runInstallScript(scriptPath)
+	if err != nil {
+		t.Errorf("runInstallScript() error = %v", err)
+	}
+}
+
+func TestRunInstallScript_ExecutionFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping Unix-specific test on Windows")
+	}
+
+	// Create a shell script that fails
+	tmpDir := t.TempDir()
+	scriptPath := filepath.Join(tmpDir, "test.sh")
+	scriptContent := "#!/bin/sh\nexit 1"
+	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0644); err != nil {
+		t.Fatalf("Failed to create test script: %v", err)
+	}
+
+	err := runInstallScript(scriptPath)
+	if err == nil {
+		t.Error("runInstallScript() should return error when script fails")
+	}
+}
+
+func TestRunInstallScript_ScriptNotFound(t *testing.T) {
+	err := runInstallScript("/nonexistent/path/to/script.sh")
+	if err == nil {
+		t.Error("runInstallScript() should return error when script not found")
+	}
 }

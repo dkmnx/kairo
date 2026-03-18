@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/spf13/cobra"
 )
 
 func TestRootCmd(t *testing.T) {
@@ -522,6 +523,82 @@ func TestContainsSubstring(t *testing.T) {
 			if result != tt.expected {
 				t.Errorf("strings.Contains(%q, %q) = %v, want %v",
 					tt.s, tt.substr, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestGetProviderFromArgs tests the getProviderFromArgs function
+func TestGetProviderFromArgs(t *testing.T) {
+	tests := []struct {
+		name            string
+		args            []string
+		defaultProvider string
+		wantProvider    string
+		wantArgs        []string
+	}{
+		{
+			name:            "single provider arg",
+			args:            []string{"anthropic"},
+			defaultProvider: "",
+			wantProvider:    "anthropic",
+			wantArgs:        []string{},
+		},
+		{
+			name:            "provider with harness args",
+			args:            []string{"anthropic", "--model", "claude-sonnet"},
+			defaultProvider: "",
+			wantProvider:    "anthropic",
+			wantArgs:        []string{"--model", "claude-sonnet"},
+		},
+		{
+			name:            "flag-like first arg with default set",
+			args:            []string{"--model", "claude-sonnet"},
+			defaultProvider: "anthropic",
+			wantProvider:    "anthropic",
+			wantArgs:        []string{"--model", "claude-sonnet"},
+		},
+		{
+			name:            "flag-like first arg without default",
+			args:            []string{"--model", "claude-sonnet"},
+			defaultProvider: "",
+			wantProvider:    "",
+			wantArgs:        nil,
+		},
+		{
+			name:            "multiple args uses first as provider",
+			args:            []string{"anthropic", "arg2", "arg3"},
+			defaultProvider: "",
+			wantProvider:    "anthropic",
+			wantArgs:        []string{"arg2", "arg3"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &cobra.Command{}
+			var output bytes.Buffer
+			cmd.SetOut(&output)
+
+			cfg := &config.Config{
+				DefaultProvider: tt.defaultProvider,
+			}
+
+			provider, args := getProviderFromArgs(cmd, cfg, tt.args)
+
+			if provider != tt.wantProvider {
+				t.Errorf("getProviderFromArgs() provider = %q, want %q", provider, tt.wantProvider)
+			}
+
+			if len(args) != len(tt.wantArgs) {
+				t.Errorf("getProviderFromArgs() args length = %d, want %d", len(args), len(tt.wantArgs))
+				return
+			}
+
+			for i, arg := range args {
+				if arg != tt.wantArgs[i] {
+					t.Errorf("getProviderFromArgs() args[%d] = %q, want %q", i, arg, tt.wantArgs[i])
+				}
 			}
 		})
 	}
