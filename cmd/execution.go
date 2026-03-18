@@ -20,6 +20,12 @@ import (
 // harnessQwen is the harness name for Qwen Code.
 const harnessQwen = "qwen"
 
+// createTempAuthDirFn wraps wrapper.CreateTempAuthDir for testability.
+var createTempAuthDirFn = wrapper.CreateTempAuthDir
+
+// writeTempTokenFileFn wraps wrapper.WriteTempTokenFile for testability.
+var writeTempTokenFileFn = wrapper.WriteTempTokenFile
+
 // handleConfigError provides user-friendly guidance for config errors.
 func handleConfigError(cmd *cobra.Command, err error) {
 	errStr := err.Error()
@@ -223,7 +229,7 @@ func buildWrapperCommand(params BuildWrapperCommandParams) *exec.Cmd {
 }
 
 func executeWithAuth(cfg ExecutionConfig) {
-	authDir, err := wrapper.CreateTempAuthDir()
+	authDir, err := createTempAuthDirFn()
 	if err != nil {
 		cfg.Cmd.Printf("Error creating auth directory: %v\n", err)
 
@@ -238,7 +244,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 	}
 	defer cleanup()
 
-	tokenPath, err := wrapper.WriteTempTokenFile(authDir, cfg.APIKey)
+	tokenPath, err := writeTempTokenFileFn(authDir, cfg.APIKey)
 	if err != nil {
 		cfg.Cmd.Printf("Error creating secure token file: %v\n", err)
 
