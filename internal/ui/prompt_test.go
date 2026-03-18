@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
@@ -1081,12 +1082,12 @@ func TestClearScreen(t *testing.T) {
 
 func TestErrUserCancelled(t *testing.T) {
 	t.Run("error is defined and can be checked", func(t *testing.T) {
-		if ErrUserCancelled.Error() != "user cancelled input" {
-			t.Errorf("ErrUserCancelled.Error() = %q, want %q", ErrUserCancelled.Error(), "user cancelled input")
+		if kairoerrors.ErrUserCancelled.Error() != "user cancelled input" {
+			t.Errorf("ErrUserCancelled.Error() = %q, want %q", kairoerrors.ErrUserCancelled.Error(), "user cancelled input")
 		}
 
 		// Verify it can be used with errors.Is
-		if !errors.Is(ErrUserCancelled, ErrUserCancelled) {
+		if !errors.Is(kairoerrors.ErrUserCancelled, kairoerrors.ErrUserCancelled) {
 			t.Error("ErrUserCancelled should be equal to itself via errors.Is")
 		}
 	})
