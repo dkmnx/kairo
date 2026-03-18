@@ -12,7 +12,7 @@ require (
 )
 
 require (
-	c2sp.org/CCTV/age v0.0.0-20260104152344-409a7634e2ff // indirect
+	c2sp.org/CCTV/age v0.0.0-20260309054638-d091f096c98e // indirect
 	filippo.io/hpke v0.4.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
