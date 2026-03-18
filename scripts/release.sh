@@ -30,6 +30,13 @@ if [ ! -f "$CHANGELOG" ]; then
     exit 1
 fi
 
+# Check if [Unreleased] section exists
+if ! grep -q "^## \[Unreleased\]" "$CHANGELOG"; then
+    echo "Error: [Unreleased] section not found in $CHANGELOG"
+    echo "Please ensure your changelog has a '## [Unreleased]' section"
+    exit 1
+fi
+
 # Check if Unreleased section has content
 # Get the line after [Unreleased] (skip blank line) and check if it's another version header
 next_section=$(grep -A 2 "^## \[Unreleased\]" "$CHANGELOG" | tail -n 1)
