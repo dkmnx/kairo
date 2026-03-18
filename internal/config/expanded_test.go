@@ -363,3 +363,163 @@ func TestFormatSecretsMap(t *testing.T) {
 		t.Errorf("FormatSecretsMap() = %q, want %q", result, expected)
 	}
 }
+
+func TestSaveConfigAtomicWrite(t *testing.T) {
+	// Test that SaveConfig uses atomic write (temp file + rename) pattern.
+	// This ensures:
+	// 1. No partial writes on interruption
+	// 2. No temp files left behind after successful save
+	// 3. Permissions are preserved
+	// 4. Overwrites work correctly
+
+	t.Run("no temp files left after successful save", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &Config{
+			Providers: map[string]Provider{
+				"test": {Name: "Test"},
+			},
+		}
+
+		err := SaveConfig(context.Background(), tmpDir, cfg)
+		if err != nil {
+			t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
+		}
+
+		// Verify no .tmp files remain
+		files, err := os.ReadDir(tmpDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, f := range files {
+			if filepath.Ext(f.Name()) == ".tmp" {
+				t.Errorf("Temp file should be cleaned up: %s", f.Name())
+			}
+		}
+	})
+
+	t.Run("atomic overwrite preserves content", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Save initial config
+		cfg1 := &Config{
+			Providers: map[string]Provider{
+				"first": {Name: "First Provider", BaseURL: "https://first.example.com", Model: "model-1"},
+			},
+			DefaultProvider: "first",
+		}
+
+		if err := SaveConfig(context.Background(), tmpDir, cfg1); err != nil {
+			t.Fatal(err)
+		}
+
+		// Overwrite with new config
+		cfg2 := &Config{
+			Providers: map[string]Provider{
+				"second": {Name: "Second Provider", BaseURL: "https://second.example.com", Model: "model-2"},
+			},
+			DefaultProvider: "second",
+			DefaultHarness:  "qwen",
+		}
+
+		if err := SaveConfig(context.Background(), tmpDir, cfg2); err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify the overwrite was atomic - content should be from second save
+		loaded, err := LoadConfig(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, ok := loaded.Providers["first"]; ok {
+			t.Error("First provider should not exist after overwrite")
+		}
+
+		if provider, ok := loaded.Providers["second"]; !ok {
+			t.Error("Second provider should exist")
+		} else {
+			if provider.Name != "Second Provider" {
+				t.Errorf("Provider name = %q, want %q", provider.Name, "Second Provider")
+			}
+		}
+
+		if loaded.DefaultProvider != "second" {
+			t.Errorf("DefaultProvider = %q, want %q", loaded.DefaultProvider, "second")
+		}
+
+		if loaded.DefaultHarness != "qwen" {
+			t.Errorf("DefaultHarness = %q, want %q", loaded.DefaultHarness, "qwen")
+		}
+	})
+
+	t.Run("atomic write preserves permissions", func(t *testing.T) {
+		if os.Getenv("GOOS") == "windows" {
+			t.Skip("Skipping permission test on Windows")
+		}
+
+		tmpDir := t.TempDir()
+
+		cfg := &Config{
+			Providers: map[string]Provider{
+				"test": {Name: "Test"},
+			},
+		}
+
+		if err := SaveConfig(context.Background(), tmpDir, cfg); err != nil {
+			t.Fatal(err)
+		}
+
+		configPath := filepath.Join(tmpDir, "config.yaml")
+		info, err := os.Stat(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Config files should have 0600 permissions (owner read/write only)
+		if info.Mode().Perm() != 0600 {
+			t.Errorf("File permissions = %o, want 0600", info.Mode().Perm())
+		}
+	})
+
+	t.Run("multiple overwrites do not leave temp files", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Perform multiple overwrites
+		for i := 0; i < 5; i++ {
+			cfg := &Config{
+				Providers: map[string]Provider{
+					"provider": {Name: "Provider"},
+				},
+				DefaultProvider: "provider",
+			}
+
+			if err := SaveConfig(context.Background(), tmpDir, cfg); err != nil {
+				t.Fatalf("SaveConfig iteration %d error: %v", i, err)
+			}
+		}
+
+		// Verify no .tmp files remain
+		files, err := os.ReadDir(tmpDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		tmpCount := 0
+		for _, f := range files {
+			if filepath.Ext(f.Name()) == ".tmp" {
+				tmpCount++
+			}
+		}
+
+		if tmpCount > 0 {
+			t.Errorf("Found %d temp files, want 0", tmpCount)
+		}
+
+		// Should only have config.yaml file
+		if len(files) != 1 {
+			t.Errorf("Expected 1 file (config.yaml), found %d: %v", len(files), files)
+		}
+	})
+}

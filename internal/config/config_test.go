@@ -2,11 +2,12 @@ package config
 
 import (
 	"context"
-
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
@@ -79,26 +80,28 @@ func TestLoadConfigUnknownFields(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Test that deprecated/unknown fields are tolerated for backward compatibility
-	// The 'version' field is deprecated but old configs may still have it
-	configWithDeprecatedField := `default_provider: zai
-version: "1.0.0"
+	// Test that unknown fields are rejected with clear error message
+	// This helps users catch configuration typos and ensures forward compatibility
+	// (older binaries will fail gracefully when reading newer config formats)
+	configWithUnknownField := `default_provider: zai
+unknown_field: some_value
 providers:
   zai:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
     model: glm-4.7
 `
-	if err := os.WriteFile(configPath, []byte(configWithDeprecatedField), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte(configWithUnknownField), 0600); err != nil {
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadConfig(context.Background(), tmpDir)
-	if err != nil {
-		t.Errorf("LoadConfig(context.Background(), ) should tolerate deprecated fields for backward compatibility: %v", err)
+	_, err := LoadConfig(context.Background(), tmpDir)
+	if err == nil {
+		t.Error("LoadConfig(context.Background(), ) should reject unknown fields")
 	}
-	if cfg.DefaultProvider != "zai" {
-		t.Errorf("expected default_provider to be 'zai', got %q", cfg.DefaultProvider)
+	// Verify the error message is helpful
+	if err != nil && !strings.Contains(err.Error(), "unknown") {
+		t.Errorf("error message should mention 'unknown' field, got: %v", err)
 	}
 }
 
@@ -741,5 +744,116 @@ func TestFormatSecretsRoundTrip(t *testing.T) {
 		if parsed[key] != value {
 			t.Errorf("Round trip: parsed[%q] = %q, want %q", key, parsed[key], value)
 		}
+	}
+}
+
+func TestParseSecretsDoesNotLogRawValues(t *testing.T) {
+	// SECURITY TEST: Verify that malformed secret entries do not log raw secret values.
+	// This test captures log output and asserts that sensitive data is never exposed.
+	//
+	// The following cases should NOT log the secret value:
+	// 1. Empty key (value contains secret)
+	// 2. Empty value (key exists but no secret)
+	// 3. Key with newline (malformed entry)
+	// 4. Value with newline (malformed entry)
+	//
+	// The log should only contain:
+	// - Line number
+	// - Type of issue (e.g., "empty key", "empty value")
+	// - NOT the actual key or value
+
+	tests := []struct {
+		name          string
+		input         string
+		secretValue   string // A value that should NEVER appear in logs
+		expectParsed  bool   // Whether any valid entries should be parsed
+		expectedKey   string // Expected valid key if any
+		expectedValue string // Expected valid value if any
+	}{
+		{
+			name:          "malformed entry with secret value should not log secret",
+			input:         "=my-super-secret-key-12345\nVALID_KEY=valid_value",
+			secretValue:   "my-super-secret-key-12345",
+			expectParsed:  true,
+			expectedKey:   "VALID_KEY",
+			expectedValue: "valid_value",
+		},
+		{
+			name:          "secret in value with newline should not be logged",
+			input:         "SECRET_KEY=secret-with\nnewline\nOTHER_KEY=value",
+			secretValue:   "secret-with",
+			expectParsed:  true,
+			expectedKey:   "OTHER_KEY",
+			expectedValue: "value",
+		},
+		{
+			name:          "empty value with key should not log key",
+			input:         "MY_SECRET_KEY=\nOTHER_KEY=valid",
+			secretValue:   "MY_SECRET_KEY",
+			expectParsed:  true,
+			expectedKey:   "OTHER_KEY",
+			expectedValue: "valid",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Capture log output
+			var logBuf strings.Builder
+			originalFlags := log.Flags()
+			log.SetOutput(&logBuf)
+			log.SetFlags(0) // Remove timestamp for easier testing
+			defer func() {
+				log.SetOutput(os.Stderr)
+				log.SetFlags(originalFlags)
+			}()
+
+			// Parse the secrets
+			result := ParseSecrets(tt.input)
+
+			// Get the log output
+			logOutput := logBuf.String()
+
+			// SECURITY ASSERTION: The secret value must NEVER appear in logs
+			if strings.Contains(logOutput, tt.secretValue) {
+				t.Errorf("SECURITY VIOLATION: log output contains secret value %q:\n%s", tt.secretValue, logOutput)
+			}
+
+			// Verify valid entries are still parsed correctly
+			if tt.expectParsed {
+				if result[tt.expectedKey] != tt.expectedValue {
+					t.Errorf("ParseSecrets()[%q] = %q, want %q", tt.expectedKey, result[tt.expectedKey], tt.expectedValue)
+				}
+			}
+		})
+	}
+}
+
+func TestParseSecretsLogOutputContainsUsefulDiagnostics(t *testing.T) {
+	// Verify that log output provides useful debugging information
+	// without exposing secret values.
+
+	var logBuf strings.Builder
+	originalFlags := log.Flags()
+	log.SetOutput(&logBuf)
+	log.SetFlags(0)
+	defer func() {
+		log.SetOutput(os.Stderr)
+		log.SetFlags(originalFlags)
+	}()
+
+	// Parse secrets with various malformed entries
+	_ = ParseSecrets("=secret_value\nKEY=\n\nVALID=valid")
+
+	logOutput := logBuf.String()
+
+	// Should mention "line" for diagnostics
+	if !strings.Contains(logOutput, "line") {
+		t.Errorf("Log output should mention 'line' for diagnostics, got: %s", logOutput)
+	}
+
+	// Should NOT contain the secret value
+	if strings.Contains(logOutput, "secret_value") {
+		t.Errorf("Log output should not contain secret value, got: %s", logOutput)
 	}
 }

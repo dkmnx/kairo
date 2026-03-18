@@ -122,7 +122,7 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 
 	var cfg Config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(false)
+	decoder.KnownFields(true)
 	if err := decoder.Decode(&cfg); err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"failed to parse configuration file (invalid YAML)", err).
@@ -156,11 +156,42 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 			WithContext("path", configPath)
 	}
 
-	if err := os.WriteFile(configPath, data, 0600); err != nil {
+	// Use atomic write (temp file + rename) to prevent partial writes on interruption.
+	// This mirrors the safe write pattern used in internal/crypto for secrets and keys.
+	tempPath := configPath + ".tmp"
+
+	file, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to write configuration file", err).
-			WithContext("path", configPath).
-			WithContext("permissions", "0600")
+			"failed to create temporary config file", err).
+			WithContext("path", tempPath)
+	}
+
+	_, err = file.Write(data)
+	if err != nil {
+		file.Close()
+		_ = os.Remove(tempPath)
+
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to write config data", err).
+			WithContext("path", tempPath)
+	}
+
+	if err := file.Close(); err != nil {
+		_ = os.Remove(tempPath)
+
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to close temporary config file", err).
+			WithContext("path", tempPath)
+	}
+
+	if err := os.Rename(tempPath, configPath); err != nil {
+		_ = os.Remove(tempPath)
+
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to rename temporary config file", err).
+			WithContext("temp_path", tempPath).
+			WithContext("config_path", configPath)
 	}
 
 	return nil
