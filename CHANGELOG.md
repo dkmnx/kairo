@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-03-19
+
+### Changed
+
+- **MiniMax**: Updated default model from MiniMax-M2.5 to MiniMax-M2.7
+
 ## [2.2.0] - 2026-03-18
 
 ### Changed
@@ -1077,6 +1083,7 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[2.2.1]: https://github.com/dkmnx/kairo/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/dkmnx/kairo/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/dkmnx/kairo/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/dkmnx/kairo/compare/v2.0.0...v2.1.0
