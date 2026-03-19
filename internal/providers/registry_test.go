@@ -131,7 +131,7 @@ func TestGetBuiltInProvider(t *testing.T) {
 			wantExists:   true,
 			wantName:     "MiniMax",
 			wantBaseURL:  "https://api.minimax.io/anthropic",
-			wantModel:    "MiniMax-M2.5",
+			wantModel:    "MiniMax-M2.7",
 			wantRequires: true,
 		},
 		{

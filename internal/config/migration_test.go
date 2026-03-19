@@ -49,14 +49,14 @@ default_models:
 			t.Fatal("minimax provider not found")
 		}
 
-		// The builtin default is MiniMax-M2.5, so model should be updated
-		if provider.Model != "MiniMax-M2.5" {
-			t.Errorf("Provider model = %q, want %q", provider.Model, "MiniMax-M2.5")
+		// The builtin default is MiniMax-M2.7, so model should be updated
+		if provider.Model != "MiniMax-M2.7" {
+			t.Errorf("Provider model = %q, want %q", provider.Model, "MiniMax-M2.7")
 		}
 
 		// DefaultModels should also be updated
-		if cfg.DefaultModels["minimax"] != "MiniMax-M2.5" {
-			t.Errorf("DefaultModels[minimax] = %q, want %q", cfg.DefaultModels["minimax"], "MiniMax-M2.5")
+		if cfg.DefaultModels["minimax"] != "MiniMax-M2.7" {
+			t.Errorf("DefaultModels[minimax] = %q, want %q", cfg.DefaultModels["minimax"], "MiniMax-M2.7")
 		}
 	})
 
@@ -90,8 +90,8 @@ providers:
 			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
-		if cfg.Providers["minimax"].Model != "MiniMax-M2.5" {
-			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.5")
+		if cfg.Providers["minimax"].Model != "MiniMax-M2.7" {
+			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.7")
 		}
 	})
 
@@ -105,9 +105,9 @@ providers:
   minimax:
     name: MiniMax
     base_url: https://api.minimax.io/anthropic
-    model: MiniMax-M2.5
+    model: MiniMax-M2.7
 default_models:
-  minimax: MiniMax-M2.5
+  minimax: MiniMax-M2.7
 `
 		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 			t.Fatal(err)
@@ -129,8 +129,8 @@ default_models:
 		}
 
 		// Should remain unchanged
-		if cfg.Providers["minimax"].Model != "MiniMax-M2.5" {
-			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.5")
+		if cfg.Providers["minimax"].Model != "MiniMax-M2.7" {
+			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.7")
 		}
 	})
 
@@ -171,8 +171,8 @@ default_models:
 		}
 
 		// Should be updated to new builtin
-		if cfg.Providers["minimax"].Model != "MiniMax-M2.5" {
-			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.5")
+		if cfg.Providers["minimax"].Model != "MiniMax-M2.7" {
+			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.7")
 		}
 	})
 
@@ -264,7 +264,7 @@ providers:
 func TestFormatMigrationChanges(t *testing.T) {
 	t.Run("FormatsChangesCorrectly", func(t *testing.T) {
 		changes := []MigrationChange{
-			{Provider: "minimax", Field: "model", Old: "MiniMax-M2", New: "MiniMax-M2.5"},
+			{Provider: "minimax", Field: "model", Old: "MiniMax-M2", New: "MiniMax-M2.7"},
 			{Provider: "zai", Field: "model", Old: "glm-4.5", New: "glm-4.7"},
 		}
 
@@ -277,7 +277,7 @@ func TestFormatMigrationChanges(t *testing.T) {
 		if !contains(result, "minimax") {
 			t.Error("Formatted output should contain 'minimax'")
 		}
-		if !contains(result, "MiniMax-M2") || !contains(result, "MiniMax-M2.5") {
+		if !contains(result, "MiniMax-M2") || !contains(result, "MiniMax-M2.7") {
 			t.Error("Formatted output should show old and new values")
 		}
 	})
