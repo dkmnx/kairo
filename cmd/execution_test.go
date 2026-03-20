@@ -395,7 +395,9 @@ func TestBuildProviderEnvironment_Success(t *testing.T) {
 		EnvVars: []string{"CUSTOM_VAR=custom_value"},
 	}
 
-	providerEnv, secrets, err := buildProviderEnvironment(tmpDir, provider, "test-provider")
+	cliCtx := NewCLIContext()
+	cliCtx.SetConfigDir(tmpDir)
+	providerEnv, secrets, err := buildProviderEnvironment(cliCtx, tmpDir, provider, "test-provider")
 	if err != nil {
 		t.Fatalf("buildProviderEnvironment() should succeed with no secrets file, got: %v", err)
 	}
@@ -566,7 +568,9 @@ func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 	}
 
 	// Test with a provider that doesn't require API key (should not fail on missing secrets)
-	env, secrets, err := buildProviderEnvironment(tmpDir, provider, "ollama")
+	cliCtx := NewCLIContext()
+	cliCtx.SetConfigDir(tmpDir)
+	env, secrets, err := buildProviderEnvironment(cliCtx, tmpDir, provider, "ollama")
 	if err != nil {
 		t.Errorf("buildProviderEnvironment() for provider without API key should not error, got: %v", err)
 	}
@@ -596,7 +600,9 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	env, _, err := buildProviderEnvironment(tmpDir, provider, "ollama")
+	cliCtx := NewCLIContext()
+	cliCtx.SetConfigDir(tmpDir)
+	env, _, err := buildProviderEnvironment(cliCtx, tmpDir, provider, "ollama")
 	if err != nil {
 		t.Fatalf("buildProviderEnvironment() error = %v", err)
 	}

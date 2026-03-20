@@ -19,12 +19,13 @@ var deleteCmd = &cobra.Command{
 	Short: "Remove a provider configuration",
 	Long:  "Remove a provider from Kairo. If no provider is specified, shows an interactive list of configured providers.",
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := requireConfigDir()
+		cliCtx := GetCLIContext(cmd)
+		dir := requireConfigDir(cmd)
 		if dir == "" {
 			return
 		}
 
-		cfg, err := config.LoadConfig(getRootCtx(), dir)
+		cfg, err := config.LoadConfig(cliCtx.GetRootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")
@@ -95,17 +96,17 @@ var deleteCmd = &cobra.Command{
 			cfg.DefaultProvider = ""
 		}
 
-		if err := config.SaveConfig(getRootCtx(), dir, cfg); err != nil {
+		if err := config.SaveConfig(cliCtx.GetRootCtx(), dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Saving config: %v", err))
 			return
 		}
 
-		configCache.Invalidate(dir)
+		cliCtx.InvalidateCache(dir)
 
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
 
-		existingSecrets, err := crypto.DecryptSecrets(getRootCtx(), secretsPath, keyPath)
+		existingSecrets, err := crypto.DecryptSecrets(cliCtx.GetRootCtx(), secretsPath, keyPath)
 		if err == nil {
 			secrets := config.ParseSecrets(existingSecrets)
 			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(target)))
@@ -118,7 +119,7 @@ var deleteCmd = &cobra.Command{
 					ui.PrintWarn(fmt.Sprintf("Warning: Could not remove empty secrets file: %v", err))
 				}
 			} else {
-				if err := crypto.EncryptSecrets(getRootCtx(), secretsPath, keyPath, secretsContent); err != nil {
+				if err := crypto.EncryptSecrets(cliCtx.GetRootCtx(), secretsPath, keyPath, secretsContent); err != nil {
 					ui.PrintWarn(fmt.Sprintf("Warning: Could not update secrets: %v", err))
 				}
 			}

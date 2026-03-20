@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestMergeEnvVars(t *testing.T) {
@@ -153,11 +156,15 @@ func TestRequireConfigDirWritable(t *testing.T) {
 		tmpDir := t.TempDir()
 		testConfigDir := filepath.Join(tmpDir, "kairo-config")
 
-		// Use setConfigDir to override the config directory
-		setConfigDir(testConfigDir)
-		defer setConfigDir("") // Reset after test
+		// Create a CLIContext with the test config directory
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDir(testConfigDir)
 
-		result := requireConfigDirWritable()
+		// Create a mock command with the CLIContext
+		cmd := &cobra.Command{}
+		cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
+
+		result := requireConfigDirWritable(cmd)
 		if result == "" {
 			t.Error("requireConfigDirWritable() should return path when directory can be created")
 		}
@@ -180,11 +187,15 @@ func TestRequireConfigDir(t *testing.T) {
 	t.Run("returns config dir when set", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Use setConfigDir to override the config directory
-		setConfigDir(tmpDir)
-		defer setConfigDir("") // Reset after test
+		// Create a CLIContext with the test config directory
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDir(tmpDir)
 
-		result := requireConfigDir()
+		// Create a mock command with the CLIContext
+		cmd := &cobra.Command{}
+		cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
+
+		result := requireConfigDir(cmd)
 		if result == "" {
 			t.Error("requireConfigDir() should return path when config dir is set")
 		}

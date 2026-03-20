@@ -746,7 +746,8 @@ func TestCustomProviderKeyLookupInSwitch(t *testing.T) {
 func TestEnsureConfigDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := ensureConfigDirectory(tmpDir)
+	cliCtx := NewCLIContext()
+	err := ensureConfigDirectory(cliCtx, tmpDir)
 	if err != nil {
 		t.Errorf("ensureConfigDirectory() error = %v", err)
 	}
@@ -770,7 +771,8 @@ func TestLoadOrInitializeConfigExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	loadedCfg, err := loadOrInitializeConfig(tmpDir)
+	cliCtx := NewCLIContext()
+	loadedCfg, err := loadOrInitializeConfig(cliCtx, tmpDir)
 	if err != nil {
 		t.Errorf("loadOrInitializeConfig() error = %v", err)
 	}
@@ -785,7 +787,8 @@ func TestLoadOrInitializeConfigExisting(t *testing.T) {
 func TestLoadOrInitializeConfigNew(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	loadedCfg, err := loadOrInitializeConfig(tmpDir)
+	cliCtx := NewCLIContext()
+	loadedCfg, err := loadOrInitializeConfig(cliCtx, tmpDir)
 	if err != nil {
 		t.Fatalf("loadOrInitializeConfig() returned unexpected error: %v", err)
 	}
@@ -812,7 +815,8 @@ func TestLoadOrInitializeConfigError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	loadedCfg, err := loadOrInitializeConfig(tmpDir)
+	cliCtx := NewCLIContext()
+	loadedCfg, err := loadOrInitializeConfig(cliCtx, tmpDir)
 	if err != nil {
 		t.Errorf("loadOrInitializeConfig() error = %v", err)
 	}
@@ -1860,7 +1864,8 @@ func TestEnsureConfigDirectory_ErrorPaths(t *testing.T) {
 
 		// Try to create directory inside a file path (should fail)
 		invalidPath := filepath.Join(tmpFile.Name(), "config")
-		err = ensureConfigDirectory(invalidPath)
+		cliCtx := NewCLIContext()
+		err = ensureConfigDirectory(cliCtx, invalidPath)
 		if err == nil {
 			t.Error("expected error for invalid config directory path")
 		}
@@ -1882,6 +1887,7 @@ func TestSaveProviderConfiguration_ValidationErrors(t *testing.T) {
 		}
 
 		params := SaveProviderParams{
+			CLIContext:   NewCLIContext(),
 			ConfigDir:    "/nonexistent/path/that/cannot/be/created",
 			Cfg:          cfg,
 			ProviderName: "testprovider",

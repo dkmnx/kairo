@@ -68,6 +68,7 @@ func buildProviderConfig(definition providers.ProviderDefinition, baseURL, model
 // addAndSaveProvider adds a provider to the config and saves it to disk.
 // If setAsDefault is true and no default provider is set, the provider becomes the default.
 func addAndSaveProvider(
+	cliCtx *CLIContext,
 	configDir string,
 	cfg *config.Config,
 	providerName string,
@@ -78,23 +79,23 @@ func addAndSaveProvider(
 	if setAsDefault && cfg.DefaultProvider == "" {
 		cfg.DefaultProvider = providerName
 	}
-	if err := config.SaveConfig(getRootCtx(), configDir, cfg); err != nil {
+	if err := config.SaveConfig(cliCtx.GetRootCtx(), configDir, cfg); err != nil {
 		return kairoerrors.WrapError(kairoerrors.ConfigError,
 			"saving config", err)
 	}
 
-	configCache.Invalidate(configDir)
+	cliCtx.InvalidateCache(configDir)
 
 	return nil
 }
 
 // ensureConfigDirectory creates the config directory and encryption key if they don't exist.
-func ensureConfigDirectory(configDir string) error {
+func ensureConfigDirectory(cliCtx *CLIContext, configDir string) error {
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"creating config directory", err)
 	}
-	if err := crypto.EnsureKeyExists(getRootCtx(), configDir); err != nil {
+	if err := crypto.EnsureKeyExists(cliCtx.GetRootCtx(), configDir); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"creating encryption key", err)
 	}
@@ -103,8 +104,8 @@ func ensureConfigDirectory(configDir string) error {
 }
 
 // loadOrInitializeConfig loads an existing config or creates a new empty one.
-func loadOrInitializeConfig(configDir string) (*config.Config, error) {
-	cfg, err := configCache.Get(getRootCtx(), configDir)
+func loadOrInitializeConfig(cliCtx *CLIContext, configDir string) (*config.Config, error) {
+	cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), configDir)
 	if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 		return nil, err
 	}
@@ -142,6 +143,7 @@ func LoadAndDecryptSecrets(ctx context.Context, configDir string) (map[string]st
 
 // SaveProviderParams holds all parameters for saving provider configuration.
 type SaveProviderParams struct {
+	CLIContext   *CLIContext
 	ConfigDir    string
 	Cfg          *config.Config
 	ProviderName string
@@ -158,6 +160,7 @@ type SaveProviderParams struct {
 func saveProviderConfiguration(params SaveProviderParams) error {
 	setAsDefault := params.Cfg.DefaultProvider == ""
 	if err := addAndSaveProvider(
+		params.CLIContext,
 		params.ConfigDir,
 		params.Cfg,
 		params.ProviderName,
@@ -170,9 +173,11 @@ func saveProviderConfiguration(params SaveProviderParams) error {
 	// Save secrets
 	params.Secrets[apiKeyEnvVarName(params.ProviderName)] = params.APIKey
 	secretsContent := config.FormatSecrets(params.Secrets)
-	if err := crypto.EncryptSecrets(getRootCtx(), params.SecretsPath, params.KeyPath, secretsContent); err != nil {
+	encryptErr := crypto.EncryptSecrets(
+		params.CLIContext.GetRootCtx(), params.SecretsPath, params.KeyPath, secretsContent)
+	if encryptErr != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"saving API key", err)
+			"saving API key", encryptErr)
 	}
 
 	return nil
@@ -227,6 +232,7 @@ func buildProviderConfigFromInput(params BuildProviderConfigParams) config.Provi
 
 // ConfigureProviderParams holds all parameters for configuring a provider.
 type ConfigureProviderParams struct {
+	CLIContext   *CLIContext
 	ConfigDir    string
 	Cfg          *config.Config
 	ProviderName string
@@ -280,6 +286,7 @@ func configureProvider(params ConfigureProviderParams) (string, error) {
 	})
 
 	if err := saveProviderConfiguration(SaveProviderParams{
+		CLIContext:   params.CLIContext,
 		ConfigDir:    params.ConfigDir,
 		Cfg:          params.Cfg,
 		ProviderName: validatedName,
@@ -311,7 +318,8 @@ var setupCmd = &cobra.Command{
 	Long: "Run the interactive wizard to configure new providers or edit existing ones. " +
 		"Select a provider to edit or choose 'Setup new provider' to add a new provider.",
 	Run: func(cmd *cobra.Command, args []string) {
-		configDir := getConfigDir()
+		cliCtx := GetCLIContext(cmd)
+		configDir := cliCtx.GetConfigDir()
 		if configDir == "" {
 			home, err := os.UserHomeDir()
 			if err != nil {
@@ -322,23 +330,23 @@ var setupCmd = &cobra.Command{
 			configDir = filepath.Join(home, ".config", "kairo")
 		}
 
-		if err := ensureConfigDirectory(configDir); err != nil {
+		if err := ensureConfigDirectory(cliCtx, configDir); err != nil {
 			ui.PrintError(err.Error())
 
 			return
 		}
 
-		cfg, err := loadOrInitializeConfig(configDir)
+		cfg, err := loadOrInitializeConfig(cliCtx, configDir)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
 
 			return
 		}
 
-		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(getRootCtx(), configDir)
+		secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(cliCtx.GetRootCtx(), configDir)
 		if err != nil {
 			if setupResetSecrets {
-				if err := resetSecrets(configDir, secretsPath, keyPath); err != nil {
+				if err := resetSecrets(cliCtx, configDir, secretsPath, keyPath); err != nil {
 					ui.PrintError(fmt.Sprintf("Failed to reset secrets: %v", err))
 					ui.PrintInfo("Use --verbose for more details.")
 
@@ -362,6 +370,7 @@ var setupCmd = &cobra.Command{
 
 		_, exists := cfg.Providers[providerName]
 		if _, err := configureProvider(ConfigureProviderParams{
+			CLIContext:   cliCtx,
 			ConfigDir:    configDir,
 			Cfg:          cfg,
 			ProviderName: providerName,
@@ -385,7 +394,7 @@ func init() {
 
 // resetSecrets handles the --reset-secrets flag by removing old key and secrets files
 // and generating a fresh encryption key.
-func resetSecrets(configDir, secretsPath, keyPath string) error {
+func resetSecrets(cliCtx *CLIContext, configDir, secretsPath, keyPath string) error {
 	ui.PrintWarn("This will delete your current encryption key and encrypted secrets.")
 	ui.PrintInfo("You will need to re-enter all API keys.")
 	ui.PrintInfo("")
@@ -405,7 +414,7 @@ func resetSecrets(configDir, secretsPath, keyPath string) error {
 			"failed to remove old secrets file", err)
 	}
 
-	if err := crypto.EnsureKeyExists(getRootCtx(), configDir); err != nil {
+	if err := crypto.EnsureKeyExists(cliCtx.GetRootCtx(), configDir); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to generate new encryption key", err)
 	}

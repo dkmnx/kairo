@@ -85,13 +85,14 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 // secure wrapper script mechanism to avoid exposing credentials in child process
 // environments (/proc/<pid>/environ).
 func buildProviderEnvironment(
+	cliCtx *CLIContext,
 	configDir string,
 	provider config.Provider,
 	providerName string,
 ) ([]string, map[string]string, error) {
 	builtInEnvVars := buildBuiltInEnvVars(provider)
 
-	secrets, _, _, err := LoadAndDecryptSecrets(getRootCtx(), configDir)
+	secrets, _, _, err := LoadAndDecryptSecrets(cliCtx.GetRootCtx(), configDir)
 	if err != nil {
 		if providers.RequiresAPIKey(providerName) {
 			return nil, nil, err

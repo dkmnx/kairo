@@ -284,7 +284,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)`,
 			return
 		}
 
-		dir := getConfigDir()
+		dir := GetCLIContext(cmd).GetConfigDir()
 		if dir != "" {
 			changes, err := config.MigrateConfigOnUpdate(context.Background(), dir)
 			if err != nil {
