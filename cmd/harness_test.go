@@ -61,7 +61,7 @@ func TestHarnessSetClaude(t *testing.T) {
 
 	cfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
+		t.Fatalf("LoadConfig(context.Background(), %q) error = %v", tmpDir, err)
 	}
 	if cfg.DefaultHarness != "claude" {
 		t.Errorf("DefaultHarness = %q, want %q", cfg.DefaultHarness, "claude")

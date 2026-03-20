@@ -184,7 +184,8 @@ func TestSaveProviderConfigFile(t *testing.T) {
 			Model:   "test-model",
 		}
 
-		err := addAndSaveProvider(tmpDir, cfg, "testprovider", provider, true)
+		cliCtx := NewCLIContext()
+		err := addAndSaveProvider(cliCtx, tmpDir, cfg, "testprovider", provider, true)
 		if err != nil {
 			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
@@ -217,7 +218,8 @@ func TestSaveProviderConfigFile(t *testing.T) {
 			Model:   "test-model",
 		}
 
-		err := addAndSaveProvider(tmpDir, cfg, "testprovider", provider, false)
+		cliCtx := NewCLIContext()
+		err := addAndSaveProvider(cliCtx, tmpDir, cfg, "testprovider", provider, false)
 		if err != nil {
 			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
@@ -241,7 +243,8 @@ func TestSaveProviderConfigFile(t *testing.T) {
 			Model:   "test-model",
 		}
 
-		err := addAndSaveProvider(tmpDir, cfg, "newprovider", provider, true)
+		cliCtx := NewCLIContext()
+		err := addAndSaveProvider(cliCtx, tmpDir, cfg, "newprovider", provider, true)
 		if err != nil {
 			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
@@ -330,6 +333,7 @@ func TestSaveProviderConfiguration(t *testing.T) {
 		keyPath := filepath.Join(tmpDir, config.KeyFileName)
 
 		params := SaveProviderParams{
+			CLIContext:   NewCLIContext(),
 			ConfigDir:    tmpDir,
 			Cfg:          cfg,
 			ProviderName: "testprovider",
@@ -384,6 +388,7 @@ func TestSaveProviderConfiguration(t *testing.T) {
 		keyPath := filepath.Join(tmpDir, config.KeyFileName)
 
 		params := SaveProviderParams{
+			CLIContext:   NewCLIContext(),
 			ConfigDir:    tmpDir,
 			Cfg:          cfg,
 			ProviderName: "newprovider",
