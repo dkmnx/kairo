@@ -215,6 +215,16 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
+
+	// Sync flag values to defaultCLIContext before each command runs.
+	// This ensures that even though flags are bound to globals, the CLIContext
+	// used by commands is kept in sync.
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		defaultCLIContext.SetConfigDir(configDir)
+		defaultCLIContext.SetVerbose(verbose)
+		// Set the CLIContext on the command for GetCLIContext to find
+		cmd.SetContext(WithCLIContext(cmd.Context(), defaultCLIContext))
+	}
 }
 
 func splitArgs(args []string) ([]string, []string) {
