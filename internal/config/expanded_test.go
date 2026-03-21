@@ -2,9 +2,9 @@ package config
 
 import (
 	"context"
-
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -455,7 +455,7 @@ func TestSaveConfigAtomicWrite(t *testing.T) {
 	})
 
 	t.Run("atomic write preserves permissions", func(t *testing.T) {
-		if os.Getenv("GOOS") == "windows" {
+		if runtime.GOOS == "windows" {
 			t.Skip("Skipping permission test on Windows")
 		}
 

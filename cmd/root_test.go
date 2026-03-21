@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -435,12 +436,17 @@ func TestHandleConfigError(t *testing.T) {
 		result := output.String()
 
 		// Verify the helpful message is shown
+		// Use platform-specific install script name
+		installScript := "install.ps1"
+		if runtime.GOOS != "windows" {
+			installScript = "install.sh"
+		}
 		expectedMessages := []string{
 			"Your kairo binary is outdated",
 			"configuration file contains newer fields",
 			"installation script",
 			"github.com/dkmnx/kairo",
-			"install.sh",
+			installScript,
 		}
 
 		for _, msg := range expectedMessages {

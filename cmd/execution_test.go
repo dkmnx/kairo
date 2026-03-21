@@ -164,9 +164,13 @@ func TestBuildWrapperCommand_Windows(t *testing.T) {
 		t.Fatal("buildWrapperCommand() should return non-nil cmd for Windows")
 	}
 
-	// Verify it's using powershell
-	if cmd.Path != "powershell" {
-		t.Errorf("cmd.Path = %q, want 'powershell'", cmd.Path)
+	// Verify it's using powershell - check Args[0] since Path may be resolved to full path on Windows
+	cmdName := ""
+	if len(cmd.Args) > 0 {
+		cmdName = cmd.Args[0]
+	}
+	if cmdName != "powershell" {
+		t.Errorf("cmd.Args[0] = %q, want 'powershell'", cmdName)
 	}
 
 	// Verify arguments
