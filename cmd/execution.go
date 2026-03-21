@@ -26,6 +26,18 @@ var createTempAuthDirFn = wrapper.CreateTempAuthDir
 // writeTempTokenFileFn wraps wrapper.WriteTempTokenFile for testability.
 var writeTempTokenFileFn = wrapper.WriteTempTokenFile
 
+// generateWrapperScriptFn wraps wrapper.GenerateWrapperScript for testability.
+var generateWrapperScriptFn = wrapper.GenerateWrapperScript
+
+// yoloFlag returns the appropriate yolo flag for the given harness.
+func yoloModeFlag(harness string) string {
+	if harness == harnessQwen {
+		return "--yolo"
+	}
+
+	return "--dangerously-skip-permissions"
+}
+
 // handleConfigError provides user-friendly guidance for config errors.
 func handleConfigError(cmd *cobra.Command, err error) {
 	errStr := err.Error()
@@ -188,7 +200,7 @@ func runHarnessWithWrapper(params HarnessWrapperParams) error {
 		CliArgs:    params.CliArgs,
 		EnvVarName: params.EnvVarName,
 	}
-	wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(wrapperCfg)
+	wrapperScript, useCmdExe, err := generateWrapperScriptFn(wrapperCfg)
 	if err != nil {
 		return fmt.Errorf("generating wrapper script: %w", err)
 	}
@@ -261,6 +273,10 @@ func executeWithAuth(cfg ExecutionConfig) {
 		CliArgs:       cliArgs,
 		ProviderEnv:   cfg.ProviderEnv,
 		Provider:      cfg.Provider,
+	}
+
+	if cfg.Yolo {
+		wrapperParams.CliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, wrapperParams.CliArgs...)
 	}
 
 	if cfg.HarnessToUse == harnessQwen {
