@@ -13,6 +13,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
+	"github.com/dkmnx/kairo/internal/wrapper"
 	"github.com/spf13/cobra"
 )
 
@@ -385,6 +386,168 @@ func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 
 	if !execCalled.Load() {
 		t.Error("executeWithAuth() should call execCommandContext for Claude harness")
+	}
+}
+
+func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
+	// Save original functions
+	originalLookPath := lookPath
+	originalExecCommandContext := execCommandContext
+	originalExitProcess := exitProcess
+	originalCreateTempAuthDir := createTempAuthDirFn
+	originalWriteTempTokenFile := writeTempTokenFileFn
+	originalGenerateWrapperScript := generateWrapperScriptFn
+	defer func() {
+		lookPath = originalLookPath
+		execCommandContext = originalExecCommandContext
+		exitProcess = originalExitProcess
+		createTempAuthDirFn = originalCreateTempAuthDir
+		writeTempTokenFileFn = originalWriteTempTokenFile
+		generateWrapperScriptFn = originalGenerateWrapperScript
+	}()
+
+	lookPath = func(file string) (string, error) {
+		return "/usr/bin/" + file, nil
+	}
+
+	tmpDir := t.TempDir()
+	createTempAuthDirFn = func() (string, error) {
+		return tmpDir, nil
+	}
+
+	tokenPath := filepath.Join(tmpDir, "token")
+	writeTempTokenFileFn = func(authDir, token string) (string, error) {
+		return tokenPath, nil
+	}
+
+	var capturedCfg wrapper.ScriptConfig
+	generateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
+		capturedCfg = cfg
+		// Return a temp script path that will be cleaned up
+		scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
+		return scriptPath, true, nil
+	}
+
+	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		cmd := execCommand("echo", "mocked")
+		cmd.Env = []string{"TEST=value"}
+		return cmd
+	}
+
+	exitProcess = func(int) {}
+
+	cmd := &cobra.Command{}
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   []string{"TEST=value"},
+		HarnessToUse:  "claude",
+		HarnessBinary: "claude",
+		Provider: config.Provider{
+			Name:    "Test Provider",
+			BaseURL: "https://test.com",
+			Model:   "test-model",
+		},
+		HarnessArgs: []string{"--test"},
+		APIKey:      "test-api-key",
+		Yolo:        true,
+	}
+
+	executeWithAuth(cfg)
+
+	// Verify the captured config contains the yolo flag
+	found := false
+	for _, arg := range capturedCfg.CliArgs {
+		if arg == "--dangerously-skip-permissions" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("executeWithAuth(Yolo=true) should pass --dangerously-skip-permissions for claude, got CliArgs: %v", capturedCfg.CliArgs)
+	}
+}
+
+func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
+	// Save original functions
+	originalLookPath := lookPath
+	originalExecCommandContext := execCommandContext
+	originalExitProcess := exitProcess
+	originalCreateTempAuthDir := createTempAuthDirFn
+	originalWriteTempTokenFile := writeTempTokenFileFn
+	originalGenerateWrapperScript := generateWrapperScriptFn
+	defer func() {
+		lookPath = originalLookPath
+		execCommandContext = originalExecCommandContext
+		exitProcess = originalExitProcess
+		createTempAuthDirFn = originalCreateTempAuthDir
+		writeTempTokenFileFn = originalWriteTempTokenFile
+		generateWrapperScriptFn = originalGenerateWrapperScript
+	}()
+
+	lookPath = func(file string) (string, error) {
+		return "/usr/bin/" + file, nil
+	}
+
+	tmpDir := t.TempDir()
+	createTempAuthDirFn = func() (string, error) {
+		return tmpDir, nil
+	}
+
+	tokenPath := filepath.Join(tmpDir, "token")
+	writeTempTokenFileFn = func(authDir, token string) (string, error) {
+		return tokenPath, nil
+	}
+
+	var capturedCfg wrapper.ScriptConfig
+	generateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
+		capturedCfg = cfg
+		// Return a temp script path that will be cleaned up
+		scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
+		return scriptPath, true, nil
+	}
+
+	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		cmd := execCommand("echo", "mocked")
+		cmd.Env = []string{"TEST=value"}
+		return cmd
+	}
+
+	exitProcess = func(int) {}
+
+	cmd := &cobra.Command{}
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   []string{"TEST=value"},
+		HarnessToUse:  harnessQwen,
+		HarnessBinary: "qwen",
+		Provider: config.Provider{
+			Name:    "Test Provider",
+			BaseURL: "https://test.com",
+			Model:   "test-model",
+		},
+		HarnessArgs: []string{"--test"},
+		APIKey:      "test-api-key",
+		Yolo:        true,
+	}
+
+	executeWithAuth(cfg)
+
+	// Verify the captured config contains the yolo flag
+	found := false
+	for _, arg := range capturedCfg.CliArgs {
+		if arg == "--yolo" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("executeWithAuth(Yolo=true) should pass --yolo for qwen, got CliArgs: %v", capturedCfg.CliArgs)
 	}
 }
 
