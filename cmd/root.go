@@ -110,6 +110,7 @@ const (
 
 var (
 	harnessFlag string
+	yoloFlag    bool // yolo mode - skips permission prompts
 )
 
 var rootCmd = &cobra.Command{
@@ -215,6 +216,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
+	rootCmd.Flags().BoolVarP(&yoloFlag, "yolo", "y", false, "Skip permission prompts (--dangerously-skip-permissions for Claude, --yolo for Qwen)")
 
 	// Sync flag values to defaultCLIContext before each command runs.
 	// This ensures that even though flags are bound to globals, the CLIContext
