@@ -20,6 +20,9 @@ import (
 // harnessQwen is the harness name for Qwen Code.
 const harnessQwen = "qwen"
 
+// claudeYoloFlag is the flag passed to Claude to skip permission prompts.
+const claudeYoloFlag = "--dangerously-skip-permissions"
+
 // createTempAuthDirFn wraps wrapper.CreateTempAuthDir for testability.
 var createTempAuthDirFn = wrapper.CreateTempAuthDir
 
@@ -35,7 +38,7 @@ func yoloModeFlag(harness string) string {
 		return "--yolo"
 	}
 
-	return "--dangerously-skip-permissions"
+	return claudeYoloFlag
 }
 
 // handleConfigError provides user-friendly guidance for config errors.
