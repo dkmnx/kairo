@@ -717,6 +717,61 @@ func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
 	}
 }
 
+func TestExecuteWithoutAuth_YoloModeClaude(t *testing.T) {
+	originalLookPath := lookPath
+	originalExecCommandContext := execCommandContext
+	originalExitProcess := exitProcess
+	defer func() {
+		lookPath = originalLookPath
+		execCommandContext = originalExecCommandContext
+		exitProcess = originalExitProcess
+	}()
+
+	lookPath = func(file string) (string, error) {
+		return "/usr/bin/" + file, nil
+	}
+
+	var capturedArgs []string
+	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		capturedArgs = arg
+		cmd := execCommand("echo", "mocked")
+		return cmd
+	}
+
+	exitProcess = func(int) {}
+
+	cmd := &cobra.Command{}
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   []string{"TEST=value"},
+		HarnessToUse:  "claude",
+		HarnessBinary: "claude",
+		Provider: config.Provider{
+			Name:    "Test Provider",
+			BaseURL: "https://test.com",
+			Model:   "test-model",
+		},
+		HarnessArgs: []string{"--test"},
+		Yolo:        true,
+	}
+
+	executeWithoutAuth(cfg)
+
+	found := false
+	for _, arg := range capturedArgs {
+		if arg == "--dangerously-skip-permissions" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("executeWithoutAuth(Yolo=true) should pass --dangerously-skip-permissions for claude, got: %v", capturedArgs)
+	}
+}
+
 // TestBuildProviderEnvironment_NoAPIKeyRequired tests buildProviderEnvironment for providers that don't require API keys
 func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 	tmpDir := t.TempDir()
