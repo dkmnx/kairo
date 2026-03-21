@@ -305,6 +305,10 @@ func executeWithAuth(cfg ExecutionConfig) {
 func executeWithoutAuth(cfg ExecutionConfig) {
 	cliArgs := cfg.HarnessArgs
 
+	if cfg.Yolo {
+		cliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, cliArgs...)
+	}
+
 	if cfg.HarnessToUse == harnessQwen {
 		ui.PrintError("API key not found for provider")
 		ui.PrintInfo("Qwen Code requires API keys to be set in environment variables.")
