@@ -3,11 +3,17 @@
 #
 # Key syntax differences from Make:
 # - Variables use {{VARIABLE}} for substitution
-# - Shell commands use backticks: `command`
+# - Shell commands use $() syntax
 # - No .PHONY needed (Just is a command runner, not build system)
 # - Recipe indentation: 2 spaces (must be consistent)
 # - @ prefix suppresses command echoing (same as Make)
 # - - prefix ignores errors (same as Make)
+
+# Use bash for consistent shell behavior across platforms
+set shell := ["bash", "-c"]
+
+# Detect Go binary - try common paths on Windows and Unix
+GO := `which go || which /c/Program\ Files/Go/bin/go.exe || which /usr/local/go/bin/go || echo go`
 
 # Variables
 BINARY_NAME := "kairo"
@@ -27,26 +33,26 @@ _:
 build:
     @echo "Building {{BINARY_NAME}} {{VERSION}}..."
     @mkdir -p {{DIST_DIR}}
-    go build -ldflags "{{LDFLAGS}}" -o {{DIST_DIR}}/{{BINARY_NAME}} .
+    {{GO}} build -ldflags "{{LDFLAGS}}" -o {{DIST_DIR}}/{{BINARY_NAME}} .
 
 # Run all tests
 test:
     @echo "Running tests..."
-    go test -v ./...
-    go test -race ./...
+    {{GO}} test -v ./...
+    {{GO}} test -race ./...
 
 # Run fuzzing tests with timeout
 fuzz:
     @echo "Running fuzzing tests (5s per test)..."
     @echo ""
     @echo "=== internal/validate ==="
-    go test -fuzz=FuzzValidateAPIKey -fuzztime=5s ./internal/validate/
-    go test -fuzz=FuzzValidateURL -fuzztime=5s ./internal/validate/
-    go test -fuzz=FuzzValidateProviderModel -fuzztime=5s ./internal/validate/
-    go test -fuzz=FuzzValidateCrossProviderConfig -fuzztime=5s ./internal/validate/
+    {{GO}} test -fuzz=FuzzValidateAPIKey -fuzztime=5s ./internal/validate/
+    {{GO}} test -fuzz=FuzzValidateURL -fuzztime=5s ./internal/validate/
+    {{GO}} test -fuzz=FuzzValidateProviderModel -fuzztime=5s ./internal/validate/
+    {{GO}} test -fuzz=FuzzValidateCrossProviderConfig -fuzztime=5s ./internal/validate/
     @echo ""
     @echo "=== cmd ==="
-    go test -fuzz=FuzzValidateCustomProviderName -fuzztime=5s ./cmd/
+    {{GO}} test -fuzz=FuzzValidateCustomProviderName -fuzztime=5s ./cmd/
     @echo ""
     @echo "Fuzzing tests completed!"
 
@@ -54,8 +60,8 @@ fuzz:
 test-coverage:
     @echo "Running tests with coverage..."
     @mkdir -p {{DIST_DIR}}
-    go test -coverprofile={{DIST_DIR}}/coverage.out ./...
-    go tool cover -html={{DIST_DIR}}/coverage.out -o {{DIST_DIR}}/coverage.html
+    {{GO}} test -coverprofile={{DIST_DIR}}/coverage.out ./...
+    {{GO}} tool cover -html={{DIST_DIR}}/coverage.out -o {{DIST_DIR}}/coverage.html
     @echo "Coverage report: {{DIST_DIR}}/coverage.html"
 
 # Run linters
@@ -70,7 +76,7 @@ lint:
             exit 1; \
         fi && \
         rm -f "$$TMPFILE"
-    go vet ./...
+    {{GO}} vet ./...
     @if command -v golangci-lint >/dev/null 2>&1; then \
         golangci-lint run ./...; \
     else \
@@ -144,61 +150,61 @@ run args="": build
 # Download and tidy dependencies
 deps:
     @echo "Installing dependencies..."
-    go mod download
-    go mod tidy
-    
+    {{GO}} mod download
+    {{GO}} mod tidy
+
     @echo "Installing development tools..."
     @if command -v golangci-lint >/dev/null 2>&1; then \
         echo "golangci-lint already installed"; \
     else \
         echo "Installing golangci-lint v1.64.8..."; \
-        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
+        {{GO}} install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
     fi
-    
+
     @if command -v pre-commit >/dev/null 2>&1; then \
         echo "pre-commit already installed"; \
     else \
         echo "Installing pre-commit..."; \
         pip install pre-commit; \
     fi
-    
+
     @if command -v govulncheck >/dev/null 2>&1; then \
         echo "govulncheck already installed"; \
     else \
         echo "Installing govulncheck..."; \
-        go install golang.org/x/vuln/cmd/govulncheck@latest; \
+        {{GO}} install golang.org/x/vuln/cmd/govulncheck@latest; \
     fi
-    
+
     @if command -v goreleaser >/dev/null 2>&1; then \
         echo "goreleaser already installed"; \
     else \
         echo "Installing goreleaser..."; \
-        go install github.com/goreleaser/goreleaser/v2@latest 2>&1 || \
+        {{GO}} install github.com/goreleaser/goreleaser/v2@latest 2>&1 || \
         echo "⚠️  goreleaser installation failed (requires Go 1.26+ for full installation)"; \
         echo "   goreleaser is only needed for releases. Skipping for now."; \
     fi
-    
+
     @if command -v act >/dev/null 2>&1; then \
         echo "act already installed"; \
     else \
         echo "Installing act..."; \
         curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sh; \
     fi
-    
+
     @if command -v staticcheck >/dev/null 2>&1; then \
         echo "staticcheck already installed"; \
     else \
         echo "Installing staticcheck..."; \
-        go install honnef.co/go/tools/cmd/staticcheck@latest; \
+        {{GO}} install honnef.co/go/tools/cmd/staticcheck@latest; \
     fi
-    
+
     @echo "Installing pre-commit hooks..."
     pre-commit install
 
 # Verify dependencies
 verify-deps:
     @echo "Verifying dependencies..."
-    go mod verify
+    {{GO}} mod verify
 
 # Run vulnerability scan
 vuln-scan:
