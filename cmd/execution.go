@@ -152,6 +152,7 @@ type ExecutionConfig struct {
 	Provider      config.Provider
 	HarnessArgs   []string
 	APIKey        string
+	Yolo          bool // skip permission prompts
 }
 
 // HarnessWrapperParams holds all parameters for running a harness with auth wrapper.
