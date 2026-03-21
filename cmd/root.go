@@ -182,6 +182,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 				Provider:      provider,
 				HarnessArgs:   harnessArgs,
 				APIKey:        apiKey,
+				Yolo:          yoloFlag,
 			})
 
 			return
@@ -194,6 +195,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			HarnessBinary: harnessBinary,
 			Provider:      provider,
 			HarnessArgs:   harnessArgs,
+			Yolo:          yoloFlag,
 		})
 	},
 }
