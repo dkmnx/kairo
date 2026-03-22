@@ -16,13 +16,14 @@ var listCmd = &cobra.Command{
 	Short: "List configured providers",
 	Long:  "Display all configured providers and their status",
 	Run: func(cmd *cobra.Command, args []string) {
-		dir := requireConfigDir()
+		cliCtx := GetCLIContext(cmd)
+		dir := requireConfigDir(cmd)
 		if dir == "" {
 			ui.PrintInfo("Run 'kairo setup' to configure providers")
 			return
 		}
 
-		cfg, err := config.LoadConfig(getRootCtx(), dir)
+		cfg, err := config.LoadConfig(cliCtx.GetRootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")

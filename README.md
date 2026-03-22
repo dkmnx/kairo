@@ -16,29 +16,27 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/dkmnx/kairo/ci.yml?branch=main&style=flat-square)](https://github.com/dkmnx/kairo/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-**Go CLI wrapper for Claude/Qwen Code with X25519 encryption.**
+**Go CLI wrapper for Claude Code and Qwen Code with X25519-encrypted API keys.**
 
 ## Overview
 
 Kairo provides multi-provider API management with secure credential storage:
 
-- **Multi-Harness**: Claude Code (default), Qwen Code
-- **Secure Encryption**: Age (X25519) for all API keys
-- **Key Rotation**: Periodic encryption key regeneration
-- **Cross-Platform**: Linux, macOS, Windows
+- **Multi-harness**: Claude Code and Qwen Code
+- **Secure encryption**: age/X25519 for all API keys at rest
+- **Built-in providers**: Z.AI, MiniMax, Kimi, DeepSeek, and custom providers
+- **Cross-platform**: Linux, macOS, Windows
 
 ## Quick Start
 
 ### Install
 
-| Platform    | Command                                                                                 |
-| ----------- | --------------------------------------------------------------------------------------- |
-| Linux/macOS | `curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh \| sh` |
-| Windows     | `irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 \| iex`     |
+- Linux/macOS: `curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh`
+- Windows: `irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex`
 
 ### Prerequisites
 
-Kairo requires Claude Code or Qwen Code CLI:
+Install one of the supported harness CLIs:
 
 ```bash
 # Claude Code
@@ -53,75 +51,48 @@ npm install -g @qwen-code/qwen-code@latest
 ```bash
 kairo setup          # Interactive setup wizard
 kairo list           # List configured providers
-kairo zai "query"    # Use specific provider
-kairo -- "query"     # Use default provider
-```
-
-## Architecture
-
-```mermaid
-flowchart TB
-    subgraph User
-        CLI[kairo CLI]
-    end
-
-    subgraph Core
-        Config[config/]
-        Crypto[crypto/ X25519]
-        Providers[providers/]
-    end
-
-    subgraph Storage[~/.config/kairo/]
-        YAML[config.yaml]
-        AGE[secrets.age]
-        KEY[age.key]
-    end
-
-    CLI --> Config
-    CLI --> Crypto
-    Config --> YAML
-    Crypto --> AGE
-    Crypto --> KEY
+kairo zai "query"    # Use a specific provider
+kairo -- "query"     # Use the default provider
 ```
 
 ## Commands
 
-| Command                    | Description                    |
-| -------------------------- | ------------------------------ |
-| `kairo setup`              | Interactive setup wizard       |
-| `kairo list`               | List configured providers      |
-| `kairo default [provider]` | Get or set default provider    |
-| `kairo delete <provider>`  | Delete provider                |
-| `kairo <provider> [args]`  | Execute with specific provider |
-| `kairo -- [args]`          | Execute with default provider  |
-| `kairo harness get`        | Get current harness            |
-| `kairo harness set <name>` | Set default harness            |
-| `kairo update`             | Update to latest version       |
-| `kairo version`            | Show version                   |
-| `kairo completion <shell>` | Generate shell completion      |
+| Command                       | Description                                     |
+| ----------------------------- | ----------------------------------------------- |
+| `kairo setup`                 | Interactive setup wizard                        |
+| `kairo setup --reset-secrets` | Regenerate encryption key and re-enter API keys |
+| `kairo list`                  | List configured providers                       |
+| `kairo default [provider]`    | Get or set the default provider                 |
+| `kairo delete <provider>`     | Delete a provider                               |
+| `kairo <provider> [args]`     | Execute with a specific provider                |
+| `kairo -- [args]`             | Execute with the default provider               |
+| `kairo harness get`           | Get the current harness                         |
+| `kairo harness set <name>`    | Set the default harness                         |
+| `kairo update`                | Update to the latest version                    |
+| `kairo version`               | Show version information                        |
 
 Full reference: [docs/reference/configuration.md](docs/reference/configuration.md)
 
 ## Configuration
 
-| OS      | Location                               |
-| ------- | -------------------------------------- |
-| Linux   | `~/.config/kairo/`                     |
-| macOS   | `~/Library/Application Support/kairo/` |
-| Windows | `%APPDATA%\kairo\`                     |
+Locations:
 
-| File          | Purpose                 |
-| ------------- | ----------------------- |
-| `config.yaml` | Provider configurations |
-| `secrets.age` | Encrypted API keys      |
-| `age.key`     | Encryption private key  |
+- Linux/macOS: `~/.config/kairo/`
+- Windows: `%USERPROFILE%\AppData\Roaming\kairo\`
+
+Files:
+
+- `config.yaml` - provider and harness settings
+- `secrets.age` - encrypted API keys
+- `age.key` - encryption private key
 
 ## Security
 
 - X25519 encryption for all API keys
-- 0600 permissions on sensitive files
-- In-memory only decryption
-- Secure wrapper scripts for token passing
+- `0600` permissions on sensitive files
+- In-memory decryption during use
+- Temporary wrapper scripts for secure token passing to harness CLIs
+- Recovery/reset flow via `kairo setup --reset-secrets`
 
 See [Security Architecture](docs/architecture/README.md#security-architecture)
 
@@ -137,10 +108,10 @@ Full documentation: [docs/README.md](docs/README.md)
 ## Development
 
 ```bash
-just build        # Build binary
-just test         # Run tests
-just lint         # Run linters
-just pre-release  # Format, lint, test
+just build
+just test
+just lint
+just pre-release
 ```
 
 ## Resources

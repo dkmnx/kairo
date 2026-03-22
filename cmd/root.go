@@ -41,7 +41,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -58,7 +57,6 @@ var (
 	configDirMu sync.RWMutex // Protects configDir
 	verbose     bool
 	verboseMu   sync.RWMutex // Protects verbose
-	configCache *config.ConfigCache
 )
 
 func getVerbose() bool {
@@ -80,6 +78,7 @@ func setConfigDir(dir string) {
 	defer configDirMu.Unlock()
 
 	configDir = dir
+	defaultCLIContext.SetConfigDir(dir)
 }
 
 func getConfigDir() string {
@@ -111,19 +110,8 @@ const (
 
 var (
 	harnessFlag string
-	// rootCtx is the root context for command execution
-	rootCtx     context.Context
-	rootCtxOnce sync.Once
+	yoloFlag    bool // yolo mode - skips permission prompts
 )
-
-// getRootCtx returns the root context, initializing it thread-safely on first call.
-func getRootCtx() context.Context {
-	rootCtxOnce.Do(func() {
-		rootCtx = context.Background()
-	})
-
-	return rootCtx
-}
 
 var rootCmd = &cobra.Command{
 	Use:   "kairo",
@@ -134,7 +122,8 @@ encrypted secrets management using age encryption.
 Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, kairoversion.Date),
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		configDir := getConfigDir()
+		cliCtx := GetCLIContext(cmd)
+		configDir := cliCtx.GetConfigDir()
 		if configDir == "" {
 			cmd.Println("Error: config directory not found")
 			_ = cmd.Help()
@@ -142,7 +131,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			return
 		}
 
-		cfg, err := configCache.Get(getRootCtx(), configDir)
+		cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), configDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
@@ -176,7 +165,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
 
-		providerEnv, secrets, err := buildProviderEnvironment(configDir, provider, providerName)
+		providerEnv, secrets, err := buildProviderEnvironment(cliCtx, configDir, provider, providerName)
 		if err != nil {
 			handleSecretsError(err)
 
@@ -193,6 +182,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 				Provider:      provider,
 				HarnessArgs:   harnessArgs,
 				APIKey:        apiKey,
+				Yolo:          yoloFlag,
 			})
 
 			return
@@ -205,6 +195,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			HarnessBinary: harnessBinary,
 			Provider:      provider,
 			HarnessArgs:   harnessArgs,
+			Yolo:          yoloFlag,
 		})
 	},
 }
@@ -224,11 +215,21 @@ func Execute() error {
 }
 
 func init() {
-	configCache = config.NewConfigCache(configCacheTTL)
-
 	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
+	rootCmd.Flags().BoolVarP(&yoloFlag, "yolo", "y", false,
+		"Skip permission prompts (--dangerously-skip-permissions for Claude, --yolo for Qwen)")
+
+	// Sync flag values to defaultCLIContext before each command runs.
+	// This ensures that even though flags are bound to globals, the CLIContext
+	// used by commands is kept in sync.
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		defaultCLIContext.SetConfigDir(configDir)
+		defaultCLIContext.SetVerbose(verbose)
+		// Set the CLIContext on the command for GetCLIContext to find
+		cmd.SetContext(WithCLIContext(cmd.Context(), defaultCLIContext))
+	}
 }
 
 func splitArgs(args []string) ([]string, []string) {
