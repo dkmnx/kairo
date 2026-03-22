@@ -25,7 +25,7 @@ mkdir -p ~/.local/bin && cp dist/kairo ~/.local/bin/
 
 ### Prerequisites
 
-Kairo requires Claude Code or Qwen Code CLI:
+Install one of the supported harness CLIs:
 
 ```bash
 # Claude Code
@@ -52,100 +52,97 @@ kairo setup
 # 2. List providers
 kairo list
 
-# 3. Use specific provider
+# 3. Use a specific provider
 kairo zai "Help me write a function"
 
-# 4. Or use default provider
+# 4. Or use the default provider
 kairo -- "Quick question"
 ```
 
 ## Commands
 
-| Command                    | Description                                   |
-| -------------------------- | --------------------------------------------- |
-| `kairo setup`              | Interactive setup wizard (add/edit providers) |
-| `kairo list`               | List configured providers                     |
-| `kairo delete <provider>`  | Delete a provider                             |
-| `kairo <provider> [args]`  | Execute with specific provider                |
-| `kairo -- [args]`          | Query with default provider                   |
-| `kairo harness get`        | Get current harness                           |
-| `kairo harness set <name>` | Set default harness (claude or qwen)          |
-| `kairo update`             | Update to latest version                      |
-| `kairo version`            | Show version                                  |
-| `kairo completion <shell>` | Generate shell completion                     |
+| Command                       | Description                                         |
+| ----------------------------- | --------------------------------------------------- |
+| `kairo setup`                 | Interactive setup wizard                            |
+| `kairo setup --reset-secrets` | Regenerate encryption key and re-enter API keys     |
+| `kairo list`                  | List configured providers                           |
+| `kairo default [provider]`    | Get or set the default provider                     |
+| `kairo delete <provider>`     | Delete a provider                                   |
+| `kairo <provider> [args]`     | Execute with a specific provider                    |
+| `kairo -- [args]`             | Execute with the default provider                   |
+| `kairo harness get`           | Get current harness                                 |
+| `kairo harness set <name>`    | Set default harness (`claude` or `qwen`)            |
+| `kairo update`                | Update to the latest version                        |
+| `kairo version`               | Show version                                        |
 
 ## Supported Providers
 
-| Provider  | API Key Required |
-| --------- | ---------------- |
-| anthropic | No               |
-| zai       | Yes              |
-| minimax   | Yes              |
-| kimi      | Yes              |
-| deepseek  | Yes              |
-| custom    | Yes              |
+| Provider   | Default Model     | API Key Required |
+| ---------- | ----------------- | ---------------- |
+| `zai`      | `glm-4.7`         | Yes              |
+| `minimax`  | `MiniMax-M2.7`    | Yes              |
+| `kimi`     | `kimi-for-coding` | Yes              |
+| `deepseek` | `deepseek-chat`   | Yes              |
+| `custom`   | user-defined      | Yes              |
 
-Details: [Reference: Providers](../reference/providers.md)
+Details: [Provider Reference](../reference/providers.md)
 
 ## Configuration
 
 ### Location
 
-| OS      | Path                                   |
-| ------- | -------------------------------------- |
-| Linux   | `~/.config/kairo/`                     |
-| macOS   | `~/Library/Application Support/kairo/` |
-| Windows | `%APPDATA%\kairo\`                     |
+| OS          | Path                                     |
+| ----------- | ---------------------------------------- |
+| Linux/macOS | `~/.config/kairo/`                       |
+| Windows     | `%USERPROFILE%\AppData\Roaming\kairo\`   |
 
 ### Files
 
-| File          | Purpose                 |
-| ------------- | ----------------------- |
-| `config.yaml` | Provider configurations |
-| `secrets.age` | Encrypted API keys      |
-| `age.key`     | Encryption key          |
+| File          | Purpose                        |
+| ------------- | ------------------------------ |
+| `config.yaml` | Provider and harness settings  |
+| `secrets.age` | Encrypted API keys             |
+| `age.key`     | Encryption private key         |
 
-Details: [Reference: Configuration](../reference/configuration.md)
+Details: [Configuration Reference](../reference/configuration.md)
 
 ## Security
 
 ### Encryption
 
-- All API keys encrypted with age (X25519)
-- Keys generated on first run
-- Decryption only in-memory
+- All API keys are encrypted with age/X25519
+- The encryption key is generated on first setup
+- API keys are decrypted only when needed
 
-### Key Rotation
+### Resetting Encrypted Secrets
 
-To rotate your encryption key:
+Use the built-in reset flow if you lose access to `age.key` or want to regenerate the key:
 
-1. Backup your current configuration: `cp -r ~/.config/kairo ~/.config/kairo.backup`
-2. Remove age.key file: `rm ~/.config/kairo/age.key`
-3. Re-run setup: `kairo setup`
+```bash
+kairo setup --reset-secrets
+```
 
-This will regenerate the encryption key and re-encrypt your API keys.
-
-Rotate periodically (monthly) or after security incidents.
+This deletes the current encrypted secrets and encryption key, generates a new key, and requires you to re-enter all API keys.
 
 ### Best Practices
 
-1. Backup `age.key` - Required to decrypt API keys
-2. Never commit secrets - Config contains no plaintext
-3. Use 0600 permissions - Automatic
-4. Rotate keys regularly
+1. Backup `age.key` together with `secrets.age`
+2. Never commit secrets or your key file
+3. Keep file permissions private (`0600`)
+4. Use `kairo setup --reset-secrets` instead of manually deleting only `age.key`
 
 ## Troubleshooting
 
 Common issues:
 
-| Issue                | Solution                       |
-| -------------------- | ------------------------------ |
-| "command not found"  | Add `~/.local/bin` to PATH     |
-| "provider not found" | Run `kairo setup`              |
-| "invalid API key"    | Reconfigure with `kairo setup` |
-| "failed to decrypt"  | Restore from backup or reset   |
+| Issue                | Solution                                            |
+| -------------------- | --------------------------------------------------- |
+| `command not found`  | Add `~/.local/bin` to PATH                          |
+| `provider not found` | Run `kairo setup`                                   |
+| `invalid API key`    | Reconfigure with `kairo setup`                      |
+| `failed to decrypt`  | Restore backup or run `kairo setup --reset-secrets` |
 
-Full guide: [Troubleshooting](troubleshooting/README.md)
+Full guide: [Troubleshooting](../troubleshooting/README.md)
 
 ## Next Steps
 

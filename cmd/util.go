@@ -14,8 +14,12 @@ import (
 
 // requireConfigDir returns the config directory or prints an error and returns empty.
 // Use this when you need the config directory for reading.
-func requireConfigDir() string {
-	dir := getConfigDir()
+func requireConfigDir(cmd *cobra.Command) string {
+	if cmd == nil {
+		// Fall back to default context for backward compatibility
+		return defaultCLIContext.GetConfigDir()
+	}
+	dir := GetCLIContext(cmd).GetConfigDir()
 	if dir == "" {
 		ui.PrintError("Config directory not found")
 	}
@@ -24,8 +28,8 @@ func requireConfigDir() string {
 
 // requireConfigDirWritable is like requireConfigDir but also ensures the directory exists.
 // Use this when you need to write to the config directory.
-func requireConfigDirWritable() string {
-	dir := requireConfigDir()
+func requireConfigDirWritable(cmd *cobra.Command) string {
+	dir := requireConfigDir(cmd)
 	if dir == "" {
 		return ""
 	}
@@ -40,12 +44,13 @@ func requireConfigDirWritable() string {
 // It prints appropriate error messages and returns nil if config cannot be loaded.
 // Use when you need a config and want to exit early on error.
 func loadConfigOrExit(cmd *cobra.Command) *config.Config {
-	dir := requireConfigDir()
+	dir := requireConfigDir(cmd)
 	if dir == "" {
 		return nil
 	}
 
-	cfg, err := configCache.Get(getRootCtx(), dir)
+	cliCtx := GetCLIContext(cmd)
+	cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			ui.PrintWarn("No providers configured")

@@ -12,13 +12,13 @@ require (
 )
 
 require (
-	c2sp.org/CCTV/age v0.0.0-20260104152344-409a7634e2ff // indirect
+	c2sp.org/CCTV/age v0.0.0-20260309054638-d091f096c98e // indirect
 	filippo.io/hpke v0.4.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.20 // indirect
+	github.com/mattn/go-runewidth v0.0.21 // indirect
 	github.com/mattn/go-tty v0.0.7 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	golang.org/x/crypto v0.49.0 // indirect

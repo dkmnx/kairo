@@ -20,6 +20,27 @@ import (
 // harnessQwen is the harness name for Qwen Code.
 const harnessQwen = "qwen"
 
+// claudeYoloFlag is the flag passed to Claude to skip permission prompts.
+const claudeYoloFlag = "--dangerously-skip-permissions"
+
+// createTempAuthDirFn wraps wrapper.CreateTempAuthDir for testability.
+var createTempAuthDirFn = wrapper.CreateTempAuthDir
+
+// writeTempTokenFileFn wraps wrapper.WriteTempTokenFile for testability.
+var writeTempTokenFileFn = wrapper.WriteTempTokenFile
+
+// generateWrapperScriptFn wraps wrapper.GenerateWrapperScript for testability.
+var generateWrapperScriptFn = wrapper.GenerateWrapperScript
+
+// yoloFlag returns the appropriate yolo flag for the given harness.
+func yoloModeFlag(harness string) string {
+	if harness == harnessQwen {
+		return "--yolo"
+	}
+
+	return claudeYoloFlag
+}
+
 // handleConfigError provides user-friendly guidance for config errors.
 func handleConfigError(cmd *cobra.Command, err error) {
 	errStr := err.Error()
@@ -79,13 +100,14 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 // secure wrapper script mechanism to avoid exposing credentials in child process
 // environments (/proc/<pid>/environ).
 func buildProviderEnvironment(
+	cliCtx *CLIContext,
 	configDir string,
 	provider config.Provider,
 	providerName string,
 ) ([]string, map[string]string, error) {
 	builtInEnvVars := buildBuiltInEnvVars(provider)
 
-	secrets, _, _, err := LoadAndDecryptSecrets(getRootCtx(), configDir)
+	secrets, _, _, err := LoadAndDecryptSecrets(cliCtx.GetRootCtx(), configDir)
 	if err != nil {
 		if providers.RequiresAPIKey(providerName) {
 			return nil, nil, err
@@ -145,6 +167,7 @@ type ExecutionConfig struct {
 	Provider      config.Provider
 	HarnessArgs   []string
 	APIKey        string
+	Yolo          bool // skip permission prompts
 }
 
 // HarnessWrapperParams holds all parameters for running a harness with auth wrapper.
@@ -180,7 +203,7 @@ func runHarnessWithWrapper(params HarnessWrapperParams) error {
 		CliArgs:    params.CliArgs,
 		EnvVarName: params.EnvVarName,
 	}
-	wrapperScript, useCmdExe, err := wrapper.GenerateWrapperScript(wrapperCfg)
+	wrapperScript, useCmdExe, err := generateWrapperScriptFn(wrapperCfg)
 	if err != nil {
 		return fmt.Errorf("generating wrapper script: %w", err)
 	}
@@ -223,7 +246,7 @@ func buildWrapperCommand(params BuildWrapperCommandParams) *exec.Cmd {
 }
 
 func executeWithAuth(cfg ExecutionConfig) {
-	authDir, err := wrapper.CreateTempAuthDir()
+	authDir, err := createTempAuthDirFn()
 	if err != nil {
 		cfg.Cmd.Printf("Error creating auth directory: %v\n", err)
 
@@ -238,7 +261,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 	}
 	defer cleanup()
 
-	tokenPath, err := wrapper.WriteTempTokenFile(authDir, cfg.APIKey)
+	tokenPath, err := writeTempTokenFileFn(authDir, cfg.APIKey)
 	if err != nil {
 		cfg.Cmd.Printf("Error creating secure token file: %v\n", err)
 
@@ -253,6 +276,10 @@ func executeWithAuth(cfg ExecutionConfig) {
 		CliArgs:       cliArgs,
 		ProviderEnv:   cfg.ProviderEnv,
 		Provider:      cfg.Provider,
+	}
+
+	if cfg.Yolo {
+		wrapperParams.CliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, wrapperParams.CliArgs...)
 	}
 
 	if cfg.HarnessToUse == harnessQwen {
@@ -280,6 +307,10 @@ func executeWithAuth(cfg ExecutionConfig) {
 
 func executeWithoutAuth(cfg ExecutionConfig) {
 	cliArgs := cfg.HarnessArgs
+
+	if cfg.Yolo {
+		cliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, cliArgs...)
+	}
 
 	if cfg.HarnessToUse == harnessQwen {
 		ui.PrintError("API key not found for provider")

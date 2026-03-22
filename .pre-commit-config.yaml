@@ -38,7 +38,7 @@ repos:
 
       - id: govulncheck
         name: Run vulnerability scan
-        entry: bash -c "export PATH=\"$GOPATH/bin:$PATH\"; command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./..."
+        entry: bash -c "export PATH=\"$GOPATH/bin:$PATH\"; export GOTOOLCHAIN=go1.26.1; command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./..."
         language: system
         files: go\.(mod|sum)$
         pass_filenames: false
