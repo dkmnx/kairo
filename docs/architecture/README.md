@@ -4,61 +4,72 @@ System architecture and design documentation for Kairo.
 
 ## Overview
 
-Kairo is a Go CLI tool for managing Claude Code API providers with:
+Kairo is a Go CLI for routing Claude Code or Qwen Code through configured providers while keeping API keys encrypted at rest.
 
-- **Age (X25519) encryption** for secure API key storage
-- **Multi-provider support** for switching between providers
-- **Context support** for cancellation and timeout propagation in all operations
+Core characteristics:
+
+- Cobra-based CLI command layer
+- age/X25519 encryption for API keys
+- Built-in provider registry plus custom providers
+- Secure wrapper scripts for passing credentials to external harness CLIs
+- Context-aware config, crypto, and update operations
 
 ## System Architecture
 
 ```mermaid
 flowchart TB
     subgraph User
-        CLI[CLI Commands]
-        Shell[Shell/Terminal]
+        CLI[Kairo CLI]
+        Shell[Shell / Terminal]
     end
 
-    subgraph Application
-        Cobra[Cobra Framework]
-        Commands[Command Handlers]
-        UI[UI Utilities]
+    subgraph CommandLayer[cmd/]
+        Cobra[Cobra root command]
+        Commands[Subcommands]
+        Execution[Harness execution]
     end
 
-    subgraph Business Logic
-        Config[Config Manager]
-        Crypto[Encryption Service]
-        Providers[Provider Registry]
-        Validate[Input Validation]
+    subgraph Core[internal/]
+        Config[config]
+        Crypto[crypto]
+        Providers[providers]
+        Validate[validate]
+        UI[ui]
+        Wrapper[wrapper]
     end
 
     subgraph Storage
-        ConfigFile[config YAML]
-        SecretsAge[secrets.age]
-        AgeKey[age.key]
+        ConfigFile[config.yaml]
+        SecretsFile[secrets.age]
+        KeyFile[age.key]
     end
 
     subgraph External
-        Claude[Claude Code]
+        Claude[Claude Code CLI]
+        Qwen[Qwen Code CLI]
         APIs[Provider APIs]
     end
 
     Shell --> CLI
     CLI --> Cobra
     Cobra --> Commands
-    Commands --> UI
+    Commands --> Execution
     Commands --> Config
     Commands --> Crypto
+    Commands --> Providers
     Commands --> Validate
+    Commands --> UI
+    Execution --> Wrapper
     Config --> ConfigFile
-    Crypto --> SecretsAge
-    Crypto --> AgeKey
-    Config --> Providers
-    Commands --> APIs
-    Commands --> Claude
+    Crypto --> SecretsFile
+    Crypto --> KeyFile
+    Execution --> Claude
+    Execution --> Qwen
+    Claude --> APIs
+    Qwen --> APIs
 ```
 
-## Component Interaction
+## Setup Flow
 
 ```mermaid
 sequenceDiagram
@@ -69,105 +80,64 @@ sequenceDiagram
     participant Storage
 
     User->>CLI: kairo setup
+    CLI->>Config: resolve config directory
     CLI->>Crypto: EnsureKeyExists()
-    Crypto->>Storage: Check age.key
-    alt Key doesn't exist
-        Crypto->>Storage: Generate X25519 key
-    end
+    Crypto->>Storage: create age.key if missing
     CLI->>Config: LoadConfig()
-    Config->>Storage: Read config
-    CLI->>User: Prompt for API key
-    User->>CLI: Enter key
-    CLI->>Crypto: EncryptSecrets(key)
-    Crypto->>Storage: Write secrets.age
+    CLI->>User: prompt for provider details + API key
+    User->>CLI: enter values
+    CLI->>Crypto: EncryptSecrets()
+    Crypto->>Storage: write secrets.age
+    CLI->>Config: SaveConfig()
+    Config->>Storage: write config.yaml
+```
+
+## Execution Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Config
+    participant Crypto
+    participant Wrapper
+    participant Harness
+
+    User->>CLI: kairo zai "query"
+    CLI->>Config: LoadConfig()
+    CLI->>Crypto: DecryptSecrets()
+    CLI->>Wrapper: write temp token file + wrapper script
+    Wrapper->>Harness: exec claude or qwen
+    Harness->>Wrapper: token file removed after read
 ```
 
 ## Directory Structure
 
 ```text
 kairo/
-├── cmd/                 # CLI commands (Cobra)
-│   ├── root.go          # Root command & provider execution
-│   ├── setup.go         # Interactive setup & edit
-│   ├── list.go          # List providers
-│   ├── delete.go        # Delete provider
-│   ├── harness.go       # Harness management
-│   ├── update.go        # Update CLI
-│   ├── version.go       # Version info
-│   └── util.go          # Utility functions
-├── internal/            # Business logic
-│   ├── config/          # Config loading & caching
-│   ├── crypto/          # age encryption
+├── cmd/                 # CLI commands and execution flow
+├── internal/
+│   ├── config/          # Config loading, caching, migration, paths
+│   ├── crypto/          # age/X25519 key management and encryption
 │   ├── errors/          # Typed errors
-│   ├── providers/       # Provider registry
-│   ├── ui/              # UI utilities
-│   ├── validate/        # Input validation
-│   ├── version/         # Version information
+│   ├── providers/       # Built-in provider registry
+│   ├── ui/              # Terminal output and prompts
+│   ├── validate/        # Validation helpers
+│   ├── version/         # Build metadata
 │   └── wrapper/         # Secure wrapper scripts
-├── pkg/                 # Reusable utilities
-│   └── env/             # Environment helpers
 ├── docs/                # Documentation
-│   ├── architecture/    # This directory
-│   ├── contributing/    # Contribution guidelines
-│   ├── guides/          # User & dev guides
-│   ├── reference/       # Reference documentation
-│   └── troubleshooting/ # Common issues
-├── scripts/             # Install scripts
-└── justfile             # Command runner
-```
-
-## Data Flow: Provider Configuration
-
-```mermaid
-flowchart LR
-    A[User Input] --> B[Validate API Key]
-    B --> C[Validate URL]
-    C --> D[Encrypt Secrets]
-    D --> E[Write secrets.age]
-    F[Config Update] --> G[Write config YAML]
-    G --> H[Set Permissions 0600]
-
-```
-
-## Security Architecture
-
-```mermaid
-flowchart TB
-    subgraph Encryption Layer
-        X25519[X25519 Key Pair]
-        AgeEncrypt[age Encrypt]
-        AgeDecrypt[age Decrypt]
-    end
-
-    subgraph Key Management
-        Generate[Key Generation]
-        Store[Secure Storage]
-        Backup[User Backup Required]
-    end
-
-    subgraph File Permissions
-        Perms[0600 Owner Read/Write]
-        ConfigFile[config]
-        SecretsFile[secrets.age]
-        KeyFile[age.key]
-    end
-
-    X25519 --> Generate
-    Generate --> Store
-    Store --> Backup
-    AgeEncrypt --> SecretsFile
-    AgeDecrypt --> SecretsFile
-    Perms --> ConfigFile
-    Perms --> SecretsFile
-    Perms --> KeyFile
+├── scripts/             # Install and helper scripts
+├── main.go              # Entry point
+└── justfile             # Development commands
 ```
 
 ## Configuration Schema
 
 ```yaml
-# ~/.config/kairo/config.yaml
 default_provider: zai
 default_harness: claude
+default_models:
+  zai: glm-4.7
 providers:
   zai:
     name: Z.AI
@@ -175,167 +145,77 @@ providers:
     model: glm-4.7
     env_vars:
       - ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash
-  anthropic:
-    name: Native Anthropic
 ```
+
+Notes:
+
+- API keys are stored in `secrets.age`, not `config.yaml`
+- `default_harness` is optional and defaults to `claude`
+- `default_models` is migration metadata for built-in providers
 
 ## Provider Registry
 
-| Provider | Base URL                   | Model           | API Key Required |
-| -------- | -------------------------- | --------------- | ---------------- |
-| zai      | api.z.ai/api/anthropic     | glm-4.7         | Yes              |
-| minimax  | api.minimax.io/anthropic   | MiniMax-M2.5    | Yes              |
-| deepseek | api.deepseek.com/anthropic | deepseek-chat   | Yes              |
-| kimi     | api.kimi.com/coding        | kimi-for-coding | Yes              |
-| custom   | user-defined               | user-defined    | Yes              |
+| Provider   | Base URL                             | Model             | API Key Required |
+| ---------- | ------------------------------------ | ----------------- | ---------------- |
+| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-4.7`         | Yes              |
+| `minimax`  | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`    | Yes              |
+| `deepseek` | `https://api.deepseek.com/anthropic` | `deepseek-chat`   | Yes              |
+| `kimi`     | `https://api.kimi.com/coding/`       | `kimi-for-coding` | Yes              |
+| `custom`   | user-defined                         | user-defined      | Yes              |
 
-## Error Handling
+## Security Architecture
 
-```mermaid
-flowchart TB
-    subgraph Error Types
-        ConfigErr[ConfigError]
-        CryptoErr[CryptoError]
-        ValidErr[ValidationError]
-        ProviderErr[ProviderError]
-        FileErr[FileSystemError]
-        NetErr[NetworkError]
-    end
+Kairo keeps credentials out of normal child-process environments by combining encrypted storage with temporary wrapper scripts.
 
-    subgraph Error Handling
-        Wrap[Wrap with context]
-        Context[Add context data]
-        Hint[Provide hints]
-    end
+- `age.key`: X25519 private key file
+- `secrets.age`: age-encrypted API key data
+- Temporary auth directory: `0700`
+- Temporary token file: `0600`
+- Unix wrapper: `/bin/sh` script
+- Windows wrapper: PowerShell `.ps1` script
 
-    ConfigErr --> Wrap
-    CryptoErr --> Wrap
-    ValidErr --> Wrap
-    Wrap --> Context
-    Context --> Hint
-```
-
-## Dependencies
-
-### Runtime Dependencies
-
-| Package                  | Purpose           |
-| ------------------------ | ----------------- |
-| `filippo.io/age`         | X25519 encryption |
-| `github.com/spf13/cobra` | CLI framework     |
-| `gopkg.in/yaml.v3`       | YAML parsing      |
-
-### Development Dependencies
-
-| Package                         | Purpose            |
-| ------------------------------- | ------------------ |
-| `github.com/Masterminds/semver` | Version comparison |
-
-## Design Principles
-
-### 1. Security First
-
-- All API keys encrypted at rest
-- 0600 permissions on sensitive files
-- No plaintext secrets in logs
-- HTTPS-only for provider APIs
-
-### 2. User Experience
-
-- Interactive setup wizard
-- Clear error messages with hints
-- Colored terminal output
-- Shell completion support
-- Context-aware operations with cancellation support
-
-### 3. Maintainability
-
-- Clean package structure
-- Comprehensive test coverage
-- Typed error handling
-- Documentation-driven design
-
-### 4. Extensibility
-
-- Provider registry pattern
-- Configurable via environment
-- Modular architecture
+See [Wrapper Scripts](wrapper-scripts.md) for the detailed design.
 
 ## Cross-Platform Support
 
-```mermaid
-flowchart TB
-    subgraph Platforms
-        Linux[Linux]
-        macOS[macOS]
-        Windows[Windows]
-    end
+| Feature           | Linux/macOS                       | Windows                                 |
+| ----------------- | --------------------------------- | --------------------------------------- |
+| Config directory  | `~/.config/kairo/`                | `%USERPROFILE%\AppData\Roaming\kairo\`  |
+| Install script    | `scripts/install.sh`              | `scripts/install.ps1`                   |
+| Wrapper script    | POSIX shell script                | PowerShell script                       |
+| Harness execution | direct executable / shell wrapper | `powershell -File <wrapper>.ps1`        |
 
-    subgraph Config Directories
-        Linux["~/.config/kairo/"]
-        macOS["~/Library/Application Support/kairo/"]
-        Windows["%APPDATA%/kairo/"]
-    end
+### Key Code References
 
-    subgraph Install Methods
-        Shell["install.sh (curl | sh)"]
-        PS["install.ps1 (PowerShell)"]
-    end
+- Config directory resolution: `internal/config/env.go`
+- Secure wrapper generation: `internal/wrapper/wrapper.go`
+- Harness execution: `cmd/execution.go`
+- Root command and flag wiring: `cmd/root.go`
 
-    subgraph Token Passing
-        Unix["Shell wrapper script"]
-        Win["Batch script + cmd /c"]
-    end
+## Design Principles
 
-    Linux --> LinuxConfig
-    macOS --> macOSConfig
-    Windows --> WinConfig
+### Security First
 
-    Linux --> Shell
-    macOS --> Shell
-    Windows --> PS
+- API keys encrypted at rest
+- Sensitive files written with private permissions
+- Secrets passed to harness CLIs via temporary wrapper flow
+- No plaintext secrets stored in `config.yaml`
 
-    Shell --> UnixWrapper
-    PS --> WinWrapper
-```
+### User Experience
 
-### Platform-Specific Implementations
+- Interactive setup flow
+- Clear typed errors and recovery guidance
+- Colored terminal output
+- Configurable default provider and harness
 
-| Feature          | Linux/macOS                 | Windows                    |
-| ---------------- | --------------------------- | -------------------------- |
-| Config Directory | `~/.config/kairo/`          | `%APPDATA%\kairo\`         |
-| Install Script   | `install.sh` (curl,sh)      | `install.ps1` (PowerShell) |
-| Token Passing    | Shell wrapper (`#!/bin/sh`) | Batch script (`.bat`)      |
-| Shell Completion | bash, zsh, fish             | PowerShell                 |
+### Maintainability
 
-### Key Cross-Platform Code
+- Small internal packages with focused responsibilities
+- Table-driven tests and integration coverage
+- Config migration support for built-in provider defaults
 
-```go
-// Cross-platform config directory (internal/config/config.go)
-if runtime.GOOS == "windows" {
-    return filepath.Join(home, "AppData", "Roaming", "kairo")
-}
-return filepath.Join(home, ".config", "kairo")
+### Extensibility
 
-// Cross-platform token passing (cmd/root.go)
-if isWindows {
-    // Generate .ps1 file with PowerShell syntax
-    scriptContent = "@echo off\r\n"
-    // ...
-} else {
-    // Generate shell script with sh syntax
-    scriptContent = "#!/bin/sh\n"
-    // ...
-}
-```
-
-### Testing on Windows
-
-```go
-// Skip Unix permission tests on Windows
-if runtime.GOOS == "windows" {
-    t.Skip("Windows does not support Unix-style permissions")
-}
-```
-
-See also: [cmd/root.go](../../cmd/root.go), [internal/wrapper/wrapper.go](../../internal/wrapper/wrapper.go)
+- Registry-driven built-in providers
+- Custom provider support
+- Harness abstraction for Claude and Qwen
