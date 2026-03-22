@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--yolo` / `-y` flag for direct provider execution to skip harness permission prompts
+  - Passes `--dangerously-skip-permissions` to Claude Code
+  - Passes `--yolo` to Qwen Code
+
+### Security
+
+- Custom provider URL validation now blocks private IPv6 addresses in addition to localhost, private IPv4, and link-local addresses
+
 ## [2.2.1] - 2026-03-19
 
 ### Changed
