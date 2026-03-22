@@ -4,15 +4,12 @@ Common issues and solutions for Kairo.
 
 ## Installation
 
-### "command not found: kairo"
+### `command not found: kairo`
 
-Binary not in PATH.
+Binary not in `PATH`.
 
 ```bash
-# Add to PATH
 export PATH="$HOME/.local/bin:$PATH"
-
-# Verify
 ls -la ~/.local/bin/kairo
 ```
 
@@ -29,27 +26,27 @@ mkdir -p ~/.local/bin && cp dist/kairo ~/.local/bin/
 
 ## Configuration
 
-### "config not found"
+### `config not found`
 
-No configuration exists.
+No configuration exists yet.
 
 ```bash
 kairo setup
 ```
 
-### "permission denied"
+### `permission denied`
 
 Incorrect file permissions.
 
 ```bash
-chmod 600 ~/.config/kairo/config
+chmod 600 ~/.config/kairo/config.yaml
 chmod 600 ~/.config/kairo/secrets.age
 chmod 600 ~/.config/kairo/age.key
 ```
 
-### "provider not found"
+### `provider not found`
 
-Provider not configured.
+Provider is not configured.
 
 ```bash
 kairo list
@@ -58,75 +55,70 @@ kairo setup
 
 ## Provider Issues
 
-### "invalid API key"
+### `invalid API key`
 
 API key validation failed.
 
-```bash
-# Requirements: min 8 chars, no whitespace
-kairo setup
-# Select provider and enter correct API key
-```
+Current validation rules:
 
-### "connection refused" / "timeout"
+- Built-in providers: minimum 32 characters
+- Custom providers: minimum 20 characters
 
-Network or endpoint issue.
+Re-run setup and enter the correct key:
 
 ```bash
 kairo setup
-# Select provider to test connectivity
 ```
 
-### "unsupported provider"
+### `connection refused` or timeout errors
 
-Use lowercase provider names.
+Check the configured base URL and network access.
 
 ```bash
-kairo zai     # lowercase provider names
+kairo list
+kairo setup   # Edit the provider if needed
+```
+
+### `unsupported provider`
+
+Use the configured provider name exactly as shown by `kairo list`.
+
+```bash
+kairo zai
 kairo setup   # for custom providers
 ```
 
 ## Encryption
 
-### "failed to decrypt: bad key"
+### `failed to decrypt` or bad key errors
 
-Key mismatch or corruption.
+Your `age.key` does not match `secrets.age`, or one of them is corrupted.
 
-**Options:**
+Recovery options:
 
-1. Restore from backup
-2. Reset (loses all): Re-run `kairo setup` to reconfigure providers
+1. Restore both `age.key` and `secrets.age` from backup
+2. Reset encrypted secrets and re-enter API keys:
 
-## Claude Execution
+```bash
+kairo setup --reset-secrets
+```
 
-### "claude: command not found"
+## Harness Execution
 
-Install Claude Code: <https://claude.com/downloads>
+### `claude: command not found`
+
+Install Claude Code.
+
+### `qwen: command not found`
+
+Install Qwen Code.
 
 ### Execution Failed
 
 ```bash
-# Reconfigure provider
 kairo setup
-
-# Set a default provider
 kairo default <provider>
-
-# Test by running with a provider
 kairo <provider> "test query"
-```
-
-## Shell Completion
-
-```bash
-# Bash
-kairo completion bash >> ~/.bashrc
-
-# Zsh
-kairo completion zsh > ~/.zsh/completion/_kairo
-
-# Fish
-kairo completion fish > ~/.config/fish/completions/kairo.fish
 ```
 
 ## Advanced Troubleshooting
@@ -149,5 +141,5 @@ cat ~/.config/kairo/config.yaml
 ## Getting Help
 
 - [GitHub Issues](https://github.com/dkmnx/kairo/issues)
-- [User Guide](guides/user-guide.md)
-- [Development Guide](guides/development-guide.md)
+- [User Guide](../guides/user-guide.md)
+- [Development Guide](../guides/development-guide.md)
