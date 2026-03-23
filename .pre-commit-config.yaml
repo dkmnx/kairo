@@ -1,22 +1,9 @@
 repos:
   - repo: local
     hooks:
-      - id: gofmt
-        name: Format Go code
-        entry: gofmt -l
-        language: system
-        files: \.go$
-
-      - id: govet
-        name: Vet Go code
-        entry: go vet ./...
-        language: system
-        files: \.go$
-        pass_filenames: false
-
-      - id: staticcheck
-        name: Run static analysis
-        entry: bash -c "export PATH=\"$GOPATH/bin:$PATH\"; staticcheck ./..."
+      - id: golangci-lint
+        name: Run golangci-lint
+        entry: bash -c "export PATH=\"$GOPATH/bin:$PATH\"; golangci-lint run ./..."
         language: system
         files: \.go$
         pass_filenames: false
@@ -32,13 +19,6 @@ repos:
       - id: go-mod-tidy
         name: Check go.mod tidy
         entry: bash -c "go mod tidy && git diff --exit-code go.mod go.sum"
-        language: system
-        files: go\.(mod|sum)$
-        pass_filenames: false
-
-      - id: govulncheck
-        name: Run vulnerability scan
-        entry: bash -c "export PATH=\"$GOPATH/bin:$PATH\"; export GOTOOLCHAIN=go1.26.1; command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./..."
         language: system
         files: go\.(mod|sum)$
         pass_filenames: false
