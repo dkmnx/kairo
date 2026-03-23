@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
@@ -28,6 +29,15 @@ func BuildBuiltInEnvVars(provider EnvProvider) []string {
 	}
 }
 
+// Backward compatibility
+func buildBuiltInEnvVars(provider config.Provider) []string {
+	return BuildBuiltInEnvVars(EnvProvider{
+		BaseURL: provider.BaseURL,
+		Model:   provider.Model,
+		EnvVars: provider.EnvVars,
+	})
+}
+
 // BuildSecretsEnvVars converts secrets map to env vars.
 func BuildSecretsEnvVars(secrets map[string]string) []string {
 	envVars := make([]string, 0, len(secrets))
@@ -38,9 +48,19 @@ func BuildSecretsEnvVars(secrets map[string]string) []string {
 	return envVars
 }
 
+// Backward compatibility
+func buildSecretsEnvVars(secrets map[string]string) []string {
+	return BuildSecretsEnvVars(secrets)
+}
+
 // APIKeyEnvVarName formats API key environment variable name.
 func APIKeyEnvVarName(providerName string) string {
 	return fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
+}
+
+// Backward compatibility alias
+func apiKeyEnvVarName(providerName string) string {
+	return APIKeyEnvVarName(providerName)
 }
 
 // RequiresAPIKey checks if provider needs API key.
@@ -77,4 +97,23 @@ func BuildProviderEnv(
 		ProviderEnv: providerEnv,
 		Secrets:     secretsResult.Secrets,
 	}, nil
+}
+
+// Backward compatibility for tests
+func buildProviderEnvironment(
+	cliCtx *CLIContext,
+	configDir string,
+	provider config.Provider,
+	providerName string,
+) ([]string, map[string]string, error) {
+	result, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
+		BaseURL: provider.BaseURL,
+		Model:   provider.Model,
+		EnvVars: provider.EnvVars,
+	}, providerName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return result.ProviderEnv, result.Secrets, nil
 }
