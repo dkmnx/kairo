@@ -37,9 +37,6 @@ func GenerateKey(ctx context.Context, keyPath string) error {
 			WithContext("path", tempKeyPath)
 	}
 
-	// SECURITY: The key file contains both the identity (private key) and recipient (public key).
-	// The identity line MUST NEVER be logged, printed, or exposed in error messages.
-	// File permissions are set to 0600 to restrict access to owner only.
 	_, err = fmt.Fprintf(keyFile, "%s\n%s\n", key.String(), key.Recipient().String())
 	if err != nil {
 		keyFile.Close()

@@ -20,9 +20,6 @@ type ExecutionConfig struct {
 	Yolo          bool
 }
 
-// Backward compatibility aliases
-type HarnessWrapperParams = harnessWrapperParams
-
 type BuildWrapperCommandParams struct {
 	Ctx           context.Context
 	WrapperScript string

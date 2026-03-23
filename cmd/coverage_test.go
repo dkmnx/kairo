@@ -12,15 +12,14 @@ import (
 
 // TestHandleSecretsError tests handleSecretsError function
 func TestHandleSecretsError(t *testing.T) {
-	// This function only prints to UI, so we just verify it doesn't panic
 	testErr := os.ErrNotExist
 	handleSecretsError(testErr)
 }
 
 // TestBuildProviderListOptions tests building provider list options
 func TestBuildProviderListOptions(t *testing.T) {
-	providers := []string{"anthropic", "zai", "minimax"}
-	options := buildProviderListOptions(providers)
+	providerList := []string{"anthropic", "zai", "minimax"}
+	options := buildProviderListOptions(providerList)
 
 	if len(options) != 3 {
 		t.Errorf("expected 3 options, got %d", len(options))
@@ -44,74 +43,51 @@ func TestBuildProviderListOptions(t *testing.T) {
 
 // TestBuildProviderConfigFromInput tests building provider config from input
 func TestBuildProviderConfigFromInput(t *testing.T) {
-	tests := []struct {
-		name        string
-		input       BuildProviderConfigParams
-		wantName    string
-		wantBaseURL string
-		wantModel   string
-	}{
-		{
-			name: "new provider",
-			input: BuildProviderConfigParams{
-				Definition: providers.ProviderDefinition{
-					Name:    "test",
-					BaseURL: "https://api.test.com",
-					Model:   "test-model",
-				},
-				BaseURL: "https://api.test.com",
-				Model:   "test-model",
-				Exists:  false,
-			},
-			wantName:    "test",
-			wantBaseURL: "https://api.test.com",
-			wantModel:   "test-model",
-		},
-		{
-			name: "existing provider",
-			input: BuildProviderConfigParams{
-				Existing: config.Provider{
-					Name:    "existing",
-					BaseURL: "https://old.com",
-					Model:   "old-model",
-				},
-				BaseURL: "https://new.com",
-				Model:   "new-model",
-				Exists:  true,
-			},
-			wantName:    "existing",
-			wantBaseURL: "https://new.com",
-			wantModel:   "new-model",
-		},
-	}
+	t.Run("new provider", func(t *testing.T) {
+		def := providers.ProviderDefinition{
+			Name:    "test",
+			BaseURL: "https://api.test.com",
+			Model:   "test-model",
+		}
+		got := BuildProviderConfigFromInput(def, "https://api.test.com", "test-model", false, config.Provider{})
+		if got.Name != "test" {
+			t.Errorf("Name = %v, want test", got.Name)
+		}
+		if got.BaseURL != "https://api.test.com" {
+			t.Errorf("BaseURL = %v, want https://api.test.com", got.BaseURL)
+		}
+		if got.Model != "test-model" {
+			t.Errorf("Model = %v, want test-model", got.Model)
+		}
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := buildProviderConfigFromInput(tt.input)
-			if got.Name != tt.wantName {
-				t.Errorf("Name = %v, want %v", got.Name, tt.wantName)
-			}
-			if got.BaseURL != tt.wantBaseURL {
-				t.Errorf("BaseURL = %v, want %v", got.BaseURL, tt.wantBaseURL)
-			}
-			if got.Model != tt.wantModel {
-				t.Errorf("Model = %v, want %v", got.Model, tt.wantModel)
-			}
-		})
-	}
+	t.Run("existing provider", func(t *testing.T) {
+		existing := config.Provider{
+			Name:    "existing",
+			BaseURL: "https://old.com",
+			Model:   "old-model",
+		}
+		got := BuildProviderConfigFromInput(providers.ProviderDefinition{}, "https://new.com", "new-model", true, existing)
+		if got.Name != "existing" {
+			t.Errorf("Name = %v, want existing", got.Name)
+		}
+		if got.BaseURL != "https://new.com" {
+			t.Errorf("BaseURL = %v, want https://new.com", got.BaseURL)
+		}
+		if got.Model != "new-model" {
+			t.Errorf("Model = %v, want new-model", got.Model)
+		}
+	})
 }
 
 // TestBuildSecretsEnvVars tests building secrets env vars
-// DEPRECATED: This function should NOT be used to inject secrets into child processes.
-// Secrets must only be passed via the secure wrapper script mechanism.
-// The test is kept to verify the function still works for migration purposes.
 func TestBuildSecretsEnvVars(t *testing.T) {
 	secrets := map[string]string{
 		"ANTHROPIC_API_KEY": "test-key-123",
 		"ZAI_API_KEY":       "zai-key-456",
 	}
 
-	envVars := buildSecretsEnvVars(secrets)
+	envVars := BuildSecretsEnvVars(secrets)
 
 	if len(envVars) != 2 {
 		t.Errorf("expected 2 env vars, got %d", len(envVars))
@@ -129,37 +105,15 @@ func TestBuildSecretsEnvVars(t *testing.T) {
 	}
 }
 
-// TestBuildProviderEnvironmentSecurity verifies that secrets are NOT included
-// in the provider environment passed to child processes.
-func TestBuildProviderEnvironmentSecurity(t *testing.T) {
-	// This test verifies the security property that decrypted secrets
-	// must NOT be injected into child process environments.
-	// Secrets should only be passed via the secure wrapper script mechanism.
-
-	// We cannot easily test buildProviderEnvironment directly because it
-	// requires filesystem setup. The integration tests cover the full flow.
-	// This test documents the security requirement.
-
-	t.Run("buildSecretsEnvVars exists but should not be used for child env", func(t *testing.T) {
-		// This function exists for potential migration/compatibility but
-		// MUST NOT be called when building provider environment for child processes.
-		// The fix in buildProviderEnvironment ensures secrets are NOT merged
-		// into providerEnv.
-		t.Log("Security: secrets must only be passed via wrapper script mechanism")
-	})
-}
-
 // TestBuildBuiltInEnvVars tests that built-in env vars are constructed correctly
 func TestBuildBuiltInEnvVars(t *testing.T) {
-	provider := config.Provider{
-		Name:    "Test Provider",
+	provider := EnvProvider{
 		BaseURL: "https://api.test.com",
 		Model:   "test-model",
 	}
 
-	envVars := buildBuiltInEnvVars(provider)
+	envVars := BuildBuiltInEnvVars(provider)
 
-	// Should contain expected env vars
 	expectedKeys := []string{
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_MODEL",
@@ -167,7 +121,6 @@ func TestBuildBuiltInEnvVars(t *testing.T) {
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_SMALL_FAST_MODEL",
-		"NODE_OPTIONS",
 	}
 
 	envMap := make(map[string]string)
@@ -180,11 +133,10 @@ func TestBuildBuiltInEnvVars(t *testing.T) {
 
 	for _, key := range expectedKeys {
 		if _, exists := envMap[key]; !exists {
-			t.Errorf("buildBuiltInEnvVars() missing expected key %s", key)
+			t.Errorf("BuildBuiltInEnvVars() missing expected key %s", key)
 		}
 	}
 
-	// Verify values are correct
 	if envMap["ANTHROPIC_BASE_URL"] != provider.BaseURL {
 		t.Errorf("ANTHROPIC_BASE_URL = %s, want %s", envMap["ANTHROPIC_BASE_URL"], provider.BaseURL)
 	}
@@ -252,9 +204,9 @@ func TestAPIKeyEnvVarName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := apiKeyEnvVarName(tt.input)
+			got := APIKeyEnvVarName(tt.input)
 			if got != tt.expected {
-				t.Errorf("apiKeyEnvVarName(%q) = %q, want %q", tt.input, got, tt.expected)
+				t.Errorf("APIKeyEnvVarName(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
 		})
 	}
@@ -262,28 +214,23 @@ func TestAPIKeyEnvVarName(t *testing.T) {
 
 // TestResolveProviderName tests resolving provider name
 func TestResolveProviderName(t *testing.T) {
-	// Test with non-custom provider name
-	name, err := resolveProviderName("anthropic")
+	name, err := ResolveProviderName("anthropic")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	if name != "anthropic" {
 		t.Errorf("expected 'anthropic', got %q", name)
 	}
-
-	// Test with custom - this would normally prompt for input
-	// We skip this in automated tests as it requires UI interaction
 }
 
 // TestGetProviderDefinition tests getting provider definition
 func TestGetProviderDefinition(t *testing.T) {
-	def := getProviderDefinition("anthropic")
+	def := GetProviderDefinition("anthropic")
 	if def.Name == "" {
 		t.Error("expected non-empty provider definition")
 	}
 
-	// Test with custom provider name
-	def = getProviderDefinition("custom-provider")
+	def = GetProviderDefinition("custom-provider")
 	if def.Name != "custom-provider" {
 		t.Errorf("expected 'custom-provider', got %q", def.Name)
 	}
