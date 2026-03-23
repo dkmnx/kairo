@@ -198,7 +198,7 @@ func TestExecute(t *testing.T) {
 
 		// Save original flag values
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -232,7 +232,7 @@ func TestExecute(t *testing.T) {
 
 		// Save and restore flag values
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -266,7 +266,7 @@ func TestExecute(t *testing.T) {
 
 		// Save and restore flag values
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -298,7 +298,7 @@ func TestExecute(t *testing.T) {
 
 		// Reset and restore flag values
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -339,7 +339,7 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetArgs(nil)
 
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir(tmpDir) // Use tmpDir, not empty string
 		setVerbose(false)
 		defer func() {
@@ -427,7 +427,7 @@ func TestHandleConfigError(t *testing.T) {
 		// Simulate the error from outdated binary
 		err := fmt.Errorf("field default_harness not found in type config.Config (path=/home/user/.config/kairo/config.yaml)")
 
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setVerbose(false)
 		defer func() { setVerbose(originalVerbose) }()
 
@@ -463,7 +463,7 @@ func TestHandleConfigError(t *testing.T) {
 		// Simulate the error from outdated binary
 		err := fmt.Errorf("field default_harness not found in type config.Config")
 
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setVerbose(true)
 		defer func() { setVerbose(originalVerbose) }()
 
@@ -487,7 +487,7 @@ func TestHandleConfigError(t *testing.T) {
 		// Simulate a different error
 		err := fmt.Errorf("some other config error")
 
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setVerbose(false)
 		defer func() { setVerbose(originalVerbose) }()
 

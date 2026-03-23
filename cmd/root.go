@@ -44,58 +44,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
 	kairoversion "github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
-
-var (
-	configDir   string
-	configDirMu sync.RWMutex // Protects configDir
-	verbose     bool
-	verboseMu   sync.RWMutex // Protects verbose
-)
-
-func getVerbose() bool {
-	verboseMu.RLock()
-	defer verboseMu.RUnlock()
-
-	return verbose
-}
-
-func setVerbose(enabled bool) {
-	verboseMu.Lock()
-	defer verboseMu.Unlock()
-
-	verbose = enabled
-}
-
-func setConfigDir(dir string) {
-	configDirMu.Lock()
-	defer configDirMu.Unlock()
-
-	configDir = dir
-	defaultCLIContext.SetConfigDir(dir)
-}
-
-func getConfigDir() string {
-	configDirMu.RLock()
-	defer configDirMu.RUnlock()
-
-	if configDir != "" {
-		return configDir
-	}
-
-	dir, err := config.GetConfigDir()
-	if err != nil {
-		return ""
-	}
-
-	return dir
-}
 
 const (
 	envBaseURL     = "ANTHROPIC_BASE_URL"
@@ -111,7 +65,28 @@ const (
 var (
 	harnessFlag string
 	yoloFlag    bool // yolo mode - skips permission prompts
+	verboseFlag bool // tracks --verbose flag for detection in help output
 )
+
+// Wrapper functions for backward compatibility with tests.
+// These delegate directly to the single source of truth: CLIContext.
+func setConfigDir(dir string) {
+	defaultCLIContext.SetConfigDir(dir)
+}
+
+func getConfigDir() string {
+	return defaultCLIContext.GetConfigDir()
+}
+
+func setVerbose(enabled bool) {
+	defaultCLIContext.SetVerbose(enabled)
+}
+
+func getVerbose() bool {
+	// CLIContext is authoritative during normal command execution
+	// verboseFlag provides detection for --help cases where PersistentPreRun doesn't run
+	return defaultCLIContext.GetVerbose() || verboseFlag
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "kairo",
@@ -215,19 +190,17 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	rootCmd.PersistentFlags().String("config", "", "Config directory (default is platform-specific)")
+	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Verbose output")
 	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
 	rootCmd.Flags().BoolVarP(&yoloFlag, "yolo", "y", false,
 		"Skip permission prompts (--dangerously-skip-permissions for Claude, --yolo for Qwen)")
 
-	// Sync flag values to defaultCLIContext before each command runs.
-	// This ensures that even though flags are bound to globals, the CLIContext
-	// used by commands is kept in sync.
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		defaultCLIContext.SetConfigDir(configDir)
-		defaultCLIContext.SetVerbose(verbose)
-		// Set the CLIContext on the command for GetCLIContext to find
+		if configFlag, err := cmd.Flags().GetString("config"); err == nil && configFlag != "" {
+			defaultCLIContext.SetConfigDir(configFlag)
+		}
+		defaultCLIContext.SetVerbose(verboseFlag)
 		cmd.SetContext(WithCLIContext(cmd.Context(), defaultCLIContext))
 	}
 }

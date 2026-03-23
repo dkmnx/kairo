@@ -87,7 +87,7 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 	cmd.Println("  For manual installation, see:")
 	cmd.Println("    https://github.com/dkmnx/kairo/blob/main/docs/guides/user-guide.md#manual-installation")
 	cmd.Println()
-	if verbose {
+	if getVerbose() {
 		cmd.Printf("Technical details: %v\n", err)
 	}
 }
