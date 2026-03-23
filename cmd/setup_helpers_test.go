@@ -186,13 +186,13 @@ func TestSaveProviderConfigFile(t *testing.T) {
 
 		cliCtx := NewCLIContext()
 		err := AddAndSaveProvider(AddProviderParams{
-		CLIContext:   cliCtx,
-		ConfigDir:    tmpDir,
-		Cfg:          cfg,
-		ProviderName: "testprovider",
-		Provider:     provider,
-		SetAsDefault: true,
-	})
+			CLIContext:   cliCtx,
+			ConfigDir:    tmpDir,
+			Cfg:          cfg,
+			ProviderName: "testprovider",
+			Provider:     provider,
+			SetAsDefault: true,
+		})
 		if err != nil {
 			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
@@ -227,13 +227,13 @@ func TestSaveProviderConfigFile(t *testing.T) {
 
 		cliCtx := NewCLIContext()
 		err := AddAndSaveProvider(AddProviderParams{
-		CLIContext:   cliCtx,
-		ConfigDir:    tmpDir,
-		Cfg:          cfg,
-		ProviderName: "testprovider",
-		Provider:     provider,
-		SetAsDefault: false,
-	})
+			CLIContext:   cliCtx,
+			ConfigDir:    tmpDir,
+			Cfg:          cfg,
+			ProviderName: "testprovider",
+			Provider:     provider,
+			SetAsDefault: false,
+		})
 		if err != nil {
 			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
@@ -259,13 +259,13 @@ func TestSaveProviderConfigFile(t *testing.T) {
 
 		cliCtx := NewCLIContext()
 		err := AddAndSaveProvider(AddProviderParams{
-		CLIContext:   cliCtx,
-		ConfigDir:    tmpDir,
-		Cfg:          cfg,
-		ProviderName: "newprovider",
-		Provider:     provider,
-		SetAsDefault: true,
-	})
+			CLIContext:   cliCtx,
+			ConfigDir:    tmpDir,
+			Cfg:          cfg,
+			ProviderName: "newprovider",
+			Provider:     provider,
+			SetAsDefault: true,
+		})
 		if err != nil {
 			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
