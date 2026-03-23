@@ -69,6 +69,7 @@ func selectProviderNoExisting(ui PromptUI) string {
 	return ui.Select(ctx, "Select provider to configure", options)
 }
 
+//nolint:unparam // providerName is always "anthropic" but used to construct API key env var name
 func promptAPIKey(providerName string, secrets map[string]string, isEdit, exists bool, ui PromptUI) string {
 	ctx := context.Background()
 
