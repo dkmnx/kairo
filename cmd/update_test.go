@@ -12,6 +12,19 @@ import (
 	"github.com/dkmnx/kairo/internal/version"
 )
 
+// HijackAndClose hijacks the connection and closes it to simulate abrupt server closure.
+func HijackAndClose(w http.ResponseWriter) {
+	hijacker, ok := w.(http.Hijacker)
+	if !ok {
+		return
+	}
+	conn, _, err := hijacker.Hijack()
+	if err != nil {
+		return
+	}
+	conn.Close()
+}
+
 func TestUpdateCommand(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/dkmnx/kairo/releases/latest" {
@@ -585,9 +598,9 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 	})
 
 	t.Run("returns error when server closes connection early", func(t *testing.T) {
+		// Use hijacked connection to simulate abrupt closure
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Close connection without sending complete response
-			panic("close connection")
+			HijackAndClose(w)
 		}))
 		defer server.Close()
 
