@@ -140,14 +140,21 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
 
-		providerEnv, secrets, err := buildProviderEnvironment(cliCtx, configDir, provider, providerName)
+		envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
+			BaseURL: provider.BaseURL,
+			Model:   provider.Model,
+			EnvVars: provider.EnvVars,
+		}, providerName)
 		if err != nil {
 			handleSecretsError(err)
 
 			return
 		}
 
-		apiKeyKey := apiKeyEnvVarName(providerName)
+		providerEnv := envResult.ProviderEnv
+		secrets := envResult.Secrets
+
+		apiKeyKey := APIKeyEnvVarName(providerName)
 		if apiKey, hasKey := secrets[apiKeyKey]; hasKey {
 			executeWithAuth(ExecutionConfig{
 				Cmd:           cmd,
