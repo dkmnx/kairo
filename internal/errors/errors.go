@@ -8,13 +8,14 @@ import (
 type ErrorType string
 
 const (
-	ConfigError     ErrorType = "config"
-	CryptoError     ErrorType = "crypto"
-	ValidationError ErrorType = "validation"
-	ProviderError   ErrorType = "provider"
-	FileSystemError ErrorType = "filesystem"
-	NetworkError    ErrorType = "network"
-	RuntimeError    ErrorType = "runtime"
+	ConfigError       ErrorType = "config"
+	CryptoError       ErrorType = "crypto"
+	ValidationError   ErrorType = "validation"
+	ProviderError     ErrorType = "provider"
+	FileSystemError   ErrorType = "filesystem"
+	NetworkError      ErrorType = "network"
+	RuntimeError      ErrorType = "runtime"
+	VerificationError ErrorType = "verification"
 )
 
 var ErrConfigNotFound = errors.New("configuration file not found")
@@ -129,4 +130,8 @@ func RuntimeErr(message string, cause error) *KairoError {
 		return WrapError(RuntimeError, message, cause)
 	}
 	return NewError(RuntimeError, message)
+}
+
+func VerificationErr(message string, cause error) *KairoError {
+	return WrapError(VerificationError, message, cause)
 }
