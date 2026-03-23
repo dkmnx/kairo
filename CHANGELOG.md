@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-03-22
+
 ### Added
 
 - `--yolo` / `-y` flag for direct provider execution to skip harness permission prompts
@@ -1093,6 +1095,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/dkmnx/kairo/compare/v2.2.1...v2.3.0
 [2.2.1]: https://github.com/dkmnx/kairo/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/dkmnx/kairo/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/dkmnx/kairo/compare/v2.1.0...v2.1.1
