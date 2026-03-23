@@ -28,7 +28,7 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 		return "", fmt.Errorf("command not found: %s", file)
 	}
 
-	params := HarnessWrapperParams{
+	params := harnessWrapperParams{
 		AuthDir:       "/tmp/test-auth",
 		TokenPath:     "/tmp/test-auth/token",
 		HarnessBinary: "nonexistent-harness",
@@ -63,7 +63,7 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 	}
 
 	// Test with invalid parameters that will cause wrapper generation to fail
-	params := HarnessWrapperParams{
+	params := harnessWrapperParams{
 		AuthDir:       "/tmp/test-auth",
 		TokenPath:     "", // Empty token path will cause wrapper generation to fail
 		HarnessBinary: "claude",
@@ -121,7 +121,7 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 		t.Fatalf("Failed to create token file: %v", err)
 	}
 
-	params := HarnessWrapperParams{
+	params := harnessWrapperParams{
 		AuthDir:       tmpDir,
 		TokenPath:     tokenPath,
 		HarnessBinary: "claude",
@@ -564,7 +564,20 @@ func TestBuildProviderEnvironment_Success(t *testing.T) {
 
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
-	providerEnv, secrets, err := buildProviderEnvironment(cliCtx, tmpDir, provider, "test-provider")
+	result, err := BuildProviderEnv(cliCtx, tmpDir, EnvProvider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "test-provider")
+	if err != nil {
+		t.Fatalf("BuildProviderEnv() should succeed with no secrets file, got: %v", err)
+	}
+
+	if result.Secrets == nil {
+		t.Error("BuildProviderEnv() should return empty secrets map, not nil")
+	}
+
+	if len(result.ProviderEnv) == 0 {
+		t.Error("BuildProviderEnv() should return provider environment variables")
+	}
+	providerEnv := result.ProviderEnv
+	secrets := result.Secrets
 	if err != nil {
 		t.Fatalf("buildProviderEnvironment() should succeed with no secrets file, got: %v", err)
 	}
@@ -594,9 +607,9 @@ func TestApiKeyEnvVarName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := apiKeyEnvVarName(tt.provider)
+			result := APIKeyEnvVarName(tt.provider)
 			if result != tt.expected {
-				t.Errorf("apiKeyEnvVarName(%q) = %q, want %q", tt.provider, result, tt.expected)
+				t.Errorf("APIKeyEnvVarName(%q) = %q, want %q", tt.provider, result, tt.expected)
 			}
 		})
 	}
@@ -792,7 +805,18 @@ func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 	// Test with a provider that doesn't require API key (should not fail on missing secrets)
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
-	env, secrets, err := buildProviderEnvironment(cliCtx, tmpDir, provider, "ollama")
+	result, err := BuildProviderEnv(cliCtx, tmpDir, EnvProvider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "ollama")
+	if err != nil {
+		t.Fatalf("BuildProviderEnv() for provider without API key should not error, got: %v", err)
+	}
+	if result.ProviderEnv == nil {
+		t.Error("BuildProviderEnv() returned nil env for provider without API key")
+	}
+	if result.Secrets == nil {
+		t.Error("BuildProviderEnv() returned nil secrets map")
+	}
+	env := result.ProviderEnv
+	secrets := result.Secrets
 	if err != nil {
 		t.Errorf("buildProviderEnvironment() for provider without API key should not error, got: %v", err)
 	}
@@ -824,7 +848,17 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
-	env, _, err := buildProviderEnvironment(cliCtx, tmpDir, provider, "ollama")
+	result, err := BuildProviderEnv(cliCtx, tmpDir, EnvProvider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "ollama")
+	if err != nil {
+		t.Fatalf("BuildProviderEnv() error = %v", err)
+	}
+	if len(result.ProviderEnv) == 0 {
+		t.Error("BuildProviderEnv() should include provider EnvVars")
+	}
+	if len(result.ProviderEnv) < len(provider.EnvVars) {
+		t.Error("BuildProviderEnv() should include all provider EnvVars")
+	}
+	env := result.ProviderEnv
 	if err != nil {
 		t.Fatalf("buildProviderEnvironment() error = %v", err)
 	}
@@ -872,7 +906,7 @@ func TestBuildBuiltInEnvVars_Extended(t *testing.T) {
 			Model:   "test-model-v1.0-beta",
 		}
 
-		envVars := buildBuiltInEnvVars(provider)
+		envVars := BuildBuiltInEnvVars(EnvProvider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars})
 		if len(envVars) == 0 {
 			t.Error("buildBuiltInEnvVars() returned empty slice")
 		}

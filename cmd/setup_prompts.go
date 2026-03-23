@@ -93,7 +93,7 @@ func promptForAPIKey(providerName string, secrets map[string]string, isEdit, exi
 	ctx := context.Background()
 
 	if isEdit && exists {
-		existingKey := secrets[apiKeyEnvVarName(providerName)]
+		existingKey := secrets[APIKeyEnvVarName(providerName)]
 		if existingKey == "" {
 			return tap.Password(ctx, tap.PasswordOptions{Message: "API Key"})
 		}

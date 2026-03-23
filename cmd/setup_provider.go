@@ -89,32 +89,3 @@ func BuildProviderConfigFromInput(
 
 	return existing
 }
-
-// Backward compatibility aliases
-type BuildProviderConfigParams struct {
-	Definition providers.ProviderDefinition
-	BaseURL    string
-	Model      string
-	Exists     bool
-	Existing   config.Provider
-}
-
-func buildProviderConfigFromInput(params BuildProviderConfigParams) config.Provider {
-	return BuildProviderConfigFromInput(params.Definition, params.BaseURL, params.Model, params.Exists, params.Existing)
-}
-
-func buildProviderConfig(definition providers.ProviderDefinition, baseURL, model string) config.Provider {
-	return BuildProviderConfig(definition, baseURL, model)
-}
-
-func validateCustomProviderName(name string) (string, error) {
-	return ValidateCustomProviderName(name)
-}
-
-func getProviderDefinition(providerName string) providers.ProviderDefinition {
-	return GetProviderDefinition(providerName)
-}
-
-func resolveProviderName(providerName string) (string, error) {
-	return ResolveProviderName(providerName)
-}

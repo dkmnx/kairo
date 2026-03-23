@@ -62,7 +62,7 @@ func TestValidateCustomProviderName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			providerName, err := validateCustomProviderName(tt.provider)
+			providerName, err := ValidateCustomProviderName(tt.provider)
 
 			if tt.wantErr {
 				if err == nil {
@@ -98,7 +98,7 @@ func TestBuildProviderConfig(t *testing.T) {
 		baseURL := "https://custom.url"
 		model := "custom-model"
 
-		provider := buildProviderConfig(def, baseURL, model)
+		provider := BuildProviderConfig(def, baseURL, model)
 
 		if provider.Name != def.Name {
 			t.Errorf("Name = %q, want %q", provider.Name, def.Name)
@@ -123,7 +123,7 @@ func TestBuildProviderConfig(t *testing.T) {
 			RequiresAPIKey: true,
 		}
 
-		provider := buildProviderConfig(def, "https://test.com", "model")
+		provider := BuildProviderConfig(def, "https://test.com", "model")
 
 		if provider.EnvVars != nil {
 			t.Errorf("EnvVars should be nil, got %v", provider.EnvVars)
@@ -185,7 +185,14 @@ func TestSaveProviderConfigFile(t *testing.T) {
 		}
 
 		cliCtx := NewCLIContext()
-		err := addAndSaveProvider(cliCtx, tmpDir, cfg, "testprovider", provider, true)
+		err := AddAndSaveProvider(AddProviderParams{
+		CLIContext:   cliCtx,
+		ConfigDir:    tmpDir,
+		Cfg:          cfg,
+		ProviderName: "testprovider",
+		Provider:     provider,
+		SetAsDefault: true,
+	})
 		if err != nil {
 			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
@@ -219,7 +226,14 @@ func TestSaveProviderConfigFile(t *testing.T) {
 		}
 
 		cliCtx := NewCLIContext()
-		err := addAndSaveProvider(cliCtx, tmpDir, cfg, "testprovider", provider, false)
+		err := AddAndSaveProvider(AddProviderParams{
+		CLIContext:   cliCtx,
+		ConfigDir:    tmpDir,
+		Cfg:          cfg,
+		ProviderName: "testprovider",
+		Provider:     provider,
+		SetAsDefault: false,
+	})
 		if err != nil {
 			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
@@ -244,7 +258,14 @@ func TestSaveProviderConfigFile(t *testing.T) {
 		}
 
 		cliCtx := NewCLIContext()
-		err := addAndSaveProvider(cliCtx, tmpDir, cfg, "newprovider", provider, true)
+		err := AddAndSaveProvider(AddProviderParams{
+		CLIContext:   cliCtx,
+		ConfigDir:    tmpDir,
+		Cfg:          cfg,
+		ProviderName: "newprovider",
+		Provider:     provider,
+		SetAsDefault: true,
+	})
 		if err != nil {
 			t.Fatalf("addAndSaveProvider() error = %v", err)
 		}
@@ -274,26 +295,26 @@ func FuzzValidateCustomProviderName(f *testing.F) {
 	f.Add(strings.Repeat("a", 51))
 
 	f.Fuzz(func(t *testing.T, name string) {
-		result, err := validateCustomProviderName(name)
+		result, err := ValidateCustomProviderName(name)
 
 		// Verify empty names always fail
 		if name == "" && err == nil {
-			t.Errorf("validateCustomProviderName() should fail for empty name")
+			t.Errorf("ValidateCustomProviderName() should fail for empty name")
 		}
 
 		// Verify names exceeding max length always fail
 		if len(name) > validate.MaxProviderNameLength && err == nil {
-			t.Errorf("validateCustomProviderName() should fail for name exceeding max length (%d)", validate.MaxProviderNameLength)
+			t.Errorf("ValidateCustomProviderName() should fail for name exceeding max length (%d)", validate.MaxProviderNameLength)
 		}
 
 		// Verify names starting with numbers always fail (when not empty)
 		if name != "" && len(name) > 0 && name[0] >= '0' && name[0] <= '9' && err == nil {
-			t.Errorf("validateCustomProviderName() should fail for name starting with number: %s", name)
+			t.Errorf("ValidateCustomProviderName() should fail for name starting with number: %s", name)
 		}
 
 		// Verify builtin provider names always fail
 		if providers.IsBuiltInProvider(strings.ToLower(name)) && err == nil {
-			t.Errorf("validateCustomProviderName() should fail for builtin provider name: %s", name)
+			t.Errorf("ValidateCustomProviderName() should fail for builtin provider name: %s", name)
 		}
 
 		// Verify valid names succeed (when not empty, not too long, starts with letter, no special chars, not builtin)
@@ -304,14 +325,14 @@ func FuzzValidateCustomProviderName(f *testing.F) {
 			// If validation passed, verify all characters are valid
 			for _, r := range name {
 				if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
-					t.Errorf("validateCustomProviderName() should fail for name with invalid character %q in %q", r, name)
+					t.Errorf("ValidateCustomProviderName() should fail for name with invalid character %q in %q", r, name)
 				}
 			}
 		}
 
 		// Verify successful validation returns the original name
 		if err == nil && result != name {
-			t.Errorf("validateCustomProviderName() should return original name on success, got %q want %q", result, name)
+			t.Errorf("ValidateCustomProviderName() should return original name on success, got %q want %q", result, name)
 		}
 	})
 }
@@ -332,7 +353,8 @@ func TestSaveProviderConfiguration(t *testing.T) {
 		secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
 		keyPath := filepath.Join(tmpDir, config.KeyFileName)
 
-		params := SaveProviderParams{
+		setAsDefault := cfg.DefaultProvider == ""
+		err := AddAndSaveProvider(AddProviderParams{
 			CLIContext:   NewCLIContext(),
 			ConfigDir:    tmpDir,
 			Cfg:          cfg,
@@ -342,16 +364,18 @@ func TestSaveProviderConfiguration(t *testing.T) {
 				BaseURL: "https://test.com",
 				Model:   "test-model",
 			},
-			APIKey:      "test-api-key",
-			Secrets:     make(map[string]string),
-			SecretsPath: secretsPath,
-			KeyPath:     keyPath,
-			IsEdit:      false,
+			SetAsDefault: setAsDefault,
+		})
+		if err != nil {
+			t.Fatalf("AddAndSaveProvider() error = %v", err)
 		}
 
-		err := saveProviderConfiguration(params)
+		// Save secrets
+		secrets := make(map[string]string)
+		secrets["TESTPROVIDER_API_KEY"] = "test-api-key"
+		err = SaveSecrets(context.Background(), secretsPath, keyPath, secrets)
 		if err != nil {
-			t.Fatalf("saveProviderConfiguration() error = %v", err)
+			t.Fatalf("SaveSecrets() error = %v", err)
 		}
 
 		// Verify provider was saved
@@ -360,10 +384,11 @@ func TestSaveProviderConfiguration(t *testing.T) {
 		}
 
 		// Verify secrets were encrypted
-		loadedSecrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
+		result, err := LoadSecrets(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadAndDecryptSecrets() error = %v", err)
+			t.Fatalf("LoadSecrets() error = %v", err)
 		}
+		loadedSecrets := result.Secrets
 		if loadedSecrets["TESTPROVIDER_API_KEY"] != "test-api-key" {
 			t.Errorf("Loaded API key = %q, want %q", loadedSecrets["TESTPROVIDER_API_KEY"], "test-api-key")
 		}
@@ -387,7 +412,7 @@ func TestSaveProviderConfiguration(t *testing.T) {
 		secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
 		keyPath := filepath.Join(tmpDir, config.KeyFileName)
 
-		params := SaveProviderParams{
+		err := AddAndSaveProvider(AddProviderParams{
 			CLIContext:   NewCLIContext(),
 			ConfigDir:    tmpDir,
 			Cfg:          cfg,
@@ -397,16 +422,18 @@ func TestSaveProviderConfiguration(t *testing.T) {
 				BaseURL: "https://new.com",
 				Model:   "new-model",
 			},
-			APIKey:      "new-api-key",
-			Secrets:     make(map[string]string),
-			SecretsPath: secretsPath,
-			KeyPath:     keyPath,
-			IsEdit:      false,
+			SetAsDefault: false,
+		})
+		if err != nil {
+			t.Fatalf("AddAndSaveProvider() error = %v", err)
 		}
 
-		err := saveProviderConfiguration(params)
+		// Save secrets
+		secrets := make(map[string]string)
+		secrets["NEWPROVIDER_API_KEY"] = "new-api-key"
+		err = SaveSecrets(context.Background(), secretsPath, keyPath, secrets)
 		if err != nil {
-			t.Fatalf("saveProviderConfiguration() error = %v", err)
+			t.Fatalf("SaveSecrets() error = %v", err)
 		}
 
 		// Verify default was not changed

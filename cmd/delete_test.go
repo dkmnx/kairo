@@ -121,10 +121,11 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 	}
 
 	// Load and verify both keys exist
-	loadedSecrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
+	result, err := LoadSecrets(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadAndDecryptSecrets() error = %v", err)
+		t.Fatalf("LoadSecrets() error = %v", err)
 	}
+	loadedSecrets := result.Secrets
 
 	if loadedSecrets["PROVIDER1_API_KEY"] != "key1" {
 		t.Error("Provider1 API key should exist")
@@ -144,10 +145,11 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 	}
 
 	// Verify provider2's key was deleted
-	updatedSecrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
+	result, err = LoadSecrets(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadAndDecryptSecrets() error = %v", err)
+		t.Fatalf("LoadSecrets() error = %v", err)
 	}
+	updatedSecrets := result.Secrets
 
 	if _, exists := updatedSecrets["PROVIDER2_API_KEY"]; exists {
 		t.Error("Provider2 API key should have been deleted")

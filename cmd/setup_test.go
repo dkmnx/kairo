@@ -747,9 +747,9 @@ func TestEnsureConfigDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cliCtx := NewCLIContext()
-	err := ensureConfigDirectory(cliCtx, tmpDir)
+	err := EnsureConfigDir(cliCtx, tmpDir)
 	if err != nil {
-		t.Errorf("ensureConfigDirectory() error = %v", err)
+		t.Errorf("EnsureConfigDir() error = %v", err)
 	}
 
 	keyPath := filepath.Join(tmpDir, "age.key")
@@ -772,9 +772,9 @@ func TestLoadOrInitializeConfigExisting(t *testing.T) {
 	}
 
 	cliCtx := NewCLIContext()
-	loadedCfg, err := loadOrInitializeConfig(cliCtx, tmpDir)
+	loadedCfg, err := LoadConfig(cliCtx, tmpDir)
 	if err != nil {
-		t.Errorf("loadOrInitializeConfig() error = %v", err)
+		t.Errorf("LoadConfig() error = %v", err)
 	}
 	if loadedCfg.DefaultProvider != "zai" {
 		t.Errorf("DefaultProvider = %q, want %q", loadedCfg.DefaultProvider, "zai")
@@ -788,12 +788,12 @@ func TestLoadOrInitializeConfigNew(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cliCtx := NewCLIContext()
-	loadedCfg, err := loadOrInitializeConfig(cliCtx, tmpDir)
+	loadedCfg, err := LoadConfig(cliCtx, tmpDir)
 	if err != nil {
-		t.Fatalf("loadOrInitializeConfig() returned unexpected error: %v", err)
+		t.Fatalf("LoadConfig() returned unexpected error: %v", err)
 	}
 	if loadedCfg == nil {
-		t.Fatal("loadOrInitializeConfig() returned nil for non-existent config, want empty config")
+		t.Fatal("LoadConfig() returned nil for non-existent config, want empty config")
 	}
 	if loadedCfg.DefaultProvider != "" {
 		t.Errorf("DefaultProvider = %q, want empty string", loadedCfg.DefaultProvider)
@@ -816,16 +816,16 @@ func TestLoadOrInitializeConfigError(t *testing.T) {
 	}
 
 	cliCtx := NewCLIContext()
-	loadedCfg, err := loadOrInitializeConfig(cliCtx, tmpDir)
+	loadedCfg, err := LoadConfig(cliCtx, tmpDir)
 	if err != nil {
-		t.Errorf("loadOrInitializeConfig() error = %v", err)
+		t.Errorf("LoadConfig() error = %v", err)
 	}
 	if loadedCfg.DefaultProvider != "" {
 		t.Errorf("DefaultProvider = %q, want empty", loadedCfg.DefaultProvider)
 	}
 }
 
-func TestLoadAndDecryptSecrets(t *testing.T) {
+func TestLoadSecrets(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cfg := &config.Config{}
@@ -842,9 +842,15 @@ func TestLoadAndDecryptSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsOut, keyOut, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
+	result, err := LoadSecrets(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadAndDecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("LoadSecrets() error = %v", err)
+	}
+	secretsOut := result.SecretsPath
+	keyOut := result.KeyPath
+	secrets := result.Secrets
+	if err != nil {
+		t.Fatalf("LoadSecrets(context.Background(), ) error = %v", err)
 	}
 	if secretsOut != secretsPath {
 		t.Errorf("secretsPath = %q, want %q", secretsOut, secretsPath)
@@ -865,9 +871,15 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
+	result, err := LoadSecrets(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadAndDecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("LoadSecrets() error = %v", err)
+	}
+	secretsPath := result.SecretsPath
+	keyPath := result.KeyPath
+	secrets := result.Secrets
+	if err != nil {
+		t.Fatalf("LoadSecrets(context.Background(), ) error = %v", err)
 	}
 	if len(secrets) != 0 {
 		t.Errorf("got %d secrets, want 0", len(secrets))
@@ -894,13 +906,9 @@ func TestLoadSecretsWithCorruptedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
-
+	_, err := LoadSecrets(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted secrets file, got nil")
-	}
-	if secrets != nil {
-		t.Errorf("Expected nil secrets on error, got %v", secrets)
 	}
 }
 
@@ -922,13 +930,9 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
-
+	_, err := LoadSecrets(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted key file, got nil")
-	}
-	if secrets != nil {
-		t.Errorf("Expected nil secrets on error, got %v", secrets)
 	}
 }
 
@@ -1475,10 +1479,10 @@ func TestSetup_ProviderNameValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateCustomProviderName(tt.name)
+			_, err := ValidateCustomProviderName(tt.name)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				t.Errorf("ValidateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
 			}
 		})
 	}
@@ -1517,10 +1521,10 @@ func TestSetup_ProviderNameLength(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateCustomProviderName(tt.name)
+			_, err := ValidateCustomProviderName(tt.name)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				t.Errorf("ValidateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
 			}
 		})
 	}
@@ -1567,10 +1571,10 @@ func TestSetup_ProviderNameReservedWords(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateCustomProviderName(tt.name)
+			_, err := ValidateCustomProviderName(tt.name)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				t.Errorf("ValidateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
 			}
 		})
 	}
@@ -1839,13 +1843,13 @@ func TestResolveProviderName_NonCustom(t *testing.T) {
 				t.Skip("requires TUI mocking")
 			}
 
-			got, err := resolveProviderName(tt.providerName)
+			got, err := ResolveProviderName(tt.providerName)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("resolveProviderName() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ResolveProviderName() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("resolveProviderName() = %v, want %v", got, tt.want)
+				t.Errorf("ResolveProviderName() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -1865,7 +1869,7 @@ func TestEnsureConfigDirectory_ErrorPaths(t *testing.T) {
 		// Try to create directory inside a file path (should fail)
 		invalidPath := filepath.Join(tmpFile.Name(), "config")
 		cliCtx := NewCLIContext()
-		err = ensureConfigDirectory(cliCtx, invalidPath)
+		err = EnsureConfigDir(cliCtx, invalidPath)
 		if err == nil {
 			t.Error("expected error for invalid config directory path")
 		}
@@ -1886,7 +1890,7 @@ func TestSaveProviderConfiguration_ValidationErrors(t *testing.T) {
 			Providers: make(map[string]config.Provider),
 		}
 
-		params := SaveProviderParams{
+		err := AddAndSaveProvider(AddProviderParams{
 			CLIContext:   NewCLIContext(),
 			ConfigDir:    "/nonexistent/path/that/cannot/be/created",
 			Cfg:          cfg,
@@ -1896,14 +1900,8 @@ func TestSaveProviderConfiguration_ValidationErrors(t *testing.T) {
 				BaseURL: "https://test.com",
 				Model:   "test-model",
 			},
-			APIKey:      "test-api-key",
-			Secrets:     make(map[string]string),
-			SecretsPath: filepath.Join(tmpDir, "secrets.age"),
-			KeyPath:     filepath.Join(tmpDir, "key.txt"),
-			IsEdit:      false,
-		}
-
-		err := saveProviderConfiguration(params)
+			SetAsDefault: true,
+		})
 		if err == nil {
 			t.Error("expected error for invalid config directory")
 		}
