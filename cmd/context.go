@@ -85,10 +85,6 @@ func (c *CLIContext) InvalidateCache(dir string) {
 var defaultCLIContext = NewCLIContext()
 
 func GetCLIContext(cmd *cobra.Command) *CLIContext {
-	if cmd == nil {
-		return defaultCLIContext
-	}
-
 	if ctx := cmd.Context(); ctx != nil {
 		if cliCtx, ok := ctx.Value(cliContextKey{}).(*CLIContext); ok {
 			return cliCtx

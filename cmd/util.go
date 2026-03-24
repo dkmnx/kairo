@@ -13,9 +13,6 @@ import (
 )
 
 func requireConfigDir(cmd *cobra.Command) string {
-	if cmd == nil {
-		return defaultCLIContext.GetConfigDir()
-	}
 	dir := GetCLIContext(cmd).GetConfigDir()
 	if dir == "" {
 		ui.PrintError("Config directory not found")
