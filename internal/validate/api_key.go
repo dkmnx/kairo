@@ -53,19 +53,13 @@ var providerKeyFormats = map[string]KeyFormat{
 	"custom":   {MinLength: 20},
 }
 
-// Private IP CIDR blocks for URL validation.
-// Defined at package level for efficiency (parsed once at startup).
-// We manually define these rather than using net.InterfaceAddrs() because:
-// 1. This is more explicit and covers all RFC 1918 private ranges
-// 2. Includes link-local addresses (169.254.0.0/16) which should also be blocked
-// 3. No need to enumerate network interfaces at runtime
 var (
 	private10   = mustParseCIDR("10.0.0.0/8")
 	private172  = mustParseCIDR("172.16.0.0/12")
 	private192  = mustParseCIDR("192.168.0.0/16")
 	linkLocal   = mustParseCIDR("169.254.0.0/16")
-	ulaIPv6     = mustParseCIDR("fc00::/7")  // Unique Local Address (ULA)
-	linkLocalV6 = mustParseCIDR("fe80::/10") // IPv6 link-local
+	ulaIPv6     = mustParseCIDR("fc00::/7")
+	linkLocalV6 = mustParseCIDR("fe80::/10")
 )
 
 func mustParseCIDR(s string) net.IPNet {
