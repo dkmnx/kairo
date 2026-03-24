@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
-	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
 	"github.com/spf13/cobra"
@@ -39,16 +36,8 @@ func configureProvider(params ConfigureProviderParams) (string, error) {
 	}
 
 	model := promptForModel(provider, definition, params.IsEdit, exists)
-	if err := validate.ValidateProviderModel(model, definition.Name); err != nil {
+	if err := validateConfiguredModel(model, validatedName, definition.Name); err != nil {
 		return "", err
-	}
-
-	if !providers.IsBuiltInProvider(validatedName) {
-		model = strings.TrimSpace(model)
-		if model == "" {
-			return "", kairoerrors.NewError(kairoerrors.ValidationError,
-				"model name is required for custom providers")
-		}
 	}
 
 	provider = BuildProviderConfigFromInput(definition, baseURL, model, exists, provider)
