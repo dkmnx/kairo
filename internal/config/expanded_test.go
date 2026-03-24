@@ -11,8 +11,6 @@ import (
 func TestSaveConfigCreatesDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// SaveConfig creates the config file but not nested directories
-	// Create the directory structure first
 	subDir := filepath.Join(tmpDir, "subdir", "nested")
 	if err := os.MkdirAll(subDir, 0700); err != nil {
 		t.Fatal(err)
@@ -27,7 +25,6 @@ func TestSaveConfigCreatesDirectory(t *testing.T) {
 		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 	}
 
-	// Verify config was saved
 	configPath := filepath.Join(subDir, "config.yaml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		t.Error("Config file should be created")
@@ -57,7 +54,6 @@ func TestSaveConfigOverwrites(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verify second save overwrote first
 	loaded, err := LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatal(err)
@@ -146,13 +142,11 @@ func TestLoadConfigWithEmptyFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create empty file
 	if err := os.WriteFile(configPath, []byte(""), 0600); err != nil {
 		t.Fatal(err)
 	}
 
 	_, err := LoadConfig(context.Background(), tmpDir)
-	// Should handle empty file gracefully
 	if err != nil {
 		t.Logf("LoadConfig(context.Background(), ) error on empty file: %v", err)
 	}
@@ -162,7 +156,6 @@ func TestLoadConfigWithInvalidYAML(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create invalid YAML file
 	if err := os.WriteFile(configPath, []byte("invalid: yaml: content:"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -219,18 +212,6 @@ func TestParseSecretsEdgeCases(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestParseSecretsPreservesOrder(t *testing.T) {
-	input := "FIRST=value1\nSECOND=value2\nTHIRD=value3"
-	result := ParseSecrets(input)
-
-	keys := make([]string, 0, len(result))
-	for k := range result {
-		keys = append(keys, k)
-	}
-
-	_ = keys
 }
 
 func TestSecretsMap(t *testing.T) {
@@ -386,7 +367,6 @@ func TestSaveConfigAtomicWrite(t *testing.T) {
 			t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 		}
 
-		// Verify no .tmp files remain
 		files, err := os.ReadDir(tmpDir)
 		if err != nil {
 			t.Fatal(err)
@@ -402,7 +382,6 @@ func TestSaveConfigAtomicWrite(t *testing.T) {
 	t.Run("atomic overwrite preserves content", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Save initial config
 		cfg1 := &Config{
 			Providers: map[string]Provider{
 				"first": {Name: "First Provider", BaseURL: "https://first.example.com", Model: "model-1"},
@@ -427,7 +406,6 @@ func TestSaveConfigAtomicWrite(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Verify the overwrite was atomic - content should be from second save
 		loaded, err := LoadConfig(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatal(err)
@@ -500,7 +478,6 @@ func TestSaveConfigAtomicWrite(t *testing.T) {
 			}
 		}
 
-		// Verify no .tmp files remain
 		files, err := os.ReadDir(tmpDir)
 		if err != nil {
 			t.Fatal(err)
@@ -517,7 +494,6 @@ func TestSaveConfigAtomicWrite(t *testing.T) {
 			t.Errorf("Found %d temp files, want 0", tmpCount)
 		}
 
-		// Should only have config.yaml file
 		if len(files) != 1 {
 			t.Errorf("Expected 1 file (config.yaml), found %d: %v", len(files), files)
 		}

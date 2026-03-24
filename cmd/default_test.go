@@ -44,8 +44,6 @@ func TestDefaultCommandSetProvider(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
-	t.Logf("tmpDir: %s", tmpDir)
-
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
 providers:
@@ -63,13 +61,11 @@ providers:
 		t.Fatal(err)
 	}
 
-	t.Logf("Before: configDir=%s", getConfigDir())
 	rootCmd.SetArgs([]string{"default", "zai"})
 	err = rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
-	t.Logf("After: configDir=%s", getConfigDir())
 
 	cfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
@@ -78,12 +74,6 @@ providers:
 	if cfg.DefaultProvider != "zai" {
 		t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "zai")
 	}
-
-	content, err := os.ReadFile(filepath.Join(tmpDir, "config.yaml"))
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
-	}
-	t.Logf("config content: %s", string(content))
 }
 
 func TestDefaultCommandProviderNotFound(t *testing.T) {
@@ -148,7 +138,6 @@ providers:
 		t.Fatalf("ReadFile() error = %v", err)
 	}
 
-	// Verify the config file was updated correctly
 	configContentStr := string(content)
 	if !containsString(configContentStr, "default_provider: zai") {
 		t.Error("config file should contain 'default_provider: zai'")

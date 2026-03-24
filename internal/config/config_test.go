@@ -99,7 +99,6 @@ providers:
 	if err == nil {
 		t.Error("LoadConfig(context.Background(), ) should reject unknown fields")
 	}
-	// Verify the error message is helpful
 	if err != nil && !strings.Contains(err.Error(), "unknown") {
 		t.Errorf("error message should mention 'unknown' field, got: %v", err)
 	}
@@ -344,7 +343,6 @@ func TestMigrateConfigFile(t *testing.T) {
 			t.Error("Expected no migration when old config doesn't exist")
 		}
 
-		// Verify no files were created
 		oldPath := filepath.Join(tmpDir, "config")
 		newPath := filepath.Join(tmpDir, "config.yaml")
 		if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
@@ -378,25 +376,21 @@ providers:
 			t.Error("Expected migration to occur")
 		}
 
-		// Verify new file exists
 		newConfigPath := filepath.Join(tmpDir, "config.yaml")
 		data, err := os.ReadFile(newConfigPath)
 		if err != nil {
 			t.Fatalf("Failed to read new config file: %v", err)
 		}
 
-		// Verify content is identical
 		if string(data) != configContent {
 			t.Errorf("Migrated content mismatch.\nGot:\n%s\nWant:\n%s", string(data), configContent)
 		}
 
-		// Verify old file was backed up
 		backupPath := oldConfigPath + ".backup"
 		if _, err := os.Stat(backupPath); os.IsNotExist(err) {
 			t.Error("Old config file should be backed up, not deleted")
 		}
 
-		// Verify old config no longer exists at original path
 		if _, err := os.Stat(oldConfigPath); !os.IsNotExist(err) {
 			t.Error("Old config file should be renamed to backup")
 		}
@@ -407,7 +401,6 @@ providers:
 		oldConfigPath := filepath.Join(tmpDir, "config")
 		newConfigPath := filepath.Join(tmpDir, "config.yaml")
 
-		// Create both old and new config files
 		oldContent := `default_provider: zai
 providers:
   zai:
@@ -434,7 +427,6 @@ providers:
 			t.Error("Should not migrate when new config already exists")
 		}
 
-		// Verify new config is unchanged
 		data, err := os.ReadFile(newConfigPath)
 		if err != nil {
 			t.Fatalf("Failed to read new config: %v", err)
@@ -443,7 +435,6 @@ providers:
 			t.Error("New config file should not be overwritten")
 		}
 
-		// Verify old config still exists
 		if _, err := os.Stat(oldConfigPath); os.IsNotExist(err) {
 			t.Error("Old config file should still exist")
 		}
@@ -453,7 +444,6 @@ providers:
 		tmpDir := t.TempDir()
 		oldConfigPath := filepath.Join(tmpDir, "config")
 
-		// Write invalid YAML
 		invalidYAML := `invalid: yaml: content: [`
 		if err := os.WriteFile(oldConfigPath, []byte(invalidYAML), 0600); err != nil {
 			t.Fatal(err)
@@ -467,13 +457,11 @@ providers:
 			t.Error("Should not report migration on error")
 		}
 
-		// Verify no new file was created
 		newConfigPath := filepath.Join(tmpDir, "config.yaml")
 		if _, err := os.Stat(newConfigPath); !os.IsNotExist(err) {
 			t.Error("New config file should not be created when old has invalid YAML")
 		}
 
-		// Verify old file still exists
 		if _, err := os.Stat(oldConfigPath); os.IsNotExist(err) {
 			t.Error("Old config file should still exist after failed migration")
 		}
@@ -492,7 +480,6 @@ providers:
   zai:
     name: Z.AI
 `
-		// Create with specific permissions
 		if err := os.WriteFile(oldConfigPath, []byte(configContent), 0644); err != nil {
 			t.Fatal(err)
 		}
@@ -505,7 +492,6 @@ providers:
 			t.Error("Expected migration to occur")
 		}
 
-		// Check new file has same permissions
 		newConfigPath := filepath.Join(tmpDir, "config.yaml")
 		info, err := os.Stat(newConfigPath)
 		if err != nil {
@@ -550,7 +536,6 @@ providers:
 			t.Errorf("Provider name = %q, want %q", provider.Name, "Z.AI")
 		}
 
-		// Verify migration happened
 		newConfigPath := filepath.Join(tmpDir, "config.yaml")
 		if _, err := os.Stat(newConfigPath); os.IsNotExist(err) {
 			t.Error("New config.yaml should exist after LoadConfig with migration")
@@ -636,7 +621,6 @@ func TestLoadConfigEmptyFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create an empty config file
 	if err := os.WriteFile(configPath, []byte(""), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -652,7 +636,6 @@ func TestLoadConfigWhitespaceOnly(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create a file with only whitespace
 	if err := os.WriteFile(configPath, []byte("   \n\n   \n"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -668,7 +651,6 @@ func TestLoadConfigCommentOnly(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create a file with only comments - YAML requires content, comments alone fail
 	commentContent := `# This is a comment
 # Another comment
 `
@@ -798,7 +780,6 @@ func TestParseSecretsDoesNotLogRawValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Capture log output
 			var logBuf strings.Builder
 			originalFlags := log.Flags()
 			log.SetOutput(&logBuf)
@@ -819,7 +800,6 @@ func TestParseSecretsDoesNotLogRawValues(t *testing.T) {
 				t.Errorf("SECURITY VIOLATION: log output contains secret value %q:\n%s", tt.secretValue, logOutput)
 			}
 
-			// Verify valid entries are still parsed correctly
 			if tt.expectParsed {
 				if result[tt.expectedKey] != tt.expectedValue {
 					t.Errorf("ParseSecrets()[%q] = %q, want %q", tt.expectedKey, result[tt.expectedKey], tt.expectedValue)
@@ -830,7 +810,6 @@ func TestParseSecretsDoesNotLogRawValues(t *testing.T) {
 }
 
 func TestParseSecretsLogOutputContainsUsefulDiagnostics(t *testing.T) {
-	// Verify that log output provides useful debugging information
 	// without exposing secret values.
 
 	var logBuf strings.Builder
@@ -847,12 +826,10 @@ func TestParseSecretsLogOutputContainsUsefulDiagnostics(t *testing.T) {
 
 	logOutput := logBuf.String()
 
-	// Should mention "line" for diagnostics
 	if !strings.Contains(logOutput, "line") {
 		t.Errorf("Log output should mention 'line' for diagnostics, got: %s", logOutput)
 	}
 
-	// Should NOT contain the secret value
 	if strings.Contains(logOutput, "secret_value") {
 		t.Errorf("Log output should not contain secret value, got: %s", logOutput)
 	}

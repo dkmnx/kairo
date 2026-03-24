@@ -231,7 +231,6 @@ func TestLoadIdentity(t *testing.T) {
 	tmpDir := t.TempDir()
 	keyPath := filepath.Join(tmpDir, "age.key")
 
-	// Generate a key first
 	err := GenerateKey(context.Background(), keyPath)
 	if err != nil {
 		t.Fatalf("GenerateKey(context.Background(), ) error = %v", err)
@@ -267,7 +266,6 @@ func TestLoadIdentityInvalidFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	keyPath := filepath.Join(tmpDir, "invalid.key")
 
-	// Write a valid-looking line but invalid key format
 	badKey := "AGE-SECRET-KEY-INVALID-FORMAT-THIS-IS-NOT-VALID"
 	if err := os.WriteFile(keyPath, []byte(badKey+"\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -342,7 +340,6 @@ func TestDecryptCorruptedFile(t *testing.T) {
 
 	secretsPath := filepath.Join(tmpDir, "corrupted.age")
 
-	// Write corrupted data (not valid age encryption)
 	corruptedData := []byte("this is not encrypted data!!!")
 	if err := os.WriteFile(secretsPath, corruptedData, 0600); err != nil {
 		t.Fatal(err)
@@ -365,20 +362,17 @@ func TestDecryptTruncatedFile(t *testing.T) {
 
 	secretsPath := filepath.Join(tmpDir, "truncated.age")
 
-	// First encrypt some valid data
 	validContent := "ANTHROPIC_API_KEY=test-key-123"
 	err = EncryptSecrets(context.Background(), secretsPath, keyPath, validContent)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Read and truncate the file
 	data, err := os.ReadFile(secretsPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Write truncated data (half of original)
 	truncatedData := data[:len(data)/2]
 	if err := os.WriteFile(secretsPath, truncatedData, 0600); err != nil {
 		t.Fatal(err)
@@ -401,7 +395,6 @@ func TestDecryptRandomData(t *testing.T) {
 
 	secretsPath := filepath.Join(tmpDir, "random.age")
 
-	// Write random bytes (not valid age encryption)
 	randomData := make([]byte, 256)
 	for i := range randomData {
 		randomData[i] = byte(i % 256)
@@ -442,7 +435,6 @@ func TestDecryptSecretsBytes_Success(t *testing.T) {
 		t.Errorf("Decrypted content = %q, want %q", secretsBytes.String(), secrets)
 	}
 
-	// Verify Clear works - it zeroizes the data
 	secretsBytes.Clear()
 	cleared := secretsBytes.String()
 	for i := range cleared {
@@ -451,7 +443,6 @@ func TestDecryptSecretsBytes_Success(t *testing.T) {
 		}
 	}
 
-	// Verify Close works - it calls Clear() then sets data to nil
 	secretsBytes.Close()
 	if secretsBytes.String() != "" {
 		t.Error("Close() should zeroize the data")
@@ -475,7 +466,6 @@ func TestDecryptSecretsBytes_WithDefer(t *testing.T) {
 		t.Fatalf("EncryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	// Use with defer to verify automatic cleanup
 	var decrypted *SecretBytes
 	func() {
 		secretsBytes, err := DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
@@ -561,7 +551,6 @@ func TestSecretBytes_MultipleClose(t *testing.T) {
 		t.Fatalf("DecryptSecretsBytes(context.Background(), ) error = %v", err)
 	}
 
-	// Call Close multiple times should be safe
 	secretsBytes.Close()
 	secretsBytes.Close()
 	secretsBytes.Close()
@@ -573,11 +562,9 @@ func TestSecretBytes_MultipleClose(t *testing.T) {
 }
 
 func TestGenerateKeyWithFailingTempFile(t *testing.T) {
-	// Create a directory that exists, but try to create a file with a name that will fail
 	// We'll use a regular temp dir since testing precise error conditions needs special setup
 	tmpDir := t.TempDir()
 
-	// First verifyGenerateKey works normally
 	keyPath := filepath.Join(tmpDir, "age.key")
 	err := GenerateKey(context.Background(), keyPath)
 	if err != nil {
@@ -593,7 +580,6 @@ func TestGenerateKeyWithFailingTempFile(t *testing.T) {
 func TestEncryptSecretsWithFailingTempFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create a valid key
 	keyPath := filepath.Join(tmpDir, "age.key")
 	if err := GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatalf("GenerateKey(context.Background(), ) error = %v", err)
@@ -611,7 +597,6 @@ func TestEncryptSecretsWithFailingTempFile(t *testing.T) {
 }
 
 func TestDecryptSecrets_OpenError(t *testing.T) {
-	// Create a file that exists but we can't read
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping readonly test on Windows")
 	}
@@ -627,7 +612,6 @@ func TestDecryptSecrets_OpenError(t *testing.T) {
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	// Write encrypted content first
 	if err := EncryptSecrets(context.Background(), secretsPath, keyPath, "test=secret"); err != nil {
 		t.Fatalf("EncryptSecrets(context.Background(), ) error = %v", err)
 	}

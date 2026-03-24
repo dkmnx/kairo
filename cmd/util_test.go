@@ -139,7 +139,6 @@ func TestPrintSecretsRecoveryHelp(t *testing.T) {
 
 func TestRequireConfigDirWritable(t *testing.T) {
 	t.Run("creates directory when it doesn't exist", func(t *testing.T) {
-		// Save and restore original config dir
 		original := os.Getenv("KAIRO_CONFIG_DIR")
 		defer func() {
 			if original == "" {
@@ -152,11 +151,9 @@ func TestRequireConfigDirWritable(t *testing.T) {
 		tmpDir := t.TempDir()
 		testConfigDir := filepath.Join(tmpDir, "kairo-config")
 
-		// Create a CLIContext with the test config directory
 		cliCtx := NewCLIContext()
 		cliCtx.SetConfigDir(testConfigDir)
 
-		// Create a mock command with the CLIContext
 		cmd := &cobra.Command{}
 		cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 
@@ -165,7 +162,6 @@ func TestRequireConfigDirWritable(t *testing.T) {
 			t.Error("requireConfigDirWritable() should return path when directory can be created")
 		}
 
-		// Verify directory was created
 		if _, err := os.Stat(testConfigDir); os.IsNotExist(err) {
 			t.Error("requireConfigDirWritable() should create directory")
 		}
@@ -176,11 +172,9 @@ func TestRequireConfigDir(t *testing.T) {
 	t.Run("returns config dir when set", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create a CLIContext with the test config directory
 		cliCtx := NewCLIContext()
 		cliCtx.SetConfigDir(tmpDir)
 
-		// Create a mock command with the CLIContext
 		cmd := &cobra.Command{}
 		cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 

@@ -180,7 +180,6 @@ func TestCleanupAll(t *testing.T) {
 		if result == nil {
 			t.Fatal("CleanupAll should return an error")
 		}
-		// Should contain both error messages
 		if !strings.Contains(result.Error(), "error 1") {
 			t.Error("combined error should contain 'error 1'")
 		}

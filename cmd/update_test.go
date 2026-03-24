@@ -239,7 +239,6 @@ func TestVersionGreaterThanInvalidVersions(t *testing.T) {
 
 func TestGetEnvFunc(t *testing.T) {
 	t.Run("returns value and true when env var is set", func(t *testing.T) {
-		// Set a temporary environment variable
 		t.Setenv("KAIRO_TEST_VAR", "test-value")
 
 		value, ok := getEnvFunc("KAIRO_TEST_VAR")
@@ -520,7 +519,6 @@ func TestDownloadToTempFileCreatesTempFile(t *testing.T) {
 		t.Fatalf("failed to stat temp file: %v", err)
 	}
 
-	// Check it's a regular file
 	if info.Mode().IsDir() {
 		t.Error("downloadToTempFile() created a directory, not a file")
 	}
@@ -598,7 +596,6 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 	})
 
 	t.Run("returns error when server closes connection early", func(t *testing.T) {
-		// Use hijacked connection to simulate abrupt closure
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			HijackAndClose(w)
 		}))
@@ -611,7 +608,6 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 	})
 
 	t.Run("handles large download", func(t *testing.T) {
-		// Create a large response (1MB of data)
 		largeData := make([]byte, 1024*1024)
 		for i := range largeData {
 			largeData[i] = byte(i % 256)
@@ -630,7 +626,6 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 		}
 		defer os.Remove(tempFile)
 
-		// Verify file size
 		info, err := os.Stat(tempFile)
 		if err != nil {
 			t.Fatalf("failed to stat temp file: %v", err)
@@ -645,7 +640,6 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-			// Write empty response
 		}))
 		defer server.Close()
 
@@ -655,7 +649,6 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 		}
 		defer os.Remove(tempFile)
 
-		// Verify file is empty
 		content, err := os.ReadFile(tempFile)
 		if err != nil {
 			t.Fatalf("failed to read temp file: %v", err)
@@ -724,7 +717,6 @@ func TestRunInstallScript_Windows(t *testing.T) {
 		t.Skip("Skipping Windows-specific test on non-Windows platform")
 	}
 
-	// Create a simple PowerShell script that succeeds
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test.ps1")
 	scriptContent := "exit 0"
@@ -743,7 +735,6 @@ func TestRunInstallScript_Unix(t *testing.T) {
 		t.Skip("Skipping Unix-specific test on Windows")
 	}
 
-	// Create a simple shell script that succeeds
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test.sh")
 	scriptContent := "#!/bin/sh\nexit 0"
@@ -762,7 +753,6 @@ func TestRunInstallScript_ExecutionFails(t *testing.T) {
 		t.Skip("Skipping Unix-specific test on Windows")
 	}
 
-	// Create a shell script that fails
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test.sh")
 	scriptContent := "#!/bin/sh\nexit 1"
