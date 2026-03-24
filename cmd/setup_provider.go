@@ -71,6 +71,18 @@ func ResolveProviderName(providerName string) (string, error) {
 	return ValidateCustomProviderName(customName)
 }
 
+func validateConfiguredModel(model, providerName, displayName string) error {
+	if err := validate.ValidateProviderModel(model, displayName); err != nil {
+		return err
+	}
+	if providers.IsBuiltInProvider(providerName) || strings.TrimSpace(model) != "" {
+		return nil
+	}
+
+	return kairoerrors.NewError(kairoerrors.ValidationError,
+		"model name is required for custom providers")
+}
+
 func BuildProviderConfigFromInput(
 	definition providers.ProviderDefinition,
 	baseURL, model string,
