@@ -1,4 +1,3 @@
-// Package wrapper provides secure wrapper script generation for Claude Code execution.
 package wrapper
 
 import (

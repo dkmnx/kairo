@@ -1,4 +1,3 @@
-// Package crypto provides encryption and key management operations using the age library.
 package crypto
 
 import (
