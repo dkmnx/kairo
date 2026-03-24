@@ -64,7 +64,6 @@ func (s *SecretsMap) Close() error {
 }
 
 func ParseSecrets(secrets string) map[string]string {
-	// SECURITY: Never log keys or values in error messages
 	result := make(map[string]string)
 	for lineNum, line := range strings.Split(secrets, "\n") {
 		if line == "" {

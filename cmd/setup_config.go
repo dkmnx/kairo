@@ -119,7 +119,7 @@ func SaveSecrets(ctx context.Context, secretsPath, keyPath string, secrets map[s
 	return nil
 }
 
-type ConfigureProviderParams struct {
+type ProviderSetup struct {
 	CLIContext   *CLIContext
 	ConfigDir    string
 	Cfg          *config.Config

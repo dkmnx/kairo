@@ -25,7 +25,7 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 		return "", fmt.Errorf("command not found: %s", file)
 	}
 
-	params := harnessWrapperParams{
+	run := HarnessRun{
 		AuthDir:       "/tmp/test-auth",
 		TokenPath:     "/tmp/test-auth/token",
 		HarnessBinary: "nonexistent-harness",
@@ -38,7 +38,7 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(params)
+	err := runHarnessWithWrapper(run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when harness not found")
 	}
@@ -57,7 +57,7 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 		return "/usr/bin/" + file, nil
 	}
 
-	params := harnessWrapperParams{
+	run := HarnessRun{
 		AuthDir:       "/tmp/test-auth",
 		TokenPath:     "", // Empty token path will cause wrapper generation to fail
 		HarnessBinary: "claude",
@@ -70,7 +70,7 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(params)
+	err := runHarnessWithWrapper(run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when wrapper generation fails")
 	}
@@ -110,7 +110,7 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 		t.Fatalf("Failed to create token file: %v", err)
 	}
 
-	params := harnessWrapperParams{
+	run := HarnessRun{
 		AuthDir:       tmpDir,
 		TokenPath:     tokenPath,
 		HarnessBinary: "claude",
@@ -123,7 +123,7 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(params)
+	err := runHarnessWithWrapper(run)
 	if err != nil {
 		t.Fatalf("runHarnessWithWrapper() should succeed, got error: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestBuildWrapperCommand_Windows(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	params := BuildWrapperCommandParams{
+	params := WrapperCmd{
 		Ctx:           ctx,
 		WrapperScript: "C:\\temp\\wrapper.ps1",
 		IsWindows:     true,
@@ -168,7 +168,7 @@ func TestBuildWrapperCommand_Windows(t *testing.T) {
 
 func TestBuildWrapperCommand_Unix(t *testing.T) {
 	ctx := context.Background()
-	params := BuildWrapperCommandParams{
+	params := WrapperCmd{
 		Ctx:           ctx,
 		WrapperScript: "/tmp/wrapper.sh",
 		IsWindows:     false,

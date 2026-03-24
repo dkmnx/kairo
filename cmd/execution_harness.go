@@ -16,7 +16,7 @@ var createTempAuthDirFn = wrapper.CreateTempAuthDir
 var writeTempTokenFileFn = wrapper.WriteTempTokenFile
 var generateWrapperScriptFn = wrapper.GenerateWrapperScript
 
-type harnessWrapperParams struct {
+type HarnessRun struct {
 	AuthDir       string
 	TokenPath     string
 	HarnessBinary string
@@ -26,7 +26,7 @@ type harnessWrapperParams struct {
 	EnvVarName    string
 }
 
-func runHarnessWithWrapper(params harnessWrapperParams) error {
+func runHarnessWithWrapper(params HarnessRun) error {
 	harnessPath, err := lookPath(params.HarnessBinary)
 	if err != nil {
 		return fmt.Errorf("'%s' command not found in PATH", params.HarnessBinary)
@@ -51,7 +51,7 @@ func runHarnessWithWrapper(params harnessWrapperParams) error {
 	defer cancel()
 	setupSignalHandler(cancel)
 
-	execCmd := buildWrapperCommand(BuildWrapperCommandParams{
+	execCmd := buildWrapperCommand(WrapperCmd{
 		Ctx:           ctx,
 		WrapperScript: wrapperScript,
 		IsWindows:     useCmdExe,
@@ -88,7 +88,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 	}
 
 	cliArgs := cfg.HarnessArgs
-	wrapperParams := harnessWrapperParams{
+	run := HarnessRun{
 		AuthDir:       authDir,
 		TokenPath:     tokenPath,
 		HarnessBinary: cfg.HarnessBinary,
@@ -98,18 +98,17 @@ func executeWithAuth(cfg ExecutionConfig) {
 	}
 
 	if cfg.Yolo {
-		wrapperParams.CliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, wrapperParams.CliArgs...)
+		run.CliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, run.CliArgs...)
 	}
 
 	if cfg.HarnessToUse == harnessQwen {
-		wrapperParams.CliArgs = append(
+		run.CliArgs = append(
 			[]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model},
-			wrapperParams.CliArgs...,
+			run.CliArgs...,
 		)
-		wrapperParams.EnvVarName = "ANTHROPIC_API_KEY"
+		run.EnvVarName = "ANTHROPIC_API_KEY"
 
-		err = runHarnessWithWrapper(wrapperParams)
-		if err != nil {
+		if err := runHarnessWithWrapper(run); err != nil {
 			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
 			exitProcess(1)
 		}
@@ -117,8 +116,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 		return
 	}
 
-	err = runHarnessWithWrapper(wrapperParams)
-	if err != nil {
+	if err := runHarnessWithWrapper(run); err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
 		exitProcess(1)
 	}
