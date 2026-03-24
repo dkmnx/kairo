@@ -562,7 +562,6 @@ func TestGenerateWrapperScript_ControlCharacterEscaping(t *testing.T) {
 }
 
 func TestExecCommand(t *testing.T) {
-	// Test that ExecCommand returns a valid command
 	cmd := ExecCommand("echo", "test")
 	if cmd == nil {
 		t.Fatal("ExecCommand() should return a valid command")

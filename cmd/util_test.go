@@ -133,14 +133,10 @@ func TestSetupSignalHandler(t *testing.T) {
 	})
 }
 
-// TestPrintSecretsRecoveryHelp tests that printSecretsRecoveryHelp runs without panic
 func TestPrintSecretsRecoveryHelp(t *testing.T) {
-	// This test verifies the function doesn't panic
-	// Actual output goes to stdout via ui.PrintInfo which is a side-effect
 	printSecretsRecoveryHelp()
 }
 
-// TestRequireConfigDirWritable tests the requireConfigDirWritable function
 func TestRequireConfigDirWritable(t *testing.T) {
 	t.Run("creates directory when it doesn't exist", func(t *testing.T) {
 		// Save and restore original config dir
@@ -174,15 +170,8 @@ func TestRequireConfigDirWritable(t *testing.T) {
 			t.Error("requireConfigDirWritable() should create directory")
 		}
 	})
-
-	t.Run("returns empty when config dir not found", func(t *testing.T) {
-		// This is harder to test without mocking getConfigDir
-		// The function depends on getConfigDir which uses environment variables
-		// We test the happy path above; error path would require refactoring
-	})
 }
 
-// TestRequireConfigDir tests the requireConfigDir function
 func TestRequireConfigDir(t *testing.T) {
 	t.Run("returns config dir when set", func(t *testing.T) {
 		tmpDir := t.TempDir()

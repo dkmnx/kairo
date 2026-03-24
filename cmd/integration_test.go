@@ -127,8 +127,6 @@ func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
 
-// TestE2ECompleteWorkflow tests the complete end-to-end workflow
-// from initial setup through provider execution.
 func TestE2ECompleteWorkflow(t *testing.T) {
 	tmpDir := t.TempDir()
 

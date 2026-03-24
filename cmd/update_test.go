@@ -719,7 +719,6 @@ func TestDownloadToTempFileExtension(t *testing.T) {
 	})
 }
 
-// TestRunInstallScript tests the runInstallScript function
 func TestRunInstallScript_Windows(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Skipping Windows-specific test on non-Windows platform")

@@ -396,7 +396,6 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 		defer func() { setConfigDir(originalConfigDir) }()
 
 		result := getConfigDir()
-		// Just verify it doesn't crash and returns a string
 		if result == "" {
 			// In a real environment, GetConfigDir would return ~/.config/kairo
 			// Since we can't mock it easily, we just verify it's a valid return
@@ -405,12 +404,10 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 	})
 }
 
-// Helper function to check if string contains substring
 func containsString(s, substr string) bool {
 	return bytes.Contains([]byte(s), []byte(substr))
 }
 
-// Helper function to create a test config file
 func createConfigFile(t *testing.T, dir string, cfg *config.Config) string {
 	configPath := filepath.Join(dir, "config.yaml")
 	if err := config.SaveConfig(context.Background(), dir, cfg); err != nil {
@@ -534,7 +531,6 @@ func TestContainsSubstring(t *testing.T) {
 	}
 }
 
-// TestGetProviderFromArgs tests the getProviderFromArgs function
 func TestGetProviderFromArgs(t *testing.T) {
 	tests := []struct {
 		name            string

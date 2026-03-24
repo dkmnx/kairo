@@ -1,43 +1,5 @@
-// Package cmd implements the Kairo CLI application using the Cobra framework.
-//
-// Architecture:
-//   - Commands are defined in individual files (root.go, setup.go, default.go, etc.)
-//   - Global state (configDir, verbose) is managed via getter/setter functions
-//   - Command execution is orchestrated by rootCmd.Execute()
-//
-// Testing:
-//   - Most commands have corresponding *_test.go files
-//   - Integration tests verify end-to-end workflows
-//   - External process execution can be mocked via execCommand variable
-//
-// Design principles:
-//   - Minimal business logic in command handlers
-//   - Delegation to internal packages for core functionality
-//   - Consistent error handling with user-friendly messages
-//
-// Security:
-//   - All user input is read securely using ui package
-//   - No secrets are logged to stdout/stderr
-//   - API keys are managed via encrypted secrets file
-//
-// # Global State Design
-//
-// This CLI uses global state for configuration directory, verbose mode, and
-// root context. This pattern is appropriate for CLI applications where:
-//
-//  1. Single execution: Commands run once and exit - no long-running state
-//  2. Test isolation: Tests use setter functions (setConfigDir, setVerbose)
-//     to isolate state between test cases
-//  3. Simplicity: Avoids passing context through deep call stacks
-//
-// Thread safety is ensured via sync.RWMutex for configDir and verbose.
-// The rootCtx is initialized lazily and never modified after creation.
-//
-// Alternative approaches considered:
-//   - Dependency injection: Would require significant refactoring for minimal benefit
-//   - Context values: Would require threading context through all functions
-//
-// This design prioritizes CLI simplicity over general-purpose library use.
+// Package cmd implements the Kairo CLI using Cobra.
+// Global state is used for config directory and verbose mode (appropriate for single-execution CLI apps).
 package cmd
 
 import (
@@ -68,8 +30,6 @@ var (
 	verboseFlag bool // tracks --verbose flag for detection in help output
 )
 
-// Wrapper functions for backward compatibility with tests.
-// These delegate directly to the single source of truth: CLIContext.
 func setConfigDir(dir string) {
 	defaultCLIContext.SetConfigDir(dir)
 }
@@ -83,8 +43,6 @@ func setVerbose(enabled bool) {
 }
 
 func getVerbose() bool {
-	// CLIContext is authoritative during normal command execution
-	// verboseFlag provides detection for --help cases where PersistentPreRun doesn't run
 	return defaultCLIContext.GetVerbose() || verboseFlag
 }
 
@@ -182,11 +140,9 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 	},
 }
 
-// Execute runs the kairo CLI application.
 func Execute() error {
 	args := os.Args[1:]
 
-	// Clean up args after execution to prevent test pollution
 	defer func() {
 		rootCmd.SetArgs(nil)
 	}()
@@ -222,21 +178,16 @@ func splitArgs(args []string) ([]string, []string) {
 	return args, nil
 }
 
-// getProviderFromArgs extracts provider name and remaining args from command args
 func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
 	kairoArgs, harnessArgs := splitArgs(args)
 
-	// Determine argument handling strategy based on input pattern
 	switch {
 	case len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "":
-		// First arg looks like a flag and default provider is set - use default
 		args = []string{cfg.DefaultProvider}
 		harnessArgs = kairoArgs
 	case len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0]:
-		// Kairo args differ from original args - prepend first arg
 		args = append([]string{args[0]}, kairoArgs...)
 	case len(args) > 1:
-		// Multiple args - first is provider, rest are harness args
 		harnessArgs = args[1:]
 		args = args[:1]
 	}
@@ -256,8 +207,6 @@ func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) 
 	return providerName, harnessArgs
 }
 
-// resolveProviderAndArgs determines which provider to use and separates harness arguments.
-// Returns: (kairoArgs, harnessArgs, providerName)
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
 	if len(args) == 0 {
 		if cfg.DefaultProvider == "" {

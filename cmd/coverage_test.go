@@ -1,4 +1,3 @@
-// Package cmd tests for improving code coverage
 package cmd
 
 import (
@@ -10,13 +9,11 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
-// TestHandleSecretsError tests handleSecretsError function
 func TestHandleSecretsError(t *testing.T) {
 	testErr := os.ErrNotExist
 	handleSecretsError(testErr)
 }
 
-// TestBuildProviderListOptions tests building provider list options
 func TestBuildProviderListOptions(t *testing.T) {
 	providerList := []string{"anthropic", "zai", "minimax"}
 	options := buildProviderListOptions(providerList)
@@ -41,7 +38,6 @@ func TestBuildProviderListOptions(t *testing.T) {
 	}
 }
 
-// TestBuildProviderConfigFromInput tests building provider config from input
 func TestBuildProviderConfigFromInput(t *testing.T) {
 	t.Run("new provider", func(t *testing.T) {
 		def := providers.ProviderDefinition{
@@ -80,7 +76,6 @@ func TestBuildProviderConfigFromInput(t *testing.T) {
 	})
 }
 
-// TestBuildSecretsEnvVars tests building secrets env vars
 func TestBuildSecretsEnvVars(t *testing.T) {
 	secrets := map[string]string{
 		"ANTHROPIC_API_KEY": "test-key-123",
@@ -105,7 +100,6 @@ func TestBuildSecretsEnvVars(t *testing.T) {
 	}
 }
 
-// TestBuildBuiltInEnvVars tests that built-in env vars are constructed correctly
 func TestBuildBuiltInEnvVars(t *testing.T) {
 	provider := EnvProvider{
 		BaseURL: "https://api.test.com",
@@ -142,7 +136,6 @@ func TestBuildBuiltInEnvVars(t *testing.T) {
 	}
 }
 
-// TestSplitArgs tests splitArgs function
 func TestSplitArgs(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -189,7 +182,6 @@ func TestSplitArgs(t *testing.T) {
 	}
 }
 
-// TestAPIKeyEnvVarName tests API key env var name
 func TestAPIKeyEnvVarName(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -212,7 +204,6 @@ func TestAPIKeyEnvVarName(t *testing.T) {
 	}
 }
 
-// TestResolveProviderName tests resolving provider name
 func TestResolveProviderName(t *testing.T) {
 	name, err := ResolveProviderName("anthropic")
 	if err != nil {
@@ -223,7 +214,6 @@ func TestResolveProviderName(t *testing.T) {
 	}
 }
 
-// TestGetProviderDefinition tests getting provider definition
 func TestGetProviderDefinition(t *testing.T) {
 	def := GetProviderDefinition("anthropic")
 	if def.Name == "" {

@@ -10,7 +10,6 @@ import (
 	"github.com/dkmnx/kairo/internal/crypto"
 )
 
-// TestDeleteCmdDeletesProviderFromConfig tests that config file has correct structure for deletion.
 func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -81,7 +80,6 @@ func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 	}
 }
 
-// TestDeleteCmdDeletesProviderSecrets tests that delete removes provider API key from secrets.
 func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -161,7 +159,6 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 	}
 }
 
-// TestDeleteCmdRemovesEmptySecretsFile tests that secrets file is removed when empty.
 func TestDeleteCmdRemovesEmptySecretsFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
