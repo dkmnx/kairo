@@ -62,7 +62,6 @@ func printSecretsRecoveryHelp() {
 	ui.PrintInfo("Use --verbose for more details.")
 }
 
-// Test hooks
 var lookPath = exec.LookPath
 
 var execCommand = exec.Command

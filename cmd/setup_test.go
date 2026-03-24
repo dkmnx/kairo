@@ -20,8 +20,6 @@ import (
 	"github.com/dkmnx/kairo/internal/validate"
 )
 
-// providerStatusIcon returns a status indicator for a provider's configuration.
-// This is a test helper that mirrors the logic used in production for display purposes.
 func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider string) string {
 	if !providers.RequiresAPIKey(provider) {
 		if _, exists := cfg.Providers[provider]; exists {
@@ -1792,7 +1790,6 @@ func TestSetup_ValidateModel(t *testing.T) {
 	}
 }
 
-// TestGetProviderDefinition tests getting provider definition
 // TestBuildProviderConfigFromInput_CustomProviderModel validates custom provider model handling
 func TestBuildProviderConfigFromInput_CustomProviderModel(t *testing.T) {
 	t.Run("custom provider with empty model returns error in configureProvider flow", func(t *testing.T) {
@@ -1808,7 +1805,6 @@ func TestBuildProviderConfigFromInput_CustomProviderModel(t *testing.T) {
 	})
 }
 
-// TestResolveProviderName_NonCustom tests non-custom provider name resolution
 func TestResolveProviderName_NonCustom(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -1855,7 +1851,6 @@ func TestResolveProviderName_NonCustom(t *testing.T) {
 	}
 }
 
-// TestEnsureConfigDirectory_ErrorPaths tests error handling in ensureConfigDirectory
 func TestEnsureConfigDirectory_ErrorPaths(t *testing.T) {
 	t.Run("invalid path with permission issue", func(t *testing.T) {
 		// Use a path that cannot be created (file as parent)
@@ -1876,7 +1871,6 @@ func TestEnsureConfigDirectory_ErrorPaths(t *testing.T) {
 	})
 }
 
-// TestSaveProviderConfiguration_ValidationErrors tests error paths in saveProviderConfiguration
 func TestSaveProviderConfiguration_ValidationErrors(t *testing.T) {
 	t.Run("missing config directory", func(t *testing.T) {
 		tmpDir := t.TempDir()

@@ -290,7 +290,6 @@ func TestFormatMigrationChanges(t *testing.T) {
 	})
 }
 
-// Helper function to check if a string contains a substring
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
 }

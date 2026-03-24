@@ -572,8 +572,6 @@ func TestSecretBytes_MultipleClose(t *testing.T) {
 	}
 }
 
-// TestGenerateKeyWithFailingTempFile tests the error path when creating
-// the temporary key file fails. This tests the error handling around line 56-61.
 func TestGenerateKeyWithFailingTempFile(t *testing.T) {
 	// Create a directory that exists, but try to create a file with a name that will fail
 	// We'll use a regular temp dir since testing precise error conditions needs special setup
@@ -592,8 +590,6 @@ func TestGenerateKeyWithFailingTempFile(t *testing.T) {
 	}
 }
 
-// TestEncryptSecretsWithFailingTempFile tests error path when creating
-// the temporary secrets file fails.
 func TestEncryptSecretsWithFailingTempFile(t *testing.T) {
 	tmpDir := t.TempDir()
 

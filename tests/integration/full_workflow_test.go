@@ -14,8 +14,6 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
-// TestFullWorkflowSetupConfigAndSwitch tests the complete workflow from
-// initial setup through provider configuration and switching.
 func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 	if testBinary == "" {
 		t.Fatal("testBinary not initialized, TestMain may have failed")
@@ -23,7 +21,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	// Step 1: Initialize with anthropic provider (no API key required)
 	cfg := &config.Config{
 		DefaultProvider: "anthropic",
 		DefaultHarness:  "claude",
@@ -53,7 +50,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Errorf("initial default provider = %q, want 'anthropic'", loadedCfg.DefaultProvider)
 	}
 
-	// Step 2: Configure Z.AI provider with API key
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	secretsContent := "ZAI_API_KEY=TEST-KEY-DO-NOT-USE-zai-001\n"
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
@@ -79,7 +75,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Error("zai provider should exist")
 	}
 
-	// Step 3: Configure MiniMax provider
 	secretsContent += "MINIMAX_API_KEY=TEST-KEY-DO-NOT-USE-minimax-002\n"
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("failed to encrypt secrets with minimax: %v", err)
@@ -104,7 +99,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Errorf("expected 3 providers, got %d", len(loadedCfg.Providers))
 	}
 
-	// Step 4: Change default provider to zai
 	cfg.DefaultProvider = "zai"
 	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to update default provider: %v", err)
@@ -118,7 +112,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Errorf("default provider = %q, want 'zai'", loadedCfg.DefaultProvider)
 	}
 
-	// Step 5: Verify secrets are intact
 	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
@@ -131,7 +124,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 	}
 }
 
-// TestFullWorkflowHarnessSwitching tests switching between claude and qwen harnesses.
 func TestFullWorkflowHarnessSwitching(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -191,7 +183,6 @@ func TestFullWorkflowHarnessSwitching(t *testing.T) {
 	}
 }
 
-// TestFullWorkflowListAndStatus tests listing and checking provider status.
 func TestFullWorkflowListAndStatus(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -261,7 +252,6 @@ DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 	}
 }
 
-// TestFullWorkflowKeyPersistence tests key file persistence.
 func TestFullWorkflowKeyPersistence(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -298,7 +288,6 @@ func TestFullWorkflowKeyPersistence(t *testing.T) {
 	}
 }
 
-// TestFullWorkflowCustomProvider tests adding and using custom providers.
 func TestFullWorkflowCustomProvider(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -364,7 +353,6 @@ func TestFullWorkflowCustomProvider(t *testing.T) {
 	}
 }
 
-// TestFullWorkflowHarnessCLIExecution tests the --harness flag with actual CLI execution.
 func TestFullWorkflowHarnessCLIExecution(t *testing.T) {
 	if testBinary == "" {
 		t.Fatal("testBinary not initialized, TestMain may have failed")
@@ -393,28 +381,15 @@ func TestFullWorkflowHarnessCLIExecution(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	// Test with --harness flag set to claude
 	claudeCmd := exec.Command(testBinary, "--config", tmpDir, "switch", "--harness", "claude", "anthropic", "--help")
-	output, err := claudeCmd.CombinedOutput()
-	// We expect non-zero exit because claude isn't installed, but wrapper should generate
-	if err == nil {
-		t.Log("claude command executed (may be expected if installed)")
-	}
-	// Check that wrapper script was created
-	wrapperFound := strings.Contains(string(output), "wrapper") || strings.Contains(string(output), "wrapper script")
-	if !wrapperFound {
-		// The wrapper creates temp files, just verify command ran without panicking
-		t.Log("wrapper script generated successfully")
+	claudeOutput, _ := claudeCmd.CombinedOutput()
+	if strings.Contains(string(claudeOutput), "unknown flag") {
+		t.Errorf("harness flag not recognized for claude: %s", string(claudeOutput))
 	}
 
-	// Test with --harness flag set to qwen
 	qwenCmd := exec.Command(testBinary, "--config", tmpDir, "switch", "--harness", "qwen", "anthropic", "--help")
-	qwenOutput, qwenErr := qwenCmd.CombinedOutput()
-	if qwenErr == nil {
-		t.Log("qwen command executed (may be expected if installed)")
-	}
-	// Verify harness flag was accepted (no "unknown flag" error in stderr)
+	qwenOutput, _ := qwenCmd.CombinedOutput()
 	if strings.Contains(string(qwenOutput), "unknown flag") {
-		t.Errorf("harness flag not recognized: %s", string(qwenOutput))
+		t.Errorf("harness flag not recognized for qwen: %s", string(qwenOutput))
 	}
 }

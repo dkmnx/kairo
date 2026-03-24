@@ -17,7 +17,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// TestRunHarnessWithWrapper tests the runHarnessWithWrapper function
 func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 	// Save original lookPath
 	originalLookPath := lookPath
@@ -140,7 +139,6 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 	}
 }
 
-// TestBuildWrapperCommand tests the buildWrapperCommand function
 func TestBuildWrapperCommand_Windows(t *testing.T) {
 	// Save original execCommandContext
 	originalExecCommandContext := execCommandContext
@@ -201,7 +199,6 @@ func TestBuildWrapperCommand_Unix(t *testing.T) {
 	}
 }
 
-// TestExecuteWithAuth tests the executeWithAuth function
 func TestExecuteWithAuth_TokenFileWriteFails(t *testing.T) {
 	// Save original writeTempTokenFileFn
 	originalWriteTempTokenFile := writeTempTokenFileFn
@@ -551,7 +548,6 @@ func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
 	}
 }
 
-// TestBuildProviderEnvironment tests the buildProviderEnvironment function
 func TestBuildProviderEnvironment_Success(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -591,7 +587,6 @@ func TestBuildProviderEnvironment_Success(t *testing.T) {
 	}
 }
 
-// TestApiKeyEnvVarName tests the apiKeyEnvVarName function
 func TestApiKeyEnvVarName(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -615,7 +610,6 @@ func TestApiKeyEnvVarName(t *testing.T) {
 	}
 }
 
-// TestExecuteWithoutAuth tests the executeWithoutAuth function
 func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
 	// Create a real cobra command for testing
 	cmd := &cobra.Command{}
@@ -785,7 +779,6 @@ func TestExecuteWithoutAuth_YoloModeClaude(t *testing.T) {
 	}
 }
 
-// TestBuildProviderEnvironment_NoAPIKeyRequired tests buildProviderEnvironment for providers that don't require API keys
 func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -830,7 +823,6 @@ func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 	}
 }
 
-// TestBuildProviderEnvironment_WithProviderEnvVars tests buildProviderEnvironment includes provider EnvVars
 func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -873,7 +865,6 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 	}
 }
 
-// TestExecuteWithoutAuth_QwenNoAuth tests executeWithoutAuth for Qwen without API key
 func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
 	// Create a real cobra command for testing
 	cmd := &cobra.Command{}
@@ -897,7 +888,6 @@ func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
 	executeWithoutAuth(cfg)
 }
 
-// TestBuildBuiltInEnvVars_Extended tests additional cases for buildBuiltInEnvVars
 func TestBuildBuiltInEnvVars_Extended(t *testing.T) {
 	t.Run("provider with special characters in values", func(t *testing.T) {
 		provider := config.Provider{
