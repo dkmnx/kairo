@@ -14,7 +14,6 @@ import (
 
 func requireConfigDir(cmd *cobra.Command) string {
 	if cmd == nil {
-		// Fall back to default context for backward compatibility
 		return defaultCLIContext.GetConfigDir()
 	}
 	dir := GetCLIContext(cmd).GetConfigDir()

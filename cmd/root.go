@@ -1,5 +1,4 @@
 // Package cmd implements the Kairo CLI using Cobra.
-// Global state is used for config directory and verbose mode (appropriate for single-execution CLI apps).
 package cmd
 
 import (
@@ -26,8 +25,8 @@ const (
 
 var (
 	harnessFlag string
-	yoloFlag    bool // yolo mode - skips permission prompts
-	verboseFlag bool // tracks --verbose flag for detection in help output
+	yoloFlag    bool
+	verboseFlag bool
 )
 
 func setConfigDir(dir string) {
