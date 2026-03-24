@@ -18,7 +18,6 @@ type KeyFormat struct {
 	compiled  *regexp.Regexp
 }
 
-// compilePattern compiles the regex pattern if not already compiled.
 func (kf *KeyFormat) compilePattern() error {
 	if kf.Pattern == "" {
 		return nil
@@ -35,7 +34,6 @@ func (kf *KeyFormat) compilePattern() error {
 	return nil
 }
 
-// matchesPattern checks if the key matches the compiled pattern.
 func (kf *KeyFormat) matchesPattern(key string) (bool, error) {
 	if kf.Pattern == "" {
 		return true, nil

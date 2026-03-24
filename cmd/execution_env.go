@@ -8,14 +8,12 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
-// EnvProvider wraps provider config for environment building.
 type EnvProvider struct {
 	BaseURL string
 	Model   string
 	EnvVars []string
 }
 
-// BuildBuiltInEnvVars creates built-in environment variables.
 func BuildBuiltInEnvVars(provider EnvProvider) []string {
 	return []string{
 		fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),
@@ -28,7 +26,6 @@ func BuildBuiltInEnvVars(provider EnvProvider) []string {
 	}
 }
 
-// BuildSecretsEnvVars converts secrets map to env vars.
 func BuildSecretsEnvVars(secrets map[string]string) []string {
 	envVars := make([]string, 0, len(secrets))
 	for k, v := range secrets {
@@ -38,23 +35,19 @@ func BuildSecretsEnvVars(secrets map[string]string) []string {
 	return envVars
 }
 
-// APIKeyEnvVarName formats API key environment variable name.
 func APIKeyEnvVarName(providerName string) string {
 	return fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
 }
 
-// RequiresAPIKey checks if provider needs API key.
 func RequiresAPIKey(providerName string) bool {
 	return providers.RequiresAPIKey(providerName)
 }
 
-// EnvBuildResult holds environment building result.
 type EnvBuildResult struct {
 	ProviderEnv []string
 	Secrets     map[string]string
 }
 
-// BuildProviderEnv builds environment for provider execution.
 func BuildProviderEnv(
 	cliCtx *CLIContext,
 	configDir string,
