@@ -77,7 +77,6 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 }
 
-// sortProviderNames sorts provider names with default provider first.
 func sortProviderNames(providers map[string]config.Provider, defaultProvider string) []string {
 	names := make([]string, 0, len(providers))
 	for name := range providers {

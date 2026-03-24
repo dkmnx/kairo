@@ -94,7 +94,6 @@ func init() {
 	rootCmd.AddCommand(harnessCmd)
 }
 
-// getHarness returns the harness to use, checking flag then config then defaulting to claude.
 func getHarness(flagHarness, configHarness string) string {
 	harness := flagHarness
 	if harness == "" {
@@ -110,7 +109,6 @@ func getHarness(flagHarness, configHarness string) string {
 	return harness
 }
 
-// getHarnessBinary returns the CLI binary name for a given harness.
 func getHarnessBinary(harness string) string {
 	switch harness {
 	case harnessQwen:
