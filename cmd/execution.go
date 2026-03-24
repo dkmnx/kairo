@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ExecutionConfig holds configuration for executing a harness CLI.
 type ExecutionConfig struct {
 	Cmd           *cobra.Command
 	ProviderEnv   []string
