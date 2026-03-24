@@ -17,7 +17,6 @@ type CLIContext struct {
 	verboseMu   sync.RWMutex
 	configCache *config.ConfigCache
 	rootCtx     context.Context
-	rootCtxOnce sync.Once
 }
 
 func NewCLIContext() *CLIContext {
@@ -69,12 +68,6 @@ func (c *CLIContext) GetConfigCache() *config.ConfigCache {
 }
 
 func (c *CLIContext) GetRootCtx() context.Context {
-	c.rootCtxOnce.Do(func() {
-		if c.rootCtx == nil {
-			c.rootCtx = context.Background()
-		}
-	})
-
 	return c.rootCtx
 }
 
