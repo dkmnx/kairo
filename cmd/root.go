@@ -1,4 +1,3 @@
-// Package cmd implements the Kairo CLI using Cobra.
 package cmd
 
 import (
