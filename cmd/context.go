@@ -1,4 +1,3 @@
-// Package cmd implements the Kairo CLI application using the Cobra framework.
 package cmd
 
 import (
@@ -11,8 +10,6 @@ import (
 
 type cliContextKey struct{}
 
-// CLIContext holds all CLI configuration state.
-// This replaces global variables for better testability and encapsulation.
 type CLIContext struct {
 	configDir   string
 	configDirMu sync.RWMutex
@@ -23,7 +20,6 @@ type CLIContext struct {
 	rootCtxOnce sync.Once
 }
 
-// NewCLIContext creates a new CLIContext with default values.
 func NewCLIContext() *CLIContext {
 	return &CLIContext{
 		configCache: config.NewConfigCache(configCacheTTL),
@@ -86,7 +82,6 @@ func (c *CLIContext) InvalidateCache(dir string) {
 	c.configCache.Invalidate(dir)
 }
 
-// defaultCLIContext is the default CLIContext instance used when no context is set.
 var defaultCLIContext = NewCLIContext()
 
 func GetCLIContext(cmd *cobra.Command) *CLIContext {

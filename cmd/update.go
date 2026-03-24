@@ -116,12 +116,10 @@ func versionGreaterThan(current, latest string) bool {
 	return c.LessThan(l)
 }
 
-// isWindows checks if the given OS is Windows
 func isWindows(goos string) bool {
 	return goos == config.WindowsGOOS
 }
 
-// getInstallScriptURL returns the appropriate install script URL based on OS and version tag
 func getInstallScriptURL(goos, tag string) string {
 	if isWindows(goos) {
 		return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.ps1", tag)
@@ -130,7 +128,6 @@ func getInstallScriptURL(goos, tag string) string {
 	return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.sh", tag)
 }
 
-// downloadToTempFile downloads a file from URL and saves to a temporary file
 func downloadToTempFile(url string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
@@ -182,7 +179,6 @@ func downloadToTempFile(url string) (string, error) {
 	return tempFile.Name(), nil
 }
 
-// runInstallScript executes the downloaded install script
 func runInstallScript(scriptPath string) error {
 	if runtime.GOOS == config.WindowsGOOS {
 		pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
@@ -219,15 +215,12 @@ func runInstallScript(scriptPath string) error {
 	return nil
 }
 
-// getChecksumsURL returns the URL for the checksums file based on version tag
 func getChecksumsURL(tag string) string {
 	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts", tag)
 
 	return fmt.Sprintf("%s/%s", baseURL, checksumsFilename)
 }
 
-// parseChecksumLine parses a single line from checksums.txt
-// Expected format: "<sha256> <whitespace> <filename>"
 func parseChecksumLine(line string) (hash, filename string, ok bool) {
 	line = strings.TrimSpace(line)
 	if line == "" || strings.HasPrefix(line, "#") {
@@ -250,7 +243,6 @@ func parseChecksumLine(line string) (hash, filename string, ok bool) {
 	return hash, filename, true
 }
 
-// downloadAndParseChecksums downloads the checksums file and parses it
 func downloadAndParseChecksums(url string) (map[string]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
@@ -297,7 +289,6 @@ func downloadAndParseChecksums(url string) (map[string]string, error) {
 	return checksums, nil
 }
 
-// computeSHA256 computes the SHA256 hash of a file
 func computeSHA256(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -314,7 +305,6 @@ func computeSHA256(filePath string) (string, error) {
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
-// verifyChecksum verifies the script against its expected checksum
 func verifyChecksum(scriptPath, expectedHash string) error {
 	actualHash, err := computeSHA256(scriptPath)
 	if err != nil {
