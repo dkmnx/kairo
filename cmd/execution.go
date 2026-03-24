@@ -19,13 +19,13 @@ type ExecutionConfig struct {
 	Yolo          bool
 }
 
-type BuildWrapperCommandParams struct {
+type WrapperCmd struct {
 	Ctx           context.Context
 	WrapperScript string
 	IsWindows     bool
 }
 
-func buildWrapperCommand(params BuildWrapperCommandParams) *exec.Cmd {
+func buildWrapperCommand(params WrapperCmd) *exec.Cmd {
 	if params.IsWindows {
 		return execCommandContext(
 			params.Ctx,

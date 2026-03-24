@@ -14,7 +14,7 @@ import (
 
 var setupResetSecrets bool
 
-func configureProvider(params ConfigureProviderParams) (string, error) {
+func configureProvider(params ProviderSetup) (string, error) {
 	validatedName, err := ResolveProviderName(params.ProviderName)
 	if err != nil {
 		return "", err
@@ -147,7 +147,7 @@ var setupCmd = &cobra.Command{
 		}
 
 		_, exists := cfg.Providers[providerName]
-		if _, err := configureProvider(ConfigureProviderParams{
+		if _, err := configureProvider(ProviderSetup{
 			CLIContext:   cliCtx,
 			ConfigDir:    configDir,
 			Cfg:          cfg,
