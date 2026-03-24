@@ -13,13 +13,11 @@ import (
 func TestConfigCache(t *testing.T) {
 	cache := NewConfigCache(5 * time.Minute)
 
-	// First load - should return error (no config exists)
 	_, err := cache.Get(context.Background(), "testdir")
 	if err == nil {
 		t.Error("Expected error for non-existent config")
 	}
 
-	// Just test cache structure
 	if cache.ttl != 5*time.Minute {
 		t.Error("TTL not set correctly")
 	}
@@ -30,7 +28,6 @@ func TestConfigCache_GetAndInvalidate(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create a config file
 	configContent := `default_provider: test
 providers: {}
 `
@@ -38,7 +35,6 @@ providers: {}
 		t.Fatal(err)
 	}
 
-	// First load - should load from disk
 	cfg1, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
@@ -52,7 +48,6 @@ providers: {}
 	if err != nil {
 		t.Fatalf("Get() second call error = %v", err)
 	}
-	// Should be a different pointer (deep copy), but with equal values
 	if cfg1 == cfg2 {
 		t.Error("Second Get() should return a deep copy, not the same pointer")
 	}
@@ -63,12 +58,10 @@ providers: {}
 	// Invalidate
 	cache.Invalidate(tmpDir)
 
-	// Load again - should reload from disk
 	cfg3, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() after invalidation error = %v", err)
 	}
-	// Should be different pointer (reloaded)
 	if cfg1 == cfg3 {
 		t.Error("Get() after invalidation should reload config (different pointer)")
 	}
@@ -79,7 +72,6 @@ func TestConfigCache_TTLExpiry(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create a config file
 	configContent := `default_provider: test
 providers: {}
 `
@@ -87,7 +79,6 @@ providers: {}
 		t.Fatal(err)
 	}
 
-	// Load to cache
 	cfg1, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
@@ -96,12 +87,10 @@ providers: {}
 	// Wait for TTL to expire
 	time.Sleep(150 * time.Millisecond)
 
-	// Load again - should reload (TTL expired)
 	cfg2, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() after TTL expiry error = %v", err)
 	}
-	// Should be different pointer (reloaded)
 	if cfg1 == cfg2 {
 		t.Error("Get() after TTL expiry should reload config (different pointer)")
 	}
@@ -112,7 +101,6 @@ func TestConfigCache_ConcurrentAccess(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create a config file
 	configContent := `default_provider: test
 providers: {}
 `
@@ -146,7 +134,6 @@ func TestConfigCache_ConcurrentWrites(t *testing.T) {
 	cache := NewConfigCache(5 * time.Minute)
 	tmpDir := t.TempDir()
 
-	// Create initial config file
 	configContent := `default_provider: test
 providers: {}
 `
@@ -169,7 +156,6 @@ providers: {}
 				errs <- err
 				return
 			}
-			// Verify we got a valid config
 			if cfg == nil {
 				errs <- fmt.Errorf("nil config returned")
 			}
@@ -179,7 +165,6 @@ providers: {}
 	wg.Wait()
 	close(errs)
 
-	// Check for any errors
 	for err := range errs {
 		t.Errorf("Concurrent write error: %v", err)
 	}
@@ -203,7 +188,6 @@ providers: {}
 		t.Errorf("Initial metrics should be zero, got: hits=%d, misses=%d, evictions=%d", m.Hits, m.Misses, m.Evictions)
 	}
 
-	// First load - miss
 	_, err := cache.Get(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)

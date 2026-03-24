@@ -5,6 +5,7 @@ import (
 
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -33,12 +34,10 @@ default_models:
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		// Verify changes were recorded
 		if len(changes) == 0 {
 			t.Error("Expected migration changes, got none")
 		}
 
-		// Verify config was updated
 		cfg, err := LoadConfig(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
@@ -128,7 +127,6 @@ default_models:
 			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
-		// Should remain unchanged
 		if cfg.Providers["minimax"].Model != "MiniMax-M2.7" {
 			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.7")
 		}
@@ -140,7 +138,6 @@ default_models:
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
-		// User explicitly set a model that differs from current builtin
 		// After migration, it should be updated to the new builtin default
 		configContent := `default_provider: minimax
 providers:
@@ -160,7 +157,6 @@ default_models:
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		// Should have changes since model differs from new builtin
 		if len(changes) == 0 {
 			t.Error("Expected migration changes when user model differs from builtin")
 		}
@@ -170,7 +166,6 @@ default_models:
 			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
-		// Should be updated to new builtin
 		if cfg.Providers["minimax"].Model != "MiniMax-M2.7" {
 			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.7")
 		}
@@ -273,11 +268,10 @@ func TestFormatMigrationChanges(t *testing.T) {
 			t.Error("Expected non-empty formatted output")
 		}
 
-		// Check that it contains expected content
-		if !contains(result, "minimax") {
+		if !strings.Contains(result, "minimax") {
 			t.Error("Formatted output should contain 'minimax'")
 		}
-		if !contains(result, "MiniMax-M2") || !contains(result, "MiniMax-M2.7") {
+		if !strings.Contains(result, "MiniMax-M2") || !strings.Contains(result, "MiniMax-M2.7") {
 			t.Error("Formatted output should show old and new values")
 		}
 	})
@@ -288,17 +282,4 @@ func TestFormatMigrationChanges(t *testing.T) {
 			t.Errorf("Expected empty string for no changes, got %q", result)
 		}
 	})
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

@@ -344,7 +344,6 @@ func TestValidationError(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected validation error")
 		}
-		// Verify error is a KairoError with ValidationError type
 		var kErr *kairoerrors.KairoError
 		if !errors.As(err, &kErr) {
 			t.Errorf("Expected KairoError, got %T", err)
@@ -429,7 +428,6 @@ func FuzzValidateAPIKey(f *testing.F) {
 	f.Fuzz(func(t *testing.T, key, providerName string) {
 		err := ValidateAPIKey(key, providerName)
 
-		// Verify error message always includes provider name when provided
 		if err != nil && providerName != "" {
 			errMsg := err.Error()
 			if !strings.Contains(errMsg, providerName) {
@@ -437,12 +435,10 @@ func FuzzValidateAPIKey(f *testing.F) {
 			}
 		}
 
-		// Verify empty/whitespace keys always fail
 		if strings.TrimSpace(key) == "" && err == nil {
 			t.Errorf("ValidateAPIKey() should fail for empty/whitespace key, got nil error")
 		}
 
-		// Verify known providers with short keys always fail
 		knownProviders := []string{"zai", "minimax", "kimi", "deepseek", "custom"}
 		for _, p := range knownProviders {
 			if providerName == p && len(key) < 20 && err == nil {
@@ -469,7 +465,6 @@ func FuzzValidateURL(f *testing.F) {
 	f.Fuzz(func(t *testing.T, rawURL, providerName string) {
 		err := ValidateURL(rawURL, providerName)
 
-		// Verify error message always includes provider name when provided
 		if err != nil && providerName != "" {
 			errMsg := err.Error()
 			if !strings.Contains(errMsg, providerName) {
@@ -477,12 +472,10 @@ func FuzzValidateURL(f *testing.F) {
 			}
 		}
 
-		// Verify empty URLs always fail
 		if rawURL == "" && err == nil {
 			t.Errorf("ValidateURL() should fail for empty URL")
 		}
 
-		// Verify HTTP (non-HTTPS) URLs always fail
 		if strings.HasPrefix(rawURL, "http://") && err == nil {
 			t.Errorf("ValidateURL() should fail for HTTP URL: %s", rawURL)
 		}
@@ -491,11 +484,9 @@ func FuzzValidateURL(f *testing.F) {
 		parsed, parseErr := url.Parse(rawURL)
 		if parseErr == nil && parsed.Host != "" {
 			host := parsed.Hostname()
-			// Verify exact localhost matches always fail
 			if host == "localhost" && err == nil {
 				t.Errorf("ValidateURL() should fail for localhost URL: %s", rawURL)
 			}
-			// Verify 127.0.0.1 always fail
 			if host == "127.0.0.1" && err == nil {
 				t.Errorf("ValidateURL() should fail for 127.0.0.1 URL: %s", rawURL)
 			}
@@ -515,7 +506,6 @@ func FuzzValidateProviderModel(f *testing.F) {
 	f.Fuzz(func(t *testing.T, modelName, providerName string) {
 		err := ValidateProviderModel(providerName, modelName)
 
-		// Verify empty model names are always valid (allowed to use provider default)
 		if modelName == "" && err != nil {
 			t.Errorf("ValidateProviderModel() should allow empty model names, got error: %v", err)
 		}
@@ -524,7 +514,6 @@ func FuzzValidateProviderModel(f *testing.F) {
 		// that have a default model set. For custom providers or built-in providers
 		// without default models, it returns nil. This is by design.
 
-		// Verify model names exceeding max length always fail (only for built-in providers)
 		if len(modelName) > MaxModelNameLength {
 			// For built-in providers with default models, this should fail
 			if def, ok := providers.GetBuiltInProvider(providerName); ok && def.Model != "" {
@@ -569,7 +558,6 @@ func FuzzValidateCrossProviderConfig(f *testing.F) {
 
 		err := ValidateCrossProviderConfig(cfg)
 
-		// Verify the validation logic
 		envVarValues := make(map[string]map[string]string) // envVar -> provider -> value
 		for providerName, provider := range cfg.Providers {
 			for _, envVar := range provider.EnvVars {
@@ -585,7 +573,6 @@ func FuzzValidateCrossProviderConfig(f *testing.F) {
 			}
 		}
 
-		// Check for collisions
 		hasCollision := false
 		for _, values := range envVarValues {
 			if len(values) > 1 {

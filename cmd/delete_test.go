@@ -13,18 +13,15 @@ import (
 func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Generate encryption key
 	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	// Save and restore original config dir
 	originalConfigDir := getConfigDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	setConfigDir(tmpDir)
 
-	// Create config with one provider
 	cfg := &config.Config{
 		DefaultProvider: "testprovider",
 		Providers: map[string]config.Provider{
@@ -35,7 +32,6 @@ func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 		t.Fatalf("SaveConfig() error = %v", err)
 	}
 
-	// Save secrets file with API key
 	secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
 	keyPath := filepath.Join(tmpDir, config.KeyFileName)
 	secrets := map[string]string{
@@ -46,7 +42,6 @@ func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
 
-	// Verify provider exists
 	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadConfig() error = %v", err)
@@ -60,12 +55,10 @@ func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 	delete(loadedCfg.Providers, "testprovider")
 	loadedCfg.DefaultProvider = ""
 
-	// Save updated config
 	if err := config.SaveConfig(context.Background(), tmpDir, loadedCfg); err != nil {
 		t.Fatalf("SaveConfig() error = %v", err)
 	}
 
-	// Verify provider was deleted
 	updatedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadConfig() error = %v", err)
@@ -83,18 +76,15 @@ func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Generate encryption key
 	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	// Save and restore original config dir
 	originalConfigDir := getConfigDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	setConfigDir(tmpDir)
 
-	// Create config with two providers
 	cfg := &config.Config{
 		DefaultProvider: "provider1",
 		Providers: map[string]config.Provider{
@@ -106,7 +96,6 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("SaveConfig() error = %v", err)
 	}
 
-	// Save secrets file with API keys for both providers
 	secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
 	keyPath := filepath.Join(tmpDir, config.KeyFileName)
 	secrets := map[string]string{
@@ -118,7 +107,6 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
 
-	// Load and verify both keys exist
 	result, err := LoadSecrets(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadSecrets() error = %v", err)
@@ -136,13 +124,11 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 	// Simulate deletion of provider2's secrets
 	delete(loadedSecrets, "PROVIDER2_API_KEY")
 
-	// Save updated secrets
 	updatedSecretsContent := config.FormatSecrets(loadedSecrets)
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, updatedSecretsContent); err != nil {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
 
-	// Verify provider2's key was deleted
 	result, err = LoadSecrets(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadSecrets() error = %v", err)
@@ -153,7 +139,6 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Error("Provider2 API key should have been deleted")
 	}
 
-	// Verify provider1's key still exists
 	if updatedSecrets["PROVIDER1_API_KEY"] != "key1" {
 		t.Error("Provider1 API key should still exist")
 	}
@@ -162,12 +147,10 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 func TestDeleteCmdRemovesEmptySecretsFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Generate encryption key
 	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	// Create config with one provider
 	cfg := &config.Config{
 		Providers: map[string]config.Provider{
 			"testprovider": {Name: "Test Provider"},
@@ -177,7 +160,6 @@ func TestDeleteCmdRemovesEmptySecretsFile(t *testing.T) {
 		t.Fatalf("SaveConfig() error = %v", err)
 	}
 
-	// Create empty secrets file
 	secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
 	keyPath := filepath.Join(tmpDir, config.KeyFileName)
 	secrets := map[string]string{}
@@ -191,7 +173,6 @@ func TestDeleteCmdRemovesEmptySecretsFile(t *testing.T) {
 		t.Fatalf("os.Remove() error = %v", err)
 	}
 
-	// Verify file was removed
 	if _, err := os.Stat(secretsPath); !os.IsNotExist(err) {
 		t.Error("Secrets file should have been removed when empty")
 	}

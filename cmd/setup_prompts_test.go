@@ -75,14 +75,3 @@ func TestDisplayProviderHeader_NoPanic(t *testing.T) {
 		})
 	}
 }
-
-// TODO: When tap mocking infrastructure is available, add:
-// - TestPromptForProvider_WithExistingProviders
-// - TestPromptForProvider_NoExistingProviders
-// - TestPromptForAPIKey_EditModeWithExistingKey
-// - TestPromptForAPIKey_EditModeModifyKey
-// - TestPromptForAPIKey_NewProvider
-// - TestPromptForField_EditWithCurrentValue
-// - TestPromptForField_EditModifyField
-// - TestPromptForField_NewProviderWithDefault
-// - TestPromptForField_NewProviderNoDefault

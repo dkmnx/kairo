@@ -1062,7 +1062,6 @@ func TestSetupAuditDetails(t *testing.T) {
 			"api_key":      apiKey,
 		}
 
-		// Verify all required fields exist
 		requiredFields := []string{"display_name", "base_url", "model", "api_key"}
 		for _, field := range requiredFields {
 			if details[field] == nil {
@@ -1070,7 +1069,6 @@ func TestSetupAuditDetails(t *testing.T) {
 			}
 		}
 
-		// Verify API key is masked
 		if strings.Contains(details["api_key"].(string), "sk-ant-api03") {
 			t.Error("API key should not be fully exposed in details")
 		}
@@ -1104,7 +1102,6 @@ func TestConfigureProvider(t *testing.T) {
 
 		secrets := make(map[string]string)
 
-		// Prepare input: API key, base URL (use default), model (use default)
 		pr, pw, _ := os.Pipe()
 		defer pr.Close()
 		defer pw.Close()
@@ -1125,7 +1122,6 @@ func TestConfigureProvider(t *testing.T) {
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		// Capture stdout
 		buf := new(bytes.Buffer)
 		originalStdout := os.Stdout
 		r, w, _ := os.Pipe()
@@ -1158,7 +1154,6 @@ func TestConfigureProvider(t *testing.T) {
 			t.Errorf("configureProvider() returned %q, want 'zai'", providerName)
 		}
 
-		// Check that provider was saved
 		loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
@@ -1173,7 +1168,6 @@ func TestConfigureProvider(t *testing.T) {
 			t.Errorf("Provider.Name = %q, want 'Z.AI'", provider.Name)
 		}
 
-		// Check that secrets were saved
 		decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 		if err != nil {
 			t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
@@ -1202,7 +1196,6 @@ func TestConfigureProvider(t *testing.T) {
 
 		secrets := make(map[string]string)
 
-		// Prepare input: custom name, API key, base URL, model
 		pr, pw, _ := os.Pipe()
 		defer pr.Close()
 		defer pw.Close()
@@ -1225,7 +1218,6 @@ func TestConfigureProvider(t *testing.T) {
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		// Capture stdout
 		buf := new(bytes.Buffer)
 		originalStdout := os.Stdout
 		r, w, _ := os.Pipe()
@@ -1258,7 +1250,6 @@ func TestConfigureProvider(t *testing.T) {
 			t.Errorf("configureProvider() returned %q, want 'mycustomprovider'", providerName)
 		}
 
-		// Check that provider was saved
 		loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
@@ -1281,7 +1272,6 @@ func TestConfigureProvider(t *testing.T) {
 			t.Errorf("Provider.Model = %q, want 'custom-model-v1'", provider.Model)
 		}
 
-		// Check that secrets were saved
 		decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 		if err != nil {
 			t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
@@ -1310,7 +1300,6 @@ func TestConfigureProvider(t *testing.T) {
 
 		secrets := make(map[string]string)
 
-		// Prepare input: invalid custom name (starts with number)
 		pr, pw, _ := os.Pipe()
 		defer pr.Close()
 		defer pw.Close()
@@ -1377,7 +1366,6 @@ func TestConfigureProvider(t *testing.T) {
 
 		secrets := make(map[string]string)
 
-		// Prepare input: short API key
 		pr, pw, _ := os.Pipe()
 		defer pr.Close()
 		defer pw.Close()
@@ -1487,7 +1475,6 @@ func TestSetup_ProviderNameValidation(t *testing.T) {
 }
 
 func TestSetup_ProviderNameLength(t *testing.T) {
-	// Create strings of exact lengths for testing
 	maxValidName := strings.Repeat("a", 50) // Exactly 50 characters
 	invalidName := strings.Repeat("b", 51)  // 51 characters - exceeds max
 
@@ -1853,7 +1840,6 @@ func TestResolveProviderName_NonCustom(t *testing.T) {
 
 func TestEnsureConfigDirectory_ErrorPaths(t *testing.T) {
 	t.Run("invalid path with permission issue", func(t *testing.T) {
-		// Use a path that cannot be created (file as parent)
 		tmpFile, err := os.CreateTemp("", "notadir")
 		if err != nil {
 			t.Fatalf("Failed to create temp file: %v", err)
@@ -1875,7 +1861,6 @@ func TestSaveProviderConfiguration_ValidationErrors(t *testing.T) {
 	t.Run("missing config directory", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create key but use invalid path for secrets
 		if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
 			t.Fatalf("EnsureKeyExists() error = %v", err)
 		}

@@ -18,11 +18,9 @@ import (
 )
 
 func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
-	// Save original lookPath
 	originalLookPath := lookPath
 	defer func() { lookPath = originalLookPath }()
 
-	// Mock lookPath to return error (harness not found)
 	lookPath = func(file string) (string, error) {
 		return "", fmt.Errorf("command not found: %s", file)
 	}
@@ -52,16 +50,13 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 }
 
 func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
-	// Save original lookPath
 	originalLookPath := lookPath
 	defer func() { lookPath = originalLookPath }()
 
-	// Mock lookPath to return success
 	lookPath = func(file string) (string, error) {
 		return "/usr/bin/" + file, nil
 	}
 
-	// Test with invalid parameters that will cause wrapper generation to fail
 	params := harnessWrapperParams{
 		AuthDir:       "/tmp/test-auth",
 		TokenPath:     "", // Empty token path will cause wrapper generation to fail
@@ -87,7 +82,6 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 }
 
 func TestRunHarnessWithWrapper_Success(t *testing.T) {
-	// Save original functions
 	originalLookPath := lookPath
 	originalExecCommandContext := execCommandContext
 	originalExitProcess := exitProcess
@@ -97,24 +91,20 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 		exitProcess = originalExitProcess
 	}()
 
-	// Mock lookPath
 	lookPath = func(file string) (string, error) {
 		return "/usr/bin/" + file, nil
 	}
 
-	// Mock execCommandContext to return a command that succeeds
 	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 		cmd := execCommand("echo", "mocked")
 		cmd.Env = []string{"TEST=value"}
 		return cmd
 	}
 
-	// Mock exitProcess to prevent test from exiting
 	exitProcess = func(int) {}
 
 	tmpDir := t.TempDir()
 
-	// Create token file for the test
 	tokenPath := filepath.Join(tmpDir, "token")
 	if err := os.WriteFile(tokenPath, []byte("test-token"), 0600); err != nil {
 		t.Fatalf("Failed to create token file: %v", err)
@@ -140,7 +130,6 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 }
 
 func TestBuildWrapperCommand_Windows(t *testing.T) {
-	// Save original execCommandContext
 	originalExecCommandContext := execCommandContext
 	defer func() { execCommandContext = originalExecCommandContext }()
 
@@ -163,7 +152,6 @@ func TestBuildWrapperCommand_Windows(t *testing.T) {
 		t.Fatal("buildWrapperCommand() should return non-nil cmd for Windows")
 	}
 
-	// Verify it's using powershell - check Args[0] since Path may be resolved to full path on Windows
 	cmdName := ""
 	if len(cmd.Args) > 0 {
 		cmdName = cmd.Args[0]
@@ -172,7 +160,6 @@ func TestBuildWrapperCommand_Windows(t *testing.T) {
 		t.Errorf("cmd.Args[0] = %q, want 'powershell'", cmdName)
 	}
 
-	// Verify arguments
 	expectedArgs := []string{"powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\temp\\wrapper.ps1"}
 	if len(cmd.Args) != len(expectedArgs) {
 		t.Errorf("cmd.Args length = %d, want %d", len(cmd.Args), len(expectedArgs))
@@ -193,33 +180,27 @@ func TestBuildWrapperCommand_Unix(t *testing.T) {
 		t.Fatal("buildWrapperCommand() should return non-nil cmd for Unix")
 	}
 
-	// For Unix, it should directly execute the script
 	if len(cmd.Args) < 1 {
 		t.Error("cmd.Args should have at least one element")
 	}
 }
 
 func TestExecuteWithAuth_TokenFileWriteFails(t *testing.T) {
-	// Save original writeTempTokenFileFn
 	originalWriteTempTokenFile := writeTempTokenFileFn
 	defer func() { writeTempTokenFileFn = originalWriteTempTokenFile }()
 
-	// Mock writeTempTokenFileFn to return error
 	writeTempTokenFileFn = func(authDir, token string) (string, error) {
 		return "", fmt.Errorf("token file write failed")
 	}
 
-	// Save original createTempAuthDirFn
 	originalCreateTempAuthDir := createTempAuthDirFn
 	defer func() { createTempAuthDirFn = originalCreateTempAuthDir }()
 
-	// Mock createTempAuthDirFn to return a temp dir
 	tmpDir := t.TempDir()
 	createTempAuthDirFn = func() (string, error) {
 		return tmpDir, nil
 	}
 
-	// Create a real cobra command for testing
 	cmd := &cobra.Command{}
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -247,7 +228,6 @@ func TestExecuteWithAuth_TokenFileWriteFails(t *testing.T) {
 }
 
 func TestExecuteWithAuth_QwenHarness(t *testing.T) {
-	// Save original functions
 	originalLookPath := lookPath
 	originalExecCommandContext := execCommandContext
 	originalExitProcess := exitProcess
@@ -261,24 +241,20 @@ func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 		writeTempTokenFileFn = originalWriteTempTokenFile
 	}()
 
-	// Mock lookPath
 	lookPath = func(file string) (string, error) {
 		return "/usr/bin/" + file, nil
 	}
 
-	// Mock createTempAuthDir
 	tmpDir := t.TempDir()
 	createTempAuthDirFn = func() (string, error) {
 		return tmpDir, nil
 	}
 
-	// Mock writeTempTokenFile
 	tokenPath := filepath.Join(tmpDir, "token")
 	writeTempTokenFileFn = func(authDir, token string) (string, error) {
 		return tokenPath, nil
 	}
 
-	// Track if execCommandContext was called
 	var execCalled atomic.Bool
 	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 		execCalled.Store(true)
@@ -287,10 +263,8 @@ func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 		return cmd
 	}
 
-	// Mock exitProcess
 	exitProcess = func(int) {}
 
-	// Create a real cobra command for testing
 	cmd := &cobra.Command{}
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -317,7 +291,6 @@ func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 }
 
 func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
-	// Save original functions
 	originalLookPath := lookPath
 	originalExecCommandContext := execCommandContext
 	originalExitProcess := exitProcess
@@ -331,24 +304,20 @@ func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 		writeTempTokenFileFn = originalWriteTempTokenFile
 	}()
 
-	// Mock lookPath
 	lookPath = func(file string) (string, error) {
 		return "/usr/bin/" + file, nil
 	}
 
-	// Mock createTempAuthDir
 	tmpDir := t.TempDir()
 	createTempAuthDirFn = func() (string, error) {
 		return tmpDir, nil
 	}
 
-	// Mock writeTempTokenFile
 	tokenPath := filepath.Join(tmpDir, "token")
 	writeTempTokenFileFn = func(authDir, token string) (string, error) {
 		return tokenPath, nil
 	}
 
-	// Track if execCommandContext was called
 	var execCalled atomic.Bool
 	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 		execCalled.Store(true)
@@ -357,10 +326,8 @@ func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 		return cmd
 	}
 
-	// Mock exitProcess
 	exitProcess = func(int) {}
 
-	// Create a real cobra command for testing
 	cmd := &cobra.Command{}
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -387,7 +354,6 @@ func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 }
 
 func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
-	// Save original functions
 	originalLookPath := lookPath
 	originalExecCommandContext := execCommandContext
 	originalExitProcess := exitProcess
@@ -420,7 +386,6 @@ func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 	var capturedCfg wrapper.ScriptConfig
 	generateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
 		capturedCfg = cfg
-		// Return a temp script path that will be cleaned up
 		scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
 		return scriptPath, true, nil
 	}
@@ -454,7 +419,6 @@ func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 
 	executeWithAuth(cfg)
 
-	// Verify the captured config contains the yolo flag
 	found := false
 	for _, arg := range capturedCfg.CliArgs {
 		if arg == "--dangerously-skip-permissions" {
@@ -468,7 +432,6 @@ func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 }
 
 func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
-	// Save original functions
 	originalLookPath := lookPath
 	originalExecCommandContext := execCommandContext
 	originalExitProcess := exitProcess
@@ -501,7 +464,6 @@ func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
 	var capturedCfg wrapper.ScriptConfig
 	generateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
 		capturedCfg = cfg
-		// Return a temp script path that will be cleaned up
 		scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
 		return scriptPath, true, nil
 	}
@@ -535,7 +497,6 @@ func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
 
 	executeWithAuth(cfg)
 
-	// Verify the captured config contains the yolo flag
 	found := false
 	for _, arg := range capturedCfg.CliArgs {
 		if arg == "--yolo" {
@@ -572,19 +533,6 @@ func TestBuildProviderEnvironment_Success(t *testing.T) {
 	if len(result.ProviderEnv) == 0 {
 		t.Error("BuildProviderEnv() should return provider environment variables")
 	}
-	providerEnv := result.ProviderEnv
-	secrets := result.Secrets
-	if err != nil {
-		t.Fatalf("buildProviderEnvironment() should succeed with no secrets file, got: %v", err)
-	}
-
-	if secrets == nil {
-		t.Error("buildProviderEnvironment() should return empty secrets map, not nil")
-	}
-
-	if len(providerEnv) == 0 {
-		t.Error("buildProviderEnvironment() should return provider environment variables")
-	}
 }
 
 func TestApiKeyEnvVarName(t *testing.T) {
@@ -611,7 +559,6 @@ func TestApiKeyEnvVarName(t *testing.T) {
 }
 
 func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
-	// Create a real cobra command for testing
 	cmd := &cobra.Command{}
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -630,22 +577,16 @@ func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
 	}
 
 	executeWithoutAuth(cfg)
-
-	// executeWithoutAuth for Qwen prints error via ui.PrintError which goes to stderr
-	// So we just verify the function runs without crashing
 }
 
 func TestExecuteWithoutAuth_HarnessNotFound(t *testing.T) {
-	// Save original lookPath
 	originalLookPath := lookPath
 	defer func() { lookPath = originalLookPath }()
 
-	// Mock lookPath to return error
 	lookPath = func(file string) (string, error) {
 		return "", fmt.Errorf("command not found: %s", file)
 	}
 
-	// Create a real cobra command for testing
 	cmd := &cobra.Command{}
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -672,7 +613,6 @@ func TestExecuteWithoutAuth_HarnessNotFound(t *testing.T) {
 }
 
 func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
-	// Save original functions
 	originalLookPath := lookPath
 	originalExecCommandContext := execCommandContext
 	originalExitProcess := exitProcess
@@ -682,24 +622,20 @@ func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
 		exitProcess = originalExitProcess
 	}()
 
-	// Mock lookPath
 	lookPath = func(file string) (string, error) {
 		return "/usr/bin/" + file, nil
 	}
 
-	// Mock execCommandContext to return a failing command
 	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 		cmd := execCommand("false") // 'false' always returns non-zero exit
 		return cmd
 	}
 
-	// Mock exitProcess
 	exitProcessCalled := false
 	exitProcess = func(int) {
 		exitProcessCalled = true
 	}
 
-	// Create a real cobra command for testing
 	cmd := &cobra.Command{}
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -782,7 +718,6 @@ func TestExecuteWithoutAuth_YoloModeClaude(t *testing.T) {
 func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create a provider that doesn't require API key
 	provider := config.Provider{
 		Name:    "Test Provider",
 		BaseURL: "https://test.com",
@@ -790,12 +725,10 @@ func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 		EnvVars: []string{"CUSTOM_VAR=value"},
 	}
 
-	// Generate key first
 	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	// Test with a provider that doesn't require API key (should not fail on missing secrets)
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
 	result, err := BuildProviderEnv(cliCtx, tmpDir, EnvProvider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "ollama")
@@ -807,19 +740,6 @@ func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 	}
 	if result.Secrets == nil {
 		t.Error("BuildProviderEnv() returned nil secrets map")
-	}
-	env := result.ProviderEnv
-	secrets := result.Secrets
-	if err != nil {
-		t.Errorf("buildProviderEnvironment() for provider without API key should not error, got: %v", err)
-	}
-
-	if env == nil {
-		t.Error("buildProviderEnvironment() returned nil env for provider without API key")
-	}
-
-	if secrets == nil {
-		t.Error("buildProviderEnvironment() returned nil secrets map")
 	}
 }
 
@@ -833,7 +753,6 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 		EnvVars: []string{"PROVIDER_VAR=provider_value", "ANOTHER_VAR=another_value"},
 	}
 
-	// Generate key
 	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
@@ -850,13 +769,7 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 	if len(result.ProviderEnv) < len(provider.EnvVars) {
 		t.Error("BuildProviderEnv() should include all provider EnvVars")
 	}
-	env := result.ProviderEnv
-	if err != nil {
-		t.Fatalf("buildProviderEnvironment() error = %v", err)
-	}
-
-	// Check that provider env vars are included
-	envStr := strings.Join(env, "|")
+	envStr := strings.Join(result.ProviderEnv, "|")
 	if !strings.Contains(envStr, "PROVIDER_VAR=provider_value") {
 		t.Error("buildProviderEnvironment() should include provider EnvVars")
 	}
@@ -866,7 +779,6 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 }
 
 func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
-	// Create a real cobra command for testing
 	cmd := &cobra.Command{}
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -884,7 +796,6 @@ func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
 		HarnessArgs: []string{"--test"},
 	}
 
-	// Should print error and return without crashing
 	executeWithoutAuth(cfg)
 }
 
@@ -901,7 +812,6 @@ func TestBuildBuiltInEnvVars_Extended(t *testing.T) {
 			t.Error("buildBuiltInEnvVars() returned empty slice")
 		}
 
-		// Verify all expected vars are present
 		hasBaseURL := false
 		hasModel := false
 		for _, v := range envVars {

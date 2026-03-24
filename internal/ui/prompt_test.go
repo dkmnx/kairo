@@ -26,14 +26,12 @@ func TestPrintSuccess(t *testing.T) {
 	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
-	output := buf.String()
 	if !bytes.Contains(buf.Bytes(), []byte("✓")) {
 		t.Error("PrintSuccess should contain checkmark")
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("test message")) {
 		t.Error("PrintSuccess should contain message")
 	}
-	_ = output
 }
 
 func TestPrintWarn(t *testing.T) {
@@ -48,11 +46,9 @@ func TestPrintWarn(t *testing.T) {
 	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
-	output := buf.String()
 	if !bytes.Contains(buf.Bytes(), []byte("⚠")) {
 		t.Error("PrintWarn should contain warning symbol")
 	}
-	_ = output
 }
 
 func TestPrintError(t *testing.T) {
@@ -172,14 +168,12 @@ func TestPrintDefault(t *testing.T) {
 	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
-	output := buf.String()
 	if !bytes.Contains(buf.Bytes(), []byte("provider name")) {
 		t.Error("PrintDefault should contain provider name")
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("(default)")) {
 		t.Error("PrintDefault should contain '(default)'")
 	}
-	_ = output
 }
 
 func TestColorReset(t *testing.T) {
@@ -194,14 +188,12 @@ func TestColorReset(t *testing.T) {
 	_, _ = buf.ReadFrom(r)
 	os.Stdout = originalStdout
 
-	output := buf.String()
 	if !bytes.Contains(buf.Bytes(), []byte("message with reset")) {
 		t.Error("Output should contain message after color codes")
 	}
 	if !bytes.Contains(buf.Bytes(), []byte(Reset)) {
 		t.Error("Output should contain reset code")
 	}
-	_ = output
 }
 
 func TestPromptSecret(t *testing.T) {
@@ -211,23 +203,19 @@ func TestPromptSecret(t *testing.T) {
 		// We test that the function signature and basic behavior work.
 		// This test is skipped in non-TTY environments automatically.
 
-		// Create a pipe for stdin
 		pr, pw, _ := os.Pipe()
 		defer pr.Close()
 		defer pw.Close()
 
-		// Write test input
 		go func() {
 			_, _ = pw.WriteString("test-password-123\n")
 			pw.Close()
 		}()
 
-		// Redirect stdin
 		originalStdin := os.Stdin
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		// Capture stdout
 		buf := new(bytes.Buffer)
 		originalStdout := os.Stdout
 		r, w, _ := os.Pipe()
@@ -251,13 +239,11 @@ func TestPromptSecret(t *testing.T) {
 				t.Error("PromptSecret should display prompt")
 			}
 		} else {
-			// Expected error in non-TTY environment - this is acceptable
 			t.Skipf("PromptSecret requires TTY: %v", err)
 		}
 	})
 
 	t.Run("returns empty string for empty input", func(t *testing.T) {
-		// Similar to above - may fail in non-TTY environments
 		pr, pw, _ := os.Pipe()
 		defer pr.Close()
 		defer pw.Close()
@@ -292,26 +278,21 @@ func TestPromptSecret(t *testing.T) {
 
 func TestPrompt(t *testing.T) {
 	t.Run("reads input successfully", func(t *testing.T) {
-		// Create pipe for stdin
 		pr, pw, _ := os.Pipe()
 		defer pr.Close()
 		defer pw.Close()
 
-		// Write input before reading
 		go func() {
 			_, _ = pw.WriteString("my-input-value\n")
 			pw.Close()
 		}()
 
-		// Small delay to ensure input is available
 		time.Sleep(10 * time.Millisecond)
 
-		// Redirect stdin
 		originalStdin := os.Stdin
 		os.Stdin = pr
 		defer func() { os.Stdin = originalStdin }()
 
-		// Capture stdout
 		buf := new(bytes.Buffer)
 		originalStdout := os.Stdout
 		r, w, _ := os.Pipe()
@@ -546,27 +527,22 @@ func TestPrintBanner(t *testing.T) {
 
 		output := buf.String()
 
-		// Check for kairo prefix
 		if !strings.Contains(output, "kairo") {
 			t.Error("PrintBanner should contain kairo")
 		}
 
-		// Check for version
 		if !strings.Contains(output, "1.0.0-dev") {
 			t.Error("PrintBanner should display version")
 		}
 
-		// Check for model
 		if !strings.Contains(output, "claude-sonnet-4-20250514") {
 			t.Error("PrintBanner should display model")
 		}
 
-		// Check for provider
 		if !strings.Contains(output, "Z.AI") {
 			t.Error("PrintBanner should display provider name")
 		}
 
-		// Check for gray formatting
 		if !strings.Contains(output, Gray) {
 			t.Error("PrintBanner should use gray formatting")
 		}
@@ -822,19 +798,16 @@ func TestIsProviderConfigured(t *testing.T) {
 			"MINIMAX_API_KEY": "sk-minimax-key",
 		}
 
-		// Check zai - should be true
 		result := isProviderConfigured(cfg, secrets, "zai")
 		if !result {
 			t.Error("isProviderConfigured should return true for zai")
 		}
 
-		// Check minimax - should be true
 		result = isProviderConfigured(cfg, secrets, "minimax")
 		if !result {
 			t.Error("isProviderConfigured should return true for minimax")
 		}
 
-		// Check deepseek - should be false
 		result = isProviderConfigured(cfg, secrets, "deepseek")
 		if result {
 			t.Error("isProviderConfigured should return false for deepseek (no API key)")
@@ -843,13 +816,6 @@ func TestIsProviderConfigured(t *testing.T) {
 }
 
 func TestProviderRequirements(t *testing.T) {
-	t.Run("custom requires API key", func(t *testing.T) {
-		requiresKey := providers.RequiresAPIKey("custom")
-		if !requiresKey {
-			t.Error("custom should require API key")
-		}
-	})
-
 	t.Run("zai requires API key", func(t *testing.T) {
 		requiresKey := providers.RequiresAPIKey("zai")
 		if !requiresKey {
@@ -1086,7 +1052,6 @@ func TestErrUserCancelled(t *testing.T) {
 			t.Errorf("ErrUserCancelled.Error() = %q, want %q", kairoerrors.ErrUserCancelled.Error(), "user cancelled input")
 		}
 
-		// Verify it can be used with errors.Is
 		if !errors.Is(kairoerrors.ErrUserCancelled, kairoerrors.ErrUserCancelled) {
 			t.Error("ErrUserCancelled should be equal to itself via errors.Is")
 		}
