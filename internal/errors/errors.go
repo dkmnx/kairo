@@ -3,6 +3,7 @@ package errors
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 type ErrorType string
@@ -44,26 +45,24 @@ type KairoError struct {
 }
 
 func (e *KairoError) Error() string {
-	msg := e.Message
+	var b strings.Builder
+	b.WriteString(e.Message)
 	if e.Cause != nil {
-		msg = fmt.Sprintf("%s: %v", msg, e.Cause)
+		fmt.Fprintf(&b, ": %v", e.Cause)
 	}
-
 	if len(e.Context) > 0 {
-		ctx := " ("
+		b.WriteString(" (")
 		first := true
 		for k, v := range e.Context {
 			if !first {
-				ctx += ", "
+				b.WriteString(", ")
 			}
-			ctx += fmt.Sprintf("%s=%s", k, v)
+			fmt.Fprintf(&b, "%s=%s", k, v)
 			first = false
 		}
-		ctx += ")"
-		msg += ctx
+		b.WriteString(")")
 	}
-
-	return msg
+	return b.String()
 }
 
 func (e *KairoError) Unwrap() error {
