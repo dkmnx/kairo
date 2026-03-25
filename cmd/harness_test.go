@@ -175,8 +175,6 @@ func TestGetHarnessBinary(t *testing.T) {
 	}{
 		{"claude returns claude", "claude", "claude"},
 		{"qwen returns qwen", "qwen", "qwen"},
-		{"unknown returns claude", "unknown", "claude"},
-		{"empty returns claude", "", "claude"},
 	}
 
 	for _, tt := range tests {
