@@ -35,11 +35,10 @@ build:
     @mkdir -p {{DIST_DIR}}
     {{GO}} build -ldflags "{{LDFLAGS}}" -o {{DIST_DIR}}/{{BINARY_NAME}} .
 
-# Run all tests
+# Run all tests with race detector
 test:
     @echo "Running tests..."
-    {{GO}} test -v ./...
-    {{GO}} test -race ./...
+    {{GO}} test -v -race ./...
 
 # Run fuzzing tests with timeout
 fuzz:
@@ -217,6 +216,10 @@ vuln-scan:
         exit 1; \
     fi
 
+# Run comprehensive security checks (vuln scan + lint)
+security: vuln-scan lint
+    @echo "Security checks passed!"
+
 # Create release builds with goreleaser
 release:
     @echo "Running goreleaser..."
@@ -275,6 +278,7 @@ help:
     @echo "  deps            - Download and tidy dependencies"
     @echo "  verify-deps     - Verify dependency checksums"
     @echo "  vuln-scan       - Run vulnerability scan with govulncheck"
+    @echo "  security        - Run comprehensive security checks (vuln-scan + lint)"
     @echo "  ci-local        - Run GitHub Actions locally with act"
     @echo "  ci-local-list   - List all CI jobs"
     @echo "  help            - Show this help message"
