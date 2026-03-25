@@ -174,8 +174,8 @@ func isProviderConfigured(cfg *config.Config, secrets map[string]string, provide
 }
 
 func PrintBanner(version string, provider config.Provider) {
-	banner := fmt.Sprintf("kairo %s - %s - %s", version, provider.Model, provider.Name)
-	fmt.Printf("%s%s%s\n", Gray, banner, Reset)
+	banner := fmt.Sprintf("kairo %s · %s · %s", version, provider.Model, provider.Name)
+	fmt.Printf("%s%s%s\n\n", Gray, banner, Reset)
 }
 
 func Confirm(prompt string) (bool, error) {

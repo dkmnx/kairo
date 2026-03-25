@@ -50,7 +50,7 @@ func TestPrintBanner(t *testing.T) {
 				Model: "claude-sonnet-4-20250514",
 				Name:  "MiniMax",
 			},
-			wantSub: "kairo v0.1.0 - claude-sonnet-4-20250514 - MiniMax",
+			wantSub: "kairo v0.1.0 · claude-sonnet-4-20250514 · MiniMax",
 		},
 		{
 			name:    "banner with custom provider and model",
@@ -59,7 +59,7 @@ func TestPrintBanner(t *testing.T) {
 				Model: "custom-model",
 				Name:  "Custom Provider",
 			},
-			wantSub: "kairo vdev - custom-model - Custom Provider",
+			wantSub: "kairo vdev · custom-model · Custom Provider",
 		},
 	}
 
