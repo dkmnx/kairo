@@ -110,12 +110,5 @@ func getHarness(flagHarness, configHarness string) string {
 }
 
 func getHarnessBinary(harness string) string {
-	switch harness {
-	case harnessQwen:
-		return harnessQwen
-	case harnessClaude:
-		return harnessClaude
-	default:
-		return harnessClaude
-	}
+	return harness
 }
