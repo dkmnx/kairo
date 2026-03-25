@@ -27,7 +27,6 @@ func TestCreateTempAuthDir_Success(t *testing.T) {
 	// Skip permission check on Windows (doesn't support Unix-style 0700)
 	if runtime.GOOS != "windows" {
 		mode := info.Mode()
-		// Check that directory has owner-only permissions (0700)
 		if mode&0077 != 0 {
 			t.Errorf("Directory should have no group/other permissions, got %o", mode)
 		}
@@ -179,7 +178,6 @@ func TestGenerateWrapperScript_WindowsPath(t *testing.T) {
 		t.Error("Wrapper script should not be empty")
 	}
 
-	// Verify token path is in script (Windows paths are escaped with \\ in scripts)
 	// The script uses %q formatting which escapes backslashes on Windows
 	expectedPath := tokenPath
 	if runtime.GOOS == "windows" {
@@ -230,12 +228,10 @@ func TestGenerateWrapperScript_UnixPath(t *testing.T) {
 		t.Error("Wrapper script should not be empty")
 	}
 
-	// Verify token path is in script
 	if !contains(string(content), tokenPath) {
 		t.Error("Wrapper script should contain token path")
 	}
 
-	// Verify shebang for Unix
 	if !contains(string(content), "#!/bin/sh") {
 		t.Error("Unix wrapper script should have shebang")
 	}
@@ -262,7 +258,6 @@ func TestGenerateWrapperScript_WithSpecialArgs(t *testing.T) {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
 
-	// Verify args are properly escaped in the script
 	if !contains(string(content), "Hello") || !contains(string(content), "World") {
 		t.Error("Wrapper script should contain escaped arguments")
 	}
@@ -370,7 +365,6 @@ func TestGenerateWrapperScript_WindowsWithSpecialArgs(t *testing.T) {
 
 	scriptStr := string(content)
 
-	// Verify PowerShell-specific content
 	if !strings.Contains(scriptStr, "$env:ANTHROPIC_AUTH_TOKEN") {
 		t.Error("PowerShell script should set ANTHROPIC_AUTH_TOKEN")
 	}
@@ -380,11 +374,9 @@ func TestGenerateWrapperScript_WindowsWithSpecialArgs(t *testing.T) {
 	if !strings.Contains(scriptStr, "Remove-Item") {
 		t.Error("PowerShell script should use Remove-Item")
 	}
-	// Verify dollar signs are escaped in prompt
 	if !strings.Contains(scriptStr, "`$total") || !strings.Contains(scriptStr, "`$price") || !strings.Contains(scriptStr, "`$quantity") {
 		t.Error("PowerShell script should escape dollar signs in prompt")
 	}
-	// Verify path with spaces is properly quoted
 	if !strings.Contains(scriptStr, "Program Files") {
 		t.Error("PowerShell script should handle paths with spaces")
 	}
@@ -472,7 +464,6 @@ func TestCreateTempAuthDir_Failure(t *testing.T) {
 	// so testing error conditions is difficult without modifying system state.
 	// We verify the basic functionality works via other tests.
 	_, err := CreateTempAuthDir()
-	// Just verify it returns some result without error for valid conditions
 	// The error for invalid paths would be OS-specific
 	_ = err
 }
@@ -553,7 +544,6 @@ func TestGenerateWrapperScript_ControlCharacterEscaping(t *testing.T) {
 			}
 
 			scriptStr := string(content)
-			// Verify the argument is still present (escaped properly)
 			if !strings.Contains(scriptStr, "hello") {
 				t.Errorf("Script should contain argument content for %q", tt.name)
 			}
@@ -562,7 +552,6 @@ func TestGenerateWrapperScript_ControlCharacterEscaping(t *testing.T) {
 }
 
 func TestExecCommand(t *testing.T) {
-	// Test that ExecCommand returns a valid command
 	cmd := ExecCommand("echo", "test")
 	if cmd == nil {
 		t.Fatal("ExecCommand() should return a valid command")
@@ -597,7 +586,6 @@ func TestGenerateWrapperScript_WithArgs(t *testing.T) {
 
 	scriptStr := string(content)
 
-	// Verify all args are in the script
 	expectedArgs := []string{"--model", "sonnet-4-20250514", "--temperature", "0.7"}
 	for _, arg := range expectedArgs {
 		if !strings.Contains(scriptStr, arg) {
@@ -605,7 +593,6 @@ func TestGenerateWrapperScript_WithArgs(t *testing.T) {
 		}
 	}
 
-	// Verify Windows flag is correct
 	isWindowsExpected := runtime.GOOS == "windows"
 	if isWindows != isWindowsExpected {
 		t.Errorf("isWindows = %v, want %v", isWindows, isWindowsExpected)
@@ -775,7 +762,6 @@ func TestGenerateWrapperScript_ScriptIsDeletedAfterUse(t *testing.T) {
 		t.Fatalf("GenerateWrapperScript() error = %v", err)
 	}
 
-	// Verify script exists
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		t.Error("Script should exist after creation")
 	}

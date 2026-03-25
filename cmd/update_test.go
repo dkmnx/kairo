@@ -12,6 +12,19 @@ import (
 	"github.com/dkmnx/kairo/internal/version"
 )
 
+// HijackAndClose hijacks the connection and closes it to simulate abrupt server closure.
+func HijackAndClose(w http.ResponseWriter) {
+	hijacker, ok := w.(http.Hijacker)
+	if !ok {
+		return
+	}
+	conn, _, err := hijacker.Hijack()
+	if err != nil {
+		return
+	}
+	conn.Close()
+}
+
 func TestUpdateCommand(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/dkmnx/kairo/releases/latest" {
@@ -226,7 +239,6 @@ func TestVersionGreaterThanInvalidVersions(t *testing.T) {
 
 func TestGetEnvFunc(t *testing.T) {
 	t.Run("returns value and true when env var is set", func(t *testing.T) {
-		// Set a temporary environment variable
 		t.Setenv("KAIRO_TEST_VAR", "test-value")
 
 		value, ok := getEnvFunc("KAIRO_TEST_VAR")
@@ -507,7 +519,6 @@ func TestDownloadToTempFileCreatesTempFile(t *testing.T) {
 		t.Fatalf("failed to stat temp file: %v", err)
 	}
 
-	// Check it's a regular file
 	if info.Mode().IsDir() {
 		t.Error("downloadToTempFile() created a directory, not a file")
 	}
@@ -586,8 +597,7 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 
 	t.Run("returns error when server closes connection early", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Close connection without sending complete response
-			panic("close connection")
+			HijackAndClose(w)
 		}))
 		defer server.Close()
 
@@ -598,7 +608,6 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 	})
 
 	t.Run("handles large download", func(t *testing.T) {
-		// Create a large response (1MB of data)
 		largeData := make([]byte, 1024*1024)
 		for i := range largeData {
 			largeData[i] = byte(i % 256)
@@ -617,7 +626,6 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 		}
 		defer os.Remove(tempFile)
 
-		// Verify file size
 		info, err := os.Stat(tempFile)
 		if err != nil {
 			t.Fatalf("failed to stat temp file: %v", err)
@@ -632,7 +640,6 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-			// Write empty response
 		}))
 		defer server.Close()
 
@@ -642,7 +649,6 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 		}
 		defer os.Remove(tempFile)
 
-		// Verify file is empty
 		content, err := os.ReadFile(tempFile)
 		if err != nil {
 			t.Fatalf("failed to read temp file: %v", err)
@@ -706,13 +712,11 @@ func TestDownloadToTempFileExtension(t *testing.T) {
 	})
 }
 
-// TestRunInstallScript tests the runInstallScript function
 func TestRunInstallScript_Windows(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Skipping Windows-specific test on non-Windows platform")
 	}
 
-	// Create a simple PowerShell script that succeeds
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test.ps1")
 	scriptContent := "exit 0"
@@ -731,7 +735,6 @@ func TestRunInstallScript_Unix(t *testing.T) {
 		t.Skip("Skipping Unix-specific test on Windows")
 	}
 
-	// Create a simple shell script that succeeds
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test.sh")
 	scriptContent := "#!/bin/sh\nexit 0"
@@ -750,7 +753,6 @@ func TestRunInstallScript_ExecutionFails(t *testing.T) {
 		t.Skip("Skipping Unix-specific test on Windows")
 	}
 
-	// Create a shell script that fails
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test.sh")
 	scriptContent := "#!/bin/sh\nexit 1"
@@ -769,4 +771,251 @@ func TestRunInstallScript_ScriptNotFound(t *testing.T) {
 	if err == nil {
 		t.Error("runInstallScript() should return error when script not found")
 	}
+}
+
+func TestGetChecksumsURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		tag      string
+		expected string
+	}{
+		{
+			name:     "unix platforms",
+			tag:      "v1.0.0",
+			expected: "https://raw.githubusercontent.com/dkmnx/kairo/v1.0.0/scripts/checksums.txt",
+		},
+		{
+			name:     "darwin",
+			tag:      "v2.0.0",
+			expected: "https://raw.githubusercontent.com/dkmnx/kairo/v2.0.0/scripts/checksums.txt",
+		},
+		{
+			name:     "windows",
+			tag:      "v1.5.0",
+			expected: "https://raw.githubusercontent.com/dkmnx/kairo/v1.5.0/scripts/checksums.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getChecksumsURL(tt.tag)
+			if result != tt.expected {
+				t.Errorf("getChecksumsURL(%q) = %q, want %q", tt.tag, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseChecksumLine(t *testing.T) {
+	tests := []struct {
+		name     string
+		line     string
+		wantHash string
+		wantFile string
+		wantOk   bool
+	}{
+		{
+			name:     "valid sh checksum",
+			line:     "07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790  scripts/install.sh",
+			wantHash: "07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790",
+			wantFile: "scripts/install.sh",
+			wantOk:   true,
+		},
+		{
+			name:     "valid ps1 checksum",
+			line:     "a197cd3c17f40fad8ae08df1ce42633e454491319df40097abf78da01db5aaae  scripts/install.ps1",
+			wantHash: "a197cd3c17f40fad8ae08df1ce42633e454491319df40097abf78da01db5aaae",
+			wantFile: "scripts/install.ps1",
+			wantOk:   true,
+		},
+		{
+			name:     "uppercase hash",
+			line:     "ABCD1234567890ABCD1234567890ABCD1234567890ABCD1234567890ABCD1234  scripts/test.sh",
+			wantHash: "abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
+			wantFile: "scripts/test.sh",
+			wantOk:   true,
+		},
+		{
+			name:   "comment line",
+			line:   "# This is a comment",
+			wantOk: false,
+		},
+		{
+			name:   "empty line",
+			line:   "",
+			wantOk: false,
+		},
+		{
+			name:   "whitespace only",
+			line:   "   ",
+			wantOk: false,
+		},
+		{
+			name:   "invalid hash length",
+			line:   "abc123  scripts/test.sh",
+			wantOk: false,
+		},
+		{
+			name:   "too few fields",
+			line:   "07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790",
+			wantOk: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hash, filename, ok := parseChecksumLine(tt.line)
+			if ok != tt.wantOk {
+				t.Errorf("parseChecksumLine(%q) ok = %v, want %v", tt.line, ok, tt.wantOk)
+			}
+			if ok {
+				if hash != tt.wantHash {
+					t.Errorf("parseChecksumLine(%q) hash = %q, want %q", tt.line, hash, tt.wantHash)
+				}
+				if filename != tt.wantFile {
+					t.Errorf("parseChecksumLine(%q) filename = %q, want %q", tt.line, filename, tt.wantFile)
+				}
+			}
+		})
+	}
+}
+
+func TestDownloadAndParseChecksums(t *testing.T) {
+	t.Run("parses valid checksums file", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`# Comment line
+
+07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790  scripts/install.sh
+a197cd3c17f40fad8ae08df1ce42633e454491319df40097abf78da01db5aaae  scripts/install.ps1
+`))
+		}))
+		defer server.Close()
+
+		checksums, err := downloadAndParseChecksums(server.URL)
+		if err != nil {
+			t.Fatalf("downloadAndParseChecksums() error = %v", err)
+		}
+
+		if len(checksums) != 2 {
+			t.Errorf("expected 2 checksums, got %d", len(checksums))
+		}
+
+		expectedHash := "07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790"
+		if checksums["scripts/install.sh"] != expectedHash {
+			t.Errorf("scripts/install.sh hash = %q, want %q", checksums["scripts/install.sh"], expectedHash)
+		}
+	})
+
+	t.Run("skips invalid lines", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`# This is a comment
+invalid line
+07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790  scripts/install.sh
+`))
+		}))
+		defer server.Close()
+
+		checksums, err := downloadAndParseChecksums(server.URL)
+		if err != nil {
+			t.Fatalf("downloadAndParseChecksums() error = %v", err)
+		}
+
+		if len(checksums) != 1 {
+			t.Errorf("expected 1 checksum, got %d", len(checksums))
+		}
+	})
+
+	t.Run("returns error on HTTP failure", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		_, err := downloadAndParseChecksums(server.URL)
+		if err == nil {
+			t.Error("downloadAndParseChecksums() should return error on 404")
+		}
+	})
+}
+
+func TestComputeSHA256(t *testing.T) {
+	t.Run("computes correct hash", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		scriptPath := filepath.Join(tmpDir, "test.sh")
+		content := "#!/bin/bash\necho 'test'"
+		if err := os.WriteFile(scriptPath, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		hash, err := computeSHA256(scriptPath)
+		if err != nil {
+			t.Fatalf("computeSHA256() error = %v", err)
+		}
+
+		expectedHash := "bd78896dd21dbaed057f004b4e194c0bc2444d8a8e16775a3e6a511d17ab32ad"
+		if hash != expectedHash {
+			t.Errorf("computeSHA256() = %q", hash)
+		}
+	})
+
+	t.Run("returns error for non-existent file", func(t *testing.T) {
+		_, err := computeSHA256("/nonexistent/path/file.txt")
+		if err == nil {
+			t.Error("computeSHA256() should return error for non-existent file")
+		}
+	})
+}
+
+func TestVerifyChecksum(t *testing.T) {
+	t.Run("verifies matching checksum", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		scriptPath := filepath.Join(tmpDir, "test.sh")
+		content := "#!/bin/bash\necho 'test'"
+		if err := os.WriteFile(scriptPath, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		expectedHash := "bd78896dd21dbaed057f004b4e194c0bc2444d8a8e16775a3e6a511d17ab32ad"
+
+		err := verifyChecksum(scriptPath, expectedHash)
+		if err != nil {
+			t.Errorf("verifyChecksum() error = %v", err)
+		}
+	})
+
+	t.Run("returns error on mismatch", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		scriptPath := filepath.Join(tmpDir, "test.sh")
+		content := "#!/bin/bash\necho 'test'"
+		if err := os.WriteFile(scriptPath, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		wrongHash := "0000000000000000000000000000000000000000000000000000000000000000"
+
+		err := verifyChecksum(scriptPath, wrongHash)
+		if err == nil {
+			t.Error("verifyChecksum() should return error on hash mismatch")
+		}
+	})
+
+	t.Run("is case-insensitive for hash comparison", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		scriptPath := filepath.Join(tmpDir, "test.sh")
+		content := "#!/bin/bash\necho 'test'"
+		if err := os.WriteFile(scriptPath, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		uppercaseHash := "BD78896DD21DBAED057F004B4E194C0BC2444D8A8E16775A3E6A511D17AB32AD"
+
+		err := verifyChecksum(scriptPath, uppercaseHash)
+		if err != nil {
+			t.Errorf("verifyChecksum() should be case-insensitive, error = %v", err)
+		}
+	})
 }

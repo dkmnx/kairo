@@ -14,8 +14,6 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
-// TestFullWorkflowSetupConfigAndSwitch tests the complete workflow from
-// initial setup through provider configuration and switching.
 func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 	if testBinary == "" {
 		t.Fatal("testBinary not initialized, TestMain may have failed")
@@ -23,7 +21,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	// Step 1: Initialize with anthropic provider (no API key required)
 	cfg := &config.Config{
 		DefaultProvider: "anthropic",
 		DefaultHarness:  "claude",
@@ -44,7 +41,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	// Verify initial state
 	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
@@ -53,7 +49,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Errorf("initial default provider = %q, want 'anthropic'", loadedCfg.DefaultProvider)
 	}
 
-	// Step 2: Configure Z.AI provider with API key
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	secretsContent := "ZAI_API_KEY=TEST-KEY-DO-NOT-USE-zai-001\n"
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
@@ -70,7 +65,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Fatalf("failed to save config with zai: %v", err)
 	}
 
-	// Verify zai provider configured
 	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config after zai: %v", err)
@@ -79,7 +73,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Error("zai provider should exist")
 	}
 
-	// Step 3: Configure MiniMax provider
 	secretsContent += "MINIMAX_API_KEY=TEST-KEY-DO-NOT-USE-minimax-002\n"
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("failed to encrypt secrets with minimax: %v", err)
@@ -95,7 +88,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Fatalf("failed to save config with minimax: %v", err)
 	}
 
-	// Verify both providers exist
 	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config after minimax: %v", err)
@@ -104,7 +96,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Errorf("expected 3 providers, got %d", len(loadedCfg.Providers))
 	}
 
-	// Step 4: Change default provider to zai
 	cfg.DefaultProvider = "zai"
 	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to update default provider: %v", err)
@@ -118,7 +109,6 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Errorf("default provider = %q, want 'zai'", loadedCfg.DefaultProvider)
 	}
 
-	// Step 5: Verify secrets are intact
 	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
@@ -131,11 +121,9 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 	}
 }
 
-// TestFullWorkflowHarnessSwitching tests switching between claude and qwen harnesses.
 func TestFullWorkflowHarnessSwitching(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Setup config with default harness
 	cfg := &config.Config{
 		DefaultProvider: "anthropic",
 		DefaultHarness:  "claude",
@@ -153,7 +141,6 @@ func TestFullWorkflowHarnessSwitching(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	// Verify initial harness
 	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
@@ -162,7 +149,6 @@ func TestFullWorkflowHarnessSwitching(t *testing.T) {
 		t.Errorf("initial harness = %q, want 'claude'", loadedCfg.DefaultHarness)
 	}
 
-	// Switch to qwen harness
 	cfg.DefaultHarness = "qwen"
 	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to update harness: %v", err)
@@ -176,7 +162,6 @@ func TestFullWorkflowHarnessSwitching(t *testing.T) {
 		t.Errorf("harness = %q, want 'qwen'", loadedCfg.DefaultHarness)
 	}
 
-	// Switch back to claude
 	cfg.DefaultHarness = "claude"
 	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatalf("failed to switch back to claude: %v", err)
@@ -191,11 +176,9 @@ func TestFullWorkflowHarnessSwitching(t *testing.T) {
 	}
 }
 
-// TestFullWorkflowListAndStatus tests listing and checking provider status.
 func TestFullWorkflowListAndStatus(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Setup multiple providers with varying configuration states
 	cfg := &config.Config{
 		DefaultProvider: "zai",
 		Providers: map[string]config.Provider{
@@ -214,7 +197,6 @@ func TestFullWorkflowListAndStatus(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	// Only configure secrets for some providers
 	secretsContent := `ZAI_API_KEY=TEST-KEY-DO-NOT-USE-list-zai
 DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 `
@@ -223,13 +205,11 @@ DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 		t.Fatalf("failed to encrypt secrets: %v", err)
 	}
 
-	// Verify config
 	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
 	}
 
-	// Check all providers are listed
 	expectedProviders := []string{"anthropic", "zai", "minimax", "deepseek"}
 	for _, provider := range expectedProviders {
 		if _, exists := loadedCfg.Providers[provider]; !exists {
@@ -237,18 +217,15 @@ DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 		}
 	}
 
-	// Verify default provider
 	if loadedCfg.DefaultProvider != "zai" {
 		t.Errorf("default provider = %q, want 'zai'", loadedCfg.DefaultProvider)
 	}
 
-	// Verify secrets
 	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
 	}
 
-	// Check which providers have API keys
 	parsedSecrets := config.ParseSecrets(decrypted)
 	if _, exists := parsedSecrets["ZAI_API_KEY"]; !exists {
 		t.Error("ZAI_API_KEY should exist")
@@ -261,11 +238,9 @@ DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 	}
 }
 
-// TestFullWorkflowKeyPersistence tests key file persistence.
 func TestFullWorkflowKeyPersistence(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Setup initial config
 	cfg := &config.Config{
 		DefaultProvider: "anthropic",
 		Providers: map[string]config.Provider{
@@ -281,28 +256,23 @@ func TestFullWorkflowKeyPersistence(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	// Read the key to verify persistence
 	keyData, err := os.ReadFile(keyPath)
 	if err != nil {
 		t.Fatalf("failed to read key: %v", err)
 	}
 
-	// Verify key file exists and has content
 	if len(keyData) == 0 {
 		t.Error("key file should not be empty")
 	}
 
-	// Verify key format (should contain age secret key prefix)
 	if !strings.Contains(string(keyData), "AGE-SECRET-KEY-") {
 		t.Error("key should be in age format with AGE-SECRET-KEY prefix")
 	}
 }
 
-// TestFullWorkflowCustomProvider tests adding and using custom providers.
 func TestFullWorkflowCustomProvider(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Setup with a custom provider
 	customProviderName := "mycustom"
 	cfg := &config.Config{
 		DefaultProvider: customProviderName,
@@ -330,7 +300,6 @@ func TestFullWorkflowCustomProvider(t *testing.T) {
 		t.Fatalf("failed to encrypt secrets: %v", err)
 	}
 
-	// Verify custom provider
 	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
@@ -351,7 +320,6 @@ func TestFullWorkflowCustomProvider(t *testing.T) {
 		t.Errorf("custom provider model = %q, want 'custom-model-v1'", customProvider.Model)
 	}
 
-	// Verify secrets
 	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
@@ -364,7 +332,6 @@ func TestFullWorkflowCustomProvider(t *testing.T) {
 	}
 }
 
-// TestFullWorkflowHarnessCLIExecution tests the --harness flag with actual CLI execution.
 func TestFullWorkflowHarnessCLIExecution(t *testing.T) {
 	if testBinary == "" {
 		t.Fatal("testBinary not initialized, TestMain may have failed")
@@ -372,7 +339,6 @@ func TestFullWorkflowHarnessCLIExecution(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	// Setup config with qwen as default harness
 	cfg := &config.Config{
 		DefaultProvider: "anthropic",
 		DefaultHarness:  "qwen",
@@ -393,28 +359,15 @@ func TestFullWorkflowHarnessCLIExecution(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	// Test with --harness flag set to claude
 	claudeCmd := exec.Command(testBinary, "--config", tmpDir, "switch", "--harness", "claude", "anthropic", "--help")
-	output, err := claudeCmd.CombinedOutput()
-	// We expect non-zero exit because claude isn't installed, but wrapper should generate
-	if err == nil {
-		t.Log("claude command executed (may be expected if installed)")
-	}
-	// Check that wrapper script was created
-	wrapperFound := strings.Contains(string(output), "wrapper") || strings.Contains(string(output), "wrapper script")
-	if !wrapperFound {
-		// The wrapper creates temp files, just verify command ran without panicking
-		t.Log("wrapper script generated successfully")
+	claudeOutput, _ := claudeCmd.CombinedOutput()
+	if strings.Contains(string(claudeOutput), "unknown flag") {
+		t.Errorf("harness flag not recognized for claude: %s", string(claudeOutput))
 	}
 
-	// Test with --harness flag set to qwen
 	qwenCmd := exec.Command(testBinary, "--config", tmpDir, "switch", "--harness", "qwen", "anthropic", "--help")
-	qwenOutput, qwenErr := qwenCmd.CombinedOutput()
-	if qwenErr == nil {
-		t.Log("qwen command executed (may be expected if installed)")
-	}
-	// Verify harness flag was accepted (no "unknown flag" error in stderr)
+	qwenOutput, _ := qwenCmd.CombinedOutput()
 	if strings.Contains(string(qwenOutput), "unknown flag") {
-		t.Errorf("harness flag not recognized: %s", string(qwenOutput))
+		t.Errorf("harness flag not recognized for qwen: %s", string(qwenOutput))
 	}
 }

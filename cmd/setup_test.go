@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
@@ -20,8 +19,6 @@ import (
 	"github.com/dkmnx/kairo/internal/validate"
 )
 
-// providerStatusIcon returns a status indicator for a provider's configuration.
-// This is a test helper that mirrors the logic used in production for display purposes.
 func providerStatusIcon(cfg *config.Config, secrets map[string]string, provider string) string {
 	if !providers.RequiresAPIKey(provider) {
 		if _, exists := cfg.Providers[provider]; exists {
@@ -747,9 +744,9 @@ func TestEnsureConfigDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cliCtx := NewCLIContext()
-	err := ensureConfigDirectory(cliCtx, tmpDir)
+	err := EnsureConfigDir(cliCtx, tmpDir)
 	if err != nil {
-		t.Errorf("ensureConfigDirectory() error = %v", err)
+		t.Errorf("EnsureConfigDir() error = %v", err)
 	}
 
 	keyPath := filepath.Join(tmpDir, "age.key")
@@ -772,9 +769,9 @@ func TestLoadOrInitializeConfigExisting(t *testing.T) {
 	}
 
 	cliCtx := NewCLIContext()
-	loadedCfg, err := loadOrInitializeConfig(cliCtx, tmpDir)
+	loadedCfg, err := LoadConfig(cliCtx, tmpDir)
 	if err != nil {
-		t.Errorf("loadOrInitializeConfig() error = %v", err)
+		t.Errorf("LoadConfig() error = %v", err)
 	}
 	if loadedCfg.DefaultProvider != "zai" {
 		t.Errorf("DefaultProvider = %q, want %q", loadedCfg.DefaultProvider, "zai")
@@ -788,12 +785,12 @@ func TestLoadOrInitializeConfigNew(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cliCtx := NewCLIContext()
-	loadedCfg, err := loadOrInitializeConfig(cliCtx, tmpDir)
+	loadedCfg, err := LoadConfig(cliCtx, tmpDir)
 	if err != nil {
-		t.Fatalf("loadOrInitializeConfig() returned unexpected error: %v", err)
+		t.Fatalf("LoadConfig() returned unexpected error: %v", err)
 	}
 	if loadedCfg == nil {
-		t.Fatal("loadOrInitializeConfig() returned nil for non-existent config, want empty config")
+		t.Fatal("LoadConfig() returned nil for non-existent config, want empty config")
 	}
 	if loadedCfg.DefaultProvider != "" {
 		t.Errorf("DefaultProvider = %q, want empty string", loadedCfg.DefaultProvider)
@@ -816,16 +813,16 @@ func TestLoadOrInitializeConfigError(t *testing.T) {
 	}
 
 	cliCtx := NewCLIContext()
-	loadedCfg, err := loadOrInitializeConfig(cliCtx, tmpDir)
+	loadedCfg, err := LoadConfig(cliCtx, tmpDir)
 	if err != nil {
-		t.Errorf("loadOrInitializeConfig() error = %v", err)
+		t.Errorf("LoadConfig() error = %v", err)
 	}
 	if loadedCfg.DefaultProvider != "" {
 		t.Errorf("DefaultProvider = %q, want empty", loadedCfg.DefaultProvider)
 	}
 }
 
-func TestLoadAndDecryptSecrets(t *testing.T) {
+func TestLoadSecrets(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cfg := &config.Config{}
@@ -842,9 +839,15 @@ func TestLoadAndDecryptSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsOut, keyOut, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
+	result, err := LoadSecrets(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadAndDecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("LoadSecrets() error = %v", err)
+	}
+	secretsOut := result.SecretsPath
+	keyOut := result.KeyPath
+	secrets := result.Secrets
+	if err != nil {
+		t.Fatalf("LoadSecrets(context.Background(), ) error = %v", err)
 	}
 	if secretsOut != secretsPath {
 		t.Errorf("secretsPath = %q, want %q", secretsOut, secretsPath)
@@ -865,9 +868,15 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, secretsPath, keyPath, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
+	result, err := LoadSecrets(context.Background(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadAndDecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("LoadSecrets() error = %v", err)
+	}
+	secretsPath := result.SecretsPath
+	keyPath := result.KeyPath
+	secrets := result.Secrets
+	if err != nil {
+		t.Fatalf("LoadSecrets(context.Background(), ) error = %v", err)
 	}
 	if len(secrets) != 0 {
 		t.Errorf("got %d secrets, want 0", len(secrets))
@@ -894,13 +903,9 @@ func TestLoadSecretsWithCorruptedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
-
+	_, err := LoadSecrets(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted secrets file, got nil")
-	}
-	if secrets != nil {
-		t.Errorf("Expected nil secrets on error, got %v", secrets)
 	}
 }
 
@@ -922,13 +927,9 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secrets, _, _, err := LoadAndDecryptSecrets(context.Background(), tmpDir)
-
+	_, err := LoadSecrets(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted key file, got nil")
-	}
-	if secrets != nil {
-		t.Errorf("Expected nil secrets on error, got %v", secrets)
 	}
 }
 
@@ -1026,406 +1027,6 @@ func TestGetLatestReleaseURLOverride(t *testing.T) {
 	}
 }
 
-func TestPromptForProvider(t *testing.T) {
-	// Skip this test in non-interactive environments
-	// Tap TUI requires actual TTY for user input
-	if os.Getenv("CI") != "" {
-		t.Skip("Skipping TUI test in CI environment")
-	}
-
-	t.Run("returns provider selection", func(t *testing.T) {
-		// Tap TUI requires manual interaction
-		// This test can only be run manually with TTY
-		t.Skip("Tap TUI requires manual TTY interaction")
-	})
-
-	t.Run("returns empty on cancel", func(t *testing.T) {
-		// Tap TUI requires manual interaction
-		// This test can only be run manually with TTY
-		t.Skip("Tap TUI requires manual TTY interaction")
-	})
-}
-
-// Note: Legacy prompt tests removed as they tested non-production code paths.
-// The production code now uses Tap TUI which requires manual TTY interaction.
-
-func TestSetupAuditDetails(t *testing.T) {
-	t.Run("details map contains all required fields", func(t *testing.T) {
-		// Simulate what configureProvider creates
-		apiKey := "***masked***"
-		details := map[string]interface{}{
-			"display_name": "Test Provider",
-			"base_url":     "https://api.test.com",
-			"model":        "test-model",
-			"api_key":      apiKey,
-		}
-
-		// Verify all required fields exist
-		requiredFields := []string{"display_name", "base_url", "model", "api_key"}
-		for _, field := range requiredFields {
-			if details[field] == nil {
-				t.Errorf("details should contain %s field", field)
-			}
-		}
-
-		// Verify API key is masked
-		if strings.Contains(details["api_key"].(string), "sk-ant-api03") {
-			t.Error("API key should not be fully exposed in details")
-		}
-	})
-}
-
-func TestConfigureProvider(t *testing.T) {
-	// Skip this test - Tap TUI cannot be tested with stdin redirection
-	// Tap reads directly from /dev/tty which requires manual interaction
-	t.Skip("Tap TUI requires manual TTY interaction - cannot test with stdin redirection")
-
-	// Skip on Windows - os.Pipe() doesn't work properly with term.ReadPassword
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping configureProvider tests on Windows (requires TTY)")
-	}
-
-	t.Run("configures built-in provider successfully", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		cfg := &config.Config{
-			Providers: make(map[string]config.Provider),
-		}
-		if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
-			t.Fatal(err)
-		}
-
-		secretsPath := filepath.Join(tmpDir, "secrets.age")
-		keyPath := filepath.Join(tmpDir, "age.key")
-		if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
-			t.Fatal(err)
-		}
-
-		secrets := make(map[string]string)
-
-		// Prepare input: API key, base URL (use default), model (use default)
-		pr, pw, _ := os.Pipe()
-		defer pr.Close()
-		defer pw.Close()
-
-		go func() {
-			// API key
-			_, _ = pw.WriteString("sk-zai-test-key-123456\n")
-			// Base URL (use default)
-			_, _ = pw.WriteString("\n")
-			// Model (use default)
-			_, _ = pw.WriteString("\n")
-			pw.Close()
-		}()
-
-		time.Sleep(10 * time.Millisecond)
-
-		originalStdin := os.Stdin
-		os.Stdin = pr
-		defer func() { os.Stdin = originalStdin }()
-
-		// Capture stdout
-		buf := new(bytes.Buffer)
-		originalStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		providerName, err := configureProvider(ConfigureProviderParams{
-			ConfigDir:    tmpDir,
-			Cfg:          cfg,
-			ProviderName: "zai",
-			Secrets:      secrets,
-			SecretsPath:  secretsPath,
-			KeyPath:      keyPath,
-			IsEdit:       false,
-		})
-
-		w.Close()
-		_, _ = buf.ReadFrom(r)
-		os.Stdout = originalStdout
-
-		// Skip if TTY not available (promptForAPIKey uses term.ReadPassword)
-		if err != nil && containsString(err.Error(), "inappropriate ioctl") {
-			t.Skipf("configureProvider requires TTY: %v", err)
-		}
-
-		if err != nil {
-			t.Errorf("configureProvider() error = %v", err)
-		}
-
-		if providerName != "zai" {
-			t.Errorf("configureProvider() returned %q, want 'zai'", providerName)
-		}
-
-		// Check that provider was saved
-		loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
-		if err != nil {
-			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
-		}
-
-		provider, ok := loadedCfg.Providers["zai"]
-		if !ok {
-			t.Error("zai provider not found in config")
-		}
-
-		if provider.Name != "Z.AI" {
-			t.Errorf("Provider.Name = %q, want 'Z.AI'", provider.Name)
-		}
-
-		// Check that secrets were saved
-		decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
-		if err != nil {
-			t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
-		}
-
-		parsedSecrets := config.ParseSecrets(decrypted)
-		if _, ok := parsedSecrets["ZAI_API_KEY"]; !ok {
-			t.Error("ZAI_API_KEY not found in secrets")
-		}
-	})
-
-	t.Run("configures custom provider successfully", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		cfg := &config.Config{
-			Providers: make(map[string]config.Provider),
-		}
-		if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
-			t.Fatal(err)
-		}
-
-		secretsPath := filepath.Join(tmpDir, "secrets.age")
-		keyPath := filepath.Join(tmpDir, "age.key")
-		if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
-			t.Fatal(err)
-		}
-
-		secrets := make(map[string]string)
-
-		// Prepare input: custom name, API key, base URL, model
-		pr, pw, _ := os.Pipe()
-		defer pr.Close()
-		defer pw.Close()
-
-		go func() {
-			// Custom provider name
-			_, _ = pw.WriteString("mycustomprovider\n")
-			// API key
-			_, _ = pw.WriteString("sk-custom-key-789\n")
-			// Base URL
-			_, _ = pw.WriteString("https://api.custom.com/v1\n")
-			// Model
-			_, _ = pw.WriteString("custom-model-v1\n")
-			pw.Close()
-		}()
-
-		time.Sleep(10 * time.Millisecond)
-
-		originalStdin := os.Stdin
-		os.Stdin = pr
-		defer func() { os.Stdin = originalStdin }()
-
-		// Capture stdout
-		buf := new(bytes.Buffer)
-		originalStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		providerName, err := configureProvider(ConfigureProviderParams{
-			ConfigDir:    tmpDir,
-			Cfg:          cfg,
-			ProviderName: "custom",
-			Secrets:      secrets,
-			SecretsPath:  secretsPath,
-			KeyPath:      keyPath,
-			IsEdit:       false,
-		})
-
-		w.Close()
-		_, _ = buf.ReadFrom(r)
-		os.Stdout = originalStdout
-
-		// Skip if TTY not available
-		if err != nil && containsString(err.Error(), "inappropriate ioctl") {
-			t.Skipf("configureProvider requires TTY: %v", err)
-		}
-
-		if err != nil {
-			t.Errorf("configureProvider() error = %v", err)
-		}
-
-		if providerName != "mycustomprovider" {
-			t.Errorf("configureProvider() returned %q, want 'mycustomprovider'", providerName)
-		}
-
-		// Check that provider was saved
-		loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
-		if err != nil {
-			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
-		}
-
-		provider, ok := loadedCfg.Providers["mycustomprovider"]
-		if !ok {
-			t.Error("mycustomprovider not found in config")
-		}
-
-		if provider.Name != "My Custom Provider" {
-			t.Errorf("Provider.Name = %q, want 'My Custom Provider'", provider.Name)
-		}
-
-		if provider.BaseURL != "https://api.custom.com/v1" {
-			t.Errorf("Provider.BaseURL = %q, want 'https://api.custom.com/v1'", provider.BaseURL)
-		}
-
-		if provider.Model != "custom-model-v1" {
-			t.Errorf("Provider.Model = %q, want 'custom-model-v1'", provider.Model)
-		}
-
-		// Check that secrets were saved
-		decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
-		if err != nil {
-			t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
-		}
-
-		parsedSecrets := config.ParseSecrets(decrypted)
-		if _, ok := parsedSecrets["MY_CUSTOM_PROVIDER_API_KEY"]; !ok {
-			t.Error("MY_CUSTOM_PROVIDER_API_KEY not found in secrets")
-		}
-	})
-
-	t.Run("validates custom provider name", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		cfg := &config.Config{
-			Providers: make(map[string]config.Provider),
-		}
-		if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
-			t.Fatal(err)
-		}
-
-		secretsPath := filepath.Join(tmpDir, "secrets.age")
-		keyPath := filepath.Join(tmpDir, "age.key")
-		if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
-			t.Fatal(err)
-		}
-
-		secrets := make(map[string]string)
-
-		// Prepare input: invalid custom name (starts with number)
-		pr, pw, _ := os.Pipe()
-		defer pr.Close()
-		defer pw.Close()
-
-		go func() {
-			// Invalid custom provider name (starts with number)
-			_, _ = pw.WriteString("123-invalid\n")
-			pw.Close()
-		}()
-
-		time.Sleep(10 * time.Millisecond)
-
-		originalStdin := os.Stdin
-		os.Stdin = pr
-		defer func() { os.Stdin = originalStdin }()
-
-		buf := new(bytes.Buffer)
-		originalStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		providerName, err := configureProvider(ConfigureProviderParams{
-			ConfigDir:    tmpDir,
-			Cfg:          cfg,
-			ProviderName: "custom",
-			Secrets:      secrets,
-			SecretsPath:  secretsPath,
-			KeyPath:      keyPath,
-			IsEdit:       false,
-		})
-
-		w.Close()
-		_, _ = buf.ReadFrom(r)
-		os.Stdout = originalStdout
-
-		// Skip if TTY not available (fails before validation in TTY env)
-		if err != nil && containsString(err.Error(), "inappropriate ioctl") {
-			t.Skipf("configureProvider requires TTY: %v", err)
-		}
-
-		if err == nil {
-			t.Error("configureProvider() should return error for invalid custom provider name")
-		}
-
-		if providerName != "" {
-			t.Errorf("configureProvider() returned %q, want empty string on error", providerName)
-		}
-	})
-
-	t.Run("returns error for invalid API key", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		cfg := &config.Config{
-			Providers: make(map[string]config.Provider),
-		}
-		if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
-			t.Fatal(err)
-		}
-
-		secretsPath := filepath.Join(tmpDir, "secrets.age")
-		keyPath := filepath.Join(tmpDir, "age.key")
-		if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
-			t.Fatal(err)
-		}
-
-		secrets := make(map[string]string)
-
-		// Prepare input: short API key
-		pr, pw, _ := os.Pipe()
-		defer pr.Close()
-		defer pw.Close()
-
-		go func() {
-			// Short API key
-			_, _ = pw.WriteString("short\n")
-			pw.Close()
-		}()
-
-		time.Sleep(10 * time.Millisecond)
-
-		originalStdin := os.Stdin
-		os.Stdin = pr
-		defer func() { os.Stdin = originalStdin }()
-
-		buf := new(bytes.Buffer)
-		originalStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		providerName, err := configureProvider(ConfigureProviderParams{
-			ConfigDir:    tmpDir,
-			Cfg:          cfg,
-			ProviderName: "zai",
-			Secrets:      secrets,
-			SecretsPath:  secretsPath,
-			KeyPath:      keyPath,
-			IsEdit:       false,
-		})
-
-		w.Close()
-		_, _ = buf.ReadFrom(r)
-		os.Stdout = originalStdout
-
-		// Skip if TTY not available
-		if err != nil && containsString(err.Error(), "inappropriate ioctl") {
-			t.Skipf("configureProvider requires TTY: %v", err)
-		}
-
-		if err == nil {
-			t.Error("configureProvider() should return error for short API key")
-		}
-
-		if providerName != "" {
-			t.Errorf("configureProvider() returned %q, want empty string on error", providerName)
-		}
-	})
-}
-
 func TestSetup_ProviderNameValidation(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -1475,17 +1076,16 @@ func TestSetup_ProviderNameValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateCustomProviderName(tt.name)
+			_, err := ValidateCustomProviderName(tt.name)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				t.Errorf("ValidateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
 			}
 		})
 	}
 }
 
 func TestSetup_ProviderNameLength(t *testing.T) {
-	// Create strings of exact lengths for testing
 	maxValidName := strings.Repeat("a", 50) // Exactly 50 characters
 	invalidName := strings.Repeat("b", 51)  // 51 characters - exceeds max
 
@@ -1517,10 +1117,10 @@ func TestSetup_ProviderNameLength(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateCustomProviderName(tt.name)
+			_, err := ValidateCustomProviderName(tt.name)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				t.Errorf("ValidateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
 			}
 		})
 	}
@@ -1567,10 +1167,10 @@ func TestSetup_ProviderNameReservedWords(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateCustomProviderName(tt.name)
+			_, err := ValidateCustomProviderName(tt.name)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				t.Errorf("ValidateCustomProviderName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
 			}
 		})
 	}
@@ -1710,101 +1310,64 @@ func TestSetup_ValidateBaseURL(t *testing.T) {
 func TestSetup_ValidateModel(t *testing.T) {
 	tests := []struct {
 		name        string
+		provider    string
+		displayName string
 		model       string
-		isBuiltIn   bool
 		wantErr     bool
 		errContains string
 	}{
 		{
-			name:      "valid model",
-			model:     "claude-3-opus-20240229",
-			isBuiltIn: false,
-			wantErr:   false,
-		},
-		{
-			name:      "model with whitespace trimmed",
-			model:     "  claude-3-sonnet  ",
-			isBuiltIn: false,
-			wantErr:   false,
-		},
-		{
 			name:        "empty model for custom provider",
+			provider:    "custom-provider",
+			displayName: "custom-provider",
 			model:       "",
-			isBuiltIn:   false,
 			wantErr:     true,
 			errContains: "model name is required",
 		},
 		{
 			name:        "whitespace only model for custom provider",
+			provider:    "custom-provider",
+			displayName: "custom-provider",
 			model:       "   ",
-			isBuiltIn:   false,
 			wantErr:     true,
 			errContains: "model name is required",
 		},
 		{
-			name:      "empty model for built-in provider",
-			model:     "",
-			isBuiltIn: true,
-			wantErr:   false, // Built-in providers like anthropic can have empty model
+			name:        "valid model for custom provider",
+			provider:    "custom-provider",
+			displayName: "custom-provider",
+			model:       "gpt-4-turbo",
+			wantErr:     false,
 		},
 		{
-			name:      "simple model name",
-			model:     "claude-3",
-			isBuiltIn: false,
-			wantErr:   false,
+			name:        "empty model for built-in provider",
+			provider:    "zai",
+			displayName: "Z.AI",
+			model:       "",
+			wantErr:     false,
 		},
 		{
-			name:      "model with version",
-			model:     "gpt-4-turbo",
-			isBuiltIn: false,
-			wantErr:   false,
+			name:        "valid model for built-in provider",
+			provider:    "zai",
+			displayName: "Z.AI",
+			model:       "glm-4.7-flash",
+			wantErr:     false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// For custom providers, model should be non-empty
-			// For built-in providers, empty model is allowed
-			model := strings.TrimSpace(tt.model)
-
-			if !tt.isBuiltIn {
-				if model == "" {
-					err := fmt.Errorf("model name is required for custom providers")
-					if tt.wantErr {
-						if !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(tt.errContains)) {
-							t.Errorf("Expected error containing %q, got %q", tt.errContains, err.Error())
-						}
-					} else {
-						t.Errorf("Unexpected error: %v", err)
-					}
-					return
-				}
+			err := validateConfiguredModel(tt.model, tt.provider, tt.displayName)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("validateConfiguredModel() error = %v, wantErr %v", err, tt.wantErr)
 			}
-
-			if tt.wantErr && !tt.isBuiltIn && strings.TrimSpace(tt.model) == "" {
-				return // Expected error already checked above
+			if tt.errContains != "" && (err == nil || !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(tt.errContains))) {
+				t.Fatalf("validateConfiguredModel() error = %v, want substring %q", err, tt.errContains)
 			}
 		})
 	}
 }
 
-// TestGetProviderDefinition tests getting provider definition
-// TestBuildProviderConfigFromInput_CustomProviderModel validates custom provider model handling
-func TestBuildProviderConfigFromInput_CustomProviderModel(t *testing.T) {
-	t.Run("custom provider with empty model returns error in configureProvider flow", func(t *testing.T) {
-		// The actual check happens in configureProvider, not in buildProviderConfigFromInput
-		model := "   "
-		trimmed := strings.TrimSpace(model)
-		if trimmed == "" {
-			err := fmt.Errorf("model name is required for custom providers")
-			if err == nil {
-				t.Error("Should return error for empty model on custom provider")
-			}
-		}
-	})
-}
-
-// TestResolveProviderName_NonCustom tests non-custom provider name resolution
 func TestResolveProviderName_NonCustom(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -1824,37 +1387,24 @@ func TestResolveProviderName_NonCustom(t *testing.T) {
 			want:         "anthropic",
 			wantErr:      false,
 		},
-		{
-			name:         "custom provider triggers interactive input",
-			providerName: "custom",
-			want:         "", // Would require TUI mocking
-			wantErr:      false,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.providerName == "custom" {
-				// Skip - requires TUI mocking for tap.Text
-				t.Skip("requires TUI mocking")
-			}
-
-			got, err := resolveProviderName(tt.providerName)
+			got, err := ResolveProviderName(tt.providerName)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("resolveProviderName() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ResolveProviderName() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("resolveProviderName() = %v, want %v", got, tt.want)
+				t.Errorf("ResolveProviderName() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-// TestEnsureConfigDirectory_ErrorPaths tests error handling in ensureConfigDirectory
 func TestEnsureConfigDirectory_ErrorPaths(t *testing.T) {
 	t.Run("invalid path with permission issue", func(t *testing.T) {
-		// Use a path that cannot be created (file as parent)
 		tmpFile, err := os.CreateTemp("", "notadir")
 		if err != nil {
 			t.Fatalf("Failed to create temp file: %v", err)
@@ -1865,19 +1415,17 @@ func TestEnsureConfigDirectory_ErrorPaths(t *testing.T) {
 		// Try to create directory inside a file path (should fail)
 		invalidPath := filepath.Join(tmpFile.Name(), "config")
 		cliCtx := NewCLIContext()
-		err = ensureConfigDirectory(cliCtx, invalidPath)
+		err = EnsureConfigDir(cliCtx, invalidPath)
 		if err == nil {
 			t.Error("expected error for invalid config directory path")
 		}
 	})
 }
 
-// TestSaveProviderConfiguration_ValidationErrors tests error paths in saveProviderConfiguration
 func TestSaveProviderConfiguration_ValidationErrors(t *testing.T) {
 	t.Run("missing config directory", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create key but use invalid path for secrets
 		if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
 			t.Fatalf("EnsureKeyExists() error = %v", err)
 		}
@@ -1886,7 +1434,7 @@ func TestSaveProviderConfiguration_ValidationErrors(t *testing.T) {
 			Providers: make(map[string]config.Provider),
 		}
 
-		params := SaveProviderParams{
+		err := AddAndSaveProvider(AddProviderParams{
 			CLIContext:   NewCLIContext(),
 			ConfigDir:    "/nonexistent/path/that/cannot/be/created",
 			Cfg:          cfg,
@@ -1896,14 +1444,8 @@ func TestSaveProviderConfiguration_ValidationErrors(t *testing.T) {
 				BaseURL: "https://test.com",
 				Model:   "test-model",
 			},
-			APIKey:      "test-api-key",
-			Secrets:     make(map[string]string),
-			SecretsPath: filepath.Join(tmpDir, "secrets.age"),
-			KeyPath:     filepath.Join(tmpDir, "key.txt"),
-			IsEdit:      false,
-		}
-
-		err := saveProviderConfiguration(params)
+			SetAsDefault: true,
+		})
 		if err == nil {
 			t.Error("expected error for invalid config directory")
 		}

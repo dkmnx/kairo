@@ -47,7 +47,6 @@ func NewConfigCache(ttl time.Duration) *ConfigCache {
 	}
 }
 
-// deepCopyConfig creates a deep copy of a Config to prevent mutation of cached values.
 func deepCopyConfig(cfg *Config) *Config {
 	if cfg == nil {
 		return nil

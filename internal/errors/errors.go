@@ -3,18 +3,20 @@ package errors
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 type ErrorType string
 
 const (
-	ConfigError     ErrorType = "config"
-	CryptoError     ErrorType = "crypto"
-	ValidationError ErrorType = "validation"
-	ProviderError   ErrorType = "provider"
-	FileSystemError ErrorType = "filesystem"
-	NetworkError    ErrorType = "network"
-	RuntimeError    ErrorType = "runtime"
+	ConfigError       ErrorType = "config"
+	CryptoError       ErrorType = "crypto"
+	ValidationError   ErrorType = "validation"
+	ProviderError     ErrorType = "provider"
+	FileSystemError   ErrorType = "filesystem"
+	NetworkError      ErrorType = "network"
+	RuntimeError      ErrorType = "runtime"
+	VerificationError ErrorType = "verification"
 )
 
 var ErrConfigNotFound = errors.New("configuration file not found")
@@ -43,26 +45,24 @@ type KairoError struct {
 }
 
 func (e *KairoError) Error() string {
-	msg := e.Message
+	var b strings.Builder
+	b.WriteString(e.Message)
 	if e.Cause != nil {
-		msg = fmt.Sprintf("%s: %v", msg, e.Cause)
+		fmt.Fprintf(&b, ": %v", e.Cause)
 	}
-
 	if len(e.Context) > 0 {
-		ctx := " ("
+		b.WriteString(" (")
 		first := true
 		for k, v := range e.Context {
 			if !first {
-				ctx += ", "
+				b.WriteString(", ")
 			}
-			ctx += fmt.Sprintf("%s=%s", k, v)
+			fmt.Fprintf(&b, "%s=%s", k, v)
 			first = false
 		}
-		ctx += ")"
-		msg += ctx
+		b.WriteString(")")
 	}
-
-	return msg
+	return b.String()
 }
 
 func (e *KairoError) Unwrap() error {
@@ -129,4 +129,8 @@ func RuntimeErr(message string, cause error) *KairoError {
 		return WrapError(RuntimeError, message, cause)
 	}
 	return NewError(RuntimeError, message)
+}
+
+func VerificationErr(message string, cause error) *KairoError {
+	return WrapError(VerificationError, message, cause)
 }

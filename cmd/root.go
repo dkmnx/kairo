@@ -1,101 +1,15 @@
-// Package cmd implements the Kairo CLI application using the Cobra framework.
-//
-// Architecture:
-//   - Commands are defined in individual files (root.go, setup.go, default.go, etc.)
-//   - Global state (configDir, verbose) is managed via getter/setter functions
-//   - Command execution is orchestrated by rootCmd.Execute()
-//
-// Testing:
-//   - Most commands have corresponding *_test.go files
-//   - Integration tests verify end-to-end workflows
-//   - External process execution can be mocked via execCommand variable
-//
-// Design principles:
-//   - Minimal business logic in command handlers
-//   - Delegation to internal packages for core functionality
-//   - Consistent error handling with user-friendly messages
-//
-// Security:
-//   - All user input is read securely using ui package
-//   - No secrets are logged to stdout/stderr
-//   - API keys are managed via encrypted secrets file
-//
-// # Global State Design
-//
-// This CLI uses global state for configuration directory, verbose mode, and
-// root context. This pattern is appropriate for CLI applications where:
-//
-//  1. Single execution: Commands run once and exit - no long-running state
-//  2. Test isolation: Tests use setter functions (setConfigDir, setVerbose)
-//     to isolate state between test cases
-//  3. Simplicity: Avoids passing context through deep call stacks
-//
-// Thread safety is ensured via sync.RWMutex for configDir and verbose.
-// The rootCtx is initialized lazily and never modified after creation.
-//
-// Alternative approaches considered:
-//   - Dependency injection: Would require significant refactoring for minimal benefit
-//   - Context values: Would require threading context through all functions
-//
-// This design prioritizes CLI simplicity over general-purpose library use.
 package cmd
 
 import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
 	kairoversion "github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
-
-var (
-	configDir   string
-	configDirMu sync.RWMutex // Protects configDir
-	verbose     bool
-	verboseMu   sync.RWMutex // Protects verbose
-)
-
-func getVerbose() bool {
-	verboseMu.RLock()
-	defer verboseMu.RUnlock()
-
-	return verbose
-}
-
-func setVerbose(enabled bool) {
-	verboseMu.Lock()
-	defer verboseMu.Unlock()
-
-	verbose = enabled
-}
-
-func setConfigDir(dir string) {
-	configDirMu.Lock()
-	defer configDirMu.Unlock()
-
-	configDir = dir
-	defaultCLIContext.SetConfigDir(dir)
-}
-
-func getConfigDir() string {
-	configDirMu.RLock()
-	defer configDirMu.RUnlock()
-
-	if configDir != "" {
-		return configDir
-	}
-
-	dir, err := config.GetConfigDir()
-	if err != nil {
-		return ""
-	}
-
-	return dir
-}
 
 const (
 	envBaseURL     = "ANTHROPIC_BASE_URL"
@@ -110,8 +24,25 @@ const (
 
 var (
 	harnessFlag string
-	yoloFlag    bool // yolo mode - skips permission prompts
+	yoloFlag    bool
+	verboseFlag bool
 )
+
+func setConfigDir(dir string) {
+	defaultCLIContext.SetConfigDir(dir)
+}
+
+func getConfigDir() string {
+	return defaultCLIContext.GetConfigDir()
+}
+
+func setVerbose(enabled bool) {
+	defaultCLIContext.SetVerbose(enabled)
+}
+
+func getVerbose() bool {
+	return defaultCLIContext.GetVerbose() || verboseFlag
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "kairo",
@@ -165,14 +96,21 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
 
-		providerEnv, secrets, err := buildProviderEnvironment(cliCtx, configDir, provider, providerName)
+		envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
+			BaseURL: provider.BaseURL,
+			Model:   provider.Model,
+			EnvVars: provider.EnvVars,
+		}, providerName)
 		if err != nil {
 			handleSecretsError(err)
 
 			return
 		}
 
-		apiKeyKey := apiKeyEnvVarName(providerName)
+		providerEnv := envResult.ProviderEnv
+		secrets := envResult.Secrets
+
+		apiKeyKey := APIKeyEnvVarName(providerName)
 		if apiKey, hasKey := secrets[apiKeyKey]; hasKey {
 			executeWithAuth(ExecutionConfig{
 				Cmd:           cmd,
@@ -200,11 +138,9 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 	},
 }
 
-// Execute runs the kairo CLI application.
 func Execute() error {
 	args := os.Args[1:]
 
-	// Clean up args after execution to prevent test pollution
 	defer func() {
 		rootCmd.SetArgs(nil)
 	}()
@@ -215,19 +151,17 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&configDir, "config", "", "Config directory (default is platform-specific)")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	rootCmd.PersistentFlags().String("config", "", "Config directory (default is platform-specific)")
+	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Verbose output")
 	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
 	rootCmd.Flags().BoolVarP(&yoloFlag, "yolo", "y", false,
 		"Skip permission prompts (--dangerously-skip-permissions for Claude, --yolo for Qwen)")
 
-	// Sync flag values to defaultCLIContext before each command runs.
-	// This ensures that even though flags are bound to globals, the CLIContext
-	// used by commands is kept in sync.
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		defaultCLIContext.SetConfigDir(configDir)
-		defaultCLIContext.SetVerbose(verbose)
-		// Set the CLIContext on the command for GetCLIContext to find
+		if configFlag, err := cmd.Flags().GetString("config"); err == nil && configFlag != "" {
+			defaultCLIContext.SetConfigDir(configFlag)
+		}
+		defaultCLIContext.SetVerbose(verboseFlag)
 		cmd.SetContext(WithCLIContext(cmd.Context(), defaultCLIContext))
 	}
 }
@@ -242,21 +176,16 @@ func splitArgs(args []string) ([]string, []string) {
 	return args, nil
 }
 
-// getProviderFromArgs extracts provider name and remaining args from command args
 func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
 	kairoArgs, harnessArgs := splitArgs(args)
 
-	// Determine argument handling strategy based on input pattern
 	switch {
 	case len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "":
-		// First arg looks like a flag and default provider is set - use default
 		args = []string{cfg.DefaultProvider}
 		harnessArgs = kairoArgs
 	case len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0]:
-		// Kairo args differ from original args - prepend first arg
 		args = append([]string{args[0]}, kairoArgs...)
 	case len(args) > 1:
-		// Multiple args - first is provider, rest are harness args
 		harnessArgs = args[1:]
 		args = args[:1]
 	}
@@ -276,8 +205,6 @@ func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) 
 	return providerName, harnessArgs
 }
 
-// resolveProviderAndArgs determines which provider to use and separates harness arguments.
-// Returns: (kairoArgs, harnessArgs, providerName)
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
 	if len(args) == 0 {
 		if cfg.DefaultProvider == "" {

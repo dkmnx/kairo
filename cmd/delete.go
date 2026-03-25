@@ -37,7 +37,6 @@ var deleteCmd = &cobra.Command{
 
 		var target string
 		if len(args) == 0 {
-			// Interactive selection using tap
 			if len(cfg.Providers) == 0 {
 				ui.PrintWarn("No providers configured")
 				ui.PrintInfo("Run 'kairo setup' to get started")
@@ -49,7 +48,6 @@ var deleteCmd = &cobra.Command{
 				providerNames = append(providerNames, name)
 			}
 
-			// Convert to tap.SelectOption format
 			options := make([]tap.SelectOption[string], len(providerNames))
 			for i, name := range providerNames {
 				options[i] = tap.SelectOption[string]{Value: name, Label: name}
@@ -81,7 +79,6 @@ var deleteCmd = &cobra.Command{
 			return
 		}
 
-		// Confirmation
 		confirmed := tap.Confirm(context.Background(), tap.ConfirmOptions{
 			Message: fmt.Sprintf("Are you sure you want to delete '%s'?", target),
 		})
