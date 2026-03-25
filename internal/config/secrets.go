@@ -65,30 +65,8 @@ func (s *SecretsMap) Close() error {
 
 func ParseSecrets(secrets string) map[string]string {
 	result := make(map[string]string)
-	for lineNum, line := range strings.Split(secrets, "\n") {
-		if line == "" {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			key, value := parts[0], parts[1]
-			if key == "" {
-				log.Printf("Warning: skipping malformed secret entry at line %d: empty key", lineNum+1)
-
-				continue
-			}
-			if value == "" {
-				log.Printf("Warning: skipping malformed secret entry at line %d: empty value", lineNum+1)
-
-				continue
-			}
-			if strings.Contains(key, "\n") || strings.Contains(value, "\n") {
-				log.Printf("Warning: skipping malformed secret entry at line %d: contains newline", lineNum+1)
-
-				continue
-			}
-			result[key] = value
-		}
+	for _, entry := range parseSecretsEntries(secrets) {
+		result[entry.key] = entry.value
 	}
 
 	return result
@@ -96,21 +74,48 @@ func ParseSecrets(secrets string) map[string]string {
 
 func ParseSecretsToSecureMap(secrets string) *SecretsMap {
 	result := NewSecretsMap()
-	for _, line := range strings.Split(secrets, "\n") {
+	for _, entry := range parseSecretsEntries(secrets) {
+		result.Set(entry.key, entry.value)
+	}
+
+	return result
+}
+
+type secretEntry struct {
+	key   string
+	value string
+}
+
+func parseSecretsEntries(secrets string) []secretEntry {
+	var entries []secretEntry
+	for lineNum, line := range strings.Split(secrets, "\n") {
 		if line == "" {
 			continue
 		}
 		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			key, value := parts[0], parts[1]
-			if key == "" || value == "" || strings.Contains(key, "\n") || strings.Contains(value, "\n") {
-				continue
-			}
-			result.Set(key, value)
+		if len(parts) != 2 {
+			continue
 		}
+		key, value := parts[0], parts[1]
+		if key == "" {
+			log.Printf("Warning: skipping malformed secret entry at line %d: empty key", lineNum+1)
+
+			continue
+		}
+		if value == "" {
+			log.Printf("Warning: skipping malformed secret entry at line %d: empty value", lineNum+1)
+
+			continue
+		}
+		if strings.Contains(key, "\n") || strings.Contains(value, "\n") {
+			log.Printf("Warning: skipping malformed secret entry at line %d: contains newline", lineNum+1)
+
+			continue
+		}
+		entries = append(entries, secretEntry{key: key, value: value})
 	}
 
-	return result
+	return entries
 }
 
 func FormatSecrets(secrets map[string]string) string {

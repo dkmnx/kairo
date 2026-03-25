@@ -29,7 +29,11 @@ func TestConfigCache_GetAndInvalidate(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: test
-providers: {}
+providers:
+  test:
+    name: test
+    base_url: https://api.test.com
+    model: test-model
 `
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatal(err)
@@ -73,7 +77,11 @@ func TestConfigCache_TTLExpiry(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: test
-providers: {}
+providers:
+  test:
+    name: test
+    base_url: https://api.test.com
+    model: test-model
 `
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatal(err)
@@ -102,7 +110,11 @@ func TestConfigCache_ConcurrentAccess(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: test
-providers: {}
+providers:
+  test:
+    name: test
+    base_url: https://api.test.com
+    model: test-model
 `
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatal(err)
@@ -135,7 +147,11 @@ func TestConfigCache_ConcurrentWrites(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	configContent := `default_provider: test
-providers: {}
+providers:
+  test:
+    name: test
+    base_url: https://api.test.com
+    model: test-model
 `
 	if err := os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte(configContent), 0600); err != nil {
 		t.Fatal(err)
@@ -176,7 +192,11 @@ func TestConfigCache_Metrics(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: test
-providers: {}
+providers:
+  test:
+    name: test
+    base_url: https://api.test.com
+    model: test-model
 `
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatal(err)

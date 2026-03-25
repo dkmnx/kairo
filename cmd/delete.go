@@ -103,9 +103,11 @@ var deleteCmd = &cobra.Command{
 		secretsPath := filepath.Join(dir, "secrets.age")
 		keyPath := filepath.Join(dir, "age.key")
 
-		existingSecrets, err := crypto.DecryptSecrets(cliCtx.GetRootCtx(), secretsPath, keyPath)
+		existingSecrets, err := crypto.DecryptSecretsBytes(cliCtx.GetRootCtx(), secretsPath, keyPath)
 		if err == nil {
-			secrets := config.ParseSecrets(existingSecrets)
+			secrets := config.ParseSecrets(string(existingSecrets))
+			crypto.ClearMemory(existingSecrets)
+
 			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(target)))
 
 			secretsContent := config.FormatSecrets(secrets)
