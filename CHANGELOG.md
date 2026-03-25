@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Error handling performance optimized with strings.Builder
+- CLI state management consolidated for better maintainability
+- Test infrastructure improved with PromptUI adapter for testable prompts
+
+### Security
+- Update command now verifies SHA256 checksums before installing downloaded binaries
+
 ## [2.3.0] - 2026-03-22
 
 ### Added
