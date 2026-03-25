@@ -57,7 +57,9 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		configDir := cliCtx.GetConfigDir()
 		if configDir == "" {
 			cmd.Println("Error: config directory not found")
-			_ = cmd.Help()
+			if err := cmd.Help(); err != nil {
+				cmd.Println(err)
+			}
 
 			return
 		}

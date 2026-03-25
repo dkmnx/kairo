@@ -138,7 +138,19 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 		cfg.DefaultModels = make(map[string]string)
 	}
 
+	cfg.validate()
+
 	return &cfg, nil
+}
+
+func (c *Config) validate() {
+	if c.DefaultProvider == "" {
+		return
+	}
+
+	if _, exists := c.Providers[c.DefaultProvider]; !exists {
+		c.DefaultProvider = ""
+	}
 }
 
 func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
