@@ -73,7 +73,7 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 	default:
 	}
 
-	recipient, err := loadRecipient(ctx, keyPath)
+	recipient, err := loadRecipient(keyPath)
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load encryption key", err).
@@ -146,7 +146,7 @@ func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, e
 	default:
 	}
 
-	identity, err := loadIdentity(ctx, keyPath)
+	identity, err := loadIdentity(keyPath)
 	if err != nil {
 		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
@@ -180,37 +180,14 @@ func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, e
 	return buf.String(), nil
 }
 
-type SecretBytes struct {
-	data []byte
-}
-
-func (s *SecretBytes) String() string {
-	return string(s.data)
-}
-
-func (s *SecretBytes) Clear() {
-	if s.data != nil {
-		for i := range s.data {
-			s.data[i] = 0
-		}
+func ClearMemory(b []byte) {
+	for i := range b {
+		b[i] = 0
 	}
 }
 
-func (s *SecretBytes) Close() error {
-	s.Clear()
-	s.data = nil
-
-	return nil
-}
-
-func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) (*SecretBytes, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
-	identity, err := loadIdentity(ctx, keyPath)
+func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) ([]byte, error) {
+	identity, err := loadIdentity(keyPath)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
@@ -241,16 +218,10 @@ func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) (*Sec
 			"failed to read decrypted content", err)
 	}
 
-	return &SecretBytes{data: buf.Bytes()}, nil
+	return buf.Bytes(), nil
 }
 
-func loadRecipient(ctx context.Context, keyPath string) (age.Recipient, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
+func loadRecipient(keyPath string) (age.Recipient, error) {
 	file, err := os.Open(keyPath)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
@@ -283,13 +254,7 @@ func loadRecipient(ctx context.Context, keyPath string) (age.Recipient, error) {
 	return recipient, nil
 }
 
-func loadIdentity(ctx context.Context, keyPath string) (age.Identity, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
+func loadIdentity(keyPath string) (age.Identity, error) {
 	file, err := os.Open(keyPath)
 	if err != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
