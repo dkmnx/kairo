@@ -18,23 +18,18 @@ import (
 
 func TestRootCmd(t *testing.T) {
 	t.Run("no config file - shows setup message", func(t *testing.T) {
-		// Use a temp directory that doesn't have a config file
 		tmpDir := t.TempDir()
 
-		// Set config dir to temp directory
 		originalConfigDir := getConfigDir()
 		setConfigDir(tmpDir)
 		defer func() { setConfigDir(originalConfigDir) }()
 
-		// Capture output
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
 
-		// Execute root command
 		rootCmd.Run(rootCmd, []string{})
 
 		result := output.String()
-		// When config file doesn't exist, rootCmd should show setup message
 		if !containsString(result, "No providers configured") && !containsString(result, "configuration file not found") {
 			t.Errorf("Expected setup-related message, got: %s", result)
 		}
@@ -43,7 +38,6 @@ func TestRootCmd(t *testing.T) {
 	t.Run("no default provider - shows usage", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create config file without default provider
 		cfg := &config.Config{
 			DefaultProvider: "",
 			Providers: map[string]config.Provider{
@@ -71,7 +65,6 @@ func TestRootCmd(t *testing.T) {
 		if !containsString(result, "kairo setup") {
 			t.Errorf("Expected 'kairo setup' in usage, got: %s", result)
 		}
-		// Usage should include the available commands
 		if !containsString(result, "kairo list") && !containsString(result, "kairo <provider>") {
 			t.Errorf("Expected kairo commands in usage, got: %s", result)
 		}
@@ -84,7 +77,6 @@ func TestRootCmd(t *testing.T) {
 	t.Run("no default provider with provider arg - switches to provider", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create config file without default provider, but with "anthropic" configured
 		cfg := &config.Config{
 			DefaultProvider: "",
 			Providers: map[string]config.Provider{
@@ -104,7 +96,6 @@ func TestRootCmd(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetErr(output)
 
-		// Mock lookPath to return a fake claude path (for Docker/CI environments)
 		originalLookPath := lookPath
 		lookPath = func(file string) (string, error) {
 			if file == "claude" {
@@ -114,20 +105,16 @@ func TestRootCmd(t *testing.T) {
 		}
 		defer func() { lookPath = originalLookPath }()
 
-		// Mock execCommand to capture invocation without actually running
-		// Use atomic.Bool for race-safe access
 		var execCalled atomic.Bool
 		originalExecCommand := execCommand
 		execCommand = func(name string, arg ...string) *exec.Cmd {
 			execCalled.Store(true)
-			// Return a command that does nothing
 			cmd := originalExecCommand("echo", "mocked")
 			cmd.Args = []string{"echo", "mocked"}
 			return cmd
 		}
 		defer func() { execCommand = originalExecCommand }()
 
-		// Also mock execCommandContext used by executeWithoutAuth
 		originalExecCommandContext := execCommandContext
 		execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			execCalled.Store(true)
@@ -137,15 +124,12 @@ func TestRootCmd(t *testing.T) {
 		}
 		defer func() { execCommandContext = originalExecCommandContext }()
 
-		// Also mock exitProcess to prevent test from exiting
 		originalExitProcess := exitProcess
 		exitProcess = func(int) {}
 		defer func() { exitProcess = originalExitProcess }()
 
-		// Execute root command with provider name as argument
 		rootCmd.Run(rootCmd, []string{"anthropic"})
 
-		// Verify execCommand was called (meaning switch behavior was triggered)
 		if !execCalled.Load() {
 			t.Errorf("Expected execCommand to be called when provider name is passed as argument")
 		}
@@ -154,7 +138,6 @@ func TestRootCmd(t *testing.T) {
 	t.Run("no default provider with invalid provider arg - shows usage", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create config file without default provider
 		cfg := &config.Config{
 			DefaultProvider: "",
 			Providers: map[string]config.Provider{
@@ -174,11 +157,9 @@ func TestRootCmd(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetErr(output)
 
-		// Execute root command with non-existent provider name
 		rootCmd.Run(rootCmd, []string{"nonexistent"})
 
 		result := output.String()
-		// Should show error about provider not configured
 		if !containsString(result, "not configured") {
 			t.Errorf("Expected 'not configured' error, got: %s", result)
 		}
@@ -187,7 +168,6 @@ func TestRootCmd(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	t.Run("valid command executes successfully", func(t *testing.T) {
-		// Test with help command
 		oldArgs := os.Args
 		defer func() { os.Args = oldArgs }()
 
@@ -196,9 +176,8 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		// Save original flag values
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -219,20 +198,17 @@ func TestExecute(t *testing.T) {
 	})
 
 	t.Run("invalid command treated as provider name", func(t *testing.T) {
-		// Save original args
 		oldArgs := os.Args
 		defer func() { os.Args = oldArgs }()
 
-		// Set args to simulate invalid command (not a subcommand)
 		os.Args = []string{"kairo", "invalid-command-that-does-not-exist"}
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
 		rootCmd.SetErr(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		// Save and restore flag values
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -242,14 +218,11 @@ func TestExecute(t *testing.T) {
 
 		err := Execute()
 
-		// Should not error - command runs without crashing
 		if err != nil {
 			t.Errorf("Execute() should succeed, got error: %v", err)
 		}
 
 		result := output.String()
-		// With no config and invalid provider, shows help (provider not found check comes later)
-		// Just verify no crash and no "unknown command" from Cobra
 		if containsString(result, "unknown command") {
 			t.Errorf("Should not show 'unknown command' from Cobra parser, got: %s", result)
 		}
@@ -264,9 +237,8 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		// Save and restore flag values
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -296,9 +268,8 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		// Reset and restore flag values
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -313,14 +284,11 @@ func TestExecute(t *testing.T) {
 		}
 
 		// Note: We can't reliably check configDir value here because it's a global variable
-		// that may be modified by other tests. The test above verifies that Execute() works
-		// with --config flag without errors.
 	})
 
 	t.Run("provider shorthand without default - switches to provider", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create config file without default provider, but with "anthropic" configured
 		cfg := &config.Config{
 			DefaultProvider: "",
 			Providers: map[string]config.Provider{
@@ -339,7 +307,7 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetArgs(nil)
 
 		originalConfigDir := getConfigDir()
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setConfigDir(tmpDir) // Use tmpDir, not empty string
 		setVerbose(false)
 		defer func() {
@@ -348,15 +316,11 @@ func TestExecute(t *testing.T) {
 			os.Remove(configPath)
 		}()
 
-		// Execute command with provider name as argument
-		// Use rootCmd.Run directly to avoid Execute()'s os.Args handling
 		rootCmd.SetArgs([]string{"--config", tmpDir, "anthropic"})
 
 		// Note: This test verifies the provider shorthand behavior with rootCmd.Run
-		// Execute() has complex os.Args handling that's tested by other tests
 		rootCmd.Run(rootCmd, []string{"--config", tmpDir, "anthropic"})
 
-		// Should NOT show "unknown command" error
 		result := output.String()
 		if containsString(result, "unknown command") {
 			t.Errorf("Got 'unknown command' error, output: %s", result)
@@ -382,10 +346,8 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 		defer func() { setConfigDir(originalConfigDir) }()
 
 		result := getConfigDir()
-		// Should return the value from env.GetConfigDir()
 		// We can't easily test the exact value without mocking env package
 		if result == "" {
-			// At minimum, it should return something non-empty in normal conditions
 			t.Skip("Cannot test env.GetConfigDir() without mocking")
 		}
 	})
@@ -396,21 +358,16 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 		defer func() { setConfigDir(originalConfigDir) }()
 
 		result := getConfigDir()
-		// Just verify it doesn't crash and returns a string
 		if result == "" {
-			// In a real environment, GetConfigDir would return ~/.config/kairo
-			// Since we can't mock it easily, we just verify it's a valid return
 			t.Skip("Cannot mock env.GetConfigDir() without dependency injection")
 		}
 	})
 }
 
-// Helper function to check if string contains substring
 func containsString(s, substr string) bool {
 	return bytes.Contains([]byte(s), []byte(substr))
 }
 
-// Helper function to create a test config file
 func createConfigFile(t *testing.T, dir string, cfg *config.Config) string {
 	configPath := filepath.Join(dir, "config.yaml")
 	if err := config.SaveConfig(context.Background(), dir, cfg); err != nil {
@@ -424,10 +381,9 @@ func TestHandleConfigError(t *testing.T) {
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
 
-		// Simulate the error from outdated binary
 		err := fmt.Errorf("field default_harness not found in type config.Config (path=/home/user/.config/kairo/config.yaml)")
 
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setVerbose(false)
 		defer func() { setVerbose(originalVerbose) }()
 
@@ -435,8 +391,6 @@ func TestHandleConfigError(t *testing.T) {
 
 		result := output.String()
 
-		// Verify the helpful message is shown
-		// Use platform-specific install script name
 		installScript := "install.ps1"
 		if runtime.GOOS != "windows" {
 			installScript = "install.sh"
@@ -460,10 +414,9 @@ func TestHandleConfigError(t *testing.T) {
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
 
-		// Simulate the error from outdated binary
 		err := fmt.Errorf("field default_harness not found in type config.Config")
 
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setVerbose(true)
 		defer func() { setVerbose(originalVerbose) }()
 
@@ -471,7 +424,6 @@ func TestHandleConfigError(t *testing.T) {
 
 		result := output.String()
 
-		// Verify technical details are shown in verbose mode
 		if !containsString(result, "Technical details:") {
 			t.Errorf("Expected 'Technical details:' in verbose output:\n%s", result)
 		}
@@ -484,10 +436,9 @@ func TestHandleConfigError(t *testing.T) {
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
 
-		// Simulate a different error
 		err := fmt.Errorf("some other config error")
 
-		originalVerbose := verbose
+		originalVerbose := getVerbose()
 		setVerbose(false)
 		defer func() { setVerbose(originalVerbose) }()
 
@@ -495,7 +446,6 @@ func TestHandleConfigError(t *testing.T) {
 
 		result := output.String()
 
-		// Verify default error message
 		if !containsString(result, "Error loading config:") {
 			t.Errorf("Expected default error message, got:\n%s", result)
 		}
@@ -534,7 +484,6 @@ func TestContainsSubstring(t *testing.T) {
 	}
 }
 
-// TestGetProviderFromArgs tests the getProviderFromArgs function
 func TestGetProviderFromArgs(t *testing.T) {
 	tests := []struct {
 		name            string

@@ -201,9 +201,9 @@ func TestLoadRecipientEmptyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := loadRecipient(context.Background(), keyPath)
+	_, err := loadRecipient(keyPath)
 	if err == nil {
-		t.Error("loadRecipient(context.Background(), ) should error on empty file")
+		t.Error("loadRecipient() should error on empty file")
 	}
 	if !strings.Contains(err.Error(), "empty") {
 		t.Errorf("error should mention 'empty', got: %v", err)
@@ -218,9 +218,9 @@ func TestLoadRecipientMissingRecipient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := loadRecipient(context.Background(), keyPath)
+	_, err := loadRecipient(keyPath)
 	if err == nil {
-		t.Error("loadRecipient(context.Background(), ) should error on file missing recipient line")
+		t.Error("loadRecipient() should error on file missing recipient line")
 	}
 	if !strings.Contains(err.Error(), "recipient") {
 		t.Errorf("error should mention 'recipient', got: %v", err)
@@ -231,18 +231,17 @@ func TestLoadIdentity(t *testing.T) {
 	tmpDir := t.TempDir()
 	keyPath := filepath.Join(tmpDir, "age.key")
 
-	// Generate a key first
 	err := GenerateKey(context.Background(), keyPath)
 	if err != nil {
 		t.Fatalf("GenerateKey(context.Background(), ) error = %v", err)
 	}
 
-	identity, err := loadIdentity(context.Background(), keyPath)
+	identity, err := loadIdentity(keyPath)
 	if err != nil {
-		t.Fatalf("loadIdentity(context.Background(), ) error = %v", err)
+		t.Fatalf("loadIdentity() error = %v", err)
 	}
 	if identity == nil {
-		t.Error("loadIdentity(context.Background(), ) should return a valid identity")
+		t.Error("loadIdentity() should return a valid identity")
 	}
 }
 
@@ -254,9 +253,9 @@ func TestLoadIdentityEmptyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := loadIdentity(context.Background(), keyPath)
+	_, err := loadIdentity(keyPath)
 	if err == nil {
-		t.Error("loadIdentity(context.Background(), ) should error on empty file")
+		t.Error("loadIdentity() should error on empty file")
 	}
 	if !strings.Contains(err.Error(), "empty") {
 		t.Errorf("error should mention 'empty', got: %v", err)
@@ -267,15 +266,14 @@ func TestLoadIdentityInvalidFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	keyPath := filepath.Join(tmpDir, "invalid.key")
 
-	// Write a valid-looking line but invalid key format
 	badKey := "AGE-SECRET-KEY-INVALID-FORMAT-THIS-IS-NOT-VALID"
 	if err := os.WriteFile(keyPath, []byte(badKey+"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 
-	_, err := loadIdentity(context.Background(), keyPath)
+	_, err := loadIdentity(keyPath)
 	if err == nil {
-		t.Error("loadIdentity(context.Background(), ) should error on invalid key format")
+		t.Error("loadIdentity() should error on invalid key format")
 	}
 }
 
@@ -342,7 +340,6 @@ func TestDecryptCorruptedFile(t *testing.T) {
 
 	secretsPath := filepath.Join(tmpDir, "corrupted.age")
 
-	// Write corrupted data (not valid age encryption)
 	corruptedData := []byte("this is not encrypted data!!!")
 	if err := os.WriteFile(secretsPath, corruptedData, 0600); err != nil {
 		t.Fatal(err)
@@ -365,20 +362,17 @@ func TestDecryptTruncatedFile(t *testing.T) {
 
 	secretsPath := filepath.Join(tmpDir, "truncated.age")
 
-	// First encrypt some valid data
 	validContent := "ANTHROPIC_API_KEY=test-key-123"
 	err = EncryptSecrets(context.Background(), secretsPath, keyPath, validContent)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Read and truncate the file
 	data, err := os.ReadFile(secretsPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Write truncated data (half of original)
 	truncatedData := data[:len(data)/2]
 	if err := os.WriteFile(secretsPath, truncatedData, 0600); err != nil {
 		t.Fatal(err)
@@ -401,7 +395,6 @@ func TestDecryptRandomData(t *testing.T) {
 
 	secretsPath := filepath.Join(tmpDir, "random.age")
 
-	// Write random bytes (not valid age encryption)
 	randomData := make([]byte, 256)
 	for i := range randomData {
 		randomData[i] = byte(i % 256)
@@ -433,32 +426,24 @@ func TestDecryptSecretsBytes_Success(t *testing.T) {
 		t.Fatalf("EncryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	secretsBytes, err := DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
+	data, err := DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("DecryptSecretsBytes(context.Background(), ) error = %v", err)
 	}
 
-	if secretsBytes.String() != secrets {
-		t.Errorf("Decrypted content = %q, want %q", secretsBytes.String(), secrets)
+	if string(data) != secrets {
+		t.Errorf("Decrypted content = %q, want %q", string(data), secrets)
 	}
 
-	// Verify Clear works - it zeroizes the data
-	secretsBytes.Clear()
-	cleared := secretsBytes.String()
-	for i := range cleared {
-		if cleared[i] != '\x00' {
-			t.Errorf("Clear() should zeroize the data, byte %d is %q not null", i, cleared[i])
+	ClearMemory(data)
+	for i := range data {
+		if data[i] != '\x00' {
+			t.Errorf("ClearMemory() should zeroize the data, byte %d is %q not null", i, data[i])
 		}
-	}
-
-	// Verify Close works - it calls Clear() then sets data to nil
-	secretsBytes.Close()
-	if secretsBytes.String() != "" {
-		t.Error("Close() should zeroize the data")
 	}
 }
 
-func TestDecryptSecretsBytes_WithDefer(t *testing.T) {
+func TestDecryptSecretsBytes_ClearMemory(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	keyPath := filepath.Join(tmpDir, "age.key")
@@ -475,25 +460,26 @@ func TestDecryptSecretsBytes_WithDefer(t *testing.T) {
 		t.Fatalf("EncryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	// Use with defer to verify automatic cleanup
-	var decrypted *SecretBytes
+	var decrypted []byte
 	func() {
-		secretsBytes, err := DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
+		data, err := DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 		if err != nil {
 			t.Fatalf("DecryptSecretsBytes(context.Background(), ) error = %v", err)
 		}
-		defer secretsBytes.Close()
+		defer ClearMemory(data)
 
-		decrypted = secretsBytes
+		decrypted = data
 		// Data should still be accessible before defer runs
-		if decrypted.String() != secrets {
-			t.Errorf("Inside closure: got %q, want %q", decrypted.String(), secrets)
+		if string(decrypted) != secrets {
+			t.Errorf("Inside closure: got %q, want %q", string(decrypted), secrets)
 		}
 	}()
 
 	// After defer runs, data should be zeroized
-	if decrypted.String() != "" {
-		t.Error("After Close(): data should be zeroized")
+	for i := range decrypted {
+		if decrypted[i] != '\x00' {
+			t.Errorf("After ClearMemory(): data should be zeroized, byte %d is %q", i, decrypted[i])
+		}
 	}
 }
 
@@ -544,7 +530,7 @@ func TestDecryptSecretsBytes_CorruptedFile(t *testing.T) {
 	}
 }
 
-func TestSecretBytes_MultipleClose(t *testing.T) {
+func TestClearMemory_MultipleCalls(t *testing.T) {
 	tmpDir := t.TempDir()
 	keyPath := filepath.Join(tmpDir, "age.key")
 	if err := GenerateKey(context.Background(), keyPath); err != nil {
@@ -556,30 +542,28 @@ func TestSecretBytes_MultipleClose(t *testing.T) {
 		t.Fatalf("EncryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	secretsBytes, err := DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
+	data, err := DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("DecryptSecretsBytes(context.Background(), ) error = %v", err)
 	}
 
-	// Call Close multiple times should be safe
-	secretsBytes.Close()
-	secretsBytes.Close()
-	secretsBytes.Close()
+	ClearMemory(data)
+	ClearMemory(data)
+	ClearMemory(data)
 
 	// Data should remain zeroized
-	if secretsBytes.String() != "" {
-		t.Error("Data should remain zeroized after multiple Close() calls")
+	for i := range data {
+		if data[i] != '\x00' {
+			t.Errorf("Data should remain zeroized after multiple ClearMemory() calls, byte %d is %q", i, data[i])
+			break
+		}
 	}
 }
 
-// TestGenerateKeyWithFailingTempFile tests the error path when creating
-// the temporary key file fails. This tests the error handling around line 56-61.
 func TestGenerateKeyWithFailingTempFile(t *testing.T) {
-	// Create a directory that exists, but try to create a file with a name that will fail
 	// We'll use a regular temp dir since testing precise error conditions needs special setup
 	tmpDir := t.TempDir()
 
-	// First verifyGenerateKey works normally
 	keyPath := filepath.Join(tmpDir, "age.key")
 	err := GenerateKey(context.Background(), keyPath)
 	if err != nil {
@@ -592,12 +576,9 @@ func TestGenerateKeyWithFailingTempFile(t *testing.T) {
 	}
 }
 
-// TestEncryptSecretsWithFailingTempFile tests error path when creating
-// the temporary secrets file fails.
 func TestEncryptSecretsWithFailingTempFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create a valid key
 	keyPath := filepath.Join(tmpDir, "age.key")
 	if err := GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatalf("GenerateKey(context.Background(), ) error = %v", err)
@@ -615,7 +596,6 @@ func TestEncryptSecretsWithFailingTempFile(t *testing.T) {
 }
 
 func TestDecryptSecrets_OpenError(t *testing.T) {
-	// Create a file that exists but we can't read
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping readonly test on Windows")
 	}
@@ -631,7 +611,6 @@ func TestDecryptSecrets_OpenError(t *testing.T) {
 	}
 
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	// Write encrypted content first
 	if err := EncryptSecrets(context.Background(), secretsPath, keyPath, "test=secret"); err != nil {
 		t.Fatalf("EncryptSecrets(context.Background(), ) error = %v", err)
 	}

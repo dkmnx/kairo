@@ -156,8 +156,6 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 			WithContext("path", configPath)
 	}
 
-	// Use atomic write (temp file + rename) to prevent partial writes on interruption.
-	// This mirrors the safe write pattern used in internal/crypto for secrets and keys.
 	tempPath := configPath + ".tmp"
 
 	file, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)

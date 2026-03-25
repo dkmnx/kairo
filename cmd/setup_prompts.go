@@ -10,7 +10,8 @@ import (
 	"github.com/yarlson/tap"
 )
 
-// buildProviderListOptions converts a provider list to Tap SelectOptions format.
+const setupNewProvider = "Setup new provider"
+
 func buildProviderListOptions(providerList []string) []tap.SelectOption[string] {
 	options := make([]tap.SelectOption[string], len(providerList))
 	for i, name := range providerList {
@@ -20,18 +21,15 @@ func buildProviderListOptions(providerList []string) []tap.SelectOption[string] 
 	return options
 }
 
-// promptForProvider displays interactive provider selection menu using Tap TUI.
 func promptForProvider(cfg *config.Config) string {
+	ctx := context.Background()
+
 	if len(cfg.Providers) > 0 {
-		// Has configured providers - show them + setup new option
-		// Get names of configured providers
 		providerNames := make([]string, 0, len(cfg.Providers))
 		for name := range cfg.Providers {
 			providerNames = append(providerNames, name)
 		}
-
-		// Add "Setup new provider" as last option
-		providerNames = append(providerNames, "Setup new provider")
+		providerNames = append(providerNames, setupNewProvider)
 		options := buildProviderListOptions(providerNames)
 
 		fmt.Println()
@@ -40,18 +38,17 @@ func promptForProvider(cfg *config.Config) string {
 			Hint: "Configure new provider or edit existing from Kairo",
 		})
 
-		selected := tap.Select(context.Background(), tap.SelectOptions[string]{
+		selected := tap.Select(ctx, tap.SelectOptions[string]{
 			Message: "Select provider to edit or setup new",
 			Options: options,
 		})
 
-		// Check if "Setup new provider" was selected
-		if selected == "Setup new provider" {
+		if selected == setupNewProvider {
 			providerList := providers.GetProviderList()
 			providerList = append(providerList, "custom")
 			options = buildProviderListOptions(providerList)
 
-			selected = tap.Select(context.Background(), tap.SelectOptions[string]{
+			selected = tap.Select(ctx, tap.SelectOptions[string]{
 				Message: "Select provider to configure",
 				Options: options,
 			})
@@ -60,12 +57,11 @@ func promptForProvider(cfg *config.Config) string {
 		return selected
 	}
 
-	// No configured providers - go directly to provider selection (setup flow)
 	providerList := providers.GetProviderList()
 	providerList = append(providerList, "custom")
 	options := buildProviderListOptions(providerList)
 
-	selected := tap.Select(context.Background(), tap.SelectOptions[string]{
+	selected := tap.Select(ctx, tap.SelectOptions[string]{
 		Message: "Select provider to configure",
 		Options: options,
 	})
@@ -73,13 +69,11 @@ func promptForProvider(cfg *config.Config) string {
 	return selected
 }
 
-// parseProviderSelection validates the provider selection.
 func parseProviderSelection(selection string) (string, bool) {
 	if selection == "" {
 		return "", false
 	}
 
-	// Verify it's a valid built-in provider
 	if providers.IsBuiltInProvider(selection) {
 		return selection, true
 	}
@@ -87,7 +81,6 @@ func parseProviderSelection(selection string) (string, bool) {
 	return "", false
 }
 
-// displayProviderHeader shows the appropriate header based on edit/setup mode.
 func displayProviderHeader(provider config.Provider, isEdit, exists bool) {
 	if isEdit && exists {
 		tap.Message(fmt.Sprintf("Editing %s", provider.Name), tap.MessageOptions{
@@ -96,34 +89,24 @@ func displayProviderHeader(provider config.Provider, isEdit, exists bool) {
 	}
 }
 
-// promptForAPIKey prompts for API key with edit mode support.
 func promptForAPIKey(providerName string, secrets map[string]string, isEdit, exists bool) string {
-	if isEdit && exists {
-		existingKey := secrets[apiKeyEnvVarName(providerName)]
-		if existingKey == "" {
-			return tap.Password(context.Background(), tap.PasswordOptions{
-				Message: "API Key",
-			})
-		}
+	ctx := context.Background()
 
-		modifyAPIKey := tap.Confirm(context.Background(), tap.ConfirmOptions{
-			Message: "Modify API key?",
-		})
-		if modifyAPIKey {
-			return tap.Password(context.Background(), tap.PasswordOptions{
-				Message: "New API Key",
-			})
+	if isEdit && exists {
+		existingKey := secrets[APIKeyEnvVarName(providerName)]
+		if existingKey == "" {
+			return tap.Password(ctx, tap.PasswordOptions{Message: "API Key"})
+		}
+		if tap.Confirm(ctx, tap.ConfirmOptions{Message: "Modify API key?"}) {
+			return tap.Password(ctx, tap.PasswordOptions{Message: "New API Key"})
 		}
 
 		return existingKey
 	}
 
-	return tap.Password(context.Background(), tap.PasswordOptions{
-		Message: "API Key",
-	})
+	return tap.Password(ctx, tap.PasswordOptions{Message: "API Key"})
 }
 
-// promptFieldConfig holds configuration for prompting a provider field.
 type promptFieldConfig struct {
 	Label        string
 	CurrentValue string
@@ -132,9 +115,9 @@ type promptFieldConfig struct {
 	Exists       bool
 }
 
-// promptForField prompts for a provider field with edit mode support.
-// Handles the common pattern of: edit confirmation -> text input -> fallback to default.
 func promptForField(cfg promptFieldConfig) string {
+	ctx := context.Background()
+
 	if cfg.IsEdit && cfg.Exists {
 		effectiveDefault := cfg.CurrentValue
 		if effectiveDefault == "" {
@@ -142,11 +125,10 @@ func promptForField(cfg promptFieldConfig) string {
 		}
 
 		if effectiveDefault != "" {
-			modifyField := tap.Confirm(context.Background(), tap.ConfirmOptions{
+			if tap.Confirm(ctx, tap.ConfirmOptions{
 				Message: fmt.Sprintf("Modify %s? (current: %s)", cfg.Label, effectiveDefault),
-			})
-			if modifyField {
-				return strings.TrimSpace(tap.Text(context.Background(), tap.TextOptions{
+			}) {
+				return strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
 					Message:      fmt.Sprintf("New %s", cfg.Label),
 					DefaultValue: effectiveDefault,
 					Placeholder:  effectiveDefault,
@@ -156,13 +138,13 @@ func promptForField(cfg promptFieldConfig) string {
 			return effectiveDefault
 		}
 
-		return strings.TrimSpace(tap.Text(context.Background(), tap.TextOptions{
+		return strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
 			Message:     cfg.Label,
 			Placeholder: cfg.DefaultValue,
 		}))
 	}
 
-	result := tap.Text(context.Background(), tap.TextOptions{
+	result := tap.Text(ctx, tap.TextOptions{
 		Message:      cfg.Label,
 		DefaultValue: cfg.DefaultValue,
 		Placeholder:  cfg.DefaultValue,
@@ -176,7 +158,6 @@ func promptForField(cfg promptFieldConfig) string {
 	return result
 }
 
-// promptForBaseURL prompts for Base URL with edit mode support.
 func promptForBaseURL(provider config.Provider, definition providers.ProviderDefinition, isEdit, exists bool) string {
 	return promptForField(promptFieldConfig{
 		Label:        "Base URL",
@@ -187,7 +168,6 @@ func promptForBaseURL(provider config.Provider, definition providers.ProviderDef
 	})
 }
 
-// promptForModel prompts for Model with edit mode support.
 func promptForModel(provider config.Provider, definition providers.ProviderDefinition, isEdit, exists bool) string {
 	return promptForField(promptFieldConfig{
 		Label:        "Model",

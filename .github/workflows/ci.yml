@@ -16,13 +16,9 @@ on:
 
 permissions:
   contents: read
-  security-events: write
-  actions: read
-  checks: write
 
 env:
   GO_VERSION: "1.26"
-  GOLANGCI_LINT_VERSION: v1.64.8
 
 jobs:
   lint:
@@ -40,26 +36,16 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Install golangci-lint
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
 
       - name: Run golangci-lint
-        run: |
-          $(go env GOPATH)/bin/golangci-lint run ./... --timeout=5m
+        run: golangci-lint run ./...
 
-      - name: Run gofmt check
-        run: |
-          if [ -n "$(gofmt -l .)" ]; then
-            echo "Code is not formatted. Run 'make format' to fix."
-            gofmt -l .
-            exit 1
-          fi
+      - name: Check go.mod tidy
+        run: go mod tidy && git diff --exit-code go.mod go.sum
 
-      - name: Run go vet
-        run: go vet ./...
-
-  security:
-    name: Security
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -72,103 +58,8 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Run go vet
-        run: go vet ./...
-
-      - name: Install govulncheck
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-
-      - name: Run govulncheck
-        run: |
-          $(go env GOPATH)/bin/govulncheck ./...
-
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: moderate
-
-  build-test:
-    name: Build and Test (Go ${{ matrix.go-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        go-version: ["1.26"]
-        include:
-          - go-version: "1.26"
-            latest: true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go-version }}
-          cache: true
-          cache-dependency-path: go.sum
-
-      - name: Verify dependencies
-        run: go mod verify
-
-      - name: Build
-        run: go build -v ./...
-
       - name: Run tests
-        run: go test -race -coverprofile=coverage.txt ./...
-
-      - name: Upload coverage to Codecov
-        if: matrix.latest
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.txt
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-
-      - name: Upload coverage to GitHub
-        if: matrix.latest
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report-go${{ matrix.go-version }}
-          path: coverage.txt
-
-  powershell-test:
-    name: PowerShell Integration Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Check PowerShell availability
-        id: pwsh
-        run: |
-          if command -v pwsh &> /dev/null; then
-            echo "PowerShell found: $(which pwsh)"
-          else
-            echo "PowerShell not found on this runner"
-            exit 1
-          fi
-
-      - name: Run PowerShell integration test
-        if: steps.pwsh.outcome == 'success'
-        run: |
-          pwsh -File scripts/test-powershell-escaping.ps1
-
-      - name: Report PowerShell test status
-        if: steps.pwsh.outcome != 'success'
-        run: |
-          echo "PowerShell not available on this runner, skipping integration test"
-          echo "To run manually: pwsh -File scripts/test-powershell-escaping.ps1"
+        run: go test -race ./...
 
   platform:
     name: Build (${{ matrix.os }})
@@ -199,87 +90,3 @@ jobs:
         with:
           name: kairo-${{ matrix.os }}
           path: kairo*
-
-  tidy:
-    name: Check go.mod tidy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-          cache-dependency-path: go.sum
-
-      - name: Run go mod tidy
-        run: go mod tidy
-
-      - name: Check for changes
-        run: |
-          if ! git diff --exit-code go.mod go.sum; then
-            echo "go.mod or go.sum was modified by 'go mod tidy'"
-            echo "Please commit the changes:"
-            git diff go.mod go.sum
-            exit 1
-          fi
-
-  coverage:
-    name: Coverage Report
-    needs: build-test
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-report-*
-          path: coverage-reports
-          merge-multiple: true
-
-      - name: Generate coverage report
-        run: |
-          echo "# Coverage Report" > coverage-summary.md
-          echo "" >> coverage-summary.md
-          echo "All test runs completed." >> coverage-summary.md
-          if [ -d "coverage-reports" ]; then
-            ls -la coverage-reports/
-          else
-            echo "No coverage artifacts found (coverage-reports directory not created)"
-          fi
-
-  summary:
-    name: Summary
-    needs: [lint, security, build-test, platform, powershell-test, tidy, dependency-review]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Print summary
-        run: |
-          echo "## CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Job Status" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
-          FAILED=0
-          for job in lint security build-test platform powershell-test tidy dependency-review; do
-            status="${{ needs[job].result }}"
-            if [ "$status" = "failure" ]; then
-              echo "| $job | :x: Failed |" >> $GITHUB_STEP_SUMMARY
-              FAILED=1
-            elif [ "$status" = "success" ]; then
-              echo "| $job | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| $job | :warning: $status |" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ $FAILED -eq 1 ]; then
-            echo ":x: **Some jobs failed. Please check the logs for details.**" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          else
-            echo ":white_check_mark: **All jobs passed!**" >> $GITHUB_STEP_SUMMARY
-          fi

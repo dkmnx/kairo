@@ -11,7 +11,7 @@ bin/
 # Test binary
 *.test
 *.html
-*.txt
+!scripts/checksums.txt
 
 # Output of go coverage
 *.out

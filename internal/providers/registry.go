@@ -64,9 +64,6 @@ func GetBuiltInProvider(name string) (ProviderDefinition, bool) {
 	return def, ok
 }
 
-// providerOrder defines the display order of built-in providers in the UI.
-// Note: "custom" is intentionally excluded as it's handled separately in the setup flow
-// and appended dynamically when displaying provider selection menus.
 var providerOrder = []string{"zai", "minimax", "deepseek", "kimi"}
 
 func GetProviderList() []string {

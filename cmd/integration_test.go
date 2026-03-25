@@ -118,21 +118,14 @@ func TestCustomProviderConfigPersistence(t *testing.T) {
 		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	if !contains(decrypted, customKey) {
+	if !strings.Contains(decrypted, customKey) {
 		t.Errorf("decrypted secrets should contain %q, got: %q", customKey, decrypted)
 	}
 }
 
-func contains(s, substr string) bool {
-	return strings.Contains(s, substr)
-}
-
-// TestE2ECompleteWorkflow tests the complete end-to-end workflow
-// from initial setup through provider execution.
 func TestE2ECompleteWorkflow(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Set up mock functions for testing
 	originalConfigDir := getConfigDir()
 	originalLookPath := lookPath
 	originalExecCommand := execCommand
@@ -144,7 +137,6 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 
 	setConfigDir(tmpDir)
 
-	// Mock lookPath to return a fake claude path
 	lookPath = func(file string) (string, error) {
 		if file == "claude" {
 			return "/usr/bin/claude", nil
@@ -152,7 +144,6 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 		return originalLookPath(file)
 	}
 
-	// Create initial config with anthropic provider (no API key needed)
 	cfg := &config.Config{
 		DefaultProvider: "anthropic",
 		Providers: map[string]config.Provider{
@@ -167,13 +158,11 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create key file
 	keyPath := filepath.Join(tmpDir, "age.key")
 	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
 		t.Fatal(err)
 	}
 
-	// Verify initial state: anthropic is default provider
 	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
@@ -183,7 +172,6 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 		t.Errorf("Default provider = %q, want 'anthropic'", loadedCfg.DefaultProvider)
 	}
 
-	// Test: Add zai provider with API key via direct config manipulation
 	// (In real workflow, user would run 'kairo setup')
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	secretsContent := "ZAI_API_KEY=sk-zai-test-key-12345\n"
@@ -201,7 +189,6 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verify zai provider and secrets were saved
 	loadedCfg, err = config.LoadConfig(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadConfig(context.Background(), ) error after adding zai = %v", err)
@@ -216,15 +203,14 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	if !contains(decrypted, "ZAI_API_KEY") {
+	if !strings.Contains(decrypted, "ZAI_API_KEY") {
 		t.Error("secrets should contain ZAI_API_KEY")
 	}
 
-	if !contains(decrypted, "sk-zai-test-key-12345") {
+	if !strings.Contains(decrypted, "sk-zai-test-key-12345") {
 		t.Error("secrets should contain the API key")
 	}
 
-	// Test: Verify both providers are configured
 	// (In real workflow, running 'kairo zai' would execute with zai provider)
 	for _, provider := range []string{"anthropic", "zai"} {
 		if _, exists := loadedCfg.Providers[provider]; !exists {
@@ -232,7 +218,6 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 		}
 	}
 
-	// Test: Default provider change
 	cfg.DefaultProvider = "zai"
 	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
 		t.Fatal(err)

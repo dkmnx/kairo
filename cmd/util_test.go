@@ -133,17 +133,12 @@ func TestSetupSignalHandler(t *testing.T) {
 	})
 }
 
-// TestPrintSecretsRecoveryHelp tests that printSecretsRecoveryHelp runs without panic
 func TestPrintSecretsRecoveryHelp(t *testing.T) {
-	// This test verifies the function doesn't panic
-	// Actual output goes to stdout via ui.PrintInfo which is a side-effect
 	printSecretsRecoveryHelp()
 }
 
-// TestRequireConfigDirWritable tests the requireConfigDirWritable function
 func TestRequireConfigDirWritable(t *testing.T) {
 	t.Run("creates directory when it doesn't exist", func(t *testing.T) {
-		// Save and restore original config dir
 		original := os.Getenv("KAIRO_CONFIG_DIR")
 		defer func() {
 			if original == "" {
@@ -156,11 +151,9 @@ func TestRequireConfigDirWritable(t *testing.T) {
 		tmpDir := t.TempDir()
 		testConfigDir := filepath.Join(tmpDir, "kairo-config")
 
-		// Create a CLIContext with the test config directory
 		cliCtx := NewCLIContext()
 		cliCtx.SetConfigDir(testConfigDir)
 
-		// Create a mock command with the CLIContext
 		cmd := &cobra.Command{}
 		cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 
@@ -169,29 +162,19 @@ func TestRequireConfigDirWritable(t *testing.T) {
 			t.Error("requireConfigDirWritable() should return path when directory can be created")
 		}
 
-		// Verify directory was created
 		if _, err := os.Stat(testConfigDir); os.IsNotExist(err) {
 			t.Error("requireConfigDirWritable() should create directory")
 		}
 	})
-
-	t.Run("returns empty when config dir not found", func(t *testing.T) {
-		// This is harder to test without mocking getConfigDir
-		// The function depends on getConfigDir which uses environment variables
-		// We test the happy path above; error path would require refactoring
-	})
 }
 
-// TestRequireConfigDir tests the requireConfigDir function
 func TestRequireConfigDir(t *testing.T) {
 	t.Run("returns config dir when set", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create a CLIContext with the test config directory
 		cliCtx := NewCLIContext()
 		cliCtx.SetConfigDir(tmpDir)
 
-		// Create a mock command with the CLIContext
 		cmd := &cobra.Command{}
 		cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 

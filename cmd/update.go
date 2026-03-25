@@ -1,14 +1,19 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -21,6 +26,9 @@ import (
 
 const defaultUpdateURL = "https://api.github.com/repos/dkmnx/kairo/releases/latest"
 const requestTimeout = 10 * time.Second
+const checksumsFilename = "checksums.txt"
+const installScriptExt = ".sh"
+const installScriptExtPS1 = ".ps1"
 
 var httpClient = &http.Client{
 	Timeout: requestTimeout,
@@ -108,12 +116,10 @@ func versionGreaterThan(current, latest string) bool {
 	return c.LessThan(l)
 }
 
-// isWindows checks if the given OS is Windows
 func isWindows(goos string) bool {
 	return goos == config.WindowsGOOS
 }
 
-// getInstallScriptURL returns the appropriate install script URL based on OS and version tag
 func getInstallScriptURL(goos, tag string) string {
 	if isWindows(goos) {
 		return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.ps1", tag)
@@ -122,7 +128,6 @@ func getInstallScriptURL(goos, tag string) string {
 	return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.sh", tag)
 }
 
-// downloadToTempFile downloads a file from URL and saves to a temporary file
 func downloadToTempFile(url string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
@@ -145,9 +150,9 @@ func downloadToTempFile(url string) (string, error) {
 			fmt.Sprintf("download failed with status %d", resp.StatusCode))
 	}
 
-	ext := ".sh"
+	ext := installScriptExt
 	if runtime.GOOS == config.WindowsGOOS {
-		ext = ".ps1"
+		ext = installScriptExtPS1
 	}
 	tempFile, err := os.CreateTemp("", "kairo-install-*"+ext)
 	if err != nil {
@@ -174,7 +179,6 @@ func downloadToTempFile(url string) (string, error) {
 	return tempFile.Name(), nil
 }
 
-// runInstallScript executes the downloaded install script
 func runInstallScript(scriptPath string) error {
 	if runtime.GOOS == config.WindowsGOOS {
 		pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
@@ -211,6 +215,115 @@ func runInstallScript(scriptPath string) error {
 	return nil
 }
 
+func getChecksumsURL(tag string) string {
+	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts", tag)
+
+	return fmt.Sprintf("%s/%s", baseURL, checksumsFilename)
+}
+
+func parseChecksumLine(line string) (hash, filename string, ok bool) {
+	line = strings.TrimSpace(line)
+	if line == "" || strings.HasPrefix(line, "#") {
+		return "", "", false
+	}
+
+	parts := strings.Fields(line)
+	if len(parts) < 2 {
+		return "", "", false
+	}
+
+	hashPattern := regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+	if !hashPattern.MatchString(parts[0]) {
+		return "", "", false
+	}
+
+	hash = strings.ToLower(parts[0])
+	filename = parts[len(parts)-1]
+
+	return hash, filename, true
+}
+
+func downloadAndParseChecksums(url string) (map[string]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to create checksums request", err)
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to download checksums", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, kairoerrors.NewError(kairoerrors.NetworkError,
+			fmt.Sprintf("checksums download failed with status %d", resp.StatusCode))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to read checksums response", err)
+	}
+
+	checksums := make(map[string]string)
+	scanner := bufio.NewScanner(strings.NewReader(string(body)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		hash, filename, ok := parseChecksumLine(line)
+		if ok {
+			checksums[filename] = hash
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+			"failed to parse checksums file", err)
+	}
+
+	return checksums, nil
+}
+
+func computeSHA256(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", kairoerrors.FileError("failed to open file for hashing", filePath, err)
+	}
+	defer file.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to compute file hash", err)
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+func verifyChecksum(scriptPath, expectedHash string) error {
+	actualHash, err := computeSHA256(scriptPath)
+	if err != nil {
+		return kairoerrors.WrapError(kairoerrors.VerificationError,
+			"failed to verify script integrity", err)
+	}
+
+	if !strings.EqualFold(actualHash, expectedHash) {
+		return kairoerrors.VerificationErr(
+			fmt.Sprintf("script integrity check failed (expected: %.8s..., got: %.8s...)",
+				expectedHash, actualHash),
+			nil,
+		).WithContext("expected", expectedHash).
+			WithContext("actual", actualHash)
+	}
+
+	return nil
+}
+
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update kairo to the latest version",
@@ -218,17 +331,21 @@ var updateCmd = &cobra.Command{
 
 This command will:
 1. Check GitHub for the latest release
-2. Download and run the platform-appropriate install script from the release tag
+2. Download the install script and its SHA256 checksum
+3. Verify script integrity before execution
+4. Run the verified install script
 
 Security considerations:
 - The install script is downloaded from the specific release tag to ensure
   the script matches the version being installed.
+- SHA256 checksums are verified before execution to ensure script integrity.
 - You will be prompted for confirmation before installation.
 - The script is executed with your current user permissions.
 
-For manual verification, you can download and inspect the install script from:
+For manual verification, you can download and inspect the install script and checksums from:
 https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.sh (Unix)
-https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)`,
+https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)
+https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentVersion := version.Version
 		if currentVersion == "dev" {
@@ -275,6 +392,38 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)`,
 			return
 		}
 		defer os.Remove(tempFile)
+
+		checksumExt := installScriptExt
+		if runtime.GOOS == config.WindowsGOOS {
+			checksumExt = installScriptExtPS1
+		}
+		scriptName := "install" + checksumExt
+		checksumsURL := getChecksumsURL(latest.TagName)
+
+		cmd.Printf("Downloading checksums from: %s\n", checksumsURL)
+
+		checksums, err := downloadAndParseChecksums(checksumsURL)
+		if err != nil {
+			ui.PrintError(fmt.Sprintf("Error downloading checksums: %v", err))
+
+			return
+		}
+
+		expectedHash, ok := checksums[scriptName]
+		if !ok {
+			ui.PrintError(fmt.Sprintf("Checksum for %s not found in checksums file", scriptName))
+
+			return
+		}
+
+		cmd.Printf("Verifying script integrity...\n")
+
+		if err := verifyChecksum(tempFile, expectedHash); err != nil {
+			ui.PrintError(fmt.Sprintf("Security verification failed: %v", err))
+			cmd.Println("Downloaded script has been removed. Please try again later or report this issue.")
+
+			return
+		}
 
 		cmd.Printf("Running install script...\n\n")
 

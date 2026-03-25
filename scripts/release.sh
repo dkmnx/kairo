@@ -24,6 +24,8 @@ fi
 
 DATE=$(date +%Y-%m-%d)
 CHANGELOG="CHANGELOG.md"
+SCRIPTS_DIR="scripts"
+CHECKSUMS_FILE="$SCRIPTS_DIR/checksums.txt"
 
 if [ ! -f "$CHANGELOG" ]; then
     echo "Error: $CHANGELOG not found in current directory"
@@ -60,9 +62,32 @@ echo "Updated $CHANGELOG:"
 echo "  - Added version [$VERSION] - $DATE"
 echo "  - Preserved [Unreleased] section for future changes"
 echo ""
+
+# Generate checksums for install scripts
+echo "Generating checksums for install scripts..."
+
+# Create checksums file header
+{
+    echo "# Kairo release checksums"
+    echo "# Generated for version $VERSION"
+    echo "# DO NOT EDIT - This file is auto-generated during release"
+    echo ""
+} > "$CHECKSUMS_FILE"
+
+# Add checksums for each install script
+for script in "$SCRIPTS_DIR"/install.{sh,ps1}; do
+    if [ -f "$script" ]; then
+        sha256sum "$script" >> "$CHECKSUMS_FILE"
+    fi
+done
+
+echo "  - Generated $CHECKSUMS_FILE"
+
+echo ""
 echo "Next steps:"
 echo "  1. Review changes in $CHANGELOG"
-echo "  2. git add $CHANGELOG"
-echo "  3. git commit -m \"chore: release v$VERSION\""
-echo "  4. git tag v$VERSION"
-echo "  5. git push origin main --tags"
+echo "  2. Review $CHECKSUMS_FILE"
+echo "  3. git add $CHANGELOG $CHECKSUMS_FILE"
+echo "  4. git commit -m \"chore: release v$VERSION\""
+echo "  5. git tag v$VERSION"
+echo "  6. git push origin main --tags"
