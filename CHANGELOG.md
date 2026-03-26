@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Update command now properly includes scripts checksums file in release artifacts
+
 ## [2.3.2] - 2026-03-26
 
 ### Added

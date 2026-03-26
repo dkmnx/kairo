@@ -53,3 +53,6 @@ changelog:
 
 release:
   draft: true
+  extra_files:
+    - glob: ./scripts/checksums.txt
+      name_template: scripts/checksums.txt
