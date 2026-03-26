@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1018,4 +1019,62 @@ func TestVerifyChecksum(t *testing.T) {
 			t.Errorf("verifyChecksum() should be case-insensitive, error = %v", err)
 		}
 	})
+}
+
+func TestGetScriptNameForChecksums(t *testing.T) {
+	tests := []struct {
+		name     string
+		goos     string
+		expected string
+	}{
+		{
+			name:     "returns scripts/install.sh for unix",
+			goos:     "linux",
+			expected: "scripts/install.sh",
+		},
+		{
+			name:     "returns scripts/install.sh for darwin",
+			goos:     "darwin",
+			expected: "scripts/install.sh",
+		},
+		{
+			name:     "returns scripts/install.ps1 for windows",
+			goos:     "windows",
+			expected: "scripts/install.ps1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getScriptNameForChecksums(tt.goos)
+			if result != tt.expected {
+				t.Errorf("getScriptNameForChecksums(%q) = %q, want %q", tt.goos, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestScriptNameMatchesChecksumFile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`# Kairo release checksums
+07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790  scripts/install.sh
+a197cd3c17f40fad8ae08df1ce42633e454491319df40097abf78da01db5aaae  scripts/install.ps1
+`))
+	}))
+	defer server.Close()
+
+	checksums, err := downloadAndParseChecksums(server.URL)
+	if err != nil {
+		t.Fatalf("downloadAndParseChecksums() error = %v", err)
+	}
+
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		scriptName := getScriptNameForChecksums(goos)
+		if _, ok := checksums[scriptName]; !ok {
+			t.Errorf("getScriptNameForChecksums(%q) = %q not found in checksums map keys: %v",
+				goos, scriptName, maps.Keys(checksums))
+		}
+	}
 }
