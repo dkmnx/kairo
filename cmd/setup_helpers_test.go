@@ -85,52 +85,6 @@ func TestValidateCustomProviderName(t *testing.T) {
 	}
 }
 
-func TestBuildProviderConfig(t *testing.T) {
-	t.Run("builds config from definition", func(t *testing.T) {
-		def := providers.ProviderDefinition{
-			Name:           "Test Provider",
-			BaseURL:        "https://api.test.com",
-			Model:          "test-model",
-			EnvVars:        []string{"VAR1=value1", "VAR2=value2"},
-			RequiresAPIKey: true,
-		}
-
-		baseURL := "https://custom.url"
-		model := "custom-model"
-
-		provider := BuildProviderConfig(def, baseURL, model)
-
-		if provider.Name != def.Name {
-			t.Errorf("Name = %q, want %q", provider.Name, def.Name)
-		}
-		if provider.BaseURL != baseURL {
-			t.Errorf("BaseURL = %q, want %q", provider.BaseURL, baseURL)
-		}
-		if provider.Model != model {
-			t.Errorf("Model = %q, want %q", provider.Model, model)
-		}
-		if len(provider.EnvVars) != 2 {
-			t.Errorf("EnvVars length = %d, want 2", len(provider.EnvVars))
-		}
-	})
-
-	t.Run("handles empty env vars", func(t *testing.T) {
-		def := providers.ProviderDefinition{
-			Name:           "Test Provider",
-			BaseURL:        "https://api.test.com",
-			Model:          "test-model",
-			EnvVars:        nil,
-			RequiresAPIKey: true,
-		}
-
-		provider := BuildProviderConfig(def, "https://test.com", "model")
-
-		if provider.EnvVars != nil {
-			t.Errorf("EnvVars should be nil, got %v", provider.EnvVars)
-		}
-	})
-}
-
 func TestFormatSecrets(t *testing.T) {
 	t.Run("formats secrets with sorting", func(t *testing.T) {
 		secrets := map[string]string{

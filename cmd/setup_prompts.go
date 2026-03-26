@@ -69,18 +69,6 @@ func promptForProvider(cfg *config.Config) string {
 	return selected
 }
 
-func parseProviderSelection(selection string) (string, bool) {
-	if selection == "" {
-		return "", false
-	}
-
-	if providers.IsBuiltInProvider(selection) {
-		return selection, true
-	}
-
-	return "", false
-}
-
 func displayProviderHeader(provider config.Provider, isEdit, exists bool) {
 	if isEdit && exists {
 		tap.Message(fmt.Sprintf("Editing %s", provider.Name), tap.MessageOptions{
