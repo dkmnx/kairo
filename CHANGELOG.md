@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.3] - 2026-03-26
+
 ### Fixed
 
 - Update command now correctly looks up script names in checksum verification
@@ -1122,7 +1124,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.3.2...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.3.3...HEAD
+[2.3.3]: https://github.com/dkmnx/kairo/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/dkmnx/kairo/compare/v2.3.1...v2.3.2
 [2.3.1]: https://github.com/dkmnx/kairo/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/dkmnx/kairo/compare/v2.2.1...v2.3.0
