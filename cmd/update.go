@@ -324,6 +324,15 @@ func verifyChecksum(scriptPath, expectedHash string) error {
 	return nil
 }
 
+func getScriptNameForChecksums(goos string) string {
+	ext := installScriptExt
+	if goos == config.WindowsGOOS {
+		ext = installScriptExtPS1
+	}
+
+	return "scripts/install" + ext
+}
+
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update kairo to the latest version",
@@ -393,11 +402,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 		}
 		defer os.Remove(tempFile)
 
-		checksumExt := installScriptExt
-		if runtime.GOOS == config.WindowsGOOS {
-			checksumExt = installScriptExtPS1
-		}
-		scriptName := "install" + checksumExt
+		scriptName := getScriptNameForChecksums(runtime.GOOS)
 		checksumsURL := getChecksumsURL(latest.TagName)
 
 		cmd.Printf("Downloading checksums from: %s\n", checksumsURL)
