@@ -80,12 +80,13 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 		return result, nil
 	}
 
-	existingSecrets, err := crypto.DecryptSecrets(ctx, result.SecretsPath, result.KeyPath)
+	existingSecrets, err := crypto.DecryptSecretsBytes(ctx, result.SecretsPath, result.KeyPath)
 	if err != nil {
 		return SecretsResult{}, err
 	}
+	defer crypto.ClearMemory(existingSecrets)
 
-	result.Secrets = config.ParseSecrets(existingSecrets)
+	result.Secrets = config.ParseSecrets(string(existingSecrets))
 
 	return result, nil
 }

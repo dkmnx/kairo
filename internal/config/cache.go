@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
@@ -16,28 +15,10 @@ type cachedConfig struct {
 	configPath string
 }
 
-type CacheMetrics struct {
-	Hits      int64
-	Misses    int64
-	Evictions int64
-}
-
-func (m *CacheMetrics) HitRate() float64 {
-	hits := atomic.LoadInt64(&m.Hits)
-	misses := atomic.LoadInt64(&m.Misses)
-	total := hits + misses
-	if total == 0 {
-		return 0
-	}
-
-	return float64(hits) / float64(total)
-}
-
 type ConfigCache struct {
 	mu      sync.RWMutex
 	entries map[string]*cachedConfig
 	ttl     time.Duration
-	metrics CacheMetrics
 }
 
 func NewConfigCache(ttl time.Duration) *ConfigCache {
@@ -78,14 +59,11 @@ func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error
 	entry, exists := c.entries[configDir]
 	if exists && time.Since(entry.loadedAt) < c.ttl {
 		cfg := deepCopyConfig(entry.config)
-		atomic.AddInt64(&c.metrics.Hits, 1)
 		c.mu.RUnlock()
 
 		return cfg, nil
 	}
 	c.mu.RUnlock()
-
-	atomic.AddInt64(&c.metrics.Misses, 1)
 
 	cfg, err := LoadConfig(ctx, configDir)
 	if err != nil {
@@ -107,30 +85,6 @@ func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error
 
 func (c *ConfigCache) Invalidate(configDir string) {
 	c.mu.Lock()
-	if _, exists := c.entries[configDir]; exists {
-		atomic.AddInt64(&c.metrics.Evictions, 1)
-	}
 	delete(c.entries, configDir)
 	c.mu.Unlock()
-}
-
-func (c *ConfigCache) Cleanup() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	now := time.Now()
-	for configDir, entry := range c.entries {
-		if now.Sub(entry.loadedAt) >= c.ttl {
-			atomic.AddInt64(&c.metrics.Evictions, 1)
-			delete(c.entries, configDir)
-		}
-	}
-}
-
-func (c *ConfigCache) GetMetrics() CacheMetrics {
-	return CacheMetrics{
-		Hits:      atomic.LoadInt64(&c.metrics.Hits),
-		Misses:    atomic.LoadInt64(&c.metrics.Misses),
-		Evictions: atomic.LoadInt64(&c.metrics.Evictions),
-	}
 }

@@ -21,20 +21,6 @@ const (
 
 var ErrConfigNotFound = errors.New("configuration file not found")
 
-var ErrProviderModelTooLong = errors.New("provider model name is too long")
-
-var ErrProviderModelInvalidChars = errors.New("provider model name contains invalid characters")
-
-var ErrEmptyToken = errors.New("token cannot be empty")
-
-var ErrEmptyTokenPath = errors.New("token path cannot be empty")
-
-var ErrEmptyCLIPath = errors.New("cli path cannot be empty")
-
-var ErrEnvVarCollision = errors.New("environment variable collision detected")
-
-var ErrUnsupportedFormat = errors.New("unsupported export format")
-
 var ErrUserCancelled = errors.New("user cancelled input")
 
 type KairoError struct {
@@ -103,32 +89,6 @@ func (e *KairoError) WithContext(key, value string) *KairoError {
 func FileError(message, path string, cause error) *KairoError {
 	return WrapError(FileSystemError, message, cause).
 		WithContext("path", path)
-}
-
-func ConfigFileError(message, configPath string, hint string, cause error) *KairoError {
-	err := WrapError(ConfigError, message, cause).
-		WithContext("path", configPath)
-	if hint != "" {
-		err = err.WithContext("hint", hint)
-	}
-	return err
-}
-
-func CryptoErrorWithHint(message, hint string, cause error) *KairoError {
-	return WrapError(CryptoError, message, cause).
-		WithContext("hint", hint)
-}
-
-func ProviderErr(message, providerName string, cause error) *KairoError {
-	return WrapError(ProviderError, message, cause).
-		WithContext("provider", providerName)
-}
-
-func RuntimeErr(message string, cause error) *KairoError {
-	if cause != nil {
-		return WrapError(RuntimeError, message, cause)
-	}
-	return NewError(RuntimeError, message)
 }
 
 func VerificationErr(message string, cause error) *KairoError {
