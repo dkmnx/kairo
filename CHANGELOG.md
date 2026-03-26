@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Completion command restored with automatic shell completion file saving
+
 ### Changed
 - Banner now uses middle dot separator with improved spacing
 
