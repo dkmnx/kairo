@@ -54,5 +54,5 @@ changelog:
 release:
   draft: true
   extra_files:
-    - source: scripts/checksums.txt
+    - src: scripts/checksums.txt
       dst: scripts/checksums.txt
