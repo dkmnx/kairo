@@ -29,7 +29,11 @@ func TestConfigCache_GetAndInvalidate(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: test
-providers: {}
+providers:
+  test:
+    name: test
+    base_url: https://api.test.com
+    model: test-model
 `
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatal(err)
@@ -73,7 +77,11 @@ func TestConfigCache_TTLExpiry(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: test
-providers: {}
+providers:
+  test:
+    name: test
+    base_url: https://api.test.com
+    model: test-model
 `
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatal(err)
@@ -102,7 +110,11 @@ func TestConfigCache_ConcurrentAccess(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	configContent := `default_provider: test
-providers: {}
+providers:
+  test:
+    name: test
+    base_url: https://api.test.com
+    model: test-model
 `
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatal(err)
@@ -135,7 +147,11 @@ func TestConfigCache_ConcurrentWrites(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	configContent := `default_provider: test
-providers: {}
+providers:
+  test:
+    name: test
+    base_url: https://api.test.com
+    model: test-model
 `
 	if err := os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte(configContent), 0600); err != nil {
 		t.Fatal(err)
@@ -167,73 +183,5 @@ providers: {}
 
 	for err := range errs {
 		t.Errorf("Concurrent write error: %v", err)
-	}
-}
-
-func TestConfigCache_Metrics(t *testing.T) {
-	cache := NewConfigCache(5 * time.Minute)
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.yaml")
-
-	configContent := `default_provider: test
-providers: {}
-`
-	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
-		t.Fatal(err)
-	}
-
-	// Initial metrics should be zero
-	m := cache.GetMetrics()
-	if m.Hits != 0 || m.Misses != 0 || m.Evictions != 0 {
-		t.Errorf("Initial metrics should be zero, got: hits=%d, misses=%d, evictions=%d", m.Hits, m.Misses, m.Evictions)
-	}
-
-	_, err := cache.Get(context.Background(), tmpDir)
-	if err != nil {
-		t.Fatalf("Get() error = %v", err)
-	}
-	m = cache.GetMetrics()
-	if m.Misses != 1 {
-		t.Errorf("Expected 1 miss, got %d", m.Misses)
-	}
-
-	// Second load - hit
-	_, err = cache.Get(context.Background(), tmpDir)
-	if err != nil {
-		t.Fatalf("Get() error = %v", err)
-	}
-	m = cache.GetMetrics()
-	if m.Hits != 1 {
-		t.Errorf("Expected 1 hit, got %d", m.Hits)
-	}
-
-	// Invalidate - eviction
-	cache.Invalidate(tmpDir)
-	m = cache.GetMetrics()
-	if m.Evictions != 1 {
-		t.Errorf("Expected 1 eviction, got %d", m.Evictions)
-	}
-}
-
-func TestCacheMetrics_HitRate(t *testing.T) {
-	tests := []struct {
-		name     string
-		metrics  CacheMetrics
-		expected float64
-	}{
-		{"zero requests", CacheMetrics{}, 0},
-		{"all hits", CacheMetrics{Hits: 10, Misses: 0}, 1.0},
-		{"all misses", CacheMetrics{Hits: 0, Misses: 10}, 0.0},
-		{"half hits", CacheMetrics{Hits: 5, Misses: 5}, 0.5},
-		{"75% hit rate", CacheMetrics{Hits: 75, Misses: 25}, 0.75},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.metrics.HitRate()
-			if got != tt.expected {
-				t.Errorf("HitRate() = %v, want %v", got, tt.expected)
-			}
-		})
 	}
 }

@@ -10,7 +10,6 @@ Go CLI wrapper for Claude/Qwen Code API providers with X25519 encryption.
 
 - `cmd/` - CLI commands (Cobra) - see `cmd/root.go:1`
 - `internal/` - Business logic (config, crypto, providers, ui, errors, validate)
-- `pkg/` - Reusable utilities (cross-platform config dir)
 - `docs/` - Architecture, guides, reference documentation
 
 **Entry Points:**

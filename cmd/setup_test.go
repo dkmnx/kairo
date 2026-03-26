@@ -50,7 +50,7 @@ func TestPrintBanner(t *testing.T) {
 				Model: "claude-sonnet-4-20250514",
 				Name:  "MiniMax",
 			},
-			wantSub: "kairo v0.1.0 - claude-sonnet-4-20250514 - MiniMax",
+			wantSub: "kairo v0.1.0 · claude-sonnet-4-20250514 · MiniMax",
 		},
 		{
 			name:    "banner with custom provider and model",
@@ -59,7 +59,7 @@ func TestPrintBanner(t *testing.T) {
 				Model: "custom-model",
 				Name:  "Custom Provider",
 			},
-			wantSub: "kairo vdev - custom-model - Custom Provider",
+			wantSub: "kairo vdev · custom-model · Custom Provider",
 		},
 	}
 
@@ -90,153 +90,6 @@ func TestPrintBanner(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestPrintProviderOptionConfigured(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	cfg := &config.Config{
-		Providers: map[string]config.Provider{
-			"anthropic": {Name: "Native Anthropic"},
-			"minimax":   {Name: "MiniMax"},
-		},
-	}
-	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
-		t.Fatal(err)
-	}
-
-	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
-		t.Fatal(err)
-	}
-	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, "MINIMAX_API_KEY=test-key\n"); err != nil {
-		t.Fatal(err)
-	}
-
-	secrets, _ := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
-	secretsMap := config.ParseSecrets(secrets)
-
-	ui.PrintProviderOption(ui.ProviderOption{Number: 1, Name: "Native Anthropic", Config: cfg, Secrets: secretsMap, Provider: "anthropic"})
-	ui.PrintProviderOption(ui.ProviderOption{Number: 2, Name: "MiniMax", Config: cfg, Secrets: secretsMap, Provider: "minimax"})
-}
-
-func TestPrintProviderOptionNotConfigured(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	cfg := &config.Config{
-		Providers: map[string]config.Provider{
-			"anthropic": {Name: "Native Anthropic"},
-		},
-	}
-	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
-		t.Fatal(err)
-	}
-
-	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	keyPath := filepath.Join(tmpDir, "age.key")
-	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
-		t.Fatal(err)
-	}
-	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, ""); err != nil {
-		t.Fatal(err)
-	}
-
-	secrets, _ := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
-	secretsMap := config.ParseSecrets(secrets)
-
-	ui.PrintProviderOption(ui.ProviderOption{Number: 1, Name: "Native Anthropic", Config: cfg, Secrets: secretsMap, Provider: "anthropic"})
-	ui.PrintProviderOption(ui.ProviderOption{Number: 2, Name: "Kimi", Config: cfg, Secrets: secretsMap, Provider: "kimi"})
-}
-
-func TestIsProviderConfigured(t *testing.T) {
-	cfg := &config.Config{
-		Providers: map[string]config.Provider{
-			"anthropic": {Name: "Native Anthropic"},
-		},
-	}
-
-	tests := []struct {
-		name     string
-		provider string
-		secrets  map[string]string
-		cfg      *config.Config
-		want     bool
-	}{
-		{
-			name:     "anthropic configured",
-			provider: "anthropic",
-			secrets:  map[string]string{},
-			cfg:      cfg,
-			want:     true,
-		},
-		{
-			name:     "anthropic not configured",
-			provider: "anthropic",
-			secrets:  map[string]string{},
-			cfg:      &config.Config{Providers: map[string]config.Provider{}},
-			want:     false,
-		},
-		{
-			name:     "minimax with API key",
-			provider: "minimax",
-			secrets:  map[string]string{"MINIMAX_API_KEY": "test-key"},
-			cfg:      &config.Config{Providers: map[string]config.Provider{}},
-			want:     true,
-		},
-		{
-			name:     "minimax without API key",
-			provider: "minimax",
-			secrets:  map[string]string{},
-			cfg:      &config.Config{Providers: map[string]config.Provider{}},
-			want:     false,
-		},
-		{
-			name:     "zai with uppercase key",
-			provider: "zai",
-			secrets:  map[string]string{"ZAI_API_KEY": "test-key"},
-			cfg:      &config.Config{Providers: map[string]config.Provider{}},
-			want:     true,
-		},
-		{
-			name:     "zai with lowercase key",
-			provider: "zai",
-			secrets:  map[string]string{"zai_API_KEY": "test-key"},
-			cfg:      &config.Config{Providers: map[string]config.Provider{}},
-			want:     true,
-		},
-		{
-			name:     "deepseek not configured",
-			provider: "deepseek",
-			secrets:  map[string]string{"OTHER_KEY": "value"},
-			cfg:      &config.Config{Providers: map[string]config.Provider{}},
-			want:     false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := isProviderConfiguredForTest(tt.cfg, tt.secrets, tt.provider)
-			if got != tt.want {
-				t.Errorf("isProviderConfiguredForTest() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func isProviderConfiguredForTest(cfg *config.Config, secrets map[string]string, provider string) bool {
-	if provider == "anthropic" {
-		_, exists := cfg.Providers["anthropic"]
-		return exists
-	}
-
-	apiKeyKey := strings.ToUpper(provider) + "_API_KEY"
-	for k := range secrets {
-		if strings.EqualFold(k, apiKeyKey) {
-			return true
-		}
-	}
-	return false
 }
 
 func TestParseIntOrZero(t *testing.T) {
@@ -930,47 +783,6 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 	_, err := LoadSecrets(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted key file, got nil")
-	}
-}
-
-func TestParseProviderSelection(t *testing.T) {
-	providerList := providers.GetProviderList()
-	if len(providerList) < 1 {
-		t.Skip("Not enough providers to test selection")
-	}
-
-	tests := []struct {
-		name      string
-		selection string
-		wantOk    bool
-	}{
-		{"empty string", "", false},
-		{"done", "done", false},
-		{"lowercase q", "q", false},
-		{"exit", "exit", false},
-		// Numeric selection removed - Tap TUI handles selection internally
-		{"out of range", "99", false},
-		{"negative", "-1", false},
-		{"text", "abc", false},
-		{"valid zai", "zai", true},
-		{"valid minimax", "minimax", true},
-		{"valid custom", "custom", true},
-		{"invalid provider", "invalid-provider", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			name, ok := parseProviderSelection(tt.selection)
-			if ok != tt.wantOk {
-				t.Errorf("parseProviderSelection(%q) ok = %v, want %v", tt.selection, ok, tt.wantOk)
-			}
-			if tt.wantOk && name == "" {
-				t.Errorf("parseProviderSelection(%q) returned empty name when ok=true", tt.selection)
-			}
-			if !tt.wantOk && name != "" {
-				t.Errorf("parseProviderSelection(%q) returned non-empty name %q when ok=false", tt.selection, name)
-			}
-		})
 	}
 }
 

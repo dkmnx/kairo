@@ -37,19 +37,6 @@ func ValidateCustomProviderName(name string) (string, error) {
 	return name, nil
 }
 
-func BuildProviderConfig(definition providers.ProviderDefinition, baseURL, model string) config.Provider {
-	provider := config.Provider{
-		Name:    definition.Name,
-		BaseURL: baseURL,
-		Model:   model,
-	}
-	if len(definition.EnvVars) > 0 {
-		provider.EnvVars = definition.EnvVars
-	}
-
-	return provider
-}
-
 func GetProviderDefinition(providerName string) providers.ProviderDefinition {
 	definition, _ := providers.GetBuiltInProvider(providerName)
 	if definition.Name == "" {
