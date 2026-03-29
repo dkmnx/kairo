@@ -122,7 +122,7 @@ func TestGetBuiltInProvider(t *testing.T) {
 			wantExists:   true,
 			wantName:     "Z.AI",
 			wantBaseURL:  "https://api.z.ai/api/anthropic",
-			wantModel:    "glm-4.7",
+			wantModel:    "glm-5.1",
 			wantRequires: true,
 		},
 		{

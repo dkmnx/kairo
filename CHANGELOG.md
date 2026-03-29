@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Z.AI default model updated from `glm-4.7` to `glm-5.1`
+
 ## [2.3.4] - 2026-03-26
 
 ### Fixed

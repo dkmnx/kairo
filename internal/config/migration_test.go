@@ -260,7 +260,7 @@ func TestFormatMigrationChanges(t *testing.T) {
 	t.Run("FormatsChangesCorrectly", func(t *testing.T) {
 		changes := []MigrationChange{
 			{Provider: "minimax", Field: "model", Old: "MiniMax-M2", New: "MiniMax-M2.7"},
-			{Provider: "zai", Field: "model", Old: "glm-4.5", New: "glm-4.7"},
+			{Provider: "zai", Field: "model", Old: "glm-4.5", New: "glm-5.1"},
 		}
 
 		result := FormatMigrationChanges(changes)

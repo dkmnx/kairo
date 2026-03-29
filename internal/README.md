@@ -56,12 +56,12 @@ Example schema:
 default_provider: zai
 default_harness: claude
 default_models:
-  zai: glm-4.7
+  zai: glm-5.1
 providers:
   zai:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
-    model: glm-4.7
+    model: glm-5.1
 ```
 
 ### `crypto/`
@@ -100,7 +100,7 @@ Built-in providers:
 
 | Provider   | Base URL                             | Model             | API Key |
 | ---------- | ------------------------------------ | ----------------- | ------- |
-| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-4.7`         | Yes     |
+| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-5.1`         | Yes     |
 | `minimax`  | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`    | Yes     |
 | `deepseek` | `https://api.deepseek.com/anthropic` | `deepseek-chat`   | Yes     |
 | `kimi`     | `https://api.kimi.com/coding/`       | `kimi-for-coding` | Yes     |
