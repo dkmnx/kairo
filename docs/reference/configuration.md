@@ -51,13 +51,13 @@ Notes:
 default_provider: zai
 default_harness: claude
 default_models:
-  zai: glm-4.7
+  zai: glm-5.1
   minimax: MiniMax-M2.7
 providers:
   zai:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
-    model: glm-4.7
+    model: glm-5.1
     env_vars:
       - ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash
   minimax:
@@ -98,7 +98,7 @@ Generated on first setup. The file contains the private identity line followed b
 
 | Provider   | API Key Required | Default Base URL                     | Default Model     |
 | ---------- | ---------------- | ------------------------------------ | ----------------- |
-| `zai`      | Yes              | `https://api.z.ai/api/anthropic`     | `glm-4.7`         |
+| `zai`      | Yes              | `https://api.z.ai/api/anthropic`     | `glm-5.1`         |
 | `minimax`  | Yes              | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`    |
 | `kimi`     | Yes              | `https://api.kimi.com/coding/`       | `kimi-for-coding` |
 | `deepseek` | Yes              | `https://api.deepseek.com/anthropic` | `deepseek-chat`   |
