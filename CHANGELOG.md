@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Update command no longer migrates provider models using stale defaults from the pre-update binary
+
 ## [2.3.5] - 2026-03-29
 
 ### Changed

@@ -34,6 +34,15 @@ var httpClient = &http.Client{
 	Timeout: requestTimeout,
 }
 
+var (
+	getLatestReleaseFn          = getLatestRelease
+	confirmUpdateFn             = ui.Confirm
+	downloadToTempFileFn        = downloadToTempFile
+	downloadAndParseChecksumsFn = downloadAndParseChecksums
+	verifyChecksumFn            = verifyChecksum
+	runInstallScriptFn          = runInstallScript
+)
+
 type release struct {
 	TagName string `json:"tag_name"`
 	HTMLURL string `json:"html_url"`
@@ -363,7 +372,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 			return
 		}
 
-		latest, err := getLatestRelease()
+		latest, err := getLatestReleaseFn()
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error checking for updates: %v", err))
 
@@ -380,7 +389,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		installScriptURL := getInstallScriptURL(runtime.GOOS, latest.TagName)
 
-		confirmed, err := ui.Confirm("Do you want to proceed with installation?")
+		confirmed, err := confirmUpdateFn("Do you want to proceed with installation?")
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error reading input: %v", err))
 
@@ -394,7 +403,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("\nDownloading install script from: %s\n", installScriptURL)
 
-		tempFile, err := downloadToTempFile(installScriptURL)
+		tempFile, err := downloadToTempFileFn(installScriptURL)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error downloading install script: %v", err))
 
@@ -407,7 +416,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Downloading checksums from: %s\n", checksumsURL)
 
-		checksums, err := downloadAndParseChecksums(checksumsURL)
+		checksums, err := downloadAndParseChecksumsFn(checksumsURL)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error downloading checksums: %v", err))
 
@@ -423,7 +432,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Verifying script integrity...\n")
 
-		if err := verifyChecksum(tempFile, expectedHash); err != nil {
+		if err := verifyChecksumFn(tempFile, expectedHash); err != nil {
 			ui.PrintError(fmt.Sprintf("Security verification failed: %v", err))
 			cmd.Println("Downloaded script has been removed. Please try again later or report this issue.")
 
@@ -432,21 +441,12 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Running install script...\n\n")
 
-		if err := runInstallScript(tempFile); err != nil {
+		if err := runInstallScriptFn(tempFile); err != nil {
 			ui.PrintError(fmt.Sprintf("Error during installation: %v", err))
 
 			return
 		}
 
-		dir := GetCLIContext(cmd).GetConfigDir()
-		if dir != "" {
-			changes, err := config.MigrateConfigOnUpdate(context.Background(), dir)
-			if err != nil {
-				cmd.Printf("Warning: config migration failed: %v\n", err)
-			} else if len(changes) > 0 {
-				cmd.Printf("%s\n", config.FormatMigrationChanges(changes))
-			}
-		}
 	},
 }
 
