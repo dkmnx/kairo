@@ -22,7 +22,7 @@ providers:
   zai:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
-    model: glm-4.7
+    model: glm-5.1
 `
 	err := os.WriteFile(configPath, []byte(configContent), 0600)
 	if err != nil {
@@ -89,7 +89,7 @@ providers:
   zai:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
-    model: glm-4.7
+    model: glm-5.1
 `
 	if err := os.WriteFile(configPath, []byte(configWithUnknownField), 0600); err != nil {
 		t.Fatal(err)
@@ -362,7 +362,7 @@ providers:
   zai:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
-    model: glm-4.7
+    model: glm-5.1
 `
 		if err := os.WriteFile(oldConfigPath, []byte(configContent), 0600); err != nil {
 			t.Fatal(err)
@@ -513,7 +513,7 @@ providers:
   zai:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
-    model: glm-4.7
+    model: glm-5.1
 `
 		if err := os.WriteFile(oldConfigPath, []byte(configContent), 0600); err != nil {
 			t.Fatal(err)

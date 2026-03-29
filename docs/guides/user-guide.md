@@ -79,7 +79,7 @@ kairo -- "Quick question"
 
 | Provider   | Default Model     | API Key Required |
 | ---------- | ----------------- | ---------------- |
-| `zai`      | `glm-4.7`         | Yes              |
+| `zai`      | `glm-5.1`         | Yes              |
 | `minimax`  | `MiniMax-M2.7`    | Yes              |
 | `kimi`     | `kimi-for-coding` | Yes              |
 | `deepseek` | `deepseek-chat`   | Yes              |

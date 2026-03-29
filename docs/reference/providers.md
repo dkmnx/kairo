@@ -6,7 +6,7 @@ Built-in and custom provider configurations.
 
 | Provider   | Base URL                             | Model             | API Key |
 | ---------- | ------------------------------------ | ----------------- | ------- |
-| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-4.7`         | Yes     |
+| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-5.1`         | Yes     |
 | `minimax`  | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`    | Yes     |
 | `deepseek` | `https://api.deepseek.com/anthropic` | `deepseek-chat`   | Yes     |
 | `kimi`     | `https://api.kimi.com/coding/`       | `kimi-for-coding` | Yes     |
