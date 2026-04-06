@@ -17,7 +17,12 @@ type MigrationChange struct {
 	New      string
 }
 
-func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationChange, error) {
+type MigrationResult struct {
+	Changes          []MigrationChange
+	SkippedProviders []string
+}
+
+func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationResult, error) {
 	cfg, err := LoadConfig(ctx, configDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -37,10 +42,13 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationCh
 	}
 
 	var changes []MigrationChange
+	var skipped []string
 
 	for providerName, provider := range cfg.Providers {
 		builtinDef, ok := providers.GetBuiltInProvider(providerName)
 		if !ok {
+			skipped = append(skipped, providerName)
+
 			continue
 		}
 
@@ -87,7 +95,7 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationCh
 		}
 	}
 
-	return changes, nil
+	return &MigrationResult{Changes: changes, SkippedProviders: skipped}, nil
 }
 
 func FormatMigrationChanges(changes []MigrationChange) string {

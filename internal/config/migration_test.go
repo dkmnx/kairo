@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,11 +10,9 @@ import (
 
 func TestMigrateConfigOnUpdate(t *testing.T) {
 	t.Run("UpdatesModelWhenBuiltinDefaultChanges", func(t *testing.T) {
-		// Simulate config with old model that needs migration
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
-		// Old config with MiniMax using old default model
 		configContent := `default_provider: minimax
 providers:
   minimax:
@@ -29,12 +26,12 @@ default_models:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		if len(changes) == 0 {
+		if len(result.Changes) == 0 {
 			t.Error("Expected migration changes, got none")
 		}
 
@@ -48,12 +45,10 @@ default_models:
 			t.Fatal("minimax provider not found")
 		}
 
-		// The builtin default is MiniMax-M2.7, so model should be updated
 		if provider.Model != "MiniMax-M2.7" {
 			t.Errorf("Provider model = %q, want %q", provider.Model, "MiniMax-M2.7")
 		}
 
-		// DefaultModels should also be updated
 		if cfg.DefaultModels["minimax"] != "MiniMax-M2.7" {
 			t.Errorf("DefaultModels[minimax] = %q, want %q", cfg.DefaultModels["minimax"], "MiniMax-M2.7")
 		}
@@ -63,7 +58,6 @@ default_models:
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
-		// Config with empty model - should get builtin default
 		configContent := `default_provider: minimax
 providers:
   minimax:
@@ -75,12 +69,12 @@ providers:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		if len(changes) == 0 {
+		if len(result.Changes) == 0 {
 			t.Error("Expected migration changes for empty model")
 		}
 
@@ -98,7 +92,6 @@ providers:
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
-		// Config already using current builtin default
 		configContent := `default_provider: minimax
 providers:
   minimax:
@@ -112,14 +105,13 @@ default_models:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		// No changes expected since already matches builtin
-		if len(changes) != 0 {
-			t.Errorf("Expected no changes, got %d", len(changes))
+		if len(result.Changes) != 0 {
+			t.Errorf("Expected no changes, got %d", len(result.Changes))
 		}
 
 		cfg, err := LoadConfig(context.Background(), tmpDir)
@@ -133,12 +125,9 @@ default_models:
 	})
 
 	t.Run("UpdatesUserSetModelToNewBuiltin", func(t *testing.T) {
-		// This is the actual bug: user set MiniMax-M2.5 but builtin changed
-		// to MiniMax-M2.5 (or similar), and the model wasn't being updated
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
-		// After migration, it should be updated to the new builtin default
 		configContent := `default_provider: minimax
 providers:
   minimax:
@@ -152,12 +141,12 @@ default_models:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		if len(changes) == 0 {
+		if len(result.Changes) == 0 {
 			t.Error("Expected migration changes when user model differs from builtin")
 		}
 
@@ -175,10 +164,9 @@ default_models:
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
-		// Custom provider should not be migrated
-		configContent := `default_provider: custom
+		configContent := `default_provider: myprovider
 providers:
-  custom:
+  myprovider:
     name: My Custom Provider
     base_url: https://api.custom.com
     model: my-model
@@ -187,13 +175,17 @@ providers:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		if len(changes) != 0 {
-			t.Errorf("Expected no changes for custom provider, got %d", len(changes))
+		if len(result.Changes) != 0 {
+			t.Errorf("Expected no changes for custom provider, got %d", len(result.Changes))
+		}
+
+		if len(result.SkippedProviders) != 1 || result.SkippedProviders[0] != "myprovider" {
+			t.Errorf("Expected myprovider to be skipped, got %v", result.SkippedProviders)
 		}
 	})
 
@@ -201,8 +193,6 @@ providers:
 		tmpDir := t.TempDir()
 
 		_, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
-		// When config doesn't exist, LoadConfig returns ErrConfigNotFound
-		// which is not os.IsNotExist, so it returns an error
 		if err == nil {
 			t.Error("Expected error for missing config")
 		}
@@ -219,13 +209,13 @@ providers: {}
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		if len(changes) != 0 {
-			t.Errorf("Expected no changes for empty providers, got %d", len(changes))
+		if result != nil && len(result.Changes) != 0 {
+			t.Errorf("Expected no changes for empty providers, got %d", len(result.Changes))
 		}
 	})
 
@@ -233,7 +223,6 @@ providers: {}
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
-		// Anthropic has no builtin default model, should not be migrated
 		configContent := `default_provider: anthropic
 providers:
   anthropic:
@@ -245,13 +234,13 @@ providers:
 			t.Fatal(err)
 		}
 
-		changes, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		if len(changes) != 0 {
-			t.Errorf("Expected no changes for provider without builtin model, got %d", len(changes))
+		if len(result.Changes) != 0 {
+			t.Errorf("Expected no changes for provider without builtin model, got %d", len(result.Changes))
 		}
 	})
 }

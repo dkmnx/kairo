@@ -3,8 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
@@ -87,15 +85,6 @@ func runResetSecrets(cliCtx *CLIContext, configDir string, secretsResult Secrets
 	return nil
 }
 
-func getDefaultConfigDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-
-	return filepath.Join(home, ".config", "kairo")
-}
-
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Interactive setup and edit wizard",
@@ -105,7 +94,9 @@ var setupCmd = &cobra.Command{
 		cliCtx := GetCLIContext(cmd)
 		configDir := cliCtx.GetConfigDir()
 		if configDir == "" {
-			configDir = getDefaultConfigDir()
+			ui.PrintError("Could not determine config directory. Set KAIRO_CONFIG_DIR or provide --config flag.")
+
+			return
 		}
 
 		if err := EnsureConfigDir(cliCtx, configDir); err != nil {
@@ -137,6 +128,12 @@ var setupCmd = &cobra.Command{
 
 				return
 			}
+		}
+
+		if secretsResult.SkippedCount > 0 {
+			ui.PrintWarn(fmt.Sprintf(
+				"Warning: %d malformed secret entries were skipped during parsing",
+				secretsResult.SkippedCount))
 		}
 
 		providerName := promptForProvider(cfg)
