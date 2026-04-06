@@ -28,10 +28,8 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 	oldConfigPath := filepath.Join(configDir, "config")
 	newConfigPath := filepath.Join(configDir, "config.yaml")
 
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	default:
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return false, err
 	}
 
 	oldInfo, err := os.Stat(oldConfigPath)
@@ -44,10 +42,8 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 			"failed to check old config file", err)
 	}
 
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	default:
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return false, err
 	}
 
 	if _, err := os.Stat(newConfigPath); err == nil {
@@ -88,10 +84,8 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	configPath := filepath.Join(configDir, "config.yaml")
 
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return nil, err
 	}
 
 	_, migrateErr := migrateConfigFile(ctx, configDir)
@@ -103,10 +97,8 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 			WithContext("hint", "ensure you have write permissions in the config directory")
 	}
 
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return nil, err
 	}
 
 	data, err := os.ReadFile(configPath)
@@ -154,10 +146,8 @@ func (c *Config) validate() {
 }
 
 func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return err
 	}
 
 	configPath := filepath.Join(configDir, "config.yaml")

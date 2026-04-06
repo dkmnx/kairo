@@ -63,9 +63,10 @@ func AddAndSaveProvider(params AddProviderParams) error {
 }
 
 type SecretsResult struct {
-	Secrets     map[string]string
-	SecretsPath string
-	KeyPath     string
+	Secrets      map[string]string
+	SecretsPath  string
+	KeyPath      string
+	SkippedCount int
 }
 
 func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
@@ -86,7 +87,9 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 	}
 	defer crypto.ClearMemory(existingSecrets)
 
-	result.Secrets = config.ParseSecrets(string(existingSecrets))
+	secretsResult := config.ParseSecretsWithStats(string(existingSecrets))
+	result.Secrets = secretsResult.Secrets
+	result.SkippedCount = secretsResult.SkippedCount
 
 	return result, nil
 }
