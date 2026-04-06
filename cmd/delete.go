@@ -105,7 +105,13 @@ var deleteCmd = &cobra.Command{
 
 		existingSecrets, err := crypto.DecryptSecretsBytes(cliCtx.GetRootCtx(), secretsPath, keyPath)
 		if err == nil {
-			secrets := config.ParseSecrets(string(existingSecrets))
+			secretsResult := config.ParseSecretsWithStats(string(existingSecrets))
+			if secretsResult.SkippedCount > 0 {
+				ui.PrintWarn(fmt.Sprintf(
+					"Warning: %d malformed secret entries were skipped during parsing",
+					secretsResult.SkippedCount))
+			}
+			secrets := secretsResult.Secrets
 			crypto.ClearMemory(existingSecrets)
 
 			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(target)))

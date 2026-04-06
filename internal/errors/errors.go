@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -89,6 +90,15 @@ func (e *KairoError) WithContext(key, value string) *KairoError {
 func FileError(message, path string, cause error) *KairoError {
 	return WrapError(FileSystemError, message, cause).
 		WithContext("path", path)
+}
+
+func CheckContext(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return nil
+	}
 }
 
 func VerificationErr(message string, cause error) *KairoError {

@@ -6,13 +6,25 @@ import (
 	"strings"
 )
 
+type SecretsResult struct {
+	Secrets      map[string]string
+	SkippedCount int
+}
+
 func ParseSecrets(secrets string) map[string]string {
+	result := ParseSecretsWithStats(secrets)
+
+	return result.Secrets
+}
+
+func ParseSecretsWithStats(secrets string) SecretsResult {
 	result := make(map[string]string)
-	for _, entry := range parseSecretsEntries(secrets) {
+	skippedCount := 0
+	for _, entry := range parseSecretsEntries(secrets, &skippedCount) {
 		result[entry.key] = entry.value
 	}
 
-	return result
+	return SecretsResult{Secrets: result, SkippedCount: skippedCount}
 }
 
 type secretEntry struct {
@@ -20,7 +32,7 @@ type secretEntry struct {
 	value string
 }
 
-func parseSecretsEntries(secrets string) []secretEntry {
+func parseSecretsEntries(secrets string, skippedCount *int) []secretEntry {
 	var entries []secretEntry
 	for lineNum, line := range strings.Split(secrets, "\n") {
 		if line == "" {
@@ -28,21 +40,26 @@ func parseSecretsEntries(secrets string) []secretEntry {
 		}
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) != 2 {
+			*skippedCount++
+
 			continue
 		}
 		key, value := parts[0], parts[1]
 		if key == "" {
 			log.Printf("Warning: skipping malformed secret entry at line %d: empty key", lineNum+1)
+			*skippedCount++
 
 			continue
 		}
 		if value == "" {
 			log.Printf("Warning: skipping malformed secret entry at line %d: empty value", lineNum+1)
+			*skippedCount++
 
 			continue
 		}
 		if strings.Contains(key, "\n") || strings.Contains(value, "\n") {
 			log.Printf("Warning: skipping malformed secret entry at line %d: contains newline", lineNum+1)
+			*skippedCount++
 
 			continue
 		}
