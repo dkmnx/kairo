@@ -11,6 +11,11 @@ import (
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
+const (
+	minAPIKeyLength     = 32
+	defaultMinKeyLength = 20
+)
+
 type KeyFormat struct {
 	MinLength int
 	Prefix    string
@@ -46,11 +51,11 @@ func (kf *KeyFormat) matchesPattern(key string) (bool, error) {
 }
 
 var providerKeyFormats = map[string]KeyFormat{
-	"zai":      {MinLength: 32},
-	"minimax":  {MinLength: 32},
-	"kimi":     {MinLength: 32},
-	"deepseek": {MinLength: 32},
-	"custom":   {MinLength: 20},
+	"zai":      {MinLength: minAPIKeyLength},
+	"minimax":  {MinLength: minAPIKeyLength},
+	"kimi":     {MinLength: minAPIKeyLength},
+	"deepseek": {MinLength: minAPIKeyLength},
+	"custom":   {MinLength: defaultMinKeyLength},
 }
 
 var (
@@ -79,7 +84,7 @@ func ValidateAPIKey(key string, providerName string) error {
 
 	format, knownProvider := providerKeyFormats[providerName]
 	if !knownProvider {
-		format = KeyFormat{MinLength: 20}
+		format = KeyFormat{MinLength: defaultMinKeyLength}
 	}
 
 	if len(key) < format.MinLength {
