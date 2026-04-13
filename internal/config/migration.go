@@ -57,35 +57,21 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationRes
 		}
 
 		userModel := provider.Model
-
-		if userModel == "" {
-			provider.Model = builtinDef.Model
-			cfg.Providers[providerName] = provider
+		if userModel == builtinDef.Model {
 			cfg.DefaultModels[providerName] = builtinDef.Model
-			changes = append(changes, MigrationChange{
-				Provider: providerName,
-				Field:    "model",
-				Old:      "",
-				New:      builtinDef.Model,
-			})
 
 			continue
 		}
 
-		if userModel != builtinDef.Model {
-			oldModel := userModel
-			provider.Model = builtinDef.Model
-			cfg.Providers[providerName] = provider
-			cfg.DefaultModels[providerName] = builtinDef.Model
-			changes = append(changes, MigrationChange{
-				Provider: providerName,
-				Field:    "model",
-				Old:      oldModel,
-				New:      builtinDef.Model,
-			})
-		} else {
-			cfg.DefaultModels[providerName] = builtinDef.Model
-		}
+		provider.Model = builtinDef.Model
+		cfg.Providers[providerName] = provider
+		cfg.DefaultModels[providerName] = builtinDef.Model
+		changes = append(changes, MigrationChange{
+			Provider: providerName,
+			Field:    "model",
+			Old:      userModel,
+			New:      builtinDef.Model,
+		})
 	}
 
 	if len(changes) > 0 {
