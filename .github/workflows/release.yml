@@ -27,13 +27,15 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
+      - name: Generate release notes
+        run: |
+          awk '/^## \[/{c++; if(c>1)exit; if(c==1){next}} c>0' CHANGELOG.md | tail -c +2 > /tmp/release-notes.txt
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: latest
-          args: >
-            release --clean
-            --release-notes <(awk '/^## \[/{c++; if(c>1)exit; if(c==1){next}} c>0' CHANGELOG.md | tail -c +2)
+          args: release --clean --release-notes /tmp/release-notes.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

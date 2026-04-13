@@ -113,7 +113,11 @@ pre-release:
     just test
     @echo ""
     @echo "Running goreleaser dry-run..."
-    goreleaser release --clean --snapshot --release-notes "$(awk '/^## \[/{c++; if(c>1)exit; if(c==1){next}} c>0' CHANGELOG.md | tail -c +2)"
+    @if command -v goreleaser >/dev/null 2>&1; then \
+        goreleaser release --clean --snapshot --release-notes "$$(awk '/^## \\[/{c++; if(c>1)exit; if(c==1){next}} c>0' CHANGELOG.md | tail -c +2)"; \
+    else \
+        echo "goreleaser not installed, skipping dry-run"; \
+    fi
     @echo ""
     @echo "Pre-release checks passed!"
 
