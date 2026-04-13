@@ -36,42 +36,48 @@ func TestPromptFieldConfig(t *testing.T) {
 
 func TestDisplayProviderHeader_NoPanic(t *testing.T) {
 	tests := []struct {
-		name     string
-		provider config.Provider
-		isEdit   bool
-		exists   bool
+		name   string
+		config providerPromptConfig
 	}{
 		{
 			name: "edit mode existing provider",
-			provider: config.Provider{
-				Name:    "Test Provider",
-				BaseURL: "https://test.com",
-				Model:   "test-model",
+			config: providerPromptConfig{
+				ProviderName: "Test Provider",
+				Provider: config.Provider{
+					Name:    "Test Provider",
+					BaseURL: "https://test.com",
+					Model:   "test-model",
+				},
+				IsEdit: true,
+				Exists: true,
 			},
-			isEdit: true,
-			exists: true,
 		},
 		{
 			name: "new provider mode",
-			provider: config.Provider{
-				Name:    "New Provider",
-				BaseURL: "https://new.com",
-				Model:   "new-model",
+			config: providerPromptConfig{
+				ProviderName: "New Provider",
+				Provider: config.Provider{
+					Name:    "New Provider",
+					BaseURL: "https://new.com",
+					Model:   "new-model",
+				},
+				IsEdit: false,
+				Exists: false,
 			},
-			isEdit: false,
-			exists: false,
 		},
 		{
-			name:     "empty provider",
-			provider: config.Provider{},
-			isEdit:   true,
-			exists:   true,
+			name: "empty provider",
+			config: providerPromptConfig{
+				Provider: config.Provider{},
+				IsEdit:   true,
+				Exists:   true,
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			displayProviderHeader(tt.provider, tt.isEdit, tt.exists)
+			displayProviderHeader(tt.config)
 		})
 	}
 }

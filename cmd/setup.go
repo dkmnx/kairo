@@ -21,24 +21,43 @@ func configureProvider(params ProviderSetup) (string, error) {
 	definition := GetProviderDefinition(validatedName)
 	provider, exists := params.Cfg.Providers[validatedName]
 
-	displayProviderHeader(provider, params.IsEdit, exists)
+	promptCfg := providerPromptConfig{
+		ProviderName: validatedName,
+		Provider:     provider,
+		Definition:   definition,
+		Secrets:      params.Secrets,
+		IsEdit:       params.IsEdit,
+		Exists:       exists,
+	}
 
-	apiKey := promptForAPIKey(validatedName, params.Secrets, params.IsEdit, exists)
+	displayProviderHeader(promptCfg)
+
+	apiKey := promptForAPIKey(promptCfg)
 	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
 		return "", err
 	}
 
-	baseURL := promptForBaseURL(provider, definition, params.IsEdit, exists)
+	baseURL := promptForBaseURL(promptCfg)
 	if err := validate.ValidateURL(baseURL, definition.Name); err != nil {
 		return "", err
 	}
 
-	model := promptForModel(provider, definition, params.IsEdit, exists)
-	if err := validateConfiguredModel(model, validatedName, definition.Name); err != nil {
+	model := promptForModel(promptCfg)
+	if err := validateConfiguredModel(modelValidationConfig{
+		Model:        model,
+		ProviderName: validatedName,
+		DisplayName:  definition.Name,
+	}); err != nil {
 		return "", err
 	}
 
-	provider = BuildProviderConfigFromInput(definition, baseURL, model, exists, provider)
+	provider = BuildProviderConfig(ProviderBuildConfig{
+		Definition: definition,
+		BaseURL:    baseURL,
+		Model:      model,
+		Exists:     exists,
+		Existing:   &provider,
+	})
 
 	setAsDefault := params.Cfg.DefaultProvider == ""
 	if err := AddAndSaveProvider(AddProviderParams{
