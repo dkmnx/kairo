@@ -16,8 +16,6 @@ builds:
     goarch:
       - amd64
       - arm64
-    goarm:
-      - "7"
     flags:
       - -trimpath
       - -tags=osusergo,netgo
@@ -32,7 +30,7 @@ builds:
 archives:
   - id: kairo
     formats: ["tar.gz", "zip"]
-    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
     format_overrides:
       - goos: windows
         formats: ["zip"]
