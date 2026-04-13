@@ -1169,7 +1169,11 @@ func TestSetup_ValidateModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateConfiguredModel(tt.model, tt.provider, tt.displayName)
+			err := validateConfiguredModel(modelValidationConfig{
+				Model:        tt.model,
+				ProviderName: tt.provider,
+				DisplayName:  tt.displayName,
+			})
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("validateConfiguredModel() error = %v, wantErr %v", err, tt.wantErr)
 			}
