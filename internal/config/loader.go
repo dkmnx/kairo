@@ -42,10 +42,6 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 			"failed to check old config file", err)
 	}
 
-	if err := kairoerrors.CheckContext(ctx); err != nil {
-		return false, err
-	}
-
 	if _, err := os.Stat(newConfigPath); err == nil {
 		return false, nil
 	} else if !os.IsNotExist(err) {
