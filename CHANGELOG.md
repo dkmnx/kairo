@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `kairo setup` and `kairo delete` now warn when malformed secret entries are skipped during parsing
+- `kairo setup` no longer silently falls back to `~/.config/kairo` when config directory is undetermined; prints actionable error instead
+
 ### Fixed
 
 - Update command no longer migrates provider models using stale defaults from the pre-update binary
