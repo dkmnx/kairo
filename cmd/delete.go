@@ -100,38 +100,48 @@ var deleteCmd = &cobra.Command{
 
 		cliCtx.InvalidateCache(dir)
 
-		secretsPath := filepath.Join(dir, "secrets.age")
-		keyPath := filepath.Join(dir, "age.key")
+		secretsPath := filepath.Join(dir, config.SecretsFileName)
+		keyPath := filepath.Join(dir, config.KeyFileName)
 
-		existingSecrets, err := crypto.DecryptSecretsBytes(cliCtx.GetRootCtx(), secretsPath, keyPath)
-		if err == nil {
-			secretsResult := config.ParseSecretsWithStats(string(existingSecrets))
-			if secretsResult.SkippedCount > 0 {
-				ui.PrintWarn(fmt.Sprintf(
-					"Warning: %d malformed secret entries were skipped during parsing",
-					secretsResult.SkippedCount))
-			}
-			secrets := secretsResult.Secrets
-			crypto.ClearMemory(existingSecrets)
-
-			delete(secrets, fmt.Sprintf("%s_API_KEY", strings.ToUpper(target)))
-
-			secretsContent := config.FormatSecrets(secrets)
-
-			if secretsContent == "" {
-				err := os.Remove(secretsPath)
-				if err != nil {
-					ui.PrintWarn(fmt.Sprintf("Warning: Could not remove empty secrets file: %v", err))
-				}
-			} else {
-				if err := crypto.EncryptSecrets(cliCtx.GetRootCtx(), secretsPath, keyPath, secretsContent); err != nil {
-					ui.PrintWarn(fmt.Sprintf("Warning: Could not update secrets: %v", err))
-				}
-			}
+		if err := deleteProviderSecrets(cliCtx.GetRootCtx(), secretsPath, keyPath, target); err != nil {
+			ui.PrintWarn(fmt.Sprintf("Warning: %v", err))
 		}
 
 		tap.Outro(fmt.Sprintf("Provider '%s' deleted successfully", target))
 	},
+}
+
+func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerName string) error {
+	existingSecrets, err := crypto.DecryptSecretsBytes(ctx, secretsPath, keyPath)
+	if err != nil {
+		return nil
+	}
+	defer crypto.ClearMemory(existingSecrets)
+
+	parsed := config.ParseSecretsWithStats(string(existingSecrets))
+	if parsed.SkippedCount > 0 {
+		ui.PrintWarn(fmt.Sprintf(
+			"Warning: %d malformed secret entries were skipped during parsing",
+			parsed.SkippedCount))
+	}
+
+	apiKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
+	delete(parsed.Secrets, apiKey)
+
+	secretsContent := config.FormatSecrets(parsed.Secrets)
+
+	if secretsContent == "" {
+		if removeErr := os.Remove(secretsPath); removeErr != nil {
+			return fmt.Errorf("could not remove empty secrets file: %w", removeErr)
+		}
+		return nil
+	}
+
+	if err := crypto.EncryptSecrets(ctx, secretsPath, keyPath, secretsContent); err != nil {
+		return fmt.Errorf("could not update secrets: %w", err)
+	}
+
+	return nil
 }
 
 func init() {
