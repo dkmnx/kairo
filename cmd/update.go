@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
@@ -126,7 +126,7 @@ func versionGreaterThan(current, latest string) bool {
 }
 
 func isWindows(goos string) bool {
-	return goos == config.WindowsGOOS
+	return goos == constants.WindowsGOOS
 }
 
 func getInstallScriptURL(goos, tag string) string {
@@ -160,7 +160,7 @@ func downloadToTempFile(url string) (string, error) {
 	}
 
 	ext := installScriptExt
-	if runtime.GOOS == config.WindowsGOOS {
+	if runtime.GOOS == constants.WindowsGOOS {
 		ext = installScriptExtPS1
 	}
 	tempFile, err := os.CreateTemp("", "kairo-install-*"+ext)
@@ -189,7 +189,7 @@ func downloadToTempFile(url string) (string, error) {
 }
 
 func runInstallScript(scriptPath string) error {
-	if runtime.GOOS == config.WindowsGOOS {
+	if runtime.GOOS == constants.WindowsGOOS {
 		pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 		pwshCmd.Stdout = os.Stdout
 		pwshCmd.Stderr = os.Stderr
@@ -335,7 +335,7 @@ func verifyChecksum(scriptPath, expectedHash string) error {
 
 func getScriptNameForChecksums(goos string) string {
 	ext := installScriptExt
-	if goos == config.WindowsGOOS {
+	if goos == constants.WindowsGOOS {
 		ext = installScriptExtPS1
 	}
 

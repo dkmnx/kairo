@@ -12,6 +12,7 @@ import (
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
+	"github.com/dkmnx/kairo/internal/secrets"
 )
 
 func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
@@ -226,7 +227,7 @@ DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 		t.Fatalf("failed to decrypt secrets: %v", err)
 	}
 
-	parsedSecrets := config.ParseSecrets(decrypted)
+	parsedSecrets := secrets.Parse(decrypted)
 	if _, exists := parsedSecrets["ZAI_API_KEY"]; !exists {
 		t.Error("ZAI_API_KEY should exist")
 	}

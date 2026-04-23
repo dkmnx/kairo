@@ -2,12 +2,16 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/crypto"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	secretspkg "github.com/dkmnx/kairo/internal/secrets"
 )
 
 func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
@@ -32,12 +36,12 @@ func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 		t.Fatalf("SaveConfig() error = %v", err)
 	}
 
-	secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
-	keyPath := filepath.Join(tmpDir, config.KeyFileName)
-	secrets := map[string]string{
+	secretsPath := filepath.Join(tmpDir, constants.SecretsFileName)
+	keyPath := filepath.Join(tmpDir, constants.KeyFileName)
+	secretsMap := map[string]string{
 		"TESTPROVIDER_API_KEY": "secret-key",
 	}
-	secretsContent := config.FormatSecrets(secrets)
+	secretsContent := secretspkg.Format(secretsMap)
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
@@ -96,13 +100,13 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("SaveConfig() error = %v", err)
 	}
 
-	secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
-	keyPath := filepath.Join(tmpDir, config.KeyFileName)
-	secrets := map[string]string{
+	secretsPath := filepath.Join(tmpDir, constants.SecretsFileName)
+	keyPath := filepath.Join(tmpDir, constants.KeyFileName)
+	secretsMap := map[string]string{
 		"PROVIDER1_API_KEY": "key1",
 		"PROVIDER2_API_KEY": "key2",
 	}
-	secretsContent := config.FormatSecrets(secrets)
+	secretsContent := secretspkg.Format(secretsMap)
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
@@ -124,7 +128,7 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 	// Simulate deletion of provider2's secrets
 	delete(loadedSecrets, "PROVIDER2_API_KEY")
 
-	updatedSecretsContent := config.FormatSecrets(loadedSecrets)
+	updatedSecretsContent := secretspkg.Format(loadedSecrets)
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, updatedSecretsContent); err != nil {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
@@ -160,10 +164,10 @@ func TestDeleteCmdRemovesEmptySecretsFile(t *testing.T) {
 		t.Fatalf("SaveConfig() error = %v", err)
 	}
 
-	secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
-	keyPath := filepath.Join(tmpDir, config.KeyFileName)
-	secrets := map[string]string{}
-	secretsContent := config.FormatSecrets(secrets)
+	secretsPath := filepath.Join(tmpDir, constants.SecretsFileName)
+	keyPath := filepath.Join(tmpDir, constants.KeyFileName)
+	secretsMap := map[string]string{}
+	secretsContent := secretspkg.Format(secretsMap)
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
@@ -175,5 +179,24 @@ func TestDeleteCmdRemovesEmptySecretsFile(t *testing.T) {
 
 	if _, err := os.Stat(secretsPath); !os.IsNotExist(err) {
 		t.Error("Secrets file should have been removed when empty")
+	}
+}
+
+func TestDeleteProviderSecretsReturnsErrorOnBadKey(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	secretsPath := filepath.Join(tmpDir, constants.SecretsFileName)
+	keyPath := filepath.Join(tmpDir, "nonexistent.key")
+
+	err := deleteProviderSecrets(context.Background(), secretsPath, keyPath, "testprovider")
+	if err == nil {
+		t.Fatal("deleteProviderSecrets should return error when decryption fails")
+	}
+	var kairoErr *kairoerrors.KairoError
+	if !errors.As(err, &kairoErr) {
+		t.Fatalf("expected *KairoError, got %T", err)
+	}
+	if kairoErr.Type != kairoerrors.CryptoError {
+		t.Errorf("error type = %v, want %v", kairoErr.Type, kairoerrors.CryptoError)
 	}
 }

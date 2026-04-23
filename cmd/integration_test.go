@@ -10,6 +10,7 @@ import (
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
+	secretspkg "github.com/dkmnx/kairo/internal/secrets"
 )
 
 func TestFullProviderConfigurationWorkflow(t *testing.T) {
@@ -73,12 +74,12 @@ func TestFullProviderConfigurationWorkflow(t *testing.T) {
 		t.Errorf("loaded %d providers, want %d", len(loadedCfg.Providers), len(providersToTest))
 	}
 
-	secrets, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decryptedContent, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	parsedSecrets := config.ParseSecrets(secrets)
+	parsedSecrets := secretspkg.Parse(decryptedContent)
 	for _, p := range providersToTest {
 		for k := range p.envVars {
 			if _, ok := parsedSecrets[k]; !ok {

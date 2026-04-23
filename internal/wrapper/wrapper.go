@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
@@ -101,7 +101,7 @@ func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 		envVar = cfg.EnvVarName
 	}
 
-	isWindows := runtime.GOOS == config.WindowsGOOS
+	isWindows := runtime.GOOS == constants.WindowsGOOS
 
 	f, err := os.CreateTemp(cfg.AuthDir, "wrapper-")
 	if err != nil {

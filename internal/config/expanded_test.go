@@ -166,54 +166,6 @@ func TestLoadConfigWithInvalidYAML(t *testing.T) {
 	}
 }
 
-func TestParseSecretsEdgeCases(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected int
-	}{
-		{
-			name:     "empty",
-			input:    "",
-			expected: 0,
-		},
-		{
-			name:     "whitespace only",
-			input:    "   \n   \n   ",
-			expected: 0,
-		},
-		{
-			name:     "key with empty value",
-			input:    "KEY=",
-			expected: 0, // Empty values are filtered out
-		},
-		{
-			name:     "empty key",
-			input:    "=value",
-			expected: 0, // Empty keys are filtered out
-		},
-		{
-			name:     "multiple equals signs",
-			input:    "KEY=value=with=equals",
-			expected: 1,
-		},
-		{
-			name:     "mixed valid and invalid",
-			input:    "VALID=value\nANOTHER=test",
-			expected: 2,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ParseSecrets(tt.input)
-			if len(result) != tt.expected {
-				t.Errorf("ParseSecrets() returned %d entries, want %d", len(result), tt.expected)
-			}
-		})
-	}
-}
-
 func TestSaveConfigAtomicWrite(t *testing.T) {
 	// Test that SaveConfig uses atomic write (temp file + rename) pattern.
 	// This ensures:
