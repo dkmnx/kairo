@@ -69,6 +69,7 @@ type SecretsResult struct {
 	SecretsPath  string
 	KeyPath      string
 	SkippedCount int
+	Warnings     []string
 }
 
 func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
@@ -92,6 +93,7 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 	secretsResult := secrets.ParseWithStats(string(existingSecrets))
 	result.Secrets = secretsResult.Secrets
 	result.SkippedCount = secretsResult.SkippedCount
+	result.Warnings = secretsResult.Warnings
 
 	return result, nil
 }

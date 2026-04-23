@@ -149,10 +149,8 @@ var setupCmd = &cobra.Command{
 			}
 		}
 
-		if secretsResult.SkippedCount > 0 {
-			ui.PrintWarn(fmt.Sprintf(
-				"Warning: %d malformed secret entries were skipped during parsing",
-				secretsResult.SkippedCount))
+		for _, w := range secretsResult.Warnings {
+			ui.PrintWarn(w)
 		}
 
 		providerName := promptForProvider(cfg)
