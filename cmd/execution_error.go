@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -47,7 +47,7 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 	cmd.Println()
 
 	switch runtime.GOOS {
-	case config.WindowsGOOS:
+	case constants.WindowsGOOS:
 		cmd.Println("    irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex")
 	default:
 		cmd.Println("    curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh")

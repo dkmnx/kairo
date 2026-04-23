@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"filippo.io/age"
-	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
@@ -152,6 +153,7 @@ func ClearMemory(b []byte) {
 	for i := range b {
 		b[i] = 0
 	}
+	runtime.KeepAlive(b)
 }
 
 func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) ([]byte, error) {
@@ -262,7 +264,7 @@ func loadIdentity(keyPath string) (age.Identity, error) {
 }
 
 func EnsureKeyExists(ctx context.Context, configDir string) error {
-	keyPath := filepath.Join(configDir, config.KeyFileName)
+	keyPath := filepath.Join(configDir, constants.KeyFileName)
 	_, err := os.Stat(keyPath)
 	if err == nil {
 		return nil

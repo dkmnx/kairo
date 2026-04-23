@@ -8,7 +8,10 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/crypto"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/secrets"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/yarlson/tap"
@@ -100,11 +103,13 @@ var deleteCmd = &cobra.Command{
 
 		cliCtx.InvalidateCache(dir)
 
-		secretsPath := filepath.Join(dir, config.SecretsFileName)
-		keyPath := filepath.Join(dir, config.KeyFileName)
+		secretsPath := filepath.Join(dir, constants.SecretsFileName)
+		keyPath := filepath.Join(dir, constants.KeyFileName)
 
 		if err := deleteProviderSecrets(cliCtx.GetRootCtx(), secretsPath, keyPath, target); err != nil {
-			ui.PrintWarn(fmt.Sprintf("Warning: %v", err))
+			ui.PrintError(fmt.Sprintf("Failed to clean up secrets for '%s': %v", target, err))
+			ui.PrintInfo("Provider removed from config but its secrets could not be deleted — manual cleanup may be required")
+			return
 		}
 
 		tap.Outro(fmt.Sprintf("Provider '%s' deleted successfully", target))
@@ -114,21 +119,21 @@ var deleteCmd = &cobra.Command{
 func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerName string) error {
 	existingSecrets, err := crypto.DecryptSecretsBytes(ctx, secretsPath, keyPath)
 	if err != nil {
-		return nil
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to decrypt secrets for cleanup", err).
+			WithContext("provider", providerName)
 	}
 	defer crypto.ClearMemory(existingSecrets)
 
-	parsed := config.ParseSecretsWithStats(string(existingSecrets))
-	if parsed.SkippedCount > 0 {
-		ui.PrintWarn(fmt.Sprintf(
-			"Warning: %d malformed secret entries were skipped during parsing",
-			parsed.SkippedCount))
+	parsed := secrets.ParseWithStats(string(existingSecrets))
+	for _, w := range parsed.Warnings {
+		ui.PrintWarn(w)
 	}
 
 	apiKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
 	delete(parsed.Secrets, apiKey)
 
-	secretsContent := config.FormatSecrets(parsed.Secrets)
+	secretsContent := secrets.Format(parsed.Secrets)
 
 	if secretsContent == "" {
 		if removeErr := os.Remove(secretsPath); removeErr != nil {

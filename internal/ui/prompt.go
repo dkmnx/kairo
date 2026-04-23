@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
@@ -69,8 +68,8 @@ func isEmptyInput(err error) bool {
 	return !errors.Is(err, io.EOF) && !isInterrupted(err)
 }
 
-func PrintBanner(version string, provider config.Provider) {
-	banner := fmt.Sprintf("kairo %s · %s · %s", version, provider.Model, provider.Name)
+func PrintBanner(version, modelName, providerName string) {
+	banner := fmt.Sprintf("kairo %s · %s · %s", version, modelName, providerName)
 	fmt.Printf("%s%s%s\n\n", Gray, banner, Reset)
 }
 
