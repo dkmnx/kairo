@@ -126,14 +126,19 @@ func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerNa
 	defer crypto.ClearMemory(existingSecrets)
 
 	parsed := secrets.ParseWithStats(string(existingSecrets))
-	for _, w := range parsed.Warnings {
-		ui.PrintWarn(w)
-	}
 
 	apiKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
 	delete(parsed.Secrets, apiKey)
 
 	secretsContent := secrets.Format(parsed.Secrets)
+	if len(parsed.RawLines) > 0 {
+		secretsContent += strings.Join(parsed.RawLines, "\n") + "\n"
+		ui.PrintWarn(
+			fmt.Sprintf("%d malformed entries preserved (unparseable)",
+				len(parsed.RawLines),
+			),
+		)
+	}
 
 	if secretsContent == "" {
 		if removeErr := os.Remove(secretsPath); removeErr != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -198,5 +199,40 @@ func TestDeleteProviderSecretsReturnsErrorOnBadKey(t *testing.T) {
 	}
 	if kairoErr.Type != kairoerrors.CryptoError {
 		t.Errorf("error type = %v, want %v", kairoErr.Type, kairoerrors.CryptoError)
+	}
+}
+
+func TestDeleteProviderSecretsPreservesMalformedLines(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
+		t.Fatalf("EnsureKeyExists() error = %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, constants.SecretsFileName)
+	keyPath := filepath.Join(tmpDir, constants.KeyFileName)
+
+	secretsContent := "VALID_KEY=valid_value\nmalformed_without_equals\nPROVIDER_TO_DELETE_API_KEY=secret\n"
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
+		t.Fatalf("EncryptSecrets() error = %v", err)
+	}
+
+	if err := deleteProviderSecrets(context.Background(), secretsPath, keyPath, "PROVIDER_TO_DELETE"); err != nil {
+		t.Fatalf("deleteProviderSecrets() error = %v", err)
+	}
+
+	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	if err != nil {
+		t.Fatalf("DecryptSecrets() error = %v", err)
+	}
+
+	if !strings.Contains(decrypted, "VALID_KEY=valid_value") {
+		t.Error("decrypted content should still contain VALID_KEY=valid_value")
+	}
+	if !strings.Contains(decrypted, "malformed_without_equals") {
+		t.Error("decrypted content should still contain malformed_without_equals")
+	}
+	if strings.Contains(decrypted, "PROVIDER_TO_DELETE_API_KEY=secret") {
+		t.Error("decrypted content should NOT contain PROVIDER_TO_DELETE_API_KEY")
 	}
 }
