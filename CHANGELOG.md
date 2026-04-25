@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- DeepSeek default model updated to `deepseek-v4-pro[1m]`, with `deepseek-v4-flash` set as the haiku/subagent model via env vars
+
+### Fixed
+
+- Malformed secret lines are preserved during deletion instead of being silently dropped
+- Secrets warnings from `LoadSecrets` are now surfaced in the setup flow
+
 ## [2.3.6] - 2026-03-29
 
 ### Changed
