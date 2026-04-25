@@ -77,13 +77,13 @@ kairo -- "Quick question"
 
 ## Supported Providers
 
-| Provider   | Default Model     | API Key Required |
-| ---------- | ----------------- | ---------------- |
-| `zai`      | `glm-5.1`         | Yes              |
-| `minimax`  | `MiniMax-M2.7`    | Yes              |
-| `kimi`     | `kimi-for-coding` | Yes              |
-| `deepseek` | `deepseek-chat`   | Yes              |
-| `custom`   | user-defined      | Yes              |
+| Provider   | Default Model         | API Key Required |
+| ---------- | --------------------- | ---------------- |
+| `zai`      | `glm-5.1`             | Yes              |
+| `minimax`  | `MiniMax-M2.7`        | Yes              |
+| `kimi`     | `kimi-for-coding`     | Yes              |
+| `deepseek` | `deepseek-v4-pro[1m]` | Yes              |
+| `custom`   | user-defined          | Yes              |
 
 Details: [Provider Reference](../reference/providers.md)
 

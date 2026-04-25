@@ -96,13 +96,13 @@ Generated on first setup. The file contains the private identity line followed b
 
 ## Built-in Providers
 
-| Provider   | API Key Required | Default Base URL                     | Default Model     |
-| ---------- | ---------------- | ------------------------------------ | ----------------- |
-| `zai`      | Yes              | `https://api.z.ai/api/anthropic`     | `glm-5.1`         |
-| `minimax`  | Yes              | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`    |
-| `kimi`     | Yes              | `https://api.kimi.com/coding/`       | `kimi-for-coding` |
-| `deepseek` | Yes              | `https://api.deepseek.com/anthropic` | `deepseek-chat`   |
-| `custom`   | Yes              | user-defined                         | user-defined      |
+| Provider   | API Key Required | Default Base URL                     | Default Model         |
+| ---------- | ---------------- | ------------------------------------ | --------------------- |
+| `zai`      | Yes              | `https://api.z.ai/api/anthropic`     | `glm-5.1`             |
+| `minimax`  | Yes              | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        |
+| `kimi`     | Yes              | `https://api.kimi.com/coding/`       | `kimi-for-coding`     |
+| `deepseek` | Yes              | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` |
+| `custom`   | Yes              | user-defined                         | user-defined          |
 
 ## Custom Provider
 
