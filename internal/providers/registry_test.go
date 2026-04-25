@@ -149,7 +149,7 @@ func TestGetBuiltInProvider(t *testing.T) {
 			wantExists:   true,
 			wantName:     "DeepSeek AI",
 			wantBaseURL:  "https://api.deepseek.com/anthropic",
-			wantModel:    "deepseek-chat",
+			wantModel:    "deepseek-v4-pro[1m]",
 			wantRequires: true,
 		},
 		{
@@ -216,7 +216,7 @@ func TestBuiltInProviderEnvVars(t *testing.T) {
 		{"zai has env vars", "zai", 1, "ANTHROPIC_DEFAULT_HAIKU_MODEL"},
 		{"minimax has env vars", "minimax", 2, "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT"},
 		{"kimi has env vars", "kimi", 2, "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT"},
-		{"deepseek has env vars", "deepseek", 2, "API_TIMEOUT_MS"},
+		{"deepseek has env vars", "deepseek", 5, "ANTHROPIC_DEFAULT_HAIKU_MODEL"},
 		{"custom has no env vars", "custom", 0, ""},
 	}
 
