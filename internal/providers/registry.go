@@ -31,9 +31,12 @@ var BuiltInProviders = map[string]ProviderDefinition{
 	"deepseek": {
 		Name:           "DeepSeek AI",
 		BaseURL:        "https://api.deepseek.com/anthropic",
-		Model:          "deepseek-chat",
+		Model:          "deepseek-v4-pro[1m]",
 		RequiresAPIKey: true,
 		EnvVars: []string{
+			"ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash",
+			"CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash",
+			"CLAUDE_CODE_EFFORT_LEVEL=max",
 			"API_TIMEOUT_MS=600000",
 			"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
 		},
