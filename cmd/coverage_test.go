@@ -38,14 +38,18 @@ func TestBuildProviderListOptions(t *testing.T) {
 	}
 }
 
-func TestBuildProviderConfigFromInput(t *testing.T) {
+func TestBuildProviderConfig(t *testing.T) {
 	t.Run("new provider", func(t *testing.T) {
 		def := providers.ProviderDefinition{
 			Name:    "test",
 			BaseURL: "https://api.test.com",
 			Model:   "test-model",
 		}
-		got := BuildProviderConfigFromInput(def, "https://api.test.com", "test-model", false, config.Provider{})
+		got := BuildProviderConfig(ProviderBuildConfig{
+			Definition: def,
+			BaseURL:    "https://api.test.com",
+			Model:      "test-model",
+		})
 		if got.Name != "test" {
 			t.Errorf("Name = %v, want test", got.Name)
 		}
@@ -63,7 +67,13 @@ func TestBuildProviderConfigFromInput(t *testing.T) {
 			BaseURL: "https://old.com",
 			Model:   "old-model",
 		}
-		got := BuildProviderConfigFromInput(providers.ProviderDefinition{}, "https://new.com", "new-model", true, existing)
+		got := BuildProviderConfig(ProviderBuildConfig{
+			Definition: providers.ProviderDefinition{},
+			BaseURL:    "https://new.com",
+			Model:      "new-model",
+			Exists:     true,
+			Existing:   &existing,
+		})
 		if got.Name != "existing" {
 			t.Errorf("Name = %v, want existing", got.Name)
 		}

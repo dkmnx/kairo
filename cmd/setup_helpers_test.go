@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
+	secretspkg "github.com/dkmnx/kairo/internal/secrets"
 	"github.com/dkmnx/kairo/internal/validate"
 )
 
@@ -87,13 +89,13 @@ func TestValidateCustomProviderName(t *testing.T) {
 
 func TestFormatSecrets(t *testing.T) {
 	t.Run("formats secrets with sorting", func(t *testing.T) {
-		secrets := map[string]string{
+		secretsMap := map[string]string{
 			"Z_KEY": "value1",
 			"A_KEY": "value2",
 			"M_KEY": "value3",
 		}
 
-		content := config.FormatSecrets(secrets)
+		content := secretspkg.Format(secretsMap)
 
 		lines := strings.Split(strings.TrimSpace(content), "\n")
 		if len(lines) != 3 {
@@ -112,9 +114,9 @@ func TestFormatSecrets(t *testing.T) {
 	})
 
 	t.Run("handles empty secrets", func(t *testing.T) {
-		secrets := map[string]string{}
+		secretsMap := map[string]string{}
 
-		content := config.FormatSecrets(secrets)
+		content := secretspkg.Format(secretsMap)
 
 		if content != "" {
 			t.Errorf("Expected empty string, got: %q", content)
@@ -296,8 +298,8 @@ func TestSaveProviderConfiguration(t *testing.T) {
 			Providers: make(map[string]config.Provider),
 		}
 
-		secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
-		keyPath := filepath.Join(tmpDir, config.KeyFileName)
+		secretsPath := filepath.Join(tmpDir, constants.SecretsFileName)
+		keyPath := filepath.Join(tmpDir, constants.KeyFileName)
 
 		setAsDefault := cfg.DefaultProvider == ""
 		err := AddAndSaveProvider(AddProviderParams{
@@ -351,8 +353,8 @@ func TestSaveProviderConfiguration(t *testing.T) {
 			},
 		}
 
-		secretsPath := filepath.Join(tmpDir, config.SecretsFileName)
-		keyPath := filepath.Join(tmpDir, config.KeyFileName)
+		secretsPath := filepath.Join(tmpDir, constants.SecretsFileName)
+		keyPath := filepath.Join(tmpDir, constants.KeyFileName)
 
 		err := AddAndSaveProvider(AddProviderParams{
 			CLIContext:   NewCLIContext(),

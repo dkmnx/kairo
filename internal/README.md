@@ -98,13 +98,13 @@ Key functions:
 
 Built-in providers:
 
-| Provider   | Base URL                             | Model             | API Key |
-| ---------- | ------------------------------------ | ----------------- | ------- |
-| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-5.1`         | Yes     |
-| `minimax`  | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`    | Yes     |
-| `deepseek` | `https://api.deepseek.com/anthropic` | `deepseek-chat`   | Yes     |
-| `kimi`     | `https://api.kimi.com/coding/`       | `kimi-for-coding` | Yes     |
-| `custom`   | user-defined                         | user-defined      | Yes     |
+| Provider   | Base URL                             | Model                 | API Key |
+| ---------- | ------------------------------------ | --------------------- | ------- |
+| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes     |
+| `minimax`  | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes     |
+| `deepseek` | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes     |
+| `kimi`     | `https://api.kimi.com/coding/`       | `kimi-for-coding`     | Yes     |
+| `custom`   | user-defined                         | user-defined          | Yes     |
 
 ### `validate/`
 

@@ -58,11 +58,17 @@ func ResolveProviderName(providerName string) (string, error) {
 	return ValidateCustomProviderName(customName)
 }
 
-func validateConfiguredModel(model, providerName, displayName string) error {
-	if err := validate.ValidateProviderModel(model, displayName); err != nil {
+type modelValidationConfig struct {
+	Model        string
+	ProviderName string
+	DisplayName  string
+}
+
+func validateConfiguredModel(cfg modelValidationConfig) error {
+	if err := validate.ValidateProviderModel(cfg.Model, cfg.DisplayName); err != nil {
 		return err
 	}
-	if providers.IsBuiltInProvider(providerName) || strings.TrimSpace(model) != "" {
+	if providers.IsBuiltInProvider(cfg.ProviderName) || strings.TrimSpace(cfg.Model) != "" {
 		return nil
 	}
 
@@ -70,21 +76,24 @@ func validateConfiguredModel(model, providerName, displayName string) error {
 		"model name is required for custom providers")
 }
 
-func BuildProviderConfigFromInput(
-	definition providers.ProviderDefinition,
-	baseURL, model string,
-	exists bool,
-	existing config.Provider,
-) config.Provider {
-	if !exists {
+type ProviderBuildConfig struct {
+	Definition providers.ProviderDefinition
+	BaseURL    string
+	Model      string
+	Exists     bool
+	Existing   *config.Provider
+}
+
+func BuildProviderConfig(cfg ProviderBuildConfig) config.Provider {
+	if !cfg.Exists {
 		return config.Provider{
-			Name:    definition.Name,
-			BaseURL: baseURL,
-			Model:   model,
+			Name:    cfg.Definition.Name,
+			BaseURL: cfg.BaseURL,
+			Model:   cfg.Model,
 		}
 	}
-	existing.BaseURL = baseURL
-	existing.Model = model
+	cfg.Existing.BaseURL = cfg.BaseURL
+	cfg.Existing.Model = cfg.Model
 
-	return existing
+	return *cfg.Existing
 }

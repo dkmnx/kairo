@@ -45,7 +45,7 @@ func runHarnessWithWrapper(params HarnessRun) error {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, params.Provider)
+	ui.PrintBanner(kairoversion.Version, params.Provider.Model, params.Provider.Name)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -144,7 +144,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, cfg.Provider)
+	ui.PrintBanner(kairoversion.Version, cfg.Provider.Model, cfg.Provider.Name)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

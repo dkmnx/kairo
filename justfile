@@ -100,7 +100,7 @@ pre-commit-install:
         echo "pre-commit not installed. Install with: pip install pre-commit"; \
     fi
 
-# Pre-release checks: format, lint, pre-commit, test
+# Pre-release checks: format, lint, pre-commit, test, goreleaser dry-run
 pre-release:
     @echo "Running pre-release checks..."
     @echo ""
@@ -111,6 +111,13 @@ pre-release:
     just pre-commit
     @echo ""
     just test
+    @echo ""
+    @echo "Running goreleaser dry-run..."
+    @if command -v goreleaser >/dev/null 2>&1; then \
+        goreleaser release --clean --snapshot --release-notes "$$(awk '/^## \\[/{c++; if(c>1)exit; if(c==1){next}} c>0' CHANGELOG.md | tail -c +2)"; \
+    else \
+        echo "goreleaser not installed, skipping dry-run"; \
+    fi
     @echo ""
     @echo "Pre-release checks passed!"
 

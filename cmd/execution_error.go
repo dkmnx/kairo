@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -47,7 +47,7 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 	cmd.Println()
 
 	switch runtime.GOOS {
-	case config.WindowsGOOS:
+	case constants.WindowsGOOS:
 		cmd.Println("    irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex")
 	default:
 		cmd.Println("    curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh")
@@ -64,7 +64,5 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 
 func handleSecretsError(err error) {
 	ui.PrintError(fmt.Sprintf("Failed to decrypt secrets file: %v", err))
-	ui.PrintInfo("Restore 'age.key' and 'secrets.age' from backup,")
-	ui.PrintInfo("or remove both files and run 'kairo setup --reset-secrets' to re-enter API keys.")
-	ui.PrintInfo("Use --verbose for more details.")
+	printSecretsRecoveryHelp()
 }

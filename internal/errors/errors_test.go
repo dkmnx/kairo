@@ -1,9 +1,11 @@
 package errors
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestNewError(t *testing.T) {
@@ -272,6 +274,91 @@ func TestFileError(t *testing.T) {
 		}
 		if !strings.Contains(errMsg, "path=/missing/file.txt") {
 			t.Errorf("Error() should contain path context, got: %v", errMsg)
+		}
+	})
+}
+
+func TestCheckContext(t *testing.T) {
+	t.Run("returns nil when context is not done", func(t *testing.T) {
+		ctx := context.Background()
+		err := CheckContext(ctx)
+		if err != nil {
+			t.Errorf("CheckContext() = %v, want nil", err)
+		}
+	})
+
+	t.Run("returns context error when done", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		err := CheckContext(ctx)
+		if err == nil {
+			t.Error("CheckContext() should return error when context is done")
+		}
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("CheckContext() error = %v, want context.Canceled", err)
+		}
+	})
+
+	t.Run("returns deadline exceeded when expired", func(t *testing.T) {
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-1))
+		defer cancel()
+		err := CheckContext(ctx)
+		if err == nil {
+			t.Error("CheckContext() should return error when context deadline exceeded")
+		}
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("CheckContext() error = %v, want context.DeadlineExceeded", err)
+		}
+	})
+}
+
+func TestVerificationErr(t *testing.T) {
+	t.Run("creates verification error with cause", func(t *testing.T) {
+		cause := errors.New("checksum mismatch")
+		err := VerificationErr("integrity check failed", cause)
+
+		if err.Type != VerificationError {
+			t.Errorf("Type = %v, want %v", err.Type, VerificationError)
+		}
+
+		if err.Message != "integrity check failed" {
+			t.Errorf("Message = %v, want 'integrity check failed'", err.Message)
+		}
+
+		if err.Cause != cause {
+			t.Errorf("Cause = %v, want %v", err.Cause, cause)
+		}
+
+		errMsg := err.Error()
+		expected := "integrity check failed: checksum mismatch"
+		if errMsg != expected {
+			t.Errorf("Error() = %v, want %v", errMsg, expected)
+		}
+	})
+
+	t.Run("creates verification error without cause", func(t *testing.T) {
+		err := VerificationErr("signature invalid", nil)
+
+		if err.Type != VerificationError {
+			t.Errorf("Type = %v, want %v", err.Type, VerificationError)
+		}
+
+		if err.Message != "signature invalid" {
+			t.Errorf("Message = %v, want 'signature invalid'", err.Message)
+		}
+
+		expected := "signature invalid"
+		if err.Error() != expected {
+			t.Errorf("Error() = %v, want %v", err.Error(), expected)
+		}
+	})
+
+	t.Run("verification error is detectable via errors.Is", func(t *testing.T) {
+		err := VerificationErr("check failed", nil)
+		target := &KairoError{Type: VerificationError}
+
+		if !err.Is(target) {
+			t.Error("errors.Is should detect VerificationError type")
 		}
 	})
 }

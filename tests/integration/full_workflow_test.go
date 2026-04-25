@@ -12,6 +12,7 @@ import (
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
+	"github.com/dkmnx/kairo/internal/secrets"
 )
 
 func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
@@ -185,7 +186,7 @@ func TestFullWorkflowListAndStatus(t *testing.T) {
 			"anthropic": {Name: "Native Anthropic"},
 			"zai":       {Name: "Z.AI", BaseURL: "https://api.z.ai/api/anthropic", Model: "glm-5.1"},
 			"minimax":   {Name: "MiniMax", BaseURL: "https://api.minimax.chat/v1", Model: "minimax-abab6.5"},
-			"deepseek":  {Name: "DeepSeek", BaseURL: "https://api.deepseek.com/v1", Model: "deepseek-chat"},
+			"deepseek":  {Name: "DeepSeek", BaseURL: "https://api.deepseek.com/v1", Model: "deepseek-v4-pro[1m]"},
 		},
 	}
 	if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
@@ -226,7 +227,7 @@ DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 		t.Fatalf("failed to decrypt secrets: %v", err)
 	}
 
-	parsedSecrets := config.ParseSecrets(decrypted)
+	parsedSecrets := secrets.Parse(decrypted)
 	if _, exists := parsedSecrets["ZAI_API_KEY"]; !exists {
 		t.Error("ZAI_API_KEY should exist")
 	}

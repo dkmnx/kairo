@@ -17,7 +17,12 @@ type MigrationChange struct {
 	New      string
 }
 
-func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationChange, error) {
+type MigrationResult struct {
+	Changes          []MigrationChange
+	SkippedProviders []string
+}
+
+func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationResult, error) {
 	cfg, err := LoadConfig(ctx, configDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -37,10 +42,13 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationCh
 	}
 
 	var changes []MigrationChange
+	var skipped []string
 
 	for providerName, provider := range cfg.Providers {
 		builtinDef, ok := providers.GetBuiltInProvider(providerName)
 		if !ok {
+			skipped = append(skipped, providerName)
+
 			continue
 		}
 
@@ -49,35 +57,21 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationCh
 		}
 
 		userModel := provider.Model
-
-		if userModel == "" {
-			provider.Model = builtinDef.Model
-			cfg.Providers[providerName] = provider
+		if userModel == builtinDef.Model {
 			cfg.DefaultModels[providerName] = builtinDef.Model
-			changes = append(changes, MigrationChange{
-				Provider: providerName,
-				Field:    "model",
-				Old:      "",
-				New:      builtinDef.Model,
-			})
 
 			continue
 		}
 
-		if userModel != builtinDef.Model {
-			oldModel := userModel
-			provider.Model = builtinDef.Model
-			cfg.Providers[providerName] = provider
-			cfg.DefaultModels[providerName] = builtinDef.Model
-			changes = append(changes, MigrationChange{
-				Provider: providerName,
-				Field:    "model",
-				Old:      oldModel,
-				New:      builtinDef.Model,
-			})
-		} else {
-			cfg.DefaultModels[providerName] = builtinDef.Model
-		}
+		provider.Model = builtinDef.Model
+		cfg.Providers[providerName] = provider
+		cfg.DefaultModels[providerName] = builtinDef.Model
+		changes = append(changes, MigrationChange{
+			Provider: providerName,
+			Field:    "model",
+			Old:      userModel,
+			New:      builtinDef.Model,
+		})
 	}
 
 	if len(changes) > 0 {
@@ -87,7 +81,7 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) ([]MigrationCh
 		}
 	}
 
-	return changes, nil
+	return &MigrationResult{Changes: changes, SkippedProviders: skipped}, nil
 }
 
 func FormatMigrationChanges(changes []MigrationChange) string {
