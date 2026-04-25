@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 )
@@ -129,7 +128,7 @@ func TestPrintBanner(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("1.0.0-dev", config.Provider{Model: "claude-sonnet-4-20250514", Name: "Z.AI"})
+		PrintBanner("1.0.0-dev", "claude-sonnet-4-20250514", "Z.AI")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
@@ -164,7 +163,7 @@ func TestPrintBanner(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("2.0.0", config.Provider{Model: "custom-model", Name: "mycustomprovider"})
+		PrintBanner("2.0.0", "custom-model", "mycustomprovider")
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)

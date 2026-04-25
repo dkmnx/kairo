@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/crypto"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/secrets"
 )
 
 func EnsureConfigDir(cliCtx *CLIContext, configDir string) error {
@@ -63,9 +65,11 @@ func AddAndSaveProvider(params AddProviderParams) error {
 }
 
 type SecretsResult struct {
-	Secrets     map[string]string
-	SecretsPath string
-	KeyPath     string
+	Secrets      map[string]string
+	SecretsPath  string
+	KeyPath      string
+	SkippedCount int
+	Warnings     []string
 }
 
 func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
@@ -73,8 +77,8 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 		Secrets: make(map[string]string),
 	}
 
-	result.SecretsPath = filepath.Join(configDir, config.SecretsFileName)
-	result.KeyPath = filepath.Join(configDir, config.KeyFileName)
+	result.SecretsPath = filepath.Join(configDir, constants.SecretsFileName)
+	result.KeyPath = filepath.Join(configDir, constants.KeyFileName)
 
 	if _, err := os.Stat(result.SecretsPath); os.IsNotExist(err) {
 		return result, nil
@@ -86,7 +90,10 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 	}
 	defer crypto.ClearMemory(existingSecrets)
 
-	result.Secrets = config.ParseSecrets(string(existingSecrets))
+	secretsResult := secrets.ParseWithStats(string(existingSecrets))
+	result.Secrets = secretsResult.Secrets
+	result.SkippedCount = secretsResult.SkippedCount
+	result.Warnings = secretsResult.Warnings
 
 	return result, nil
 }
@@ -110,8 +117,8 @@ func ResetSecretsFiles(ctx context.Context, configDir, secretsPath, keyPath stri
 	return nil
 }
 
-func SaveSecrets(ctx context.Context, secretsPath, keyPath string, secrets map[string]string) error {
-	secretsContent := config.FormatSecrets(secrets)
+func SaveSecrets(ctx context.Context, secretsPath, keyPath string, secretsMap map[string]string) error {
+	secretsContent := secrets.Format(secretsMap)
 	if err := crypto.EncryptSecrets(ctx, secretsPath, keyPath, secretsContent); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"saving secrets", err)

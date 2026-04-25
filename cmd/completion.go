@@ -13,7 +13,6 @@ const (
 	defaultCompletionSuffix = "kairo-completion.sh"
 )
 
-// powerShellCompletionScript is the Register-ArgumentCompleter script for PowerShell
 const powerShellCompletionScript = `# PowerShell completion script for kairo
 # Usage: . ./kairo-completion.ps1 (or add to your PowerShell profile)
 
@@ -118,9 +117,7 @@ PowerShell:
 		var out io.Writer
 		var closeOut bool
 
-		// Determine output destination.
 		if completionOutput != "" {
-			// Write to specified file.
 			f, err := os.Create(completionOutput)
 			if err != nil {
 				cmd.Printf("Error creating output file: %v\n", err)
@@ -131,7 +128,6 @@ PowerShell:
 			out = f
 			closeOut = true
 		} else if completionSave {
-			// Auto-save to default location.
 			defaultPath := getDefaultCompletionPath(args[0])
 			if err := os.MkdirAll(filepath.Dir(defaultPath), 0755); err != nil {
 				cmd.Printf("Error creating directory: %v\n", err)
@@ -139,7 +135,6 @@ PowerShell:
 				return
 			}
 
-			// For PowerShell, copy the prepared script with Register-ArgumentCompleter
 			if args[0] == shellPowerShell {
 				if err := os.WriteFile(defaultPath, []byte(powerShellCompletionScript), 0644); err != nil {
 					cmd.Printf("Error writing completion file: %v\n", err)
@@ -165,11 +160,9 @@ PowerShell:
 			out = f
 			closeOut = true
 		} else {
-			// Write to stdout (use cmd's output to respect SetOut in tests).
 			out = cmd.OutOrStdout()
 		}
 
-		// Generate completion for the specified shell.
 		switch args[0] {
 		case "bash":
 			if err := rootCmd.GenBashCompletion(out); err != nil {
@@ -203,7 +196,6 @@ func init() {
 	completionCmd.Flags().BoolVar(&completionSave, "save", false, "Auto-save to default shell completion directory")
 }
 
-// getDefaultCompletionPath returns the default completion file path for a shell.
 func getDefaultCompletionPath(shell string) string {
 	home, _ := os.UserHomeDir()
 	if home == "" {

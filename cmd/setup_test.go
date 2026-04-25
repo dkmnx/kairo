@@ -15,6 +15,7 @@ import (
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
+	secretspkg "github.com/dkmnx/kairo/internal/secrets"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
 )
@@ -71,7 +72,7 @@ func TestPrintBanner(t *testing.T) {
 
 			done := make(chan struct{})
 			go func() {
-				ui.PrintBanner(tt.version, tt.provider)
+				ui.PrintBanner(tt.version, tt.provider.Model, tt.provider.Name)
 				w.Close()
 				close(done)
 			}()
@@ -230,7 +231,7 @@ func TestParseSecretsForIntegration(t *testing.T) {
 		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	secretsMap := config.ParseSecrets(decrypted)
+	secretsMap := secretspkg.Parse(decrypted)
 
 	if len(secretsMap) != 3 {
 		t.Errorf("ParseSecrets() returned %d entries, want 3", len(secretsMap))
@@ -273,21 +274,21 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	secrets := config.ParseSecrets(secretsContent)
-	if len(secrets) != 2 {
-		t.Errorf("ParseSecrets() returned %d entries, want 2", len(secrets))
+	secretsMap := secretspkg.Parse(secretsContent)
+	if len(secretsMap) != 2 {
+		t.Errorf("ParseSecrets() returned %d entries, want 2", len(secretsMap))
 	}
 
 	newApiKey := "deepseek-secret-789"
-	secrets["DEEPSEEK_API_KEY"] = newApiKey
+	secretsMap["DEEPSEEK_API_KEY"] = newApiKey
 
 	var secretsBuilder strings.Builder
-	keys := make([]string, 0, len(secrets))
-	for key := range secrets {
+	keys := make([]string, 0, len(secretsMap))
+	for key := range secretsMap {
 		keys = append(keys, key)
 	}
 	for _, key := range keys {
-		value := secrets[key]
+		value := secretsMap[key]
 		if key != "" && value != "" {
 			secretsBuilder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
 		}
@@ -302,7 +303,7 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	secretsMap := config.ParseSecrets(decrypted)
+	secretsMap = secretspkg.Parse(decrypted)
 	if len(secretsMap) != 3 {
 		t.Errorf("After adding provider, expected 3 secrets, got %d", len(secretsMap))
 	}
@@ -1169,7 +1170,11 @@ func TestSetup_ValidateModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateConfiguredModel(tt.model, tt.provider, tt.displayName)
+			err := validateConfiguredModel(modelValidationConfig{
+				Model:        tt.model,
+				ProviderName: tt.provider,
+				DisplayName:  tt.displayName,
+			})
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("validateConfiguredModel() error = %v, wantErr %v", err, tt.wantErr)
 			}

@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+
 version: 2
 
 before:
@@ -14,8 +16,6 @@ builds:
     goarch:
       - amd64
       - arm64
-    goarm:
-      - "7"
     flags:
       - -trimpath
       - -tags=osusergo,netgo
@@ -30,7 +30,7 @@ builds:
 archives:
   - id: kairo
     formats: ["tar.gz", "zip"]
-    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}'
     format_overrides:
       - goos: windows
         formats: ["zip"]
@@ -44,15 +44,13 @@ checksum:
   name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
   algorithm: sha256
 
-snapshot:
-  version_template: '{{ .Version }}-next'
-
 changelog:
   # Disable auto-generated changelog since CHANGELOG.md is maintained manually
   disable: true
 
 release:
-  draft: true
-  extra_files:
-    - glob: ./scripts/checksums.txt
-      name_template: scripts/checksums.txt
+  footer: |
+
+    ---
+
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).

@@ -6,10 +6,9 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/dkmnx/kairo/internal/constants"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
-
-const WindowsGOOS = "windows"
 
 var (
 	overriddenConfigDir   string
@@ -32,7 +31,7 @@ func GetConfigDir() (string, error) {
 	}
 
 	var defaultPath string
-	if runtime.GOOS == WindowsGOOS {
+	if runtime.GOOS == constants.WindowsGOOS {
 		defaultPath = filepath.Join(home, "AppData", "Roaming", "kairo")
 	} else {
 		defaultPath = filepath.Join(home, ".config", "kairo")

@@ -7,17 +7,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"filippo.io/age"
-	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
 func GenerateKey(ctx context.Context, keyPath string) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return err
 	}
 
 	key, err := age.GenerateX25519Identity()
@@ -67,10 +66,8 @@ func GenerateKey(ctx context.Context, keyPath string) error {
 }
 
 func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return err
 	}
 
 	recipient, err := loadRecipient(keyPath)
@@ -140,41 +137,13 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 }
 
 func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, error) {
-	select {
-	case <-ctx.Done():
-		return "", ctx.Err()
-	default:
-	}
-
-	identity, err := loadIdentity(keyPath)
-	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to load decryption key", err).
-			WithContext("key_path", keyPath).
-			WithContext("hint", "Ensure your encryption key file exists and is valid")
-	}
-
-	file, err := os.Open(secretsPath)
-	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to open secrets file", err).
-			WithContext("path", secretsPath)
-	}
-	defer file.Close()
-
-	decryptor, err := age.Decrypt(file, identity)
-	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to decrypt secrets file", err).
-			WithContext("path", secretsPath).
-			WithContext("hint", "Ensure your encryption key matches the one used for encryption")
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return "", err
 	}
 
 	var buf bytes.Buffer
-	_, err = buf.ReadFrom(decryptor)
-	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to read decrypted content", err)
+	if err := decryptToBuffer(ctx, secretsPath, keyPath, &buf); err != nil {
+		return "", err
 	}
 
 	return buf.String(), nil
@@ -184,12 +153,26 @@ func ClearMemory(b []byte) {
 	for i := range b {
 		b[i] = 0
 	}
+	runtime.KeepAlive(b)
 }
 
 func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := decryptToBuffer(ctx, secretsPath, keyPath, &buf); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func decryptToBuffer(ctx context.Context, secretsPath, keyPath string, buf *bytes.Buffer) error {
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return err
+	}
+
 	identity, err := loadIdentity(keyPath)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to load decryption key", err).
 			WithContext("key_path", keyPath).
 			WithContext("hint", "Ensure your encryption key file exists and is valid")
@@ -197,7 +180,7 @@ func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) ([]by
 
 	file, err := os.Open(secretsPath)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to open secrets file", err).
 			WithContext("path", secretsPath)
 	}
@@ -205,20 +188,19 @@ func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) ([]by
 
 	decryptor, err := age.Decrypt(file, identity)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to decrypt secrets file", err).
 			WithContext("path", secretsPath).
 			WithContext("hint", "Ensure your encryption key matches the one used for encryption")
 	}
 
-	var buf bytes.Buffer
 	_, err = buf.ReadFrom(decryptor)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.CryptoError,
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to read decrypted content", err)
 	}
 
-	return buf.Bytes(), nil
+	return nil
 }
 
 func loadRecipient(keyPath string) (age.Recipient, error) {
@@ -282,7 +264,7 @@ func loadIdentity(keyPath string) (age.Identity, error) {
 }
 
 func EnsureKeyExists(ctx context.Context, configDir string) error {
-	keyPath := filepath.Join(configDir, config.KeyFileName)
+	keyPath := filepath.Join(configDir, constants.KeyFileName)
 	_, err := os.Stat(keyPath)
 	if err == nil {
 		return nil
