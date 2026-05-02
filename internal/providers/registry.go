@@ -59,11 +59,13 @@ type ProviderDefinition struct {
 
 func IsBuiltInProvider(name string) bool {
 	_, ok := BuiltInProviders[name]
+
 	return ok
 }
 
 func GetBuiltInProvider(name string) (ProviderDefinition, bool) {
 	def, ok := BuiltInProviders[name]
+
 	return def, ok
 }
 
@@ -78,5 +80,6 @@ func RequiresAPIKey(name string) bool {
 	if !ok {
 		return true
 	}
+
 	return def.RequiresAPIKey
 }

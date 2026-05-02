@@ -80,6 +80,7 @@ func isInterrupted(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return errors.Is(err, os.ErrClosed) || errors.Is(err, io.EOF) || strings.Contains(err.Error(), "interrupted")
 }
 
@@ -87,6 +88,7 @@ func isEmptyInput(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return !errors.Is(err, io.EOF) && !isInterrupted(err)
 }
 
@@ -110,8 +112,10 @@ func Confirm(prompt string) (bool, error) {
 		if errors.Is(err, io.EOF) || isInterrupted(err) {
 			return false, kairoerrors.ErrUserCancelled
 		}
+
 		return false, err
 	}
 	input = strings.TrimSpace(strings.ToLower(input))
+
 	return input == "y" || input == "yes", nil
 }
