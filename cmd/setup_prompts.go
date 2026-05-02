@@ -78,9 +78,7 @@ func buildProviderListOptions(providerList []string) []tap.SelectOption[string] 
 	return options
 }
 
-func promptForProvider(cfg *config.Config) string {
-	ctx := context.Background()
-
+func promptForProvider(ctx context.Context, cfg *config.Config) string {
 	if len(cfg.Providers) == 0 {
 		return promptForNewProvider(ctx)
 	}
@@ -141,9 +139,7 @@ func displayProviderHeader(cfg providerPromptConfig) {
 	}
 }
 
-func promptForAPIKey(cfg providerPromptConfig) string {
-	ctx := context.Background()
-
+func promptForAPIKey(ctx context.Context, cfg providerPromptConfig) string {
 	if !cfg.IsEdit || !cfg.Exists {
 		return tapPasswordFn(ctx, tap.PasswordOptions{Message: "API Key"})
 	}
@@ -168,9 +164,7 @@ type promptFieldConfig struct {
 	Exists       bool
 }
 
-func promptForField(cfg promptFieldConfig) string {
-	ctx := context.Background()
-
+func promptForField(ctx context.Context, cfg promptFieldConfig) string {
 	if cfg.IsEdit && cfg.Exists {
 		return promptForFieldEdit(ctx, cfg)
 	}
@@ -214,8 +208,8 @@ func promptForFieldEdit(ctx context.Context, cfg promptFieldConfig) string {
 	}))
 }
 
-func promptForBaseURL(cfg providerPromptConfig) string {
-	return promptForField(promptFieldConfig{
+func promptForBaseURL(ctx context.Context, cfg providerPromptConfig) string {
+	return promptForField(ctx, promptFieldConfig{
 		Label:        "Base URL",
 		CurrentValue: cfg.Provider.BaseURL,
 		DefaultValue: cfg.Definition.BaseURL,
@@ -224,8 +218,8 @@ func promptForBaseURL(cfg providerPromptConfig) string {
 	})
 }
 
-func promptForModel(cfg providerPromptConfig) string {
-	return promptForField(promptFieldConfig{
+func promptForModel(ctx context.Context, cfg providerPromptConfig) string {
+	return promptForField(ctx, promptFieldConfig{
 		Label:        "Model",
 		CurrentValue: cfg.Provider.Model,
 		DefaultValue: cfg.Definition.Model,

@@ -318,7 +318,7 @@ func TestLoadConfigOrExit_WithConfig(t *testing.T) {
 // --- Tests for configureProvider integration ---
 
 func TestConfigureProvider_InvalidName(t *testing.T) {
-	_, err := configureProvider(ProviderSetup{
+	_, err := configureProvider(context.Background(), ProviderSetup{
 		ProviderName: "123invalid",
 		Cfg:          &config.Config{Providers: make(map[string]config.Provider)},
 	})
@@ -336,7 +336,7 @@ func TestConfigureProvider_EmptyAPIKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := configureProvider(ProviderSetup{
+	_, err := configureProvider(context.Background(), ProviderSetup{
 		CLIContext: NewCLIContext(), ConfigDir: tmpDir,
 		Cfg:          &config.Config{Providers: make(map[string]config.Provider), DefaultModels: make(map[string]string)},
 		ProviderName: "zai", Secrets: make(map[string]string),
@@ -366,7 +366,7 @@ func TestConfigureProvider_Success(t *testing.T) {
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
 
-	result, err := configureProvider(ProviderSetup{
+	result, err := configureProvider(context.Background(), ProviderSetup{
 		CLIContext: cliCtx, ConfigDir: tmpDir,
 		Cfg:          &config.Config{Providers: make(map[string]config.Provider), DefaultModels: make(map[string]string)},
 		ProviderName: "zai", Secrets: make(map[string]string),

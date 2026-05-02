@@ -1213,7 +1213,7 @@ func TestResolveProviderName_NonCustom(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ResolveProviderName(tt.providerName)
+			got, err := ResolveProviderName(context.Background(), tt.providerName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ResolveProviderName() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -115,7 +116,7 @@ func TestSplitArgs(t *testing.T) {
 // TestAPIKeyEnvVarName is now in coverage_env_test.go with additional test cases.
 
 func TestResolveProviderName(t *testing.T) {
-	name, err := ResolveProviderName("anthropic")
+	name, err := ResolveProviderName(context.Background(), "anthropic")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

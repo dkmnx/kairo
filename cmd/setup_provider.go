@@ -46,12 +46,12 @@ func GetProviderDefinition(providerName string) providers.ProviderDefinition {
 	return definition
 }
 
-func ResolveProviderName(providerName string) (string, error) {
+func ResolveProviderName(ctx context.Context, providerName string) (string, error) {
 	if providerName != "custom" {
 		return providerName, nil
 	}
 
-	customName := tapTextFn(context.Background(), tap.TextOptions{
+	customName := tapTextFn(ctx, tap.TextOptions{
 		Message: "Provider name",
 	})
 
