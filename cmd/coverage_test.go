@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -14,29 +13,7 @@ func TestHandleSecretsError(t *testing.T) {
 	handleSecretsError(testErr)
 }
 
-func TestBuildProviderListOptions(t *testing.T) {
-	providerList := []string{"anthropic", "zai", "minimax"}
-	options := buildProviderListOptions(providerList)
-
-	if len(options) != 3 {
-		t.Errorf("expected 3 options, got %d", len(options))
-	}
-
-	expectedProviders := map[string]bool{
-		"anthropic": true,
-		"zai":       true,
-		"minimax":   true,
-	}
-
-	for _, opt := range options {
-		if !expectedProviders[opt.Value] {
-			t.Errorf("unexpected provider: %s", opt.Value)
-		}
-		if opt.Label != opt.Value {
-			t.Errorf("label should match value for %s", opt.Value)
-		}
-	}
-}
+// TestBuildProviderListOptions is now in setup_prompts_test.go with table-driven tests.
 
 func TestBuildProviderConfig(t *testing.T) {
 	t.Run("new provider", func(t *testing.T) {
@@ -86,65 +63,8 @@ func TestBuildProviderConfig(t *testing.T) {
 	})
 }
 
-func TestBuildSecretsEnvVars(t *testing.T) {
-	secrets := map[string]string{
-		"ANTHROPIC_API_KEY": "test-key-123",
-		"ZAI_API_KEY":       "zai-key-456",
-	}
-
-	envVars := BuildSecretsEnvVars(secrets)
-
-	if len(envVars) != 2 {
-		t.Errorf("expected 2 env vars, got %d", len(envVars))
-	}
-
-	expectedVars := map[string]bool{
-		"ANTHROPIC_API_KEY=test-key-123": true,
-		"ZAI_API_KEY=zai-key-456":        true,
-	}
-
-	for _, envVar := range envVars {
-		if !expectedVars[envVar] {
-			t.Errorf("unexpected env var: %s", envVar)
-		}
-	}
-}
-
-func TestBuildBuiltInEnvVars(t *testing.T) {
-	provider := EnvProvider{
-		BaseURL: "https://api.test.com",
-		Model:   "test-model",
-	}
-
-	envVars := BuildBuiltInEnvVars(provider)
-
-	expectedKeys := []string{
-		"ANTHROPIC_BASE_URL",
-		"ANTHROPIC_MODEL",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-		"ANTHROPIC_DEFAULT_SONNET_MODEL",
-		"ANTHROPIC_DEFAULT_OPUS_MODEL",
-		"ANTHROPIC_SMALL_FAST_MODEL",
-	}
-
-	envMap := make(map[string]string)
-	for _, env := range envVars {
-		parts := strings.SplitN(env, "=", 2)
-		if len(parts) == 2 {
-			envMap[parts[0]] = parts[1]
-		}
-	}
-
-	for _, key := range expectedKeys {
-		if _, exists := envMap[key]; !exists {
-			t.Errorf("BuildBuiltInEnvVars() missing expected key %s", key)
-		}
-	}
-
-	if envMap["ANTHROPIC_BASE_URL"] != provider.BaseURL {
-		t.Errorf("ANTHROPIC_BASE_URL = %s, want %s", envMap["ANTHROPIC_BASE_URL"], provider.BaseURL)
-	}
-}
+// TestBuildSecretsEnvVars, TestBuildBuiltInEnvVars, and TestAPIKeyEnvVarName
+// are now in coverage_env_test.go with improved coverage.
 
 func TestSplitArgs(t *testing.T) {
 	tests := []struct {
@@ -192,27 +112,7 @@ func TestSplitArgs(t *testing.T) {
 	}
 }
 
-func TestAPIKeyEnvVarName(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{"anthropic", "anthropic", "ANTHROPIC_API_KEY"},
-		{"zai", "zai", "ZAI_API_KEY"},
-		{"minimax", "minimax", "MINIMAX_API_KEY"},
-		{"UPPERCASE", "UPPERCASE", "UPPERCASE_API_KEY"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := APIKeyEnvVarName(tt.input)
-			if got != tt.expected {
-				t.Errorf("APIKeyEnvVarName(%q) = %q, want %q", tt.input, got, tt.expected)
-			}
-		})
-	}
-}
+// TestAPIKeyEnvVarName is now in coverage_env_test.go with additional test cases.
 
 func TestResolveProviderName(t *testing.T) {
 	name, err := ResolveProviderName("anthropic")
@@ -224,14 +124,4 @@ func TestResolveProviderName(t *testing.T) {
 	}
 }
 
-func TestGetProviderDefinition(t *testing.T) {
-	def := GetProviderDefinition("anthropic")
-	if def.Name == "" {
-		t.Error("expected non-empty provider definition")
-	}
-
-	def = GetProviderDefinition("custom-provider")
-	if def.Name != "custom-provider" {
-		t.Errorf("expected 'custom-provider', got %q", def.Name)
-	}
-}
+// TestGetProviderDefinition is now in coverage_config_test.go with table-driven tests.
