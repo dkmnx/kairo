@@ -32,6 +32,10 @@ const installScriptExtPS1 = ".ps1"
 
 var httpClient = &http.Client{
 	Timeout: requestTimeout,
+	Transport: &http.Transport{
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 5 * time.Second,
+	},
 }
 
 var (
