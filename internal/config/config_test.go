@@ -270,9 +270,9 @@ func TestMigrateConfigFile(t *testing.T) {
 	t.Run("NoMigrationWhenNoOldConfig", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		migrated, err := migrateConfigFile(context.Background(), tmpDir)
+		migrated, err := migrateConfigFile(tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
+			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
 		if migrated {
 			t.Error("Expected no migration when old config doesn't exist")
@@ -303,9 +303,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(context.Background(), tmpDir)
+		migrated, err := migrateConfigFile(tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
+			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
 		if !migrated {
 			t.Error("Expected migration to occur")
@@ -354,9 +354,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(context.Background(), tmpDir)
+		migrated, err := migrateConfigFile(tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
+			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
 		if migrated {
 			t.Error("Should not migrate when new config already exists")
@@ -384,7 +384,7 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(context.Background(), tmpDir)
+		migrated, err := migrateConfigFile(tmpDir)
 		if err == nil {
 			t.Error("Expected error when migrating invalid YAML")
 		}
@@ -419,9 +419,9 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(context.Background(), tmpDir)
+		migrated, err := migrateConfigFile(tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
+			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
 		if !migrated {
 			t.Error("Expected migration to occur")

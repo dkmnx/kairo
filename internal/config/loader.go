@@ -24,13 +24,9 @@ type Provider struct {
 	EnvVars []string `yaml:"env_vars"`
 }
 
-func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
+func migrateConfigFile(configDir string) (bool, error) {
 	oldConfigPath := filepath.Join(configDir, "config")
 	newConfigPath := filepath.Join(configDir, "config.yaml")
-
-	if err := kairoerrors.CheckContext(ctx); err != nil {
-		return false, err
-	}
 
 	oldInfo, err := os.Stat(oldConfigPath)
 	if err != nil {
@@ -84,17 +80,13 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 		return nil, err
 	}
 
-	_, migrateErr := migrateConfigFile(ctx, configDir)
+	_, migrateErr := migrateConfigFile(configDir)
 	if migrateErr != nil {
 		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"failed to migrate configuration file", migrateErr).
 			WithContext("old_path", filepath.Join(configDir, "config")).
 			WithContext("new_path", configPath).
 			WithContext("hint", "ensure you have write permissions in the config directory")
-	}
-
-	if err := kairoerrors.CheckContext(ctx); err != nil {
-		return nil, err
 	}
 
 	data, err := os.ReadFile(configPath)
