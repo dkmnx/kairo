@@ -2,6 +2,7 @@ package validate
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/url"
 	"regexp"
@@ -70,7 +71,7 @@ var (
 func mustParseCIDR(s string) net.IPNet {
 	_, ipnet, err := net.ParseCIDR(s)
 	if err != nil {
-		panic(fmt.Sprintf("invalid CIDR %s: %v", s, err))
+		log.Fatalf("invalid CIDR %s: %v", s, err)
 	}
 
 	return *ipnet
