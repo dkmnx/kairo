@@ -178,3 +178,19 @@ func TestCheckForUpdatesAPIError(t *testing.T) {
 		t.Errorf("checkForUpdates() should NOT mention update on API error, got: %q", output)
 	}
 }
+
+func TestVersionNoUpdateCheckFlag(t *testing.T) {
+	originalVersion := version.Version
+	version.Version = "v1.0.0"
+	defer func() { version.Version = originalVersion }()
+
+	originalGetter := envGetter
+	envGetter = func(key string) (string, bool) { return "", false }
+	defer func() { envGetter = originalGetter }()
+
+	rootCmd.SetArgs([]string{"version", "--no-update-check"})
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("version --no-update-check error = %v", err)
+	}
+}
