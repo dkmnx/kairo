@@ -226,12 +226,13 @@ func TestParseSecretsForIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("DecryptSecretsBytes() error = %v", err)
 	}
+	defer crypto.ClearMemory(decrypted)
 
-	secretsMap := secretspkg.Parse(decrypted)
+	secretsMap := secretspkg.Parse(string(decrypted))
 
 	if len(secretsMap) != 3 {
 		t.Errorf("ParseSecrets() returned %d entries, want 3", len(secretsMap))
@@ -269,12 +270,13 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretsContent, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	secretsContent, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("DecryptSecretsBytes() error = %v", err)
 	}
+	defer crypto.ClearMemory(secretsContent)
 
-	secretsMap := secretspkg.Parse(secretsContent)
+	secretsMap := secretspkg.Parse(string(secretsContent))
 	if len(secretsMap) != 2 {
 		t.Errorf("ParseSecrets() returned %d entries, want 2", len(secretsMap))
 	}
@@ -298,12 +300,13 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 		t.Fatalf("EncryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("DecryptSecretsBytes() error = %v", err)
 	}
+	defer crypto.ClearMemory(decrypted)
 
-	secretsMap = secretspkg.Parse(decrypted)
+	secretsMap = secretspkg.Parse(string(decrypted))
 	if len(secretsMap) != 3 {
 		t.Errorf("After adding provider, expected 3 secrets, got %d", len(secretsMap))
 	}
@@ -509,21 +512,22 @@ func TestCustomProviderKeyFormat(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("DecryptSecretsBytes() error = %v", err)
 	}
+	defer crypto.ClearMemory(decrypted)
 
 	expectedKey := fmt.Sprintf("%s_API_KEY=", customName)
-	if !strings.Contains(decrypted, expectedKey) {
-		t.Errorf("Decrypted secrets should contain %q, got: %q", expectedKey, decrypted)
+	if !strings.Contains(string(decrypted), expectedKey) {
+		t.Errorf("Decrypted secrets should contain %q, got: %q", expectedKey, string(decrypted))
 	}
 
-	if !strings.Contains(decrypted, "myprovider_API_KEY=sk-test-key-12345") {
-		t.Errorf("Decrypted secrets should contain 'myprovider_API_KEY=sk-test-key-12345', got: %q", decrypted)
+	if !strings.Contains(string(decrypted), "myprovider_API_KEY=sk-test-key-12345") {
+		t.Errorf("Decrypted secrets should contain 'myprovider_API_KEY=sk-test-key-12345', got: %q", string(decrypted))
 	}
 
-	for _, line := range strings.Split(decrypted, "\n") {
+	for _, line := range strings.Split(string(decrypted), "\n") {
 		if strings.HasPrefix(line, expectedKey) {
 			if strings.HasPrefix(line, "CUSTOM_") {
 				t.Errorf("Custom provider key should NOT have CUSTOM_ prefix, got: %q", line)
@@ -561,17 +565,18 @@ func TestCustomProviderKeyLookupInSwitch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("DecryptSecretsBytes() error = %v", err)
 	}
+	defer crypto.ClearMemory(decrypted)
 
 	prefix := fmt.Sprintf("%s_API_KEY=", providerName)
-	if !strings.HasPrefix(decrypted, prefix) {
-		t.Errorf("Secrets should start with %q, got: %q", prefix, decrypted)
+	if !strings.HasPrefix(string(decrypted), prefix) {
+		t.Errorf("Secrets should start with %q, got: %q", prefix, string(decrypted))
 	}
 
-	for _, line := range strings.Split(decrypted, "\n") {
+	for _, line := range strings.Split(string(decrypted), "\n") {
 		if line == "" {
 			continue
 		}

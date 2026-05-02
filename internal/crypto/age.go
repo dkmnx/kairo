@@ -136,25 +136,6 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 	return nil
 }
 
-// DecryptSecrets decrypts the secrets file and returns the content as a string.
-//
-// Deprecated: Use DecryptSecretsBytes instead. Strings are immutable in Go and
-// cannot be cleared from memory, which means secret key material remains in
-// memory until garbage collection. DecryptSecretsBytes returns a []byte that
-// can be cleared with crypto.ClearMemory after use.
-func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, error) {
-	if err := kairoerrors.CheckContext(ctx); err != nil {
-		return "", err
-	}
-
-	var buf bytes.Buffer
-	if err := decryptToBuffer(ctx, secretsPath, keyPath, &buf); err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
-}
-
 func ClearMemory(b []byte) {
 	for i := range b {
 		b[i] = 0
