@@ -544,7 +544,7 @@ func TestApiKeyEnvVarName(t *testing.T) {
 		{"lowercase provider", "anthropic", "ANTHROPIC_API_KEY"},
 		{"uppercase provider", "ANTHROPIC", "ANTHROPIC_API_KEY"},
 		{"mixed case provider", "MiniMax", "MINIMAX_API_KEY"},
-		{"provider with hyphen", "my-provider", "MY-PROVIDER_API_KEY"},
+		{"provider with hyphen", "my-provider", "MY_PROVIDER_API_KEY"},
 		{"provider with underscore", "my_provider", "MY_PROVIDER_API_KEY"},
 	}
 

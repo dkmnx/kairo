@@ -36,7 +36,9 @@ func BuildSecretsEnvVars(secrets map[string]string) []string {
 }
 
 func APIKeyEnvVarName(providerName string) string {
-	return fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
+	sanitized := strings.ReplaceAll(providerName, "-", "_")
+
+	return fmt.Sprintf("%s_API_KEY", strings.ToUpper(sanitized))
 }
 
 func RequiresAPIKey(providerName string) bool {
