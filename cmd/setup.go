@@ -12,6 +12,9 @@ import (
 
 var setupResetSecrets bool
 
+// Injectable ui.Confirm wrapper for testability.
+var confirmUIFn = ui.Confirm
+
 func configureProvider(params ProviderSetup) (string, error) {
 	validatedName, err := ResolveProviderName(params.ProviderName)
 	if err != nil {
@@ -76,7 +79,7 @@ func configureProvider(params ProviderSetup) (string, error) {
 		return "", err
 	}
 
-	tap.Outro(fmt.Sprintf("%s configured successfully", provider.Name), tap.MessageOptions{
+	tapOutroFn(fmt.Sprintf("%s configured successfully", provider.Name), tap.MessageOptions{
 		Hint: fmt.Sprintf("Run 'kairo %s' to use this provider", validatedName),
 	})
 
@@ -88,7 +91,7 @@ func runResetSecrets(cliCtx *CLIContext, configDir string, secretsResult Secrets
 	ui.PrintInfo("You will need to re-enter all API keys.")
 	ui.PrintInfo("")
 
-	confirmed, err := ui.Confirm("Continue")
+	confirmed, err := confirmUIFn("Continue")
 	if err != nil || !confirmed {
 		return errors.New("operation cancelled by user")
 	}
