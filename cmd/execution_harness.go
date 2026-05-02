@@ -110,6 +110,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 
 		if err := runHarnessWithWrapper(run); err != nil {
 			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
+			cleanup()
 			exitProcess(1)
 		}
 
@@ -118,6 +119,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 
 	if err := runHarnessWithWrapper(run); err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
+		cleanup()
 		exitProcess(1)
 	}
 }
