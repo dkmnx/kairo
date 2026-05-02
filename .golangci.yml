@@ -138,9 +138,6 @@ issues:
     - path: main\.go
       linters:
         - goconst
-    - path: cmd/delete\.go
-      linters:
-        - goconst
     - path: cmd/version\.go
       linters:
         - goconst
