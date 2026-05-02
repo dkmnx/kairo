@@ -26,7 +26,7 @@ type HarnessRun struct {
 	EnvVarName    string
 }
 
-func runHarnessWithWrapper(params HarnessRun) error {
+func runHarnessWithWrapper(parentCtx context.Context, params HarnessRun) error {
 	harnessPath, err := lookPath(params.HarnessBinary)
 	if err != nil {
 		return fmt.Errorf("'%s' command not found in PATH", params.HarnessBinary)
@@ -47,7 +47,7 @@ func runHarnessWithWrapper(params HarnessRun) error {
 	ui.ClearScreen()
 	ui.PrintBanner(kairoversion.Version, params.Provider.Model, params.Provider.Name)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parentCtx)
 	defer cancel()
 	setupSignalHandler(cancel)
 
@@ -108,7 +108,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 		)
 		run.EnvVarName = "ANTHROPIC_API_KEY"
 
-		if err := runHarnessWithWrapper(run); err != nil {
+		if err := runHarnessWithWrapper(cfg.Cmd.Context(), run); err != nil {
 			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
 			cleanup()
 			exitProcess(1)
@@ -117,7 +117,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 		return
 	}
 
-	if err := runHarnessWithWrapper(run); err != nil {
+	if err := runHarnessWithWrapper(cfg.Cmd.Context(), run); err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
 		cleanup()
 		exitProcess(1)
@@ -148,7 +148,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	ui.ClearScreen()
 	ui.PrintBanner(kairoversion.Version, cfg.Provider.Model, cfg.Provider.Name)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(cfg.Cmd.Context())
 	defer cancel()
 	setupSignalHandler(cancel)
 

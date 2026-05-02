@@ -38,7 +38,7 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(run)
+	err := runHarnessWithWrapper(context.Background(), run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when harness not found")
 	}
@@ -70,7 +70,7 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(run)
+	err := runHarnessWithWrapper(context.Background(), run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when wrapper generation fails")
 	}
@@ -123,7 +123,7 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(run)
+	err := runHarnessWithWrapper(context.Background(), run)
 	if err != nil {
 		t.Fatalf("runHarnessWithWrapper() should succeed, got error: %v", err)
 	}
@@ -202,6 +202,7 @@ func TestExecuteWithAuth_TokenFileWriteFails(t *testing.T) {
 	}
 
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -266,6 +267,7 @@ func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -329,6 +331,7 @@ func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -399,6 +402,7 @@ func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -477,6 +481,7 @@ func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -560,6 +565,7 @@ func TestApiKeyEnvVarName(t *testing.T) {
 
 func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -588,6 +594,7 @@ func TestExecuteWithoutAuth_HarnessNotFound(t *testing.T) {
 	}
 
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -637,6 +644,7 @@ func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
 	}
 
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -684,6 +692,7 @@ func TestExecuteWithoutAuth_YoloModeClaude(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -780,6 +789,7 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 
 func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
 	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 

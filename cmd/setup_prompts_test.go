@@ -145,7 +145,7 @@ func TestPromptForAPIKey_NewProvider(t *testing.T) {
 	tapPasswordFn = func(ctx context.Context, opts tap.PasswordOptions) string { return apiKey }
 
 	cfg := providerPromptConfig{ProviderName: "zai", IsEdit: false, Exists: false}
-	result := promptForAPIKey(cfg)
+	result := promptForAPIKey(context.Background(), cfg)
 	if result != apiKey {
 		t.Errorf("promptForAPIKey() = %q, want %q", result, apiKey)
 	}
@@ -160,7 +160,7 @@ func TestPromptForAPIKey_EditKeepExisting(t *testing.T) {
 		Secrets:      map[string]string{"ZAI_API_KEY": "existing-key-12345678901234567890"},
 		IsEdit:       true, Exists: true,
 	}
-	result := promptForAPIKey(cfg)
+	result := promptForAPIKey(context.Background(), cfg)
 	if result != "existing-key-12345678901234567890" {
 		t.Errorf("promptForAPIKey() = %q, want existing key", result)
 	}
@@ -177,7 +177,7 @@ func TestPromptForAPIKey_EditModifyKey(t *testing.T) {
 		Secrets:      map[string]string{"ZAI_API_KEY": "existing-key-12345678901234567890"},
 		IsEdit:       true, Exists: true,
 	}
-	result := promptForAPIKey(cfg)
+	result := promptForAPIKey(context.Background(), cfg)
 	if result != newKey {
 		t.Errorf("promptForAPIKey() = %q, want %q", result, newKey)
 	}
@@ -192,7 +192,7 @@ func TestPromptForAPIKey_EditNoExistingKey(t *testing.T) {
 		ProviderName: "zai", Secrets: map[string]string{},
 		IsEdit: true, Exists: true,
 	}
-	result := promptForAPIKey(cfg)
+	result := promptForAPIKey(context.Background(), cfg)
 	if result != apiKey {
 		t.Errorf("promptForAPIKey() = %q, want %q", result, apiKey)
 	}
@@ -205,7 +205,7 @@ func TestPromptForField_NewProvider(t *testing.T) {
 	tapTextFn = func(ctx context.Context, opts tap.TextOptions) string { return "custom-base-url" }
 
 	cfg := promptFieldConfig{Label: "Base URL", DefaultValue: "https://api.default.com", IsEdit: false}
-	result := promptForField(cfg)
+	result := promptForField(context.Background(), cfg)
 	if result != "custom-base-url" {
 		t.Errorf("promptForField() = %q, want %q", result, "custom-base-url")
 	}
@@ -216,7 +216,7 @@ func TestPromptForField_DefaultOnEmpty(t *testing.T) {
 	tapTextFn = func(ctx context.Context, opts tap.TextOptions) string { return "" }
 
 	cfg := promptFieldConfig{Label: "Base URL", DefaultValue: "https://api.default.com", IsEdit: false}
-	result := promptForField(cfg)
+	result := promptForField(context.Background(), cfg)
 	if result != "https://api.default.com" {
 		t.Errorf("promptForField() = %q, want default %q", result, "https://api.default.com")
 	}
@@ -230,7 +230,7 @@ func TestPromptForField_EditKeep(t *testing.T) {
 		Label: "Base URL", CurrentValue: "https://current.com",
 		DefaultValue: "https://api.default.com", IsEdit: true, Exists: true,
 	}
-	result := promptForField(cfg)
+	result := promptForField(context.Background(), cfg)
 	if result != "https://current.com" {
 		t.Errorf("promptForField() = %q, want current value %q", result, "https://current.com")
 	}
@@ -245,7 +245,7 @@ func TestPromptForField_EditModify(t *testing.T) {
 		Label: "Base URL", CurrentValue: "https://current.com",
 		DefaultValue: "https://api.default.com", IsEdit: true, Exists: true,
 	}
-	result := promptForField(cfg)
+	result := promptForField(context.Background(), cfg)
 	if result != "https://modified.com" {
 		t.Errorf("promptForField() = %q, want %q", result, "https://modified.com")
 	}
@@ -262,7 +262,7 @@ func TestPromptForBaseURL(t *testing.T) {
 		Definition:   providers.ProviderDefinition{Name: "Custom", BaseURL: "https://default.com"},
 		IsEdit:       false,
 	}
-	result := promptForBaseURL(cfg)
+	result := promptForBaseURL(context.Background(), cfg)
 	if result != "https://custom.api.com/anthropic" {
 		t.Errorf("promptForBaseURL() = %q, want %q", result, "https://custom.api.com/anthropic")
 	}
@@ -277,7 +277,7 @@ func TestPromptForModel(t *testing.T) {
 		Definition:   providers.ProviderDefinition{Name: "Custom", Model: "default-model"},
 		IsEdit:       false,
 	}
-	result := promptForModel(cfg)
+	result := promptForModel(context.Background(), cfg)
 	if result != "custom-model-v2" {
 		t.Errorf("promptForModel() = %q, want %q", result, "custom-model-v2")
 	}
@@ -290,9 +290,9 @@ func TestPromptForProvider_NoProviders(t *testing.T) {
 	tapSelectFn = func(ctx context.Context, opts tap.SelectOptions[string]) string { return "zai" }
 
 	cfg := &config.Config{Providers: make(map[string]config.Provider)}
-	result := promptForProvider(cfg)
+	result := promptForProvider(context.Background(), cfg)
 	if result != "zai" {
-		t.Errorf("promptForProvider() = %q, want %q", result, "zai")
+		t.Errorf("promptForProvider(context.Background(), ) = %q, want %q", result, "zai")
 	}
 }
 
@@ -309,9 +309,9 @@ func TestPromptForProvider_SelectNewProvider(t *testing.T) {
 	tapIntroFn = func(title string, opts ...tap.MessageOptions) {}
 
 	cfg := &config.Config{Providers: map[string]config.Provider{"zai": {Name: "Z.AI"}}}
-	result := promptForProvider(cfg)
+	result := promptForProvider(context.Background(), cfg)
 	if result != "deepseek" {
-		t.Errorf("promptForProvider() = %q, want %q", result, "deepseek")
+		t.Errorf("promptForProvider(context.Background(), ) = %q, want %q", result, "deepseek")
 	}
 }
 
@@ -320,9 +320,9 @@ func TestPromptForProvider_Cancel(t *testing.T) {
 	tapSelectFn = func(ctx context.Context, opts tap.SelectOptions[string]) string { return "" }
 
 	cfg := &config.Config{Providers: map[string]config.Provider{"zai": {Name: "Z.AI"}}}
-	result := promptForProvider(cfg)
+	result := promptForProvider(context.Background(), cfg)
 	if result != "" {
-		t.Errorf("promptForProvider() should return empty string on cancel, got %q", result)
+		t.Errorf("promptForProvider(context.Background(), ) should return empty string on cancel, got %q", result)
 	}
 }
 

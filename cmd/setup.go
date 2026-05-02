@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -15,8 +16,8 @@ var setupResetSecrets bool
 // Injectable ui.Confirm wrapper for testability.
 var confirmUIFn = ui.Confirm
 
-func configureProvider(params ProviderSetup) (string, error) {
-	validatedName, err := ResolveProviderName(params.ProviderName)
+func configureProvider(ctx context.Context, params ProviderSetup) (string, error) {
+	validatedName, err := ResolveProviderName(ctx, params.ProviderName)
 	if err != nil {
 		return "", err
 	}
@@ -35,17 +36,17 @@ func configureProvider(params ProviderSetup) (string, error) {
 
 	displayProviderHeader(promptCfg)
 
-	apiKey := promptForAPIKey(promptCfg)
+	apiKey := promptForAPIKey(ctx, promptCfg)
 	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
 		return "", err
 	}
 
-	baseURL := promptForBaseURL(promptCfg)
+	baseURL := promptForBaseURL(ctx, promptCfg)
 	if err := validate.ValidateURL(baseURL, definition.Name); err != nil {
 		return "", err
 	}
 
-	model := promptForModel(promptCfg)
+	model := promptForModel(ctx, promptCfg)
 	if err := validateConfiguredModel(modelValidationConfig{
 		Model:        model,
 		ProviderName: validatedName,
@@ -156,7 +157,7 @@ var setupCmd = &cobra.Command{
 			ui.PrintWarn(w)
 		}
 
-		providerName := promptForProvider(cfg)
+		providerName := promptForProvider(cmd.Context(), cfg)
 		if providerName == "" {
 			ui.PrintInfo("Setup cancelled")
 
@@ -164,7 +165,7 @@ var setupCmd = &cobra.Command{
 		}
 
 		_, exists := cfg.Providers[providerName]
-		if _, err := configureProvider(ProviderSetup{
+		if _, err := configureProvider(cmd.Context(), ProviderSetup{
 			CLIContext:   cliCtx,
 			ConfigDir:    configDir,
 			Cfg:          cfg,
