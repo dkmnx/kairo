@@ -74,12 +74,13 @@ func TestFullProviderConfigurationWorkflow(t *testing.T) {
 		t.Errorf("loaded %d providers, want %d", len(loadedCfg.Providers), len(providersToTest))
 	}
 
-	decryptedContent, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decryptedContent, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("DecryptSecretsBytes() error = %v", err)
 	}
+	defer crypto.ClearMemory(decryptedContent)
 
-	parsedSecrets := secretspkg.Parse(decryptedContent)
+	parsedSecrets := secretspkg.Parse(string(decryptedContent))
 	for _, p := range providersToTest {
 		for k := range p.envVars {
 			if _, ok := parsedSecrets[k]; !ok {
@@ -114,12 +115,13 @@ func TestCustomProviderConfigPersistence(t *testing.T) {
 	}
 
 	// Test config persistence without rotation
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("DecryptSecretsBytes() error = %v", err)
 	}
+	defer crypto.ClearMemory(decrypted)
 
-	if !strings.Contains(decrypted, customKey) {
+	if !strings.Contains(string(decrypted), customKey) {
 		t.Errorf("decrypted secrets should contain %q, got: %q", customKey, decrypted)
 	}
 }
@@ -199,16 +201,17 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 		t.Error("zai provider should exist in config")
 	}
 
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("DecryptSecretsBytes() error = %v", err)
 	}
+	defer crypto.ClearMemory(decrypted)
 
-	if !strings.Contains(decrypted, "ZAI_API_KEY") {
+	if !strings.Contains(string(decrypted), "ZAI_API_KEY") {
 		t.Error("secrets should contain ZAI_API_KEY")
 	}
 
-	if !strings.Contains(decrypted, "sk-zai-test-key-12345") {
+	if !strings.Contains(string(decrypted), "sk-zai-test-key-12345") {
 		t.Error("secrets should contain the API key")
 	}
 

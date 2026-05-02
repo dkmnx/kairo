@@ -51,12 +51,13 @@ MINIMAX_API_KEY=sk-another-key
 		t.Fatalf("EncryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	decrypted, err := DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
+		t.Fatalf("DecryptSecretsBytes(context.Background(), ) error = %v", err)
 	}
+	defer ClearMemory(decrypted)
 
-	if decrypted != secrets {
+	if string(decrypted) != secrets {
 		t.Errorf("decrypted = %q, want %q", decrypted, secrets)
 	}
 }
@@ -71,9 +72,9 @@ func TestDecryptInvalidFile(t *testing.T) {
 	}
 
 	secretsPath := filepath.Join(tmpDir, "nonexistent.age")
-	_, err = DecryptSecrets(context.Background(), secretsPath, keyPath)
+	_, err = DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err == nil {
-		t.Error("DecryptSecrets(context.Background(), ) should error on nonexistent file")
+		t.Error("DecryptSecretsBytes(context.Background(), ) should error on nonexistent file")
 	}
 }
 
@@ -291,9 +292,9 @@ func TestDecryptSecretsWithInvalidKeyPath(t *testing.T) {
 	tmpDir := t.TempDir()
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 
-	_, err := DecryptSecrets(context.Background(), secretsPath, "/nonexistent/path/key")
+	_, err := DecryptSecretsBytes(context.Background(), secretsPath, "/nonexistent/path/key")
 	if err == nil {
-		t.Error("DecryptSecrets(context.Background(), ) should error on invalid key path")
+		t.Error("DecryptSecretsBytes(context.Background(), ) should error on invalid key path")
 	}
 }
 
@@ -345,9 +346,9 @@ func TestDecryptCorruptedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = DecryptSecrets(context.Background(), secretsPath, keyPath)
+	_, err = DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err == nil {
-		t.Error("DecryptSecrets(context.Background(), ) should error on corrupted file")
+		t.Error("DecryptSecretsBytes(context.Background(), ) should error on corrupted file")
 	}
 }
 
@@ -378,9 +379,9 @@ func TestDecryptTruncatedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = DecryptSecrets(context.Background(), secretsPath, keyPath)
+	_, err = DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err == nil {
-		t.Error("DecryptSecrets(context.Background(), ) should error on truncated file")
+		t.Error("DecryptSecretsBytes(context.Background(), ) should error on truncated file")
 	}
 }
 
@@ -403,9 +404,9 @@ func TestDecryptRandomData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = DecryptSecrets(context.Background(), secretsPath, keyPath)
+	_, err = DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err == nil {
-		t.Error("DecryptSecrets(context.Background(), ) should error on random data")
+		t.Error("DecryptSecretsBytes(context.Background(), ) should error on random data")
 	}
 }
 
@@ -621,9 +622,9 @@ func TestDecryptSecrets_OpenError(t *testing.T) {
 	}
 	defer os.Chmod(secretsPath, 0644) // Clean up
 
-	_, err := DecryptSecrets(context.Background(), secretsPath, keyPath)
+	_, err := DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err == nil {
-		t.Error("DecryptSecrets(context.Background(), ) should error when secrets file is unreadable")
+		t.Error("DecryptSecretsBytes(context.Background(), ) should error when secrets file is unreadable")
 	}
 }
 
