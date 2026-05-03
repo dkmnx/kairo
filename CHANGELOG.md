@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `--no-update-check` flag on `kairo version` to skip GitHub API calls
+
+### Changed
+- CLI commands now propagate the Cobra command context to child operations and TUI interactions instead of using `context.Background()`, enabling proper cancellation on Ctrl+C
+- Config loading in `delete` and `list` commands now uses the config cache for consistency
+- Root command decomposed into `runRoot`, `loadRootConfig`, and `dispatchExecution` for maintainability
+- Removed `DecryptSecrets` (string return) in favor of `DecryptSecretsBytes` with `ClearMemory` to allow secure memory clearing of decrypted key material
+
+### Fixed
+- Temp auth directory no longer leaks on error paths — cleanup now runs before `os.Exit`
+- Hyphens in custom provider names no longer produce invalid environment variable names (e.g., `MY-PROVIDER_API_KEY` → `MY_PROVIDER_API_KEY`)
+- `mustParseCIDR` no longer panics on invalid CIDR constants — uses `log.Fatalf` with a clear message
+- HTTP client in update command now has TLS handshake and response header timeouts for better protection against slow/misbehaving servers
+- ANSI color codes are now stripped on Windows terminals that don't support them
+
 ## [2.3.7] - 2026-04-25
 
 ### Added
