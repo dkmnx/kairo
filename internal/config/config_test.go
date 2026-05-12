@@ -270,7 +270,7 @@ func TestMigrateConfigFile(t *testing.T) {
 	t.Run("NoMigrationWhenNoOldConfig", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
@@ -303,7 +303,7 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
@@ -354,7 +354,7 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
@@ -384,7 +384,7 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err == nil {
 			t.Error("Expected error when migrating invalid YAML")
 		}
@@ -419,7 +419,7 @@ providers:
 			t.Fatal(err)
 		}
 
-		migrated, err := migrateConfigFile(tmpDir)
+		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
