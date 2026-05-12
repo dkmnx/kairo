@@ -138,31 +138,9 @@ issues:
     - path: main\.go
       linters:
         - goconst
-    - path: cmd/delete\.go
-      linters:
-        - nlreturn
-    - path: cmd/harness\.go
-      linters:
-        - goconst
-        - nlreturn
     - path: cmd/version\.go
       linters:
         - goconst
-    - path: cmd/list\.go
-      linters:
-        - nlreturn
-    - path: cmd/util\.go
-      linters:
-        - nlreturn
-    - path: internal/errors/errors\.go
-      linters:
-        - nlreturn
-    - path: internal/ui/prompt\.go
-      linters:
-        - nlreturn
-    - path: internal/providers/registry\.go
-      linters:
-        - nlreturn
     - text: "exported (function|method|type|const)"
       linters:
         - stylecheck
@@ -185,10 +163,6 @@ issues:
       linters:
         - funlen
     # Context-aware functions with multiple cancellation checks
-    - text: "migrateConfigFile"
-      linters:
-        - funlen
-        - cyclop
     - text: "LoadConfig"
       linters:
         - funlen

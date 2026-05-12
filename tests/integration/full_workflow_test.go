@@ -110,14 +110,15 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Errorf("default provider = %q, want 'zai'", loadedCfg.DefaultProvider)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
 	}
-	if !strings.Contains(decrypted, "ZAI_API_KEY") {
+	defer crypto.ClearMemory(decrypted)
+	if !strings.Contains(string(decrypted), "ZAI_API_KEY") {
 		t.Error("secrets should contain ZAI_API_KEY")
 	}
-	if !strings.Contains(decrypted, "MINIMAX_API_KEY") {
+	if !strings.Contains(string(decrypted), "MINIMAX_API_KEY") {
 		t.Error("secrets should contain MINIMAX_API_KEY")
 	}
 }
@@ -222,12 +223,13 @@ DEEPSEEK_API_KEY=TEST-KEY-DO-NOT-USE-list-deepseek
 		t.Errorf("default provider = %q, want 'zai'", loadedCfg.DefaultProvider)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
 	}
+	defer crypto.ClearMemory(decrypted)
 
-	parsedSecrets := secrets.Parse(decrypted)
+	parsedSecrets := secrets.Parse(string(decrypted))
 	if _, exists := parsedSecrets["ZAI_API_KEY"]; !exists {
 		t.Error("ZAI_API_KEY should exist")
 	}
@@ -321,14 +323,15 @@ func TestFullWorkflowCustomProvider(t *testing.T) {
 		t.Errorf("custom provider model = %q, want 'custom-model-v1'", customProvider.Model)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
 		t.Fatalf("failed to decrypt secrets: %v", err)
 	}
-	if !strings.Contains(decrypted, "MYCUSTOM_API_KEY") {
+	defer crypto.ClearMemory(decrypted)
+	if !strings.Contains(string(decrypted), "MYCUSTOM_API_KEY") {
 		t.Error("secrets should contain MYCUSTOM_API_KEY")
 	}
-	if !strings.Contains(decrypted, "TEST-KEY-DO-NOT-USE-custom-provider") {
+	if !strings.Contains(string(decrypted), "TEST-KEY-DO-NOT-USE-custom-provider") {
 		t.Error("secrets should contain the custom API key")
 	}
 }

@@ -34,30 +34,53 @@ func ClearScreen() {
 	_ = cmd.Run()
 }
 
+var enableANSI = supportsANSI()
+
 func PrintSuccess(msg string) {
-	fmt.Printf("\n%s✓%s %s%s\n", Green, Reset, msg, Reset)
+	if enableANSI {
+		fmt.Printf("\n%s✓%s %s%s\n", Green, Reset, msg, Reset)
+	} else {
+		fmt.Printf("\n✓ %s\n", msg)
+	}
 }
 
 func PrintWarn(msg string) {
-	fmt.Printf("%s⚠%s %s%s\n", Yellow, Reset, msg, Reset)
+	if enableANSI {
+		fmt.Printf("%s⚠%s %s%s\n", Yellow, Reset, msg, Reset)
+	} else {
+		fmt.Printf("⚠ %s\n", msg)
+	}
 }
 
 func PrintError(msg string) {
-	fmt.Fprintf(os.Stderr, "%s✗%s %s%s\n", Red, Reset, msg, Reset)
+	if enableANSI {
+		fmt.Fprintf(os.Stderr, "%s✗%s %s%s\n", Red, Reset, msg, Reset)
+	} else {
+		fmt.Fprintf(os.Stderr, "✗ %s\n", msg)
+	}
 }
 
 func PrintInfo(msg string) {
-	fmt.Printf("%s%s\n", Blue, msg)
+	if enableANSI {
+		fmt.Printf("%s%s\n", Blue, msg)
+	} else {
+		fmt.Printf("  %s\n", msg)
+	}
 }
 
 func PrintWhite(msg string) {
-	fmt.Printf("%s%s%s\n", White, msg, Reset)
+	if enableANSI {
+		fmt.Printf("%s%s%s\n", White, msg, Reset)
+	} else {
+		fmt.Printf("%s\n", msg)
+	}
 }
 
 func isInterrupted(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return errors.Is(err, os.ErrClosed) || errors.Is(err, io.EOF) || strings.Contains(err.Error(), "interrupted")
 }
 
@@ -65,12 +88,17 @@ func isEmptyInput(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return !errors.Is(err, io.EOF) && !isInterrupted(err)
 }
 
 func PrintBanner(version, modelName, providerName string) {
 	banner := fmt.Sprintf("kairo %s · %s · %s", version, modelName, providerName)
-	fmt.Printf("%s%s%s\n\n", Gray, banner, Reset)
+	if enableANSI {
+		fmt.Printf("%s%s%s\n\n", Gray, banner, Reset)
+	} else {
+		fmt.Printf("%s\n\n", banner)
+	}
 }
 
 func Confirm(prompt string) (bool, error) {
@@ -84,8 +112,10 @@ func Confirm(prompt string) (bool, error) {
 		if errors.Is(err, io.EOF) || isInterrupted(err) {
 			return false, kairoerrors.ErrUserCancelled
 		}
+
 		return false, err
 	}
 	input = strings.TrimSpace(strings.ToLower(input))
+
 	return input == "y" || input == "yes", nil
 }

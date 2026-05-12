@@ -272,7 +272,7 @@ func TestMigrateConfigFile(t *testing.T) {
 
 		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
+			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
 		if migrated {
 			t.Error("Expected no migration when old config doesn't exist")
@@ -305,7 +305,7 @@ providers:
 
 		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
+			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
 		if !migrated {
 			t.Error("Expected migration to occur")
@@ -356,7 +356,7 @@ providers:
 
 		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
+			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
 		if migrated {
 			t.Error("Should not migrate when new config already exists")
@@ -421,7 +421,7 @@ providers:
 
 		migrated, err := migrateConfigFile(context.Background(), tmpDir)
 		if err != nil {
-			t.Fatalf("migrateConfigFile(context.Background(), ) error = %v", err)
+			t.Fatalf("migrateConfigFile() error = %v", err)
 		}
 		if !migrated {
 			t.Error("Expected migration to occur")
