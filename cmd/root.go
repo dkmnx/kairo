@@ -52,101 +52,92 @@ encrypted secrets management using age encryption.
 
 Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, kairoversion.Date),
 	Args: cobra.MinimumNArgs(0),
-	Run:  runRoot,
-}
+	Run: func(cmd *cobra.Command, args []string) {
+		cliCtx := GetCLIContext(cmd)
+		configDir := cliCtx.GetConfigDir()
+		if configDir == "" {
+			cmd.Println("Error: config directory not found")
+			if err := cmd.Help(); err != nil {
+				cmd.Println(err)
+			}
 
-func runRoot(cmd *cobra.Command, args []string) {
-	cliCtx := GetCLIContext(cmd)
-	configDir := cliCtx.GetConfigDir()
-	if configDir == "" {
-		cmd.Println("Error: config directory not found")
-		if err := cmd.Help(); err != nil {
-			cmd.Println(err)
+			return
 		}
 
-		return
-	}
+		cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), configDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
 
-	cfg, err := loadRootConfig(cmd, cliCtx, configDir)
-	if err != nil {
-		return
-	}
+				return
+			}
+			handleConfigError(cmd, err)
 
-	if len(cfg.Providers) == 0 {
-		cmd.Println("No providers configured. Run 'kairo setup' to get started.")
+			return
+		}
 
-		return
-	}
-
-	_, harnessArgs, providerName := resolveProviderAndArgs(cmd, cfg, args)
-	if providerName == "" {
-		return
-	}
-
-	provider, ok := cfg.Providers[providerName]
-	if !ok {
-		cmd.Printf("Error: provider '%s' not configured\n", providerName)
-		cmd.Println("Run 'kairo list' to see configured providers")
-
-		return
-	}
-
-	dispatchExecution(cliCtx, cmd, configDir, provider, providerName, harnessArgs, cfg.DefaultHarness)
-}
-
-func loadRootConfig(cmd *cobra.Command, cliCtx *CLIContext, configDir string) (*config.Config, error) {
-	cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), configDir)
-	if err != nil {
-		if os.IsNotExist(err) {
+		if len(cfg.Providers) == 0 {
 			cmd.Println("No providers configured. Run 'kairo setup' to get started.")
 
-			return nil, err
+			return
 		}
-		handleConfigError(cmd, err)
 
-		return nil, err
-	}
+		_, harnessArgs, providerName := resolveProviderAndArgs(cmd, cfg, args)
+		if providerName == "" {
+			return
+		}
 
-	return cfg, nil
-}
+		provider, ok := cfg.Providers[providerName]
+		if !ok {
+			cmd.Printf("Error: provider '%s' not configured\n", providerName)
+			cmd.Println("Run 'kairo list' to see configured providers")
 
-func dispatchExecution(
-	cliCtx *CLIContext, cmd *cobra.Command, configDir string,
-	provider config.Provider, providerName string, harnessArgs []string, defaultHarness string,
-) {
-	harnessToUse := getHarness(harnessFlag, defaultHarness)
-	harnessBinary := getHarnessBinary(harnessToUse)
+			return
+		}
 
-	envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
-		BaseURL: provider.BaseURL,
-		Model:   provider.Model,
-		EnvVars: provider.EnvVars,
-	}, providerName)
-	if err != nil {
-		handleSecretsError(err)
+		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
+		harnessBinary := getHarnessBinary(harnessToUse)
 
-		return
-	}
+		envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
+			BaseURL: provider.BaseURL,
+			Model:   provider.Model,
+			EnvVars: provider.EnvVars,
+		}, providerName)
+		if err != nil {
+			handleSecretsError(err)
 
-	execCfg := ExecutionConfig{
-		Cmd:           cmd,
-		ProviderEnv:   envResult.ProviderEnv,
-		HarnessToUse:  harnessToUse,
-		HarnessBinary: harnessBinary,
-		Provider:      provider,
-		HarnessArgs:   harnessArgs,
-		Yolo:          yoloFlag,
-	}
+			return
+		}
 
-	apiKeyKey := APIKeyEnvVarName(providerName)
-	if apiKey, hasKey := envResult.Secrets[apiKeyKey]; hasKey {
-		execCfg.APIKey = apiKey
-		executeWithAuth(execCfg)
+		providerEnv := envResult.ProviderEnv
+		secrets := envResult.Secrets
 
-		return
-	}
+		apiKeyKey := APIKeyEnvVarName(providerName)
+		if apiKey, hasKey := secrets[apiKeyKey]; hasKey {
+			executeWithAuth(ExecutionConfig{
+				Cmd:           cmd,
+				ProviderEnv:   providerEnv,
+				HarnessToUse:  harnessToUse,
+				HarnessBinary: harnessBinary,
+				Provider:      provider,
+				HarnessArgs:   harnessArgs,
+				APIKey:        apiKey,
+				Yolo:          yoloFlag,
+			})
 
-	executeWithoutAuth(execCfg)
+			return
+		}
+
+		executeWithoutAuth(ExecutionConfig{
+			Cmd:           cmd,
+			ProviderEnv:   providerEnv,
+			HarnessToUse:  harnessToUse,
+			HarnessBinary: harnessBinary,
+			Provider:      provider,
+			HarnessArgs:   harnessArgs,
+			Yolo:          yoloFlag,
+		})
+	},
 }
 
 func Execute() error {

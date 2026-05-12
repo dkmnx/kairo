@@ -17,7 +17,6 @@ func requireConfigDir(cmd *cobra.Command) string {
 	if dir == "" {
 		ui.PrintError("Config directory not found")
 	}
-
 	return dir
 }
 
@@ -28,10 +27,8 @@ func requireConfigDirWritable(cmd *cobra.Command) string {
 	}
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		ui.PrintError("Error creating config directory: " + err.Error())
-
 		return ""
 	}
-
 	return dir
 }
 
@@ -47,14 +44,11 @@ func loadConfigOrExit(cmd *cobra.Command) *config.Config {
 		if os.IsNotExist(err) {
 			ui.PrintWarn("No providers configured")
 			ui.PrintInfo("Run 'kairo setup' to get started")
-
 			return nil
 		}
 		handleConfigError(cmd, err)
-
 		return nil
 	}
-
 	return cfg
 }
 
@@ -80,7 +74,6 @@ func parseIntOrZero(input string) int {
 		}
 		result = result*10 + int(c-'0')
 	}
-
 	return result
 }
 

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -13,11 +12,8 @@ import (
 
 var setupResetSecrets bool
 
-// Injectable ui.Confirm wrapper for testability.
-var confirmUIFn = ui.Confirm
-
-func configureProvider(ctx context.Context, params ProviderSetup) (string, error) {
-	validatedName, err := ResolveProviderName(ctx, params.ProviderName)
+func configureProvider(params ProviderSetup) (string, error) {
+	validatedName, err := ResolveProviderName(params.ProviderName)
 	if err != nil {
 		return "", err
 	}
@@ -36,17 +32,17 @@ func configureProvider(ctx context.Context, params ProviderSetup) (string, error
 
 	displayProviderHeader(promptCfg)
 
-	apiKey := promptForAPIKey(ctx, promptCfg)
+	apiKey := promptForAPIKey(promptCfg)
 	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
 		return "", err
 	}
 
-	baseURL := promptForBaseURL(ctx, promptCfg)
+	baseURL := promptForBaseURL(promptCfg)
 	if err := validate.ValidateURL(baseURL, definition.Name); err != nil {
 		return "", err
 	}
 
-	model := promptForModel(ctx, promptCfg)
+	model := promptForModel(promptCfg)
 	if err := validateConfiguredModel(modelValidationConfig{
 		Model:        model,
 		ProviderName: validatedName,
@@ -80,7 +76,7 @@ func configureProvider(ctx context.Context, params ProviderSetup) (string, error
 		return "", err
 	}
 
-	tapOutroFn(fmt.Sprintf("%s configured successfully", provider.Name), tap.MessageOptions{
+	tap.Outro(fmt.Sprintf("%s configured successfully", provider.Name), tap.MessageOptions{
 		Hint: fmt.Sprintf("Run 'kairo %s' to use this provider", validatedName),
 	})
 
@@ -92,7 +88,7 @@ func runResetSecrets(cliCtx *CLIContext, configDir string, secretsResult Secrets
 	ui.PrintInfo("You will need to re-enter all API keys.")
 	ui.PrintInfo("")
 
-	confirmed, err := confirmUIFn("Continue")
+	confirmed, err := ui.Confirm("Continue")
 	if err != nil || !confirmed {
 		return errors.New("operation cancelled by user")
 	}
@@ -157,7 +153,7 @@ var setupCmd = &cobra.Command{
 			ui.PrintWarn(w)
 		}
 
-		providerName := promptForProvider(cmd.Context(), cfg)
+		providerName := promptForProvider(cfg)
 		if providerName == "" {
 			ui.PrintInfo("Setup cancelled")
 
@@ -165,7 +161,7 @@ var setupCmd = &cobra.Command{
 		}
 
 		_, exists := cfg.Providers[providerName]
-		if _, err := configureProvider(cmd.Context(), ProviderSetup{
+		if _, err := configureProvider(ProviderSetup{
 			CLIContext:   cliCtx,
 			ConfigDir:    configDir,
 			Cfg:          cfg,
