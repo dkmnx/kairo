@@ -34,7 +34,7 @@ func ClearScreen() {
 	_ = cmd.Run()
 }
 
-var enableANSI = runtime.GOOS != "windows"
+var enableANSI = supportsANSI()
 
 func PrintSuccess(msg string) {
 	if enableANSI {
