@@ -12,6 +12,58 @@ import (
 
 const setupNewProvider = "Setup new provider"
 
+// Injectable tap function variables for testability.
+// These follow the same pattern as lookPath, execCommandContext, etc.
+var (
+	tapSelectFn   = defaultTapSelect
+	tapTextFn     = tapText
+	tapPasswordFn = tapPassword
+	tapConfirmFn  = tapConfirm
+	tapIntroFn    = tapIntroFunc
+	tapOutroFn    = tapOutroFunc
+	tapMessageFn  = tapMessageFunc
+)
+
+func defaultTapSelect(ctx context.Context, opts tap.SelectOptions[string]) string {
+	return tap.Select(ctx, opts)
+}
+
+func tapText(ctx context.Context, opts tap.TextOptions) string {
+	return tap.Text(ctx, opts)
+}
+
+func tapPassword(ctx context.Context, opts tap.PasswordOptions) string {
+	return tap.Password(ctx, opts)
+}
+
+func tapConfirm(ctx context.Context, opts tap.ConfirmOptions) bool {
+	return tap.Confirm(ctx, opts)
+}
+
+func tapIntroFunc(title string, opts ...tap.MessageOptions) {
+	if len(opts) > 0 {
+		tap.Intro(title, opts[0])
+	} else {
+		tap.Intro(title)
+	}
+}
+
+func tapOutroFunc(message string, opts ...tap.MessageOptions) {
+	if len(opts) > 0 {
+		tap.Outro(message, opts[0])
+	} else {
+		tap.Outro(message)
+	}
+}
+
+func tapMessageFunc(message string, opts ...tap.MessageOptions) {
+	if len(opts) > 0 {
+		tap.Message(message, opts[0])
+	} else {
+		tap.Message(message)
+	}
+}
+
 func buildProviderListOptions(providerList []string) []tap.SelectOption[string] {
 	options := make([]tap.SelectOption[string], len(providerList))
 	for i, name := range providerList {
@@ -21,9 +73,7 @@ func buildProviderListOptions(providerList []string) []tap.SelectOption[string] 
 	return options
 }
 
-func promptForProvider(cfg *config.Config) string {
-	ctx := context.Background()
-
+func promptForProvider(ctx context.Context, cfg *config.Config) string {
 	if len(cfg.Providers) == 0 {
 		return promptForNewProvider(ctx)
 	}
@@ -35,7 +85,7 @@ func promptForNewProvider(ctx context.Context) string {
 	allProviders := append(providers.GetProviderList(), "custom")
 	options := buildProviderListOptions(allProviders)
 
-	return tap.Select(ctx, tap.SelectOptions[string]{
+	return tapSelectFn(ctx, tap.SelectOptions[string]{
 		Message: "Select provider to configure",
 		Options: options,
 	})
@@ -51,11 +101,11 @@ func promptForExistingOrNewProvider(ctx context.Context, cfg *config.Config) str
 
 	fmt.Println()
 
-	tap.Intro("Setup Provider", tap.MessageOptions{
+	tapIntroFn("Setup Provider", tap.MessageOptions{
 		Hint: "Configure new provider or edit existing from Kairo",
 	})
 
-	selected := tap.Select(ctx, tap.SelectOptions[string]{
+	selected := tapSelectFn(ctx, tap.SelectOptions[string]{
 		Message: "Select provider to edit or setup new",
 		Options: options,
 	})
@@ -78,26 +128,24 @@ type providerPromptConfig struct {
 
 func displayProviderHeader(cfg providerPromptConfig) {
 	if cfg.IsEdit && cfg.Exists {
-		tap.Message(fmt.Sprintf("Editing %s", cfg.Provider.Name), tap.MessageOptions{
+		tapMessageFn(fmt.Sprintf("Editing %s", cfg.Provider.Name), tap.MessageOptions{
 			Hint: "Press Enter to keep current values",
 		})
 	}
 }
 
-func promptForAPIKey(cfg providerPromptConfig) string {
-	ctx := context.Background()
-
+func promptForAPIKey(ctx context.Context, cfg providerPromptConfig) string {
 	if !cfg.IsEdit || !cfg.Exists {
-		return tap.Password(ctx, tap.PasswordOptions{Message: "API Key"})
+		return tapPasswordFn(ctx, tap.PasswordOptions{Message: "API Key"})
 	}
 
 	existingKey := cfg.Secrets[APIKeyEnvVarName(cfg.ProviderName)]
 	if existingKey == "" {
-		return tap.Password(ctx, tap.PasswordOptions{Message: "API Key"})
+		return tapPasswordFn(ctx, tap.PasswordOptions{Message: "API Key"})
 	}
 
-	if tap.Confirm(ctx, tap.ConfirmOptions{Message: "Modify API key?"}) {
-		return tap.Password(ctx, tap.PasswordOptions{Message: "New API Key"})
+	if tapConfirmFn(ctx, tap.ConfirmOptions{Message: "Modify API key?"}) {
+		return tapPasswordFn(ctx, tap.PasswordOptions{Message: "New API Key"})
 	}
 
 	return existingKey
@@ -111,14 +159,12 @@ type promptFieldConfig struct {
 	Exists       bool
 }
 
-func promptForField(cfg promptFieldConfig) string {
-	ctx := context.Background()
-
+func promptForField(ctx context.Context, cfg promptFieldConfig) string {
 	if cfg.IsEdit && cfg.Exists {
 		return promptForFieldEdit(ctx, cfg)
 	}
 
-	result := strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+	result := strings.TrimSpace(tapTextFn(ctx, tap.TextOptions{
 		Message:      cfg.Label,
 		DefaultValue: cfg.DefaultValue,
 		Placeholder:  cfg.DefaultValue,
@@ -138,10 +184,10 @@ func promptForFieldEdit(ctx context.Context, cfg promptFieldConfig) string {
 	}
 
 	if effectiveDefault != "" {
-		if tap.Confirm(ctx, tap.ConfirmOptions{
+		if tapConfirmFn(ctx, tap.ConfirmOptions{
 			Message: fmt.Sprintf("Modify %s? (current: %s)", cfg.Label, effectiveDefault),
 		}) {
-			return strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+			return strings.TrimSpace(tapTextFn(ctx, tap.TextOptions{
 				Message:      fmt.Sprintf("New %s", cfg.Label),
 				DefaultValue: effectiveDefault,
 				Placeholder:  effectiveDefault,
@@ -151,14 +197,14 @@ func promptForFieldEdit(ctx context.Context, cfg promptFieldConfig) string {
 		return effectiveDefault
 	}
 
-	return strings.TrimSpace(tap.Text(ctx, tap.TextOptions{
+	return strings.TrimSpace(tapTextFn(ctx, tap.TextOptions{
 		Message:     cfg.Label,
 		Placeholder: cfg.DefaultValue,
 	}))
 }
 
-func promptForBaseURL(cfg providerPromptConfig) string {
-	return promptForField(promptFieldConfig{
+func promptForBaseURL(ctx context.Context, cfg providerPromptConfig) string {
+	return promptForField(ctx, promptFieldConfig{
 		Label:        "Base URL",
 		CurrentValue: cfg.Provider.BaseURL,
 		DefaultValue: cfg.Definition.BaseURL,
@@ -167,8 +213,8 @@ func promptForBaseURL(cfg providerPromptConfig) string {
 	})
 }
 
-func promptForModel(cfg providerPromptConfig) string {
-	return promptForField(promptFieldConfig{
+func promptForModel(ctx context.Context, cfg providerPromptConfig) string {
+	return promptForField(ctx, promptFieldConfig{
 		Label:        "Model",
 		CurrentValue: cfg.Provider.Model,
 		DefaultValue: cfg.Definition.Model,

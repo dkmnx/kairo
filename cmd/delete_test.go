@@ -221,18 +221,19 @@ func TestDeleteProviderSecretsPreservesMalformedLines(t *testing.T) {
 		t.Fatalf("deleteProviderSecrets() error = %v", err)
 	}
 
-	decrypted, err := crypto.DecryptSecrets(context.Background(), secretsPath, keyPath)
+	decrypted, err := crypto.DecryptSecretsBytes(context.Background(), secretsPath, keyPath)
 	if err != nil {
-		t.Fatalf("DecryptSecrets() error = %v", err)
+		t.Fatalf("DecryptSecretsBytes() error = %v", err)
 	}
+	defer crypto.ClearMemory(decrypted)
 
-	if !strings.Contains(decrypted, "VALID_KEY=valid_value") {
+	if !strings.Contains(string(decrypted), "VALID_KEY=valid_value") {
 		t.Error("decrypted content should still contain VALID_KEY=valid_value")
 	}
-	if !strings.Contains(decrypted, "malformed_without_equals") {
+	if !strings.Contains(string(decrypted), "malformed_without_equals") {
 		t.Error("decrypted content should still contain malformed_without_equals")
 	}
-	if strings.Contains(decrypted, "PROVIDER_TO_DELETE_API_KEY=secret") {
+	if strings.Contains(string(decrypted), "PROVIDER_TO_DELETE_API_KEY=secret") {
 		t.Error("decrypted content should NOT contain PROVIDER_TO_DELETE_API_KEY")
 	}
 }

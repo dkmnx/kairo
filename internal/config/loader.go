@@ -24,57 +24,108 @@ type Provider struct {
 	EnvVars []string `yaml:"env_vars"`
 }
 
-func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
-	oldConfigPath := filepath.Join(configDir, "config")
-	newConfigPath := filepath.Join(configDir, "config.yaml")
+func checkCtx(ctx context.Context) error {
+	return kairoerrors.CheckContext(ctx)
+}
 
-	if err := kairoerrors.CheckContext(ctx); err != nil {
+func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
+	if err := checkCtx(ctx); err != nil {
 		return false, err
 	}
 
+	oldConfigPath := filepath.Join(configDir, "config")
+	newConfigPath := filepath.Join(configDir, "config.yaml")
+
+	oldInfo, err := statOldConfig(oldConfigPath)
+	if err != nil || oldInfo == nil {
+		return false, err
+	}
+
+	if newExists, err := checkNewConfig(newConfigPath); err != nil || newExists {
+		return false, err
+	}
+
+	data, err := readAndValidateConfig(oldConfigPath)
+	if err != nil {
+		return false, err
+	}
+
+	if err := writeMigratedConfig(ctx, newConfigPath, data, oldInfo.Mode()); err != nil {
+		return false, err
+	}
+
+	if err := finalizeMigration(ctx, oldConfigPath, newConfigPath); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func statOldConfig(oldConfigPath string) (os.FileInfo, error) {
 	oldInfo, err := os.Stat(oldConfigPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return false, nil
+			return nil, nil
 		}
 
-		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to check old config file", err)
 	}
 
+	return oldInfo, nil
+}
+
+func checkNewConfig(newConfigPath string) (bool, error) {
 	if _, err := os.Stat(newConfigPath); err == nil {
-		return false, nil
+		return true, nil
 	} else if !os.IsNotExist(err) {
 		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to check new config file", err)
 	}
 
+	return false, nil
+}
+
+func readAndValidateConfig(oldConfigPath string) ([]byte, error) {
 	data, err := os.ReadFile(oldConfigPath)
 	if err != nil {
-		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to read old config file", err)
 	}
 
 	var tempCfg Config
 	if err := yaml.Unmarshal(data, &tempCfg); err != nil {
-		return false, kairoerrors.WrapError(kairoerrors.ConfigError,
+		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
 			"old config file is not valid YAML, cannot migrate", err)
 	}
 
-	if err := os.WriteFile(newConfigPath, data, oldInfo.Mode()); err != nil {
-		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to write migrated config file", err)
+	return data, nil
+}
+
+func writeMigratedConfig(ctx context.Context, newConfigPath string, data []byte, mode os.FileMode) error {
+	if err := checkCtx(ctx); err != nil {
+		return err
+	}
+
+	return os.WriteFile(newConfigPath, data, mode)
+}
+
+func finalizeMigration(ctx context.Context, oldConfigPath, newConfigPath string) error {
+	if err := checkCtx(ctx); err != nil {
+		os.Remove(newConfigPath)
+
+		return err
 	}
 
 	backupPath := oldConfigPath + ".backup"
 	if err := os.Rename(oldConfigPath, backupPath); err != nil {
 		os.Remove(newConfigPath)
 
-		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to backup old config file", err)
 	}
 
-	return true, nil
+	return nil
 }
 
 func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
@@ -91,10 +142,6 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 			WithContext("old_path", filepath.Join(configDir, "config")).
 			WithContext("new_path", configPath).
 			WithContext("hint", "ensure you have write permissions in the config directory")
-	}
-
-	if err := kairoerrors.CheckContext(ctx); err != nil {
-		return nil, err
 	}
 
 	data, err := os.ReadFile(configPath)

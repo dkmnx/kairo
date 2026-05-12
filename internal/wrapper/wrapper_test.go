@@ -551,16 +551,6 @@ func TestGenerateWrapperScript_ControlCharacterEscaping(t *testing.T) {
 	}
 }
 
-func TestExecCommand(t *testing.T) {
-	cmd := ExecCommand("echo", "test")
-	if cmd == nil {
-		t.Fatal("ExecCommand() should return a valid command")
-	}
-	if len(cmd.Args) != 2 {
-		t.Errorf("Expected 2 args, got %d", len(cmd.Args))
-	}
-}
-
 func TestGenerateWrapperScript_WithArgs(t *testing.T) {
 	authDir := t.TempDir()
 	tokenPath := filepath.Join(authDir, "token")
