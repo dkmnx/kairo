@@ -11,8 +11,8 @@ func supportsANSI() bool {
 		return false
 	}
 
-	handle := windows.GetStdHandle(windows.STD_OUTPUT_HANDLE)
-	if handle == windows.InvalidHandle {
+	handle, err := windows.GetStdHandle(windows.STD_OUTPUT_HANDLE)
+	if err != nil || handle == windows.InvalidHandle {
 		return false
 	}
 
