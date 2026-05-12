@@ -15,7 +15,7 @@ const setupNewProvider = "Setup new provider"
 // Injectable tap function variables for testability.
 // These follow the same pattern as lookPath, execCommandContext, etc.
 var (
-	tapSelectFn   func(ctx context.Context, opts tap.SelectOptions[string]) string
+	tapSelectFn   = defaultTapSelect
 	tapTextFn     = tapText
 	tapPasswordFn = tapPassword
 	tapConfirmFn  = tapConfirm
@@ -23,11 +23,6 @@ var (
 	tapOutroFn    = tapOutroFunc
 	tapMessageFn  = tapMessageFunc
 )
-
-// Production default for tapSelectFn, called during init.
-func init() {
-	tapSelectFn = defaultTapSelect
-}
 
 func defaultTapSelect(ctx context.Context, opts tap.SelectOptions[string]) string {
 	return tap.Select(ctx, opts)
