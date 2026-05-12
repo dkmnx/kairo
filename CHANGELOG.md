@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-05-12
+
 ### Added
 - `--no-update-check` flag on `kairo version` to skip GitHub API calls
 
@@ -1173,7 +1175,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.3.7...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/dkmnx/kairo/compare/v2.3.7...v2.4.0
 [2.3.7]: https://github.com/dkmnx/kairo/compare/v2.3.6...v2.3.7
 [2.3.6]: https://github.com/dkmnx/kairo/compare/v2.3.5...v2.3.6
 [2.3.5]: https://github.com/dkmnx/kairo/compare/v2.3.4...v2.3.5
