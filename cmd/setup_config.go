@@ -41,10 +41,7 @@ func LoadConfig(cliCtx *CLIContext, configDir string) (*config.Config, error) {
 }
 
 type AddProviderParams struct {
-	CLIContext interface {
-		InvalidateCache(dir string)
-		GetRootCtx() context.Context
-	}
+	CLIContext   interface{ InvalidateCache(dir string) }
 	ConfigDir    string
 	Cfg          *config.Config
 	ProviderName string
@@ -57,7 +54,7 @@ func AddAndSaveProvider(params AddProviderParams) error {
 	if params.SetAsDefault && params.Cfg.DefaultProvider == "" {
 		params.Cfg.DefaultProvider = params.ProviderName
 	}
-	if err := config.SaveConfig(params.CLIContext.GetRootCtx(), params.ConfigDir, params.Cfg); err != nil {
+	if err := config.SaveConfig(context.Background(), params.ConfigDir, params.Cfg); err != nil {
 		return kairoerrors.WrapError(kairoerrors.ConfigError,
 			"saving config", err)
 	}

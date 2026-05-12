@@ -3,6 +3,7 @@ package wrapper
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 
@@ -184,4 +185,8 @@ func generateUnixScript(envVar string, cfg ScriptConfig) string {
 	sb.WriteString("\n")
 
 	return sb.String()
+}
+
+func ExecCommand(name string, arg ...string) *exec.Cmd {
+	return exec.Command(name, arg...)
 }

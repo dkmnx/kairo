@@ -7,8 +7,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var versionNoUpdateCheck bool
-
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version information",
@@ -26,7 +24,7 @@ var versionCmd = &cobra.Command{
 			}
 		}
 
-		if version.Version != "dev" && !versionNoUpdateCheck {
+		if version.Version != "dev" {
 			checkForUpdates(cmd)
 		}
 	},
@@ -49,7 +47,5 @@ func checkForUpdates(cmd *cobra.Command) {
 }
 
 func init() {
-	versionCmd.Flags().BoolVar(&versionNoUpdateCheck, "no-update-check", false,
-		"Skip checking for updates")
 	rootCmd.AddCommand(versionCmd)
 }

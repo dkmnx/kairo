@@ -46,12 +46,12 @@ func GetProviderDefinition(providerName string) providers.ProviderDefinition {
 	return definition
 }
 
-func ResolveProviderName(ctx context.Context, providerName string) (string, error) {
+func ResolveProviderName(providerName string) (string, error) {
 	if providerName != "custom" {
 		return providerName, nil
 	}
 
-	customName := tapTextFn(ctx, tap.TextOptions{
+	customName := tap.Text(context.Background(), tap.TextOptions{
 		Message: "Provider name",
 	})
 
@@ -65,7 +65,7 @@ type modelValidationConfig struct {
 }
 
 func validateConfiguredModel(cfg modelValidationConfig) error {
-	if err := validate.ValidateProviderModel(cfg.ProviderName, cfg.Model); err != nil {
+	if err := validate.ValidateProviderModel(cfg.Model, cfg.DisplayName); err != nil {
 		return err
 	}
 	if providers.IsBuiltInProvider(cfg.ProviderName) || strings.TrimSpace(cfg.Model) != "" {
