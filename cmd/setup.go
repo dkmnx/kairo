@@ -108,7 +108,7 @@ var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Interactive setup and edit wizard",
 	Long: "Run the interactive wizard to configure new providers or edit existing ones. " +
-		"Select a provider to edit or choose 'Setup new provider' to add a new provider.",
+		"Select a provider to edit or choose 'new provider' to add a new provider.",
 	Run: func(cmd *cobra.Command, args []string) {
 		cliCtx := GetCLIContext(cmd)
 		configDir := cliCtx.GetConfigDir()
