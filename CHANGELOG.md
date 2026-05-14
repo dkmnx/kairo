@@ -7,19 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Release notes extraction now correctly stops at the next version boundary instead of dumping the entire CHANGELOG to EOF
+
 ## [2.4.0] - 2026-05-15
 
 ### Added
+
 - `--no-update-check` flag on `kairo version` to skip GitHub API calls
 - Windows ANSI support detection via Virtual Terminal Processing
 
 ### Changed
+
 - CLI commands now propagate the Cobra command context to child operations and TUI interactions instead of using `context.Background()`, enabling proper cancellation on Ctrl+C
 - Config loading in `delete` and `list` commands now uses the config cache for consistency
 - Root command decomposed into `runRoot`, `loadRootConfig`, and `dispatchExecution` for maintainability
 - Removed `DecryptSecrets` (string return) in favor of `DecryptSecretsBytes` with `ClearMemory` to allow secure memory clearing of decrypted key material
 
 ### Fixed
+
 - Release CI now extracts the versioned section from CHANGELOG.md matching the tag, instead of using the `[Unreleased]` section which may be empty
 - Temp auth directory no longer leaks on error paths — cleanup now runs before `os.Exit`
 - Hyphens in custom provider names no longer produce invalid environment variable names (e.g., `MY-PROVIDER_API_KEY` → `MY_PROVIDER_API_KEY`)
