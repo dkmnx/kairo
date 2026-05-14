@@ -20,27 +20,23 @@ var listCmd = &cobra.Command{
 		dir := requireConfigDir(cmd)
 		if dir == "" {
 			ui.PrintInfo("Run 'kairo setup' to configure providers")
-
 			return
 		}
 
-		cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), dir)
+		cfg, err := config.LoadConfig(cliCtx.GetRootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")
 				ui.PrintInfo("Run 'kairo setup' to get started")
-
 				return
 			}
 			handleConfigError(cmd, err)
-
 			return
 		}
 
 		if len(cfg.Providers) == 0 {
 			ui.PrintWarn("No providers configured")
 			ui.PrintInfo("Run 'kairo setup' to get started")
-
 			return
 		}
 
@@ -93,9 +89,7 @@ func sortProviderNames(providers map[string]config.Provider, defaultProvider str
 		if names[j] == defaultProvider {
 			return false
 		}
-
 		return names[i] < names[j]
 	})
-
 	return names
 }

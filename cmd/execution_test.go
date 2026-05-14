@@ -38,7 +38,7 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(context.Background(), run)
+	err := runHarnessWithWrapper(run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when harness not found")
 	}
@@ -70,7 +70,7 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(context.Background(), run)
+	err := runHarnessWithWrapper(run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when wrapper generation fails")
 	}
@@ -123,7 +123,7 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(context.Background(), run)
+	err := runHarnessWithWrapper(run)
 	if err != nil {
 		t.Fatalf("runHarnessWithWrapper() should succeed, got error: %v", err)
 	}
@@ -202,7 +202,6 @@ func TestExecuteWithAuth_TokenFileWriteFails(t *testing.T) {
 	}
 
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -267,7 +266,6 @@ func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -331,7 +329,6 @@ func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -402,7 +399,6 @@ func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -481,7 +477,6 @@ func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -549,7 +544,7 @@ func TestApiKeyEnvVarName(t *testing.T) {
 		{"lowercase provider", "anthropic", "ANTHROPIC_API_KEY"},
 		{"uppercase provider", "ANTHROPIC", "ANTHROPIC_API_KEY"},
 		{"mixed case provider", "MiniMax", "MINIMAX_API_KEY"},
-		{"provider with hyphen", "my-provider", "MY_PROVIDER_API_KEY"},
+		{"provider with hyphen", "my-provider", "MY-PROVIDER_API_KEY"},
 		{"provider with underscore", "my_provider", "MY_PROVIDER_API_KEY"},
 	}
 
@@ -565,7 +560,6 @@ func TestApiKeyEnvVarName(t *testing.T) {
 
 func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -594,7 +588,6 @@ func TestExecuteWithoutAuth_HarnessNotFound(t *testing.T) {
 	}
 
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -644,7 +637,6 @@ func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
 	}
 
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -692,7 +684,6 @@ func TestExecuteWithoutAuth_YoloModeClaude(t *testing.T) {
 	exitProcess = func(int) {}
 
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
@@ -789,7 +780,6 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 
 func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.SetContext(context.Background())
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 
