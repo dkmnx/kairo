@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `--no-update-check` flag on `kairo version` to skip GitHub API calls
+- Windows ANSI support detection via Virtual Terminal Processing
 
 ### Changed
 - CLI commands now propagate the Cobra command context to child operations and TUI interactions instead of using `context.Background()`, enabling proper cancellation on Ctrl+C
@@ -17,11 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `DecryptSecrets` (string return) in favor of `DecryptSecretsBytes` with `ClearMemory` to allow secure memory clearing of decrypted key material
 
 ### Fixed
+- Release CI now extracts the versioned section from CHANGELOG.md matching the tag, instead of using the `[Unreleased]` section which may be empty
 - Temp auth directory no longer leaks on error paths — cleanup now runs before `os.Exit`
 - Hyphens in custom provider names no longer produce invalid environment variable names (e.g., `MY-PROVIDER_API_KEY` → `MY_PROVIDER_API_KEY`)
 - `mustParseCIDR` no longer panics on invalid CIDR constants — uses `log.Fatalf` with a clear message
 - HTTP client in update command now has TLS handshake and response header timeouts for better protection against slow/misbehaving servers
-- ANSI color codes are now stripped on Windows terminals that don't support them
+- Capture error from `windows.GetStdHandle` instead of silently discarding it
 
 ## [2.3.7] - 2026-04-25
 
