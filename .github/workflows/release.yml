@@ -29,15 +29,23 @@ jobs:
 
       - name: Generate release notes
         run: |
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
-          awk -v ver="$VERSION" '$0 ~ "^## \\[" ver "\\]" {c++; if(c>1)exit; if(c==1){next}} c>0' CHANGELOG.md | tail -c +2 > /tmp/release-notes.txt
+          awk '/^## \[Unreleased\]/{skip=1; next} /^## \[/{skip=0; c++; if(c>1)exit; if(c==1)next} !skip && c>0' CHANGELOG.md | tail -c +2 > /tmp/release-notes.txt
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean --release-notes /tmp/release-notes.txt
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update release body
+        run: |
+          BODY=$(cat /tmp/release-notes.txt)
+          FOOTER=$'\n\n---\n\nReleased by [GoReleaser](https://github.com/goreleaser/goreleaser).'
+          RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases/tags/${{ github.ref_name }}" --jq '.id')
+          gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}" \
+            -X PATCH -f body="${BODY}${FOOTER}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
