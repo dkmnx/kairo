@@ -136,6 +136,19 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 	return nil
 }
 
+func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, error) {
+	if err := kairoerrors.CheckContext(ctx); err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := decryptToBuffer(ctx, secretsPath, keyPath, &buf); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
 func ClearMemory(b []byte) {
 	for i := range b {
 		b[i] = 0

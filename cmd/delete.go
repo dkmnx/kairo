@@ -28,15 +28,13 @@ var deleteCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), dir)
+		cfg, err := config.LoadConfig(cliCtx.GetRootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")
-
 				return
 			}
 			handleConfigError(cmd, err)
-
 			return
 		}
 
@@ -45,7 +43,6 @@ var deleteCmd = &cobra.Command{
 			if len(cfg.Providers) == 0 {
 				ui.PrintWarn("No providers configured")
 				ui.PrintInfo("Run 'kairo setup' to get started")
-
 				return
 			}
 
@@ -61,18 +58,17 @@ var deleteCmd = &cobra.Command{
 
 			fmt.Println()
 
-			tapIntroFn("Delete Provider", tap.MessageOptions{
+			tap.Intro("Delete Provider", tap.MessageOptions{
 				Hint: "Remove a configured provider from Kairo",
 			})
 
-			selected := tapSelectFn(cmd.Context(), tap.SelectOptions[string]{
+			selected := tap.Select(context.Background(), tap.SelectOptions[string]{
 				Message: "Select provider to delete",
 				Options: options,
 			})
 			target = selected
 			if target == "" {
 				ui.PrintInfo("Operation cancelled")
-
 				return
 			}
 		} else {
@@ -83,16 +79,14 @@ var deleteCmd = &cobra.Command{
 		if !ok {
 			ui.PrintError(fmt.Sprintf("Provider '%s' not configured", target))
 			ui.PrintInfo("Run 'kairo list' to see configured providers")
-
 			return
 		}
 
-		confirmed := tapConfirmFn(cmd.Context(), tap.ConfirmOptions{
+		confirmed := tap.Confirm(context.Background(), tap.ConfirmOptions{
 			Message: fmt.Sprintf("Are you sure you want to delete '%s'?", target),
 		})
 		if !confirmed {
 			ui.PrintInfo("Operation cancelled")
-
 			return
 		}
 
@@ -104,7 +98,6 @@ var deleteCmd = &cobra.Command{
 
 		if err := config.SaveConfig(cliCtx.GetRootCtx(), dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Saving config: %v", err))
-
 			return
 		}
 
@@ -116,11 +109,10 @@ var deleteCmd = &cobra.Command{
 		if err := deleteProviderSecrets(cliCtx.GetRootCtx(), secretsPath, keyPath, target); err != nil {
 			ui.PrintError(fmt.Sprintf("Failed to clean up secrets for '%s': %v", target, err))
 			ui.PrintInfo("Provider removed from config but its secrets could not be deleted — manual cleanup may be required")
-
 			return
 		}
 
-		tapOutroFn(fmt.Sprintf("Provider '%s' deleted successfully", target))
+		tap.Outro(fmt.Sprintf("Provider '%s' deleted successfully", target))
 	},
 }
 
@@ -152,7 +144,6 @@ func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerNa
 		if removeErr := os.Remove(secretsPath); removeErr != nil {
 			return fmt.Errorf("could not remove empty secrets file: %w", removeErr)
 		}
-
 		return nil
 	}
 
