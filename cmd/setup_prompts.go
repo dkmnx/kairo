@@ -10,7 +10,7 @@ import (
 	"github.com/yarlson/tap"
 )
 
-const setupNewProvider = "Setup new provider"
+const setupNewProvider = "new provider"
 
 func buildProviderListOptions(providerList []string) []tap.SelectOption[string] {
 	options := make([]tap.SelectOption[string], len(providerList))
