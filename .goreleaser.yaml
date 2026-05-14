@@ -48,3 +48,9 @@ changelog:
   # Disable auto-generated changelog since CHANGELOG.md is maintained manually
   disable: true
 
+release:
+  footer: |
+
+    ---
+
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
