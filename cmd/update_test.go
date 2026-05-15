@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/version"
 )
 
@@ -468,7 +469,7 @@ func TestGetLatestReleaseURL(t *testing.T) {
 		_ = os.Unsetenv("KAIRO_UPDATE_URL")
 
 		url := getLatestReleaseURL()
-		expected := defaultUpdateURL
+		expected := constants.GitHubAPIReleasesLatest
 		if url != expected {
 			t.Errorf("getLatestReleaseURL() = %q, want %q", url, expected)
 		}
@@ -478,7 +479,7 @@ func TestGetLatestReleaseURL(t *testing.T) {
 		t.Setenv("KAIRO_UPDATE_URL", "")
 
 		url := getLatestReleaseURL()
-		expected := defaultUpdateURL
+		expected := constants.GitHubAPIReleasesLatest
 		if url != expected {
 			t.Errorf("getLatestReleaseURL() = %q, want %q", url, expected)
 		}

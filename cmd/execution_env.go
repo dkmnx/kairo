@@ -14,6 +14,17 @@ type EnvProvider struct {
 	EnvVars []string
 }
 
+func PiAPIKeyEnvVar(providerName string) (string, bool) {
+	return providers.APIKeyEnvVarFor(providerName)
+}
+
+func BuildPiEnvVars(provider EnvProvider, providerName string) []string {
+	return []string{
+		fmt.Sprintf("PI_PROVIDER=%s", providerName),
+		fmt.Sprintf("PI_MODEL=%s", provider.Model),
+	}
+}
+
 func BuildBuiltInEnvVars(provider EnvProvider) []string {
 	return []string{
 		fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),

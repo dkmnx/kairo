@@ -7,6 +7,7 @@ var BuiltInProviders = map[string]ProviderDefinition{
 		Model:          "glm-5.1",
 		RequiresAPIKey: true,
 		EnvVars:        []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash"},
+		APIKeyEnvVar:   "ZAI_API_KEY",
 	},
 	"minimax": {
 		Name:           "MiniMax",
@@ -17,6 +18,7 @@ var BuiltInProviders = map[string]ProviderDefinition{
 			"ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT=120",
 			"ANTHROPIC_SMALL_FAST_MAX_TOKENS=24576",
 		},
+		APIKeyEnvVar: "MINIMAX_API_KEY",
 	},
 	"kimi": {
 		Name:           "Moonshot AI",
@@ -27,6 +29,7 @@ var BuiltInProviders = map[string]ProviderDefinition{
 			"ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT=240",
 			"ANTHROPIC_SMALL_FAST_MAX_TOKENS=200000",
 		},
+		APIKeyEnvVar: "KIMI_API_KEY",
 	},
 	"deepseek": {
 		Name:           "DeepSeek AI",
@@ -40,6 +43,7 @@ var BuiltInProviders = map[string]ProviderDefinition{
 			"API_TIMEOUT_MS=600000",
 			"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
 		},
+		APIKeyEnvVar: "DEEPSEEK_API_KEY",
 	},
 	"custom": {
 		Name:           "Custom Provider",
@@ -55,6 +59,7 @@ type ProviderDefinition struct {
 	Model          string
 	EnvVars        []string
 	RequiresAPIKey bool
+	APIKeyEnvVar   string
 }
 
 func IsBuiltInProvider(name string) bool {
@@ -79,4 +84,15 @@ func RequiresAPIKey(name string) bool {
 		return true
 	}
 	return def.RequiresAPIKey
+}
+
+func APIKeyEnvVarFor(name string) (string, bool) {
+	def, ok := BuiltInProviders[name]
+	if !ok {
+		return "", false
+	}
+	if def.APIKeyEnvVar == "" {
+		return "", false
+	}
+	return def.APIKeyEnvVar, true
 }
