@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Pi harness support: `pi` is now a valid harness option alongside `claude` and `qwen` (`kairo harness set pi`, `--harness pi`)
+
 ## [2.4.1] - 2026-05-15
 
 ### Fixed
