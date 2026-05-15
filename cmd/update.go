@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const defaultUpdateURL = "https://api.github.com/repos/dkmnx/kairo/releases/latest"
 const requestTimeout = 10 * time.Second
 const checksumsFilename = "checksums.txt"
 const installScriptExt = ".sh"
@@ -69,7 +68,7 @@ func getLatestReleaseURL() string {
 		return url
 	}
 
-	return defaultUpdateURL
+	return constants.GitHubAPIReleasesLatest
 }
 
 func getLatestRelease() (*release, error) {
@@ -131,10 +130,10 @@ func isWindows(goos string) bool {
 
 func getInstallScriptURL(goos, tag string) string {
 	if isWindows(goos) {
-		return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.ps1", tag)
+		return constants.RawGitHubFileURL(tag, "scripts/install.ps1")
 	}
 
-	return fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts/install.sh", tag)
+	return constants.RawGitHubFileURL(tag, "scripts/install.sh")
 }
 
 func downloadToTempFile(url string) (string, error) {
@@ -225,9 +224,7 @@ func runInstallScript(scriptPath string) error {
 }
 
 func getChecksumsURL(tag string) string {
-	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/dkmnx/kairo/%s/scripts", tag)
-
-	return fmt.Sprintf("%s/%s", baseURL, checksumsFilename)
+	return constants.RawGitHubFileURL(tag, "scripts/"+checksumsFilename)
 }
 
 func parseChecksumLine(line string) (hash, filename string, ok bool) {

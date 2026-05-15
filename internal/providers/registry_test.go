@@ -206,6 +206,34 @@ func TestGetBuiltInProvider(t *testing.T) {
 	}
 }
 
+func TestAPIKeyEnvVarFor(t *testing.T) {
+	tests := []struct {
+		name     string
+		provider string
+		wantVar  string
+		wantOk   bool
+	}{
+		{"zai has API key env var", "zai", "ZAI_API_KEY", true},
+		{"minimax has API key env var", "minimax", "MINIMAX_API_KEY", true},
+		{"kimi has API key env var", "kimi", "KIMI_API_KEY", true},
+		{"deepseek has API key env var", "deepseek", "DEEPSEEK_API_KEY", true},
+		{"custom has no API key env var", "custom", "", false},
+		{"unknown provider returns false", "unknown", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotVar, gotOk := APIKeyEnvVarFor(tt.provider)
+			if gotOk != tt.wantOk {
+				t.Errorf("APIKeyEnvVarFor(%q) ok = %v, want %v", tt.provider, gotOk, tt.wantOk)
+			}
+			if gotVar != tt.wantVar {
+				t.Errorf("APIKeyEnvVarFor(%q) var = %q, want %q", tt.provider, gotVar, tt.wantVar)
+			}
+		})
+	}
+}
+
 func TestBuiltInProviderEnvVars(t *testing.T) {
 	tests := []struct {
 		name      string

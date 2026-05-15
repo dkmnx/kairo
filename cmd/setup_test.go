@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
 	secretspkg "github.com/dkmnx/kairo/internal/secrets"
@@ -817,8 +818,8 @@ func TestGetLatestReleaseURLDefault(t *testing.T) {
 	}
 
 	url := getLatestReleaseURL()
-	if url != defaultUpdateURL {
-		t.Errorf("getLatestReleaseURL() = %q, want %q", url, defaultUpdateURL)
+	if url != constants.GitHubAPIReleasesLatest {
+		t.Errorf("getLatestReleaseURL() = %q, want %q", url, constants.GitHubAPIReleasesLatest)
 	}
 }
 
