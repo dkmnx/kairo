@@ -98,6 +98,55 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
 
+		if harnessToUse == harnessPi {
+			envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
+				BaseURL: provider.BaseURL,
+				Model:   provider.Model,
+				EnvVars: provider.EnvVars,
+			}, providerName)
+			if err != nil {
+				handleSecretsError(err)
+
+				return
+			}
+
+			providerEnv := envResult.ProviderEnv
+			secrets := envResult.Secrets
+
+			hasAnyKey := false
+			for pName := range cfg.Providers {
+				piEnvVar, ok := PiAPIKeyEnvVar(pName)
+				if !ok {
+					continue
+				}
+				key := APIKeyEnvVarName(pName)
+				if val, found := secrets[key]; found {
+					providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", piEnvVar, val))
+					hasAnyKey = true
+				}
+			}
+
+			execCfg := ExecutionConfig{
+				Cmd:           cmd,
+				ProviderEnv:   providerEnv,
+				HarnessToUse:  harnessToUse,
+				HarnessBinary: harnessBinary,
+				Provider:      provider,
+				ProviderName:  providerName,
+				HarnessArgs:   harnessArgs,
+				APIKey:        "",
+				Yolo:          yoloFlag,
+			}
+
+			if hasAnyKey {
+				executeWithAuth(execCfg)
+			} else {
+				executeWithoutAuth(execCfg)
+			}
+
+			return
+		}
+
 		envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
 			BaseURL: provider.BaseURL,
 			Model:   provider.Model,
@@ -120,6 +169,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 				HarnessToUse:  harnessToUse,
 				HarnessBinary: harnessBinary,
 				Provider:      provider,
+				ProviderName:  providerName,
 				HarnessArgs:   harnessArgs,
 				APIKey:        apiKey,
 				Yolo:          yoloFlag,
@@ -134,6 +184,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			HarnessToUse:  harnessToUse,
 			HarnessBinary: harnessBinary,
 			Provider:      provider,
+			ProviderName:  providerName,
 			HarnessArgs:   harnessArgs,
 			Yolo:          yoloFlag,
 		})
@@ -155,7 +206,7 @@ func Execute() error {
 func init() {
 	rootCmd.PersistentFlags().String("config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Verbose output")
-	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
+	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude, qwen, or pi)")
 	rootCmd.Flags().BoolVarP(&yoloFlag, "yolo", "y", false,
 		"Skip permission prompts (--dangerously-skip-permissions for Claude, --yolo for Qwen)")
 
