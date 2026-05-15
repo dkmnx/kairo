@@ -831,3 +831,245 @@ func TestBuildBuiltInEnvVars_Extended(t *testing.T) {
 		}
 	})
 }
+
+func TestExecuteWithAuth_PiHarness(t *testing.T) {
+	originalLookPath := lookPath
+	originalExecCommandContext := execCommandContext
+	originalExitProcess := exitProcess
+	defer func() {
+		lookPath = originalLookPath
+		execCommandContext = originalExecCommandContext
+		exitProcess = originalExitProcess
+	}()
+
+	lookPath = func(file string) (string, error) {
+		return "/usr/bin/" + file, nil
+	}
+
+	var capturedArgs []string
+	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		capturedArgs = arg
+		cmd := exec.Command("echo", "mocked")
+		cmd.Env = []string{"TEST=value"}
+		return cmd
+	}
+
+	exitProcess = func(int) {}
+
+	cmd := &cobra.Command{}
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   []string{"ZAI_API_KEY=test-key"},
+		HarnessToUse:  harnessPi,
+		HarnessBinary: "pi",
+		Provider: config.Provider{
+			Name:    "Z.AI",
+			BaseURL: "https://api.z.ai/api/anthropic",
+			Model:   "glm-5.1",
+		},
+		ProviderName: "zai",
+		HarnessArgs:  []string{"--session", "test"},
+		APIKey:       "test-api-key",
+	}
+
+	executeWithAuth(cfg)
+
+	if len(capturedArgs) == 0 {
+		t.Fatal("expected args to be captured")
+	}
+	if capturedArgs[0] != "--provider" || capturedArgs[1] != "zai" {
+		t.Errorf("expected --provider zai, got %v", capturedArgs[:2])
+	}
+	if capturedArgs[2] != "--model" || capturedArgs[3] != "glm-5.1" {
+		t.Errorf("expected --model glm-5.1, got %v", capturedArgs[2:4])
+	}
+}
+
+func TestExecuteWithoutAuth_PiHarness(t *testing.T) {
+	originalLookPath := lookPath
+	originalExecCommandContext := execCommandContext
+	originalExitProcess := exitProcess
+	defer func() {
+		lookPath = originalLookPath
+		execCommandContext = originalExecCommandContext
+		exitProcess = originalExitProcess
+	}()
+
+	lookPath = func(file string) (string, error) {
+		return "/usr/bin/" + file, nil
+	}
+
+	var capturedArgs []string
+	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		capturedArgs = arg
+		cmd := exec.Command("echo", "mocked")
+		cmd.Env = []string{"TEST=value"}
+		return cmd
+	}
+
+	exitProcess = func(int) {}
+
+	cmd := &cobra.Command{}
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   []string{"TEST=value"},
+		HarnessToUse:  harnessPi,
+		HarnessBinary: "pi",
+		Provider: config.Provider{
+			Name:    "DeepSeek AI",
+			BaseURL: "https://api.deepseek.com/anthropic",
+			Model:   "deepseek-v4-pro[1m]",
+		},
+		ProviderName: "deepseek",
+		HarnessArgs:  []string{"--continue"},
+	}
+
+	executeWithoutAuth(cfg)
+
+	if len(capturedArgs) == 0 {
+		t.Fatal("expected args to be captured")
+	}
+	if capturedArgs[0] != "--provider" || capturedArgs[1] != "deepseek" {
+		t.Errorf("expected --provider deepseek, got %v", capturedArgs[:2])
+	}
+}
+
+func TestExecuteWithAuth_PiYoloMode(t *testing.T) {
+	originalLookPath := lookPath
+	originalExecCommandContext := execCommandContext
+	originalExitProcess := exitProcess
+	defer func() {
+		lookPath = originalLookPath
+		execCommandContext = originalExecCommandContext
+		exitProcess = originalExitProcess
+	}()
+
+	lookPath = func(file string) (string, error) {
+		return "/usr/bin/" + file, nil
+	}
+
+	var capturedArgs []string
+	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		capturedArgs = arg
+		cmd := exec.Command("echo", "mocked")
+		cmd.Env = []string{"TEST=value"}
+		return cmd
+	}
+
+	exitProcess = func(int) {}
+
+	cmd := &cobra.Command{}
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   []string{"TEST=value"},
+		HarnessToUse:  harnessPi,
+		HarnessBinary: "pi",
+		Provider: config.Provider{
+			Name:    "Z.AI",
+			BaseURL: "https://api.z.ai/api/anthropic",
+			Model:   "glm-5.1",
+		},
+		HarnessArgs: []string{},
+		APIKey:      "test-key",
+		Yolo:        true,
+	}
+
+	executeWithAuth(cfg)
+
+	for _, arg := range capturedArgs {
+		if arg == "--dangerously-skip-permissions" || arg == "--yolo" {
+			t.Errorf("pi harness should not pass yolo flags, got %q", arg)
+		}
+	}
+}
+
+func TestExecuteWithoutAuth_PiHarnessNotFound(t *testing.T) {
+	originalLookPath := lookPath
+	defer func() { lookPath = originalLookPath }()
+
+	lookPath = func(file string) (string, error) {
+		return "", fmt.Errorf("not found")
+	}
+
+	cmd := &cobra.Command{}
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   []string{},
+		HarnessToUse:  harnessPi,
+		HarnessBinary: "pi",
+		Provider: config.Provider{
+			Name:  "Test",
+			Model: "test-model",
+		},
+	}
+
+	executeWithoutAuth(cfg)
+
+	if !strings.Contains(output.String(), "'pi' command not found in PATH") {
+		t.Errorf("expected 'not found in PATH' error, got %q", output.String())
+	}
+}
+
+func TestBuildPiEnvVars(t *testing.T) {
+	provider := EnvProvider{
+		BaseURL: "https://api.z.ai/api/anthropic",
+		Model:   "glm-5.1",
+	}
+	envVars := BuildPiEnvVars(provider, "zai")
+
+	hasProvider := false
+	hasModel := false
+	for _, v := range envVars {
+		if v == "PI_PROVIDER=zai" {
+			hasProvider = true
+		}
+		if v == "PI_MODEL=glm-5.1" {
+			hasModel = true
+		}
+	}
+
+	if !hasProvider {
+		t.Error("missing PI_PROVIDER")
+	}
+	if !hasModel {
+		t.Error("missing PI_MODEL")
+	}
+}
+
+func TestPiAPIKeyEnvVarMapping(t *testing.T) {
+	tests := []struct {
+		provider string
+		envVar   string
+		ok       bool
+	}{
+		{"zai", "ZAI_API_KEY", true},
+		{"minimax", "MINIMAX_API_KEY", true},
+		{"deepseek", "DEEPSEEK_API_KEY", true},
+		{"kimi", "KIMI_API_KEY", true},
+		{"unknown", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.provider, func(t *testing.T) {
+			envVar, ok := PiAPIKeyEnvVar(tt.provider)
+			if ok != tt.ok {
+				t.Errorf("ok = %v, want %v", ok, tt.ok)
+			}
+			if envVar != tt.envVar {
+				t.Errorf("envVar = %q, want %q", envVar, tt.envVar)
+			}
+		})
+	}
+}

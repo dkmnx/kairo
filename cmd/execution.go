@@ -14,6 +14,7 @@ type ExecutionConfig struct {
 	HarnessToUse  string
 	HarnessBinary string
 	Provider      config.Provider
+	ProviderName  string
 	HarnessArgs   []string
 	APIKey        string
 	Yolo          bool

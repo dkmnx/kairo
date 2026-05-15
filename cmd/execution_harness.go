@@ -26,6 +26,88 @@ type HarnessRun struct {
 	EnvVarName    string
 }
 
+func executePiWithoutAuth(cfg ExecutionConfig) {
+	cliArgs := cfg.HarnessArgs
+
+	if cfg.Yolo {
+		flag := yoloModeFlag(cfg.HarnessToUse)
+		if flag != "" {
+			cliArgs = append([]string{flag}, cliArgs...)
+		}
+	}
+
+	cliArgs = append(
+		[]string{"--provider", cfg.ProviderName, "--model", cfg.Provider.Model},
+		cliArgs...,
+	)
+
+	piPath, err := lookPath(cfg.HarnessBinary)
+	if err != nil {
+		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
+
+		return
+	}
+
+	ui.ClearScreen()
+	ui.PrintBanner(kairoversion.Version, cfg.Provider.Model, cfg.Provider.Name)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	setupSignalHandler(cancel)
+
+	execCmd := execCommandContext(ctx, piPath, cliArgs...)
+	execCmd.Env = cfg.ProviderEnv
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	if err := execCmd.Run(); err != nil {
+		cfg.Cmd.Printf("Error running Pi: %v\n", err)
+		exitProcess(1)
+	}
+}
+
+func executePiWithAuth(cfg ExecutionConfig) {
+	cliArgs := cfg.HarnessArgs
+
+	if cfg.Yolo {
+		flag := yoloModeFlag(cfg.HarnessToUse)
+		if flag != "" {
+			cliArgs = append([]string{flag}, cliArgs...)
+		}
+	}
+
+	cliArgs = append(
+		[]string{"--provider", cfg.ProviderName, "--model", cfg.Provider.Model},
+		cliArgs...,
+	)
+
+	piPath, err := lookPath(cfg.HarnessBinary)
+	if err != nil {
+		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
+
+		return
+	}
+
+	ui.ClearScreen()
+	ui.PrintBanner(kairoversion.Version, cfg.Provider.Model, cfg.Provider.Name)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	setupSignalHandler(cancel)
+
+	execCmd := execCommandContext(ctx, piPath, cliArgs...)
+	execCmd.Env = cfg.ProviderEnv
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	if err := execCmd.Run(); err != nil {
+		cfg.Cmd.Printf("Error running Pi: %v\n", err)
+		exitProcess(1)
+	}
+}
+
 func runHarnessWithWrapper(params HarnessRun) error {
 	harnessPath, err := lookPath(params.HarnessBinary)
 	if err != nil {
@@ -65,6 +147,16 @@ func runHarnessWithWrapper(params HarnessRun) error {
 }
 
 func executeWithAuth(cfg ExecutionConfig) {
+	if cfg.HarnessToUse == harnessPi {
+		executePiWithAuth(cfg)
+
+		return
+	}
+
+	executeWrapperWithAuth(cfg)
+}
+
+func executeWrapperWithAuth(cfg ExecutionConfig) {
 	authDir, err := createTempAuthDirFn()
 	if err != nil {
 		cfg.Cmd.Printf("Error creating auth directory: %v\n", err)
@@ -123,6 +215,12 @@ func executeWithAuth(cfg ExecutionConfig) {
 }
 
 func executeWithoutAuth(cfg ExecutionConfig) {
+	if cfg.HarnessToUse == harnessPi {
+		executePiWithoutAuth(cfg)
+
+		return
+	}
+
 	cliArgs := cfg.HarnessArgs
 
 	if cfg.Yolo {
