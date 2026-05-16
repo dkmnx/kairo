@@ -14,10 +14,13 @@ flowchart TB
 
     subgraph internal[internal]
         Config[config]
+        Constants[constants]
         Crypto[crypto]
         Providers[providers]
-        Validate[validate]
+        Secrets[secrets]
         UI[ui]
+        Update[update]
+        Validate[validate]
         Wrapper[wrapper]
         Errors[errors]
         Version[version]
@@ -98,13 +101,29 @@ Key functions:
 
 Built-in providers:
 
-| Provider   | Base URL                             | Model                 | API Key |
-| :--------- | :----------------------------------- | :-------------------- | :------ |
-| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes     |
-| `minimax`  | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes     |
-| `deepseek` | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes     |
-| `kimi`     | `https://api.kimi.com/coding/`       | `kimi-for-coding`     | Yes     |
-| `custom`   | user-defined                         | user-defined          | Yes     |
+| Provider                 | Default Base URL                     | Default Model         | API Key |
+| ------------------------ | ------------------------------------ | --------------------- | ------- |
+| `zai`                    | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes     |
+| `minimax`                | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes     |
+| `deepseek`               | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes     |
+| `kimi`                   | `https://api.kimi.com/coding/`       | `kimi-for-coding`     | Yes     |
+| `anthropic`              | (provider-managed)                   | (provider-managed)    | Yes     |
+| `openai`                 | (provider-managed)                   | (provider-managed)    | Yes     |
+| `google`                 | (provider-managed)                   | (provider-managed)    | Yes     |
+| `mistral`                | (provider-managed)                   | (provider-managed)    | Yes     |
+| `groq`                   | (provider-managed)                   | (provider-managed)    | Yes     |
+| `cerebras`               | (provider-managed)                   | (provider-managed)    | Yes     |
+| `cloudflare-workers-ai`  | (provider-managed)                   | (provider-managed)    | Yes     |
+| `xai`                    | (provider-managed)                   | (provider-managed)    | Yes     |
+| `openrouter`             | (provider-managed)                   | (provider-managed)    | Yes     |
+| `vercel-ai-gateway`      | (provider-managed)                   | (provider-managed)    | Yes     |
+| `opencode`               | (provider-managed)                   | (provider-managed)    | Yes     |
+| `huggingface`            | (provider-managed)                   | (provider-managed)    | Yes     |
+| `fireworks`              | (provider-managed)                   | (provider-managed)    | Yes     |
+| `azure-openai-responses` | (provider-managed)                   | (provider-managed)    | Yes     |
+| `minimax-cn`             | (provider-managed)                   | (provider-managed)    | Yes     |
+| `custom`                 | user-defined                         | user-defined          | Yes     |
+
 ### `validate/`
 
 Validation for API keys, URLs, models, and cross-provider env-var conflicts.
@@ -202,9 +221,12 @@ flowchart LR
     Cmd --> Config[config.LoadConfig]
     Cmd --> Validate[validate]
     Cmd --> Crypto[crypto.EncryptSecrets / DecryptSecrets]
+    Cmd --> Secrets[secrets.LoadSecrets / SaveSecrets]
     Cmd --> Providers[providers registry]
     Cmd --> Wrapper[wrapper.GenerateWrapperScript]
+    Cmd --> Update[update.CheckAndUpdate]
     Config --> YAML[config.yaml]
     Crypto --> Key[age.key]
-    Crypto --> Secrets[secrets.age]
+    Crypto --> SecretsFile[secrets.age]
+    Secrets --> SecretsFile
 ```

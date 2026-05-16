@@ -90,9 +90,10 @@ Generated on first setup. The file contains the private identity line followed b
 
 ## Environment Variables
 
-| Variable           | Purpose                    | Default          |
-| ------------------ | -------------------------- | ---------------- |
-| `KAIRO_UPDATE_URL` | Override update check URL  | GitHub Releases  |
+| Variable             | Purpose                           | Default          |
+| -------------------- | --------------------------------- | ---------------- |
+| `KAIRO_CONFIG_DIR`   | Override config directory path    | Platform default |
+| `KAIRO_UPDATE_URL`   | Override update check URL         | GitHub Releases  |
 
 ## Built-in Providers
 
