@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
@@ -29,7 +29,7 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationRes
 			return nil, nil
 		}
 
-		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
+		return nil, errors.WrapError(errors.ConfigError,
 			"failed to load config for migration", err)
 	}
 
@@ -45,7 +45,7 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationRes
 	var skipped []string
 
 	for providerName, provider := range cfg.Providers {
-		builtinDef, ok := providers.GetBuiltInProvider(providerName)
+		builtinDef, ok := providers.BuiltInProvider(providerName)
 		if !ok {
 			skipped = append(skipped, providerName)
 
@@ -76,7 +76,7 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationRes
 
 	if len(changes) > 0 {
 		if err := SaveConfig(ctx, configDir, cfg); err != nil {
-			return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
+			return nil, errors.WrapError(errors.ConfigError,
 				"failed to save config after migration", err)
 		}
 	}

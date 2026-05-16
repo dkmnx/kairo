@@ -13,7 +13,7 @@ import (
 )
 
 func requireConfigDir(cmd *cobra.Command) string {
-	dir := GetCLIContext(cmd).GetConfigDir()
+	dir := CLIContextFromCmd(cmd).ConfigDir()
 	if dir == "" {
 		ui.PrintError("Config directory not found")
 	}
@@ -38,8 +38,8 @@ func loadConfigOrExit(cmd *cobra.Command) *config.Config {
 		return nil
 	}
 
-	cliCtx := GetCLIContext(cmd)
-	cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), dir)
+	cliCtx := CLIContextFromCmd(cmd)
+	cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			ui.PrintWarn("No providers configured")
@@ -81,6 +81,8 @@ func runningWithRaceDetector() bool {
 	return strings.Contains(os.Getenv("GOFLAGS"), "-race")
 }
 
+// mergeEnvVars combines multiple environment variable slices, deduplicating
+// by key name. Earlier values take precedence.
 func mergeEnvVars(envs ...[]string) []string {
 	seen := make(map[string]bool)
 	var result []string

@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/dkmnx/kairo/internal/constants"
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 )
 
 var (
@@ -15,7 +15,9 @@ var (
 	overriddenConfigDirMu sync.RWMutex
 )
 
-func GetConfigDir() (string, error) {
+// ConfigDir returns the kairo configuration directory. It uses the overridden
+// value if set, otherwise derives the platform-specific default.
+func ConfigDir() (string, error) {
 	overriddenConfigDirMu.RLock()
 	dir := overriddenConfigDir
 	overriddenConfigDirMu.RUnlock()
@@ -26,7 +28,7 @@ func GetConfigDir() (string, error) {
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.ConfigError,
+		return "", errors.WrapError(errors.ConfigError,
 			"cannot determine home directory", err)
 	}
 
@@ -40,6 +42,7 @@ func GetConfigDir() (string, error) {
 	return defaultPath, nil
 }
 
+// SetConfigDir overrides the default configuration directory.
 func SetConfigDir(dir string) {
 	overriddenConfigDirMu.Lock()
 	overriddenConfigDir = dir

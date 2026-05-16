@@ -384,3 +384,56 @@ func TestSaveProviderConfiguration(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildProviderConfig_EnvKey(t *testing.T) {
+	t.Run("new provider with env key", func(t *testing.T) {
+		result := BuildProviderConfig(ProviderBuildConfig{
+			Definition: providers.ProviderDefinition{Name: "custom"},
+			BaseURL:    "https://api.example.com",
+			Model:      "test-model",
+			EnvKey:     "MY_PROVIDER_API_KEY",
+			Exists:     false,
+		})
+
+		if result.EnvKey != "MY_PROVIDER_API_KEY" {
+			t.Errorf("EnvKey = %q, want %q", result.EnvKey, "MY_PROVIDER_API_KEY")
+		}
+	})
+
+	t.Run("existing provider sets env key", func(t *testing.T) {
+		existing := config.Provider{
+			Name:    "myprovider",
+			BaseURL: "https://old.com",
+			Model:   "old-model",
+		}
+
+		result := BuildProviderConfig(ProviderBuildConfig{
+			Definition: providers.ProviderDefinition{Name: "myprovider"},
+			BaseURL:    "https://new.com",
+			Model:      "new-model",
+			EnvKey:     "CUSTOM_API_KEY",
+			Exists:     true,
+			Existing:   &existing,
+		})
+
+		if result.EnvKey != "CUSTOM_API_KEY" {
+			t.Errorf("EnvKey = %q, want %q", result.EnvKey, "CUSTOM_API_KEY")
+		}
+		if result.BaseURL != "https://new.com" {
+			t.Errorf("BaseURL = %q, want %q", result.BaseURL, "https://new.com")
+		}
+	})
+
+	t.Run("new provider without env key", func(t *testing.T) {
+		result := BuildProviderConfig(ProviderBuildConfig{
+			Definition: providers.ProviderDefinition{Name: "zai", APIKeyEnvVar: "ZAI_API_KEY"},
+			BaseURL:    "https://api.z.ai",
+			Model:      "glm-5.1",
+			Exists:     false,
+		})
+
+		if result.EnvKey != "" {
+			t.Errorf("EnvKey = %q, want empty", result.EnvKey)
+		}
+	})
+}

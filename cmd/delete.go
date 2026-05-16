@@ -10,7 +10,7 @@ import (
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/crypto"
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/secrets"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
@@ -22,13 +22,13 @@ var deleteCmd = &cobra.Command{
 	Short: "Remove a provider configuration",
 	Long:  "Remove a provider from Kairo. If no provider is specified, shows an interactive list of configured providers.",
 	Run: func(cmd *cobra.Command, args []string) {
-		cliCtx := GetCLIContext(cmd)
+		cliCtx := CLIContextFromCmd(cmd)
 		dir := requireConfigDir(cmd)
 		if dir == "" {
 			return
 		}
 
-		cfg, err := config.LoadConfig(cliCtx.GetRootCtx(), dir)
+		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")
@@ -68,7 +68,7 @@ var deleteCmd = &cobra.Command{
 			})
 			target = selected
 			if target == "" {
-				ui.PrintInfo("Operation cancelled")
+				tap.Cancel("Operation cancelled")
 				return
 			}
 		} else {
@@ -77,8 +77,7 @@ var deleteCmd = &cobra.Command{
 
 		_, ok := cfg.Providers[target]
 		if !ok {
-			ui.PrintError(fmt.Sprintf("Provider '%s' not configured", target))
-			ui.PrintInfo("Run 'kairo list' to see configured providers")
+			tap.Cancel(fmt.Sprintf("Provider '%s' not configured", target))
 			return
 		}
 
@@ -86,7 +85,7 @@ var deleteCmd = &cobra.Command{
 			Message: fmt.Sprintf("Are you sure you want to delete '%s'?", target),
 		})
 		if !confirmed {
-			ui.PrintInfo("Operation cancelled")
+			tap.Cancel("Operation cancelled")
 			return
 		}
 
@@ -96,8 +95,8 @@ var deleteCmd = &cobra.Command{
 			cfg.DefaultProvider = ""
 		}
 
-		if err := config.SaveConfig(cliCtx.GetRootCtx(), dir, cfg); err != nil {
-			ui.PrintError(fmt.Sprintf("Saving config: %v", err))
+		if err := config.SaveConfig(cliCtx.RootCtx(), dir, cfg); err != nil {
+			tap.Cancel(fmt.Sprintf("Saving config: %v", err))
 			return
 		}
 
@@ -106,9 +105,8 @@ var deleteCmd = &cobra.Command{
 		secretsPath := filepath.Join(dir, constants.SecretsFileName)
 		keyPath := filepath.Join(dir, constants.KeyFileName)
 
-		if err := deleteProviderSecrets(cliCtx.GetRootCtx(), secretsPath, keyPath, target); err != nil {
-			ui.PrintError(fmt.Sprintf("Failed to clean up secrets for '%s': %v", target, err))
-			ui.PrintInfo("Provider removed from config but its secrets could not be deleted — manual cleanup may be required")
+		if err := deleteProviderSecrets(cliCtx.RootCtx(), secretsPath, keyPath, target); err != nil {
+			tap.Cancel(fmt.Sprintf("Failed to clean up secrets for '%s': %v", target, err))
 			return
 		}
 
@@ -119,7 +117,7 @@ var deleteCmd = &cobra.Command{
 func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerName string) error {
 	existingSecrets, err := crypto.DecryptSecretsBytes(ctx, secretsPath, keyPath)
 	if err != nil {
-		return kairoerrors.WrapError(kairoerrors.CryptoError,
+		return errors.WrapError(errors.CryptoError,
 			"failed to decrypt secrets for cleanup", err).
 			WithContext("provider", providerName)
 	}

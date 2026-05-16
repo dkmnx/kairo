@@ -32,7 +32,7 @@ func promptForProvider(cfg *config.Config) string {
 }
 
 func promptForNewProvider(ctx context.Context) string {
-	allProviders := append(providers.GetProviderList(), "custom")
+	allProviders := append(providers.ProviderList(), customProviderName)
 	options := buildProviderListOptions(allProviders)
 
 	return tap.Select(ctx, tap.SelectOptions[string]{
@@ -92,6 +92,11 @@ func promptForAPIKey(cfg providerPromptConfig) string {
 	}
 
 	existingKey := cfg.Secrets[APIKeyEnvVarName(cfg.ProviderName)]
+
+	if existingKey == "" && cfg.ProviderName != customProviderName {
+		existingKey = cfg.Secrets[APIKeyEnvVarName(customProviderName)]
+	}
+
 	if existingKey == "" {
 		return tap.Password(ctx, tap.PasswordOptions{Message: "API Key"})
 	}
@@ -172,6 +177,18 @@ func promptForModel(cfg providerPromptConfig) string {
 		Label:        "Model",
 		CurrentValue: cfg.Provider.Model,
 		DefaultValue: cfg.Definition.Model,
+		IsEdit:       cfg.IsEdit,
+		Exists:       cfg.Exists,
+	})
+}
+
+func promptForEnvKey(cfg providerPromptConfig) string {
+	defaultValue := APIKeyEnvVarName(cfg.ProviderName)
+
+	return promptForField(promptFieldConfig{
+		Label:        "Env Key",
+		CurrentValue: cfg.Provider.EnvKey,
+		DefaultValue: defaultValue,
 		IsEdit:       cfg.IsEdit,
 		Exists:       cfg.Exists,
 	})

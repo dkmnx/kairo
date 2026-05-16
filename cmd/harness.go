@@ -13,10 +13,12 @@ import (
 
 const (
 	harnessClaude = "claude"
+	harnessQwen   = "qwen"
+	harnessPi     = "pi"
 )
 
 func isValidHarness(name string) bool {
-	return name == harnessClaude || name == harnessQwen
+	return name == harnessClaude || name == harnessQwen || name == harnessPi
 }
 
 var harnessGetCmd = &cobra.Command{
@@ -42,14 +44,14 @@ var harnessGetCmd = &cobra.Command{
 var harnessSetCmd = &cobra.Command{
 	Use:   "set <harness>",
 	Short: "Set default harness",
-	Long:  "Set the default CLI harness to use (claude or qwen)",
+	Long:  "Set the default CLI harness to use (claude, qwen, or pi)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		harnessName := strings.ToLower(args[0])
 
 		if !isValidHarness(harnessName) {
 			ui.PrintError(fmt.Sprintf("Invalid harness: '%s'", args[0]))
-			ui.PrintInfo("Valid harnesses: claude, qwen")
+			ui.PrintInfo("Valid harnesses: claude, qwen, pi")
 			return
 		}
 
@@ -58,7 +60,7 @@ var harnessSetCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := GetCLIContext(cmd).GetConfigCache().Get(GetCLIContext(cmd).GetRootCtx(), dir)
+		cfg, err := CLIContextFromCmd(cmd).ConfigCache().Get(CLIContextFromCmd(cmd).RootCtx(), dir)
 		if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 			handleConfigError(cmd, err)
 			return
@@ -71,12 +73,12 @@ var harnessSetCmd = &cobra.Command{
 		}
 
 		cfg.DefaultHarness = harnessName
-		if err := config.SaveConfig(GetCLIContext(cmd).GetRootCtx(), dir, cfg); err != nil {
+		if err := config.SaveConfig(CLIContextFromCmd(cmd).RootCtx(), dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 			return
 		}
 
-		GetCLIContext(cmd).InvalidateCache(dir)
+		CLIContextFromCmd(cmd).InvalidateCache(dir)
 
 		ui.PrintSuccess(fmt.Sprintf("Default harness set to: %s", harnessName))
 	},
@@ -85,7 +87,7 @@ var harnessSetCmd = &cobra.Command{
 var harnessCmd = &cobra.Command{
 	Use:   "harness",
 	Short: "Manage CLI harness",
-	Long:  "Manage the CLI harness (claude or qwen)",
+	Long:  "Manage the CLI harness (claude, qwen, or pi)",
 }
 
 func init() {

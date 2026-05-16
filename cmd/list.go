@@ -16,14 +16,14 @@ var listCmd = &cobra.Command{
 	Short: "List configured providers",
 	Long:  "Display all configured providers and their status",
 	Run: func(cmd *cobra.Command, args []string) {
-		cliCtx := GetCLIContext(cmd)
+		cliCtx := CLIContextFromCmd(cmd)
 		dir := requireConfigDir(cmd)
 		if dir == "" {
 			ui.PrintInfo("Run 'kairo setup' to configure providers")
 			return
 		}
 
-		cfg, err := config.LoadConfig(cliCtx.GetRootCtx(), dir)
+		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")
@@ -57,7 +57,7 @@ var listCmd = &cobra.Command{
 			}
 
 			if !providers.RequiresAPIKey(name) {
-				def, _ := providers.GetBuiltInProvider(name)
+				def, _ := providers.BuiltInProvider(name)
 				ui.PrintWhite(fmt.Sprintf("    %s", def.Name))
 				ui.PrintWhite("    Native Anthropic (no API key required)")
 			} else {
