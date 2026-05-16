@@ -33,7 +33,7 @@ func setConfigDir(dir string) {
 }
 
 func getConfigDir() string {
-	return defaultCLIContext.GetConfigDir()
+	return defaultCLIContext.ConfigDir()
 }
 
 func setVerbose(enabled bool) {
@@ -41,7 +41,7 @@ func setVerbose(enabled bool) {
 }
 
 func getVerbose() bool {
-	return defaultCLIContext.GetVerbose() || verboseFlag
+	return defaultCLIContext.Verbose() || verboseFlag
 }
 
 var rootCmd = &cobra.Command{
@@ -53,8 +53,8 @@ encrypted secrets management using age encryption.
 Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, kairoversion.Date),
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		cliCtx := GetCLIContext(cmd)
-		configDir := cliCtx.GetConfigDir()
+		cliCtx := CLIContextFromCmd(cmd)
+		configDir := cliCtx.ConfigDir()
 		if configDir == "" {
 			cmd.Println("Error: config directory not found")
 			if err := cmd.Help(); err != nil {
@@ -64,7 +64,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			return
 		}
 
-		cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), configDir)
+		cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), configDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				cmd.Println("No providers configured. Run 'kairo setup' to get started.")

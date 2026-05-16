@@ -47,7 +47,7 @@ Key functions:
 
 - `LoadConfig(ctx, dir)`
 - `SaveConfig(ctx, dir, cfg)`
-- `GetConfigDir()`
+- `ConfigDir()`
 - `MigrateConfigOnUpdate(ctx, dir)`
 
 Example schema:
@@ -91,21 +91,20 @@ Built-in provider definitions and registry helpers.
 
 Key functions:
 
-- `GetBuiltInProvider(name)`
+- `BuiltInProvider(name)`
 - `IsBuiltInProvider(name)`
-- `GetProviderList()`
+- `ProviderList()`
 - `RequiresAPIKey(name)`
 
 Built-in providers:
 
 | Provider   | Base URL                             | Model                 | API Key |
-| ---------- | ------------------------------------ | --------------------- | ------- |
+| :--------- | :----------------------------------- | :-------------------- | :------ |
 | `zai`      | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes     |
 | `minimax`  | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes     |
 | `deepseek` | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes     |
 | `kimi`     | `https://api.kimi.com/coding/`       | `kimi-for-coding`     | Yes     |
 | `custom`   | user-defined                         | user-defined          | Yes     |
-
 ### `validate/`
 
 Validation for API keys, URLs, models, and cross-provider env-var conflicts.

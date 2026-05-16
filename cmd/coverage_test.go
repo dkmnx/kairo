@@ -224,13 +224,13 @@ func TestResolveProviderName(t *testing.T) {
 	}
 }
 
-func TestGetProviderDefinition(t *testing.T) {
-	def := GetProviderDefinition("anthropic")
+func TestProviderDefinition(t *testing.T) {
+	def := ProviderDefinition("anthropic")
 	if def.Name == "" {
 		t.Error("expected non-empty provider definition")
 	}
 
-	def = GetProviderDefinition("custom-provider")
+	def = ProviderDefinition("custom-provider")
 	if def.Name != "custom-provider" {
 		t.Errorf("expected 'custom-provider', got %q", def.Name)
 	}

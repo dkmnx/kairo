@@ -1,3 +1,4 @@
+// Package errors defines Kairo-specific error types with structured context.
 package errors
 
 import (
@@ -7,8 +8,10 @@ import (
 	"strings"
 )
 
+// ErrorType classifies a KairoError into a high-level category.
 type ErrorType string
 
+// Error type constants for classifying KairoError instances.
 const (
 	ConfigError       ErrorType = "config"
 	CryptoError       ErrorType = "crypto"
@@ -20,10 +23,14 @@ const (
 	VerificationError ErrorType = "verification"
 )
 
+// ErrConfigNotFound is returned when the configuration file does not exist.
 var ErrConfigNotFound = errors.New("configuration file not found")
 
+// ErrUserCancelled is returned when the user cancels an interactive prompt.
 var ErrUserCancelled = errors.New("user cancelled input")
 
+// KairoError is a structured error with a type classification, message,
+// optional cause, and key-value context metadata.
 type KairoError struct {
 	Type    ErrorType
 	Message string
@@ -64,6 +71,7 @@ func (e *KairoError) Is(target error) bool {
 	return e.Type == t.Type
 }
 
+// NewError creates a KairoError with the given type and message.
 func NewError(errorType ErrorType, message string) *KairoError {
 	return &KairoError{
 		Type:    errorType,
@@ -71,6 +79,7 @@ func NewError(errorType ErrorType, message string) *KairoError {
 	}
 }
 
+// WrapError creates a KairoError that wraps an existing cause error.
 func WrapError(errorType ErrorType, message string, cause error) *KairoError {
 	return &KairoError{
 		Type:    errorType,
@@ -79,6 +88,7 @@ func WrapError(errorType ErrorType, message string, cause error) *KairoError {
 	}
 }
 
+// WithContext adds a key-value pair to the error's context metadata.
 func (e *KairoError) WithContext(key, value string) *KairoError {
 	if e.Context == nil {
 		e.Context = make(map[string]string)
@@ -87,11 +97,13 @@ func (e *KairoError) WithContext(key, value string) *KairoError {
 	return e
 }
 
+// FileError creates a FileSystemError with the file path in context.
 func FileError(message, path string, cause error) *KairoError {
 	return WrapError(FileSystemError, message, cause).
 		WithContext("path", path)
 }
 
+// CheckContext returns ctx.Err() if the context has been cancelled or expired.
 func CheckContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
@@ -101,6 +113,7 @@ func CheckContext(ctx context.Context) error {
 	}
 }
 
+// VerificationErr creates a VerificationError wrapping the given cause.
 func VerificationErr(message string, cause error) *KairoError {
 	return WrapError(VerificationError, message, cause)
 }

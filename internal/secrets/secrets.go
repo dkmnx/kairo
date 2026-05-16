@@ -1,3 +1,4 @@
+// Package secrets parses and formats key-value secret entries.
 package secrets
 
 import (
@@ -6,6 +7,7 @@ import (
 	"strings"
 )
 
+// Result holds parsed secrets along with parsing metadata.
 type Result struct {
 	Secrets      map[string]string
 	SkippedCount int
@@ -13,10 +15,12 @@ type Result struct {
 	RawLines     []string
 }
 
+// Parse extracts key-value pairs from the given content string.
 func Parse(content string) map[string]string {
 	return ParseWithStats(content).Secrets
 }
 
+// ParseWithStats extracts key-value pairs and returns detailed parsing statistics.
 func ParseWithStats(content string) Result {
 	result := make(map[string]string)
 	var warnings []string
@@ -61,6 +65,7 @@ func ParseWithStats(content string) Result {
 	return Result{Secrets: result, SkippedCount: skippedCount, Warnings: warnings, RawLines: rawLines}
 }
 
+// Format serializes a secrets map into sorted key=value lines.
 func Format(secrets map[string]string) string {
 	keys := make([]string, 0, len(secrets))
 	for key := range secrets {

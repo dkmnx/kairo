@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const harnessQwen = "qwen"
 const claudeYoloFlag = "--dangerously-skip-permissions"
 const qwenYoloFlag = "--yolo"
 

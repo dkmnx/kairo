@@ -56,7 +56,7 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Fatalf("failed to encrypt secrets: %v", err)
 	}
 
-	def, _ := providers.GetBuiltInProvider("zai")
+	def, _ := providers.BuiltInProvider("zai")
 	cfg.Providers["zai"] = config.Provider{
 		Name:    def.Name,
 		BaseURL: def.BaseURL,
@@ -79,7 +79,7 @@ func TestFullWorkflowSetupConfigAndSwitch(t *testing.T) {
 		t.Fatalf("failed to encrypt secrets with minimax: %v", err)
 	}
 
-	def, _ = providers.GetBuiltInProvider("minimax")
+	def, _ = providers.BuiltInProvider("minimax")
 	cfg.Providers["minimax"] = config.Provider{
 		Name:    def.Name,
 		BaseURL: def.BaseURL,

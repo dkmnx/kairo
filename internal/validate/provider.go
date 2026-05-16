@@ -9,11 +9,15 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
+// MaxProviderNameLength and MaxModelNameLength define upper bounds for provider
+// and model name input lengths.
 const (
 	MaxProviderNameLength = 50
 	MaxModelNameLength    = 100
 )
 
+// ValidateCrossProviderConfig checks that no two providers set the same
+// environment variable to different values.
 func ValidateCrossProviderConfig(cfg *config.Config) error {
 	type envVarSource struct {
 		provider string
@@ -59,12 +63,14 @@ func ValidateCrossProviderConfig(cfg *config.Config) error {
 	return nil
 }
 
+// ValidateProviderModel validates the model name for a provider, checking
+// length and character constraints for built-in providers with defaults.
 func ValidateProviderModel(providerName, modelName string) error {
 	if modelName == "" {
 		return nil
 	}
 
-	def, ok := providers.GetBuiltInProvider(providerName)
+	def, ok := providers.BuiltInProvider(providerName)
 	if !ok {
 		return nil
 	}

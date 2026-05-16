@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ExecutionConfig holds all parameters needed to execute a CLI harness.
 type ExecutionConfig struct {
 	Cmd           *cobra.Command
 	ProviderEnv   []string
@@ -20,6 +21,7 @@ type ExecutionConfig struct {
 	Yolo          bool
 }
 
+// WrapperCmd holds parameters for building a wrapper shell command.
 type WrapperCmd struct {
 	Ctx           context.Context
 	WrapperScript string

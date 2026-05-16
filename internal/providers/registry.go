@@ -1,5 +1,6 @@
 package providers
 
+// BuiltInProviders maps provider short names to their definitions.
 var BuiltInProviders = map[string]ProviderDefinition{
 	"zai": {
 		Name:           "Z.AI",
@@ -128,6 +129,8 @@ var BuiltInProviders = map[string]ProviderDefinition{
 	},
 }
 
+// ProviderDefinition describes a built-in provider's display name, default
+// base URL, model, environment variables, and API key requirements.
 type ProviderDefinition struct {
 	Name           string
 	BaseURL        string
@@ -137,12 +140,14 @@ type ProviderDefinition struct {
 	APIKeyEnvVar   string
 }
 
+// IsBuiltInProvider reports whether name is a recognized built-in provider.
 func IsBuiltInProvider(name string) bool {
 	_, ok := BuiltInProviders[name]
 	return ok
 }
 
-func GetBuiltInProvider(name string) (ProviderDefinition, bool) {
+// BuiltInProvider returns the definition for the named built-in provider.
+func BuiltInProvider(name string) (ProviderDefinition, bool) {
 	def, ok := BuiltInProviders[name]
 	return def, ok
 }
@@ -155,10 +160,12 @@ var providerOrder = []string{
 	"fireworks", "azure-openai-responses", "minimax-cn",
 }
 
-func GetProviderList() []string {
+// ProviderList returns the ordered list of built-in provider names.
+func ProviderList() []string {
 	return providerOrder
 }
 
+// RequiresAPIKey reports whether the named provider requires an API key.
 func RequiresAPIKey(name string) bool {
 	def, ok := BuiltInProviders[name]
 	if !ok {
@@ -167,6 +174,8 @@ func RequiresAPIKey(name string) bool {
 	return def.RequiresAPIKey
 }
 
+// APIKeyEnvVarFor returns the environment variable name for the named
+// provider's API key, if one is defined.
 func APIKeyEnvVarFor(name string) (string, bool) {
 	def, ok := BuiltInProviders[name]
 	if !ok {
