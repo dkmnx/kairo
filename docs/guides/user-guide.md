@@ -71,19 +71,36 @@ kairo -- "Quick question"
 | `kairo <provider> [args]`     | Execute with a specific provider                    |
 | `kairo -- [args]`             | Execute with the default provider                   |
 | `kairo harness get`           | Get current harness                                 |
-| `kairo harness set <name>`    | Set default harness (`claude` or `qwen`)            |
+| `kairo harness set <name>`    | Set default harness (`claude`, `qwen`, or `pi`)     |
 | `kairo update`                | Update to the latest version                        |
 | `kairo version`               | Show version                                        |
+| `kairo completion [shell]`    | Generate shell completion script                    |
 
 ## Supported Providers
 
-| Provider   | Default Model         | API Key Required |
-| ---------- | --------------------- | ---------------- |
-| `zai`      | `glm-5.1`             | Yes              |
-| `minimax`  | `MiniMax-M2.7`        | Yes              |
-| `kimi`     | `kimi-for-coding`     | Yes              |
-| `deepseek` | `deepseek-v4-pro[1m]` | Yes              |
-| `custom`   | user-defined          | Yes              |
+| Provider                 | API Key Env Var        | API Key Required |
+| ------------------------ | ---------------------- | ---------------- |
+| `zai`                    | `ZAI_API_KEY`          | Yes              |
+| `minimax`                | `MINIMAX_API_KEY`      | Yes              |
+| `kimi`                   | `KIMI_API_KEY`         | Yes              |
+| `deepseek`               | `DEEPSEEK_API_KEY`     | Yes              |
+| `anthropic`              | `ANTHROPIC_API_KEY`    | Yes              |
+| `openai`                 | `OPENAI_API_KEY`       | Yes              |
+| `google`                 | `GEMINI_API_KEY`       | Yes              |
+| `mistral`                | `MISTRAL_API_KEY`      | Yes              |
+| `groq`                   | `GROQ_API_KEY`         | Yes              |
+| `cerebras`               | `CEREBRAS_API_KEY`     | Yes              |
+| `cloudflare-workers-ai`  | `CLOUDFLARE_API_KEY`   | Yes              |
+| `xai`                    | `XAI_API_KEY`          | Yes              |
+| `openrouter`             | `OPENROUTER_API_KEY`   | Yes              |
+| `vercel-ai-gateway`      | `AI_GATEWAY_API_KEY`   | Yes              |
+| `opencode`               | `OPENCODE_API_KEY`     | Yes              |
+| `huggingface`            | `HF_TOKEN`             | Yes              |
+| `fireworks`              | `FIREWORKS_API_KEY`    | Yes              |
+| `azure-openai-responses` | `AZURE_OPENAI_API_KEY` | Yes              |
+| `minimax-cn`             | `MINIMAX_CN_API_KEY`   | Yes              |
+
+| `custom`                 | user-defined           | Yes              |
 
 Details: [Provider Reference](../reference/providers.md)
 

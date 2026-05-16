@@ -377,7 +377,7 @@ The wrapper script approach adds complexity:
 ## References
 
 - **Implementation**: `internal/wrapper/wrapper.go:GenerateWrapperScript()`
-- **Tests**: `internal/wrapper/wrapper_test.go:TestGenerateWrapperScript()`
+- **Tests**: `internal/wrapper/wrapper_test.go` (see `TestGenerateWrapperScript_*` variants)
 - **Related**: Security architecture in `docs/architecture/README.md`
 
 ## Decision Record
