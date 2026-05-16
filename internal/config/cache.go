@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"maps"
 	"path/filepath"
 	"sync"
 	"time"
@@ -41,13 +42,12 @@ func deepCopyConfig(cfg *Config) *Config {
 			Name:    v.Name,
 			BaseURL: v.BaseURL,
 			Model:   v.Model,
+			EnvKey:  v.EnvKey,
 			EnvVars: append([]string{}, v.EnvVars...),
 		}
 	}
 	defaultModels := make(map[string]string, len(cfg.DefaultModels))
-	for k, v := range cfg.DefaultModels {
-		defaultModels[k] = v
-	}
+	maps.Copy(defaultModels, cfg.DefaultModels)
 
 	return &Config{
 		DefaultProvider: cfg.DefaultProvider,
