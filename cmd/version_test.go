@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -80,14 +81,14 @@ func TestCheckForUpdatesAvailable(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalGetter := envGetter
-	envGetter = func(key string) (string, bool) {
+	originalEnvFunc := update.EnvFunc
+	update.EnvFunc = func(key string) (string, bool) {
 		if key == "KAIRO_UPDATE_URL" {
 			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
 		}
 		return "", false
 	}
-	defer func() { envGetter = originalGetter }()
+	defer func() { update.EnvFunc = originalEnvFunc }()
 
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
@@ -121,14 +122,14 @@ func TestCheckForUpdatesNoUpdate(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalGetter := envGetter
-	envGetter = func(key string) (string, bool) {
+	originalEnvFunc := update.EnvFunc
+	update.EnvFunc = func(key string) (string, bool) {
 		if key == "KAIRO_UPDATE_URL" {
 			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
 		}
 		return "", false
 	}
-	defer func() { envGetter = originalGetter }()
+	defer func() { update.EnvFunc = originalEnvFunc }()
 
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
@@ -153,14 +154,14 @@ func TestCheckForUpdatesAPIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalGetter := envGetter
-	envGetter = func(key string) (string, bool) {
+	originalEnvFunc := update.EnvFunc
+	update.EnvFunc = func(key string) (string, bool) {
 		if key == "KAIRO_UPDATE_URL" {
 			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
 		}
 		return "", false
 	}
-	defer func() { envGetter = originalGetter }()
+	defer func() { update.EnvFunc = originalEnvFunc }()
 
 	originalVersion := version.Version
 	version.Version = "v1.0.0"

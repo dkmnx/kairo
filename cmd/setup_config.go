@@ -44,7 +44,7 @@ func LoadConfig(cliCtx *CLIContext, configDir string) (*config.Config, error) {
 
 // AddProviderParams holds parameters for adding a provider to the configuration.
 type AddProviderParams struct {
-	CLIContext   interface{ InvalidateCache(dir string) }
+	CLIContext   *CLIContext
 	ConfigDir    string
 	Cfg          *config.Config
 	ProviderName string

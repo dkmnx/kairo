@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
-	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
 	secretspkg "github.com/dkmnx/kairo/internal/secrets"
@@ -784,59 +783,6 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 	_, err := LoadSecrets(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted key file, got nil")
-	}
-}
-
-func TestGetEnvValue(t *testing.T) {
-	result := getEnvValue("TEST_KEY")
-	if result != "" {
-		t.Errorf("getEnvValue() = %q, want empty string", result)
-	}
-}
-
-func TestGetEnvFuncDefault(t *testing.T) {
-	original := envGetter
-	defer func() { envGetter = original }()
-
-	envGetter = getEnvFunc
-	value, ok := envGetter("TEST_KEY")
-	if value != "" {
-		t.Errorf("getEnvFunc() value = %q, want empty", value)
-	}
-	if ok {
-		t.Error("getEnvFunc() ok = true, want false")
-	}
-}
-
-func TestGetLatestReleaseURLDefault(t *testing.T) {
-	original := envGetter
-	defer func() { envGetter = original }()
-
-	envGetter = func(key string) (string, bool) {
-		return "", false
-	}
-
-	url := getLatestReleaseURL()
-	if url != constants.GitHubAPIReleasesLatest {
-		t.Errorf("getLatestReleaseURL() = %q, want %q", url, constants.GitHubAPIReleasesLatest)
-	}
-}
-
-func TestGetLatestReleaseURLOverride(t *testing.T) {
-	original := envGetter
-	defer func() { envGetter = original }()
-
-	envGetter = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return "https://custom.example.com/releases/latest", true
-		}
-		return "", false
-	}
-
-	url := getLatestReleaseURL()
-	expected := "https://custom.example.com/releases/latest"
-	if url != expected {
-		t.Errorf("getLatestReleaseURL() = %q, want %q", url, expected)
 	}
 }
 
