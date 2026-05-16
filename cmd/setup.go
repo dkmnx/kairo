@@ -161,7 +161,7 @@ var setupCmd = &cobra.Command{
 
 		providerName := promptForProvider(cfg)
 		if providerName == "" {
-			ui.PrintInfo("Setup cancelled")
+			tap.Cancel("Setup cancelled")
 
 			return
 		}
@@ -175,7 +175,7 @@ var setupCmd = &cobra.Command{
 			SecretsPath:  secretsResult.SecretsPath,
 			KeyPath:      secretsResult.KeyPath,
 		}); err != nil {
-			ui.PrintError(err.Error())
+			tap.Cancel(err.Error())
 
 			return
 		}
