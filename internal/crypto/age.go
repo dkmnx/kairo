@@ -1,3 +1,4 @@
+// Package crypto provides X25519-based encryption and decryption using the age library.
 package crypto
 
 import (
@@ -14,6 +15,7 @@ import (
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
 
+// GenerateKey creates a new X25519 keypair and writes it to keyPath atomically.
 func GenerateKey(ctx context.Context, keyPath string) error {
 	if err := kairoerrors.CheckContext(ctx); err != nil {
 		return err
@@ -65,6 +67,7 @@ func GenerateKey(ctx context.Context, keyPath string) error {
 	return nil
 }
 
+// EncryptSecrets encrypts the given secrets string and writes the ciphertext to secretsPath.
 func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) error {
 	if err := kairoerrors.CheckContext(ctx); err != nil {
 		return err
@@ -136,6 +139,7 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 	return nil
 }
 
+// DecryptSecrets decrypts the encrypted secrets file and returns the plaintext as a string.
 func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, error) {
 	if err := kairoerrors.CheckContext(ctx); err != nil {
 		return "", err
@@ -149,6 +153,8 @@ func DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, e
 	return buf.String(), nil
 }
 
+// ClearMemory zeroes out the given byte slice to prevent sensitive data from
+// remaining in memory.
 func ClearMemory(b []byte) {
 	for i := range b {
 		b[i] = 0
@@ -156,6 +162,7 @@ func ClearMemory(b []byte) {
 	runtime.KeepAlive(b)
 }
 
+// DecryptSecretsBytes decrypts the encrypted secrets file and returns the plaintext as bytes.
 func DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := decryptToBuffer(ctx, secretsPath, keyPath, &buf); err != nil {
@@ -263,6 +270,7 @@ func loadIdentity(keyPath string) (age.Identity, error) {
 	return identity, nil
 }
 
+// EnsureKeyExists generates a new keypair if one does not already exist in configDir.
 func EnsureKeyExists(ctx context.Context, configDir string) error {
 	keyPath := filepath.Join(configDir, constants.KeyFileName)
 	_, err := os.Stat(keyPath)

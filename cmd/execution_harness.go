@@ -16,6 +16,7 @@ var createTempAuthDirFn = wrapper.CreateTempAuthDir
 var writeTempTokenFileFn = wrapper.WriteTempTokenFile
 var generateWrapperScriptFn = wrapper.GenerateWrapperScript
 
+// HarnessRun holds the state for a single harness execution.
 type HarnessRun struct {
 	AuthDir       string
 	TokenPath     string

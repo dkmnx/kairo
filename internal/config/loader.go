@@ -10,6 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Config represents the top-level kairo configuration file.
 type Config struct {
 	DefaultProvider string              `yaml:"default_provider"`
 	Providers       map[string]Provider `yaml:"providers"`
@@ -17,6 +18,7 @@ type Config struct {
 	DefaultHarness  string              `yaml:"default_harness,omitempty"`
 }
 
+// Provider represents a single provider's configuration entry.
 type Provider struct {
 	Name    string   `yaml:"name"`
 	BaseURL string   `yaml:"base_url"`
@@ -78,6 +80,7 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 	return true, nil
 }
 
+// LoadConfig reads and parses the configuration file from configDir.
 func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	configPath := filepath.Join(configDir, "config.yaml")
 
@@ -142,6 +145,7 @@ func (c *Config) validate() {
 	}
 }
 
+// SaveConfig writes the configuration to configDir atomically.
 func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 	if err := kairoerrors.CheckContext(ctx); err != nil {
 		return err

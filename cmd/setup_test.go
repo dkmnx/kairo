@@ -321,7 +321,7 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 }
 
 func TestProviderListConstant(t *testing.T) {
-	providerList := providers.GetProviderList()
+	providerList := providers.ProviderList()
 
 	if len(providerList) < 4 {
 		t.Errorf("providerList has %d entries, want at least 4", len(providerList))
@@ -349,7 +349,7 @@ func TestProviderEnvVarSetup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			def, ok := providers.GetBuiltInProvider(tt.provider)
+			def, ok := providers.BuiltInProvider(tt.provider)
 			if !ok {
 				t.Fatalf("GetBuiltInProvider(%q) failed", tt.provider)
 			}

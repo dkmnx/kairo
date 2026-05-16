@@ -32,7 +32,7 @@ func promptForProvider(cfg *config.Config) string {
 }
 
 func promptForNewProvider(ctx context.Context) string {
-	allProviders := append(providers.GetProviderList(), customProviderName)
+	allProviders := append(providers.ProviderList(), customProviderName)
 	options := buildProviderListOptions(allProviders)
 
 	return tap.Select(ctx, tap.SelectOptions[string]{

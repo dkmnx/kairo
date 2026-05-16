@@ -17,6 +17,8 @@ const customProviderName = "custom"
 
 var providerNamePattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 
+// ValidateCustomProviderName validates that a custom provider name is well-formed
+// and not reserved.
 func ValidateCustomProviderName(name string) (string, error) {
 	if name == "" {
 		return "", kairoerrors.NewError(kairoerrors.ValidationError,
@@ -39,8 +41,10 @@ func ValidateCustomProviderName(name string) (string, error) {
 	return name, nil
 }
 
-func GetProviderDefinition(providerName string) providers.ProviderDefinition {
-	definition, _ := providers.GetBuiltInProvider(providerName)
+// ProviderDefinition returns the built-in definition for the given provider,
+// falling back to the provider name as the display name for custom providers.
+func ProviderDefinition(providerName string) providers.ProviderDefinition {
+	definition, _ := providers.BuiltInProvider(providerName)
 	if definition.Name == "" {
 		definition.Name = providerName
 	}
@@ -48,6 +52,7 @@ func GetProviderDefinition(providerName string) providers.ProviderDefinition {
 	return definition
 }
 
+// ResolveProviderName resolves "custom" to a user-entered name, passing through all others.
 func ResolveProviderName(providerName string) (string, error) {
 	if providerName != customProviderName {
 		return providerName, nil
@@ -78,6 +83,7 @@ func validateConfiguredModel(cfg modelValidationConfig) error {
 		"model name is required for custom providers")
 }
 
+// ProviderBuildConfig holds parameters for building a provider configuration entry.
 type ProviderBuildConfig struct {
 	Definition providers.ProviderDefinition
 	BaseURL    string
@@ -87,6 +93,8 @@ type ProviderBuildConfig struct {
 	Existing   *config.Provider
 }
 
+// BuildProviderConfig constructs a Provider from the given build configuration,
+// preserving existing settings when editing.
 func BuildProviderConfig(cfg ProviderBuildConfig) config.Provider {
 	if !cfg.Exists {
 		return config.Provider{

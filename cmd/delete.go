@@ -22,13 +22,13 @@ var deleteCmd = &cobra.Command{
 	Short: "Remove a provider configuration",
 	Long:  "Remove a provider from Kairo. If no provider is specified, shows an interactive list of configured providers.",
 	Run: func(cmd *cobra.Command, args []string) {
-		cliCtx := GetCLIContext(cmd)
+		cliCtx := CLIContextFromCmd(cmd)
 		dir := requireConfigDir(cmd)
 		if dir == "" {
 			return
 		}
 
-		cfg, err := config.LoadConfig(cliCtx.GetRootCtx(), dir)
+		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				ui.PrintWarn("No providers configured")
@@ -95,7 +95,7 @@ var deleteCmd = &cobra.Command{
 			cfg.DefaultProvider = ""
 		}
 
-		if err := config.SaveConfig(cliCtx.GetRootCtx(), dir, cfg); err != nil {
+		if err := config.SaveConfig(cliCtx.RootCtx(), dir, cfg); err != nil {
 			tap.Cancel(fmt.Sprintf("Saving config: %v", err))
 			return
 		}
@@ -105,7 +105,7 @@ var deleteCmd = &cobra.Command{
 		secretsPath := filepath.Join(dir, constants.SecretsFileName)
 		keyPath := filepath.Join(dir, constants.KeyFileName)
 
-		if err := deleteProviderSecrets(cliCtx.GetRootCtx(), secretsPath, keyPath, target); err != nil {
+		if err := deleteProviderSecrets(cliCtx.RootCtx(), secretsPath, keyPath, target); err != nil {
 			tap.Cancel(fmt.Sprintf("Failed to clean up secrets for '%s': %v", target, err))
 			return
 		}

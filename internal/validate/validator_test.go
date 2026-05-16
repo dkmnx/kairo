@@ -516,7 +516,7 @@ func FuzzValidateProviderModel(f *testing.F) {
 
 		if len(modelName) > MaxModelNameLength {
 			// For built-in providers with default models, this should fail
-			if def, ok := providers.GetBuiltInProvider(providerName); ok && def.Model != "" {
+			if def, ok := providers.BuiltInProvider(providerName); ok && def.Model != "" {
 				if err == nil {
 					t.Errorf("ValidateProviderModel() should fail for model name exceeding max length (%d)", MaxModelNameLength)
 				}
@@ -525,7 +525,7 @@ func FuzzValidateProviderModel(f *testing.F) {
 
 		// For built-in providers with default models, verify invalid characters fail
 		if modelName != "" && err == nil {
-			if def, ok := providers.GetBuiltInProvider(providerName); ok && def.Model != "" {
+			if def, ok := providers.BuiltInProvider(providerName); ok && def.Model != "" {
 				// If validation passed for a built-in provider, verify all characters are valid
 				for _, r := range modelName {
 					if !isValidModelRune(r) {

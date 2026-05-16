@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func TestGetProviderList(t *testing.T) {
-	providers := GetProviderList()
+func TestProviderList(t *testing.T) {
+	providers := ProviderList()
 
 	expected := []string{
 		"zai", "minimax", "deepseek", "kimi",
@@ -17,7 +17,7 @@ func TestGetProviderList(t *testing.T) {
 	}
 
 	if len(providers) != len(expected) {
-		t.Errorf("GetProviderList() returned %d providers, want %d", len(providers), len(expected))
+		t.Errorf("ProviderList() returned %d providers, want %d", len(providers), len(expected))
 	}
 
 	sort.Strings(providers)
@@ -25,13 +25,13 @@ func TestGetProviderList(t *testing.T) {
 
 	for i, p := range providers {
 		if p != expected[i] {
-			t.Errorf("GetProviderList()[%d] = %q, want %q", i, p, expected[i])
+			t.Errorf("ProviderList()[%d] = %q, want %q", i, p, expected[i])
 		}
 	}
 }
 
-func TestGetProviderListContainsAllBuiltIns(t *testing.T) {
-	providers := GetProviderList()
+func TestProviderListContainsAllBuiltIns(t *testing.T) {
+	providers := ProviderList()
 
 	allBuiltins := []string{
 		"zai", "minimax", "kimi", "deepseek",
@@ -50,18 +50,18 @@ func TestGetProviderListContainsAllBuiltIns(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Errorf("GetProviderList() should contain %q", name)
+			t.Errorf("ProviderList() should contain %q", name)
 		}
 	}
 }
 
-func TestGetProviderListNoDuplicates(t *testing.T) {
-	providers := GetProviderList()
+func TestProviderListNoDuplicates(t *testing.T) {
+	providers := ProviderList()
 
 	seen := make(map[string]bool)
 	for _, p := range providers {
 		if seen[p] {
-			t.Errorf("GetProviderList() contains duplicate: %q", p)
+			t.Errorf("ProviderList() contains duplicate: %q", p)
 		}
 		seen[p] = true
 	}
@@ -123,7 +123,7 @@ func TestIsBuiltInProvider(t *testing.T) {
 	}
 }
 
-func TestGetBuiltInProvider(t *testing.T) {
+func TestBuiltInProvider(t *testing.T) {
 	tests := []struct {
 		name         string
 		provider     string
@@ -218,23 +218,23 @@ func TestGetBuiltInProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			def, got := GetBuiltInProvider(tt.provider)
+			def, got := BuiltInProvider(tt.provider)
 			if got != tt.wantExists {
-				t.Errorf("GetBuiltInProvider(%q) returned exists=%v, want %v", tt.provider, got, tt.wantExists)
+				t.Errorf("BuiltInProvider(%q) returned exists=%v, want %v", tt.provider, got, tt.wantExists)
 				return
 			}
 			if tt.wantExists {
 				if def.Name != tt.wantName {
-					t.Errorf("GetBuiltInProvider(%q).Name = %q, want %q", tt.provider, def.Name, tt.wantName)
+					t.Errorf("BuiltInProvider(%q).Name = %q, want %q", tt.provider, def.Name, tt.wantName)
 				}
 				if def.BaseURL != tt.wantBaseURL {
-					t.Errorf("GetBuiltInProvider(%q).BaseURL = %q, want %q", tt.provider, def.BaseURL, tt.wantBaseURL)
+					t.Errorf("BuiltInProvider(%q).BaseURL = %q, want %q", tt.provider, def.BaseURL, tt.wantBaseURL)
 				}
 				if def.Model != tt.wantModel {
-					t.Errorf("GetBuiltInProvider(%q).Model = %q, want %q", tt.provider, def.Model, tt.wantModel)
+					t.Errorf("BuiltInProvider(%q).Model = %q, want %q", tt.provider, def.Model, tt.wantModel)
 				}
 				if def.RequiresAPIKey != tt.wantRequires {
-					t.Errorf("GetBuiltInProvider(%q).RequiresAPIKey = %v, want %v", tt.provider, def.RequiresAPIKey, tt.wantRequires)
+					t.Errorf("BuiltInProvider(%q).RequiresAPIKey = %v, want %v", tt.provider, def.RequiresAPIKey, tt.wantRequires)
 				}
 			}
 		})
@@ -302,18 +302,18 @@ func TestBuiltInProviderEnvVars(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			def, ok := GetBuiltInProvider(tt.provider)
+			def, ok := BuiltInProvider(tt.provider)
 			if !ok {
 				t.Skip("provider not found")
 			}
 
 			if tt.wantVars == 0 {
 				if len(def.EnvVars) != 0 {
-					t.Errorf("GetBuiltInProvider(%q).EnvVars = %v, want empty", tt.provider, def.EnvVars)
+					t.Errorf("BuiltInProvider(%q).EnvVars = %v, want empty", tt.provider, def.EnvVars)
 				}
 			} else {
 				if len(def.EnvVars) != tt.wantVars {
-					t.Errorf("GetBuiltInProvider(%q).EnvVars count = %d, want %d", tt.provider, len(def.EnvVars), tt.wantVars)
+					t.Errorf("BuiltInProvider(%q).EnvVars count = %d, want %d", tt.provider, len(def.EnvVars), tt.wantVars)
 				}
 				if tt.hasPrefix != "" {
 					found := false
@@ -324,7 +324,7 @@ func TestBuiltInProviderEnvVars(t *testing.T) {
 						}
 					}
 					if !found {
-						t.Errorf("GetBuiltInProvider(%q).EnvVars = %v, want env var with prefix %q", tt.provider, def.EnvVars, tt.hasPrefix)
+						t.Errorf("BuiltInProvider(%q).EnvVars = %v, want env var with prefix %q", tt.provider, def.EnvVars, tt.hasPrefix)
 					}
 				}
 			}

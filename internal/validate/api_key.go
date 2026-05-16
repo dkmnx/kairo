@@ -1,3 +1,4 @@
+// Package validate provides input validation for API keys, URLs, and provider configuration.
 package validate
 
 import (
@@ -16,6 +17,8 @@ const (
 	defaultMinKeyLength = 20
 )
 
+// KeyFormat defines validation rules for an API key: minimum length, required
+// prefix, and optional regex pattern.
 type KeyFormat struct {
 	MinLength int
 	Prefix    string
@@ -76,6 +79,7 @@ func mustParseCIDR(s string) net.IPNet {
 	return *ipnet
 }
 
+// ValidateAPIKey checks that the given key meets the format requirements for the provider.
 func ValidateAPIKey(key string, providerName string) error {
 	if strings.TrimSpace(key) == "" {
 		return kairoerrors.NewError(kairoerrors.ValidationError,
@@ -108,6 +112,7 @@ func ValidateAPIKey(key string, providerName string) error {
 	return nil
 }
 
+// ValidateURL checks that the given URL is a valid HTTPS URL without blocked hosts.
 func ValidateURL(rawURL string, providerName string) error {
 	if rawURL == "" {
 		return kairoerrors.NewError(kairoerrors.ValidationError,

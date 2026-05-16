@@ -14,7 +14,7 @@ var defaultCmd = &cobra.Command{
 	Long:  "With no arguments, shows the current default provider. With a provider name, sets it as the default.",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		cliCtx := GetCLIContext(cmd)
+		cliCtx := CLIContextFromCmd(cmd)
 		dir := requireConfigDir(cmd)
 		if dir == "" {
 			return
@@ -49,7 +49,7 @@ var defaultCmd = &cobra.Command{
 		}
 
 		cfg.DefaultProvider = providerName
-		if err := config.SaveConfig(cliCtx.GetRootCtx(), dir, cfg); err != nil {
+		if err := config.SaveConfig(cliCtx.RootCtx(), dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 
 			return

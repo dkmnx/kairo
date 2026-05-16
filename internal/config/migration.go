@@ -45,7 +45,7 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationRes
 	var skipped []string
 
 	for providerName, provider := range cfg.Providers {
-		builtinDef, ok := providers.GetBuiltInProvider(providerName)
+		builtinDef, ok := providers.BuiltInProvider(providerName)
 		if !ok {
 			skipped = append(skipped, providerName)
 
