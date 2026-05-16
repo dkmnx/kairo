@@ -29,6 +29,22 @@ just pre-release    # Format, lint, pre-commit hooks, test
 just release        # Create release (requires GITHUB_TOKEN)
 ```
 
+## Style Guide
+
+All Go code must follow the [Google Go Style Guide](https://google.github.io/styleguide/go).
+
+Key rules enforced:
+
+- **Doc comments** on all top-level exported names (types, funcs, consts, vars)
+- **No `Get` prefix** on getter methods
+- **MixedCaps** identifiers, never snake_case
+- **Short receiver names** (1-2 letters), consistent per type
+- **Error strings** lowercase, no trailing punctuation
+- **Indent error flow** -- early returns, no `else` after errors
+- **Import grouping** -- stdlib first, then other packages
+- **Initialisms** consistent case (`URL`, `ID`, `HTTP`, `API`)
+- **No `Get` prefix** -- `ConfigDir()` not `GetConfigDir()`
+
 ## Docs
 
 Read these if relevant to your task:
