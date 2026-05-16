@@ -321,16 +321,15 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 }
 
 func TestProviderListConstant(t *testing.T) {
-	providerList := []string{"anthropic", "zai", "minimax", "deepseek", "kimi", "custom"}
+	providerList := providers.GetProviderList()
 
-	if len(providerList) != 6 {
-		t.Errorf("providerList has %d entries, want 6", len(providerList))
+	if len(providerList) < 4 {
+		t.Errorf("providerList has %d entries, want at least 4", len(providerList))
 	}
 
-	expected := []string{"anthropic", "zai", "minimax", "deepseek", "kimi", "custom"}
-	for i, p := range providerList {
-		if p != expected[i] {
-			t.Errorf("providerList[%d] = %q, want %q", i, p, expected[i])
+	for _, p := range providerList {
+		if !providers.IsBuiltInProvider(p) {
+			t.Errorf("providerList contains %q which is not a built-in provider", p)
 		}
 	}
 }

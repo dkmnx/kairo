@@ -135,5 +135,4 @@ type ProviderSetup struct {
 	Secrets      map[string]string
 	SecretsPath  string
 	KeyPath      string
-	IsEdit       bool
 }
