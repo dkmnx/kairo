@@ -8,7 +8,13 @@ import (
 func TestGetProviderList(t *testing.T) {
 	providers := GetProviderList()
 
-	expected := []string{"deepseek", "kimi", "minimax", "zai"}
+	expected := []string{
+		"zai", "minimax", "deepseek", "kimi",
+		"anthropic", "openai", "google", "mistral",
+		"groq", "cerebras", "cloudflare-workers-ai", "xai",
+		"openrouter", "vercel-ai-gateway", "opencode", "huggingface",
+		"fireworks", "azure-openai-responses", "minimax-cn",
+	}
 
 	if len(providers) != len(expected) {
 		t.Errorf("GetProviderList() returned %d providers, want %d", len(providers), len(expected))
@@ -27,7 +33,13 @@ func TestGetProviderList(t *testing.T) {
 func TestGetProviderListContainsAllBuiltIns(t *testing.T) {
 	providers := GetProviderList()
 
-	allBuiltins := []string{"zai", "minimax", "kimi", "deepseek"}
+	allBuiltins := []string{
+		"zai", "minimax", "kimi", "deepseek",
+		"anthropic", "openai", "google", "mistral",
+		"groq", "cerebras", "cloudflare-workers-ai", "xai",
+		"openrouter", "vercel-ai-gateway", "opencode", "huggingface",
+		"fireworks", "azure-openai-responses", "minimax-cn",
+	}
 
 	for _, name := range allBuiltins {
 		found := false
@@ -65,6 +77,8 @@ func TestRequiresAPIKey(t *testing.T) {
 		{"minimax requires API key", "minimax", true},
 		{"kimi requires API key", "kimi", true},
 		{"deepseek requires API key", "deepseek", true},
+		{"anthropic requires API key", "anthropic", true},
+		{"openai requires API key", "openai", true},
 		{"custom requires API key", "custom", true},
 		{"unknown provider defaults to true", "unknown", true},
 	}
@@ -89,6 +103,9 @@ func TestIsBuiltInProvider(t *testing.T) {
 		{"minimax is built-in", "minimax", true},
 		{"kimi is built-in", "kimi", true},
 		{"deepseek is built-in", "deepseek", true},
+		{"anthropic is built-in", "anthropic", true},
+		{"openai is built-in", "openai", true},
+		{"google is built-in", "google", true},
 		{"custom is built-in", "custom", true},
 		{"empty string is not built-in", "", false},
 		{"unknown provider is not built-in", "unknown", false},
@@ -150,6 +167,24 @@ func TestGetBuiltInProvider(t *testing.T) {
 			wantName:     "DeepSeek AI",
 			wantBaseURL:  "https://api.deepseek.com/anthropic",
 			wantModel:    "deepseek-v4-pro[1m]",
+			wantRequires: true,
+		},
+		{
+			name:         "anthropic returns correct definition",
+			provider:     "anthropic",
+			wantExists:   true,
+			wantName:     "Anthropic",
+			wantBaseURL:  "",
+			wantModel:    "",
+			wantRequires: true,
+		},
+		{
+			name:         "openai returns correct definition",
+			provider:     "openai",
+			wantExists:   true,
+			wantName:     "OpenAI",
+			wantBaseURL:  "",
+			wantModel:    "",
 			wantRequires: true,
 		},
 		{
@@ -217,6 +252,21 @@ func TestAPIKeyEnvVarFor(t *testing.T) {
 		{"minimax has API key env var", "minimax", "MINIMAX_API_KEY", true},
 		{"kimi has API key env var", "kimi", "KIMI_API_KEY", true},
 		{"deepseek has API key env var", "deepseek", "DEEPSEEK_API_KEY", true},
+		{"anthropic has API key env var", "anthropic", "ANTHROPIC_API_KEY", true},
+		{"openai has API key env var", "openai", "OPENAI_API_KEY", true},
+		{"google has API key env var", "google", "GEMINI_API_KEY", true},
+		{"mistral has API key env var", "mistral", "MISTRAL_API_KEY", true},
+		{"groq has API key env var", "groq", "GROQ_API_KEY", true},
+		{"cerebras has API key env var", "cerebras", "CEREBRAS_API_KEY", true},
+		{"cloudflare-workers-ai has API key env var", "cloudflare-workers-ai", "CLOUDFLARE_API_KEY", true},
+		{"xai has API key env var", "xai", "XAI_API_KEY", true},
+		{"openrouter has API key env var", "openrouter", "OPENROUTER_API_KEY", true},
+		{"vercel-ai-gateway has API key env var", "vercel-ai-gateway", "AI_GATEWAY_API_KEY", true},
+		{"opencode has API key env var", "opencode", "OPENCODE_API_KEY", true},
+		{"huggingface has API key env var", "huggingface", "HF_TOKEN", true},
+		{"fireworks has API key env var", "fireworks", "FIREWORKS_API_KEY", true},
+		{"azure-openai-responses has API key env var", "azure-openai-responses", "AZURE_OPENAI_API_KEY", true},
+		{"minimax-cn has API key env var", "minimax-cn", "MINIMAX_CN_API_KEY", true},
 		{"custom has no API key env var", "custom", "", false},
 		{"unknown provider returns false", "unknown", "", false},
 	}
@@ -245,6 +295,8 @@ func TestBuiltInProviderEnvVars(t *testing.T) {
 		{"minimax has env vars", "minimax", 2, "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT"},
 		{"kimi has env vars", "kimi", 2, "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT"},
 		{"deepseek has env vars", "deepseek", 5, "ANTHROPIC_DEFAULT_HAIKU_MODEL"},
+		{"anthropic has no env vars", "anthropic", 0, ""},
+		{"openai has no env vars", "openai", 0, ""},
 		{"custom has no env vars", "custom", 0, ""},
 	}
 
