@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/dkmnx/kairo/internal/constants"
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 )
 
 var (
@@ -28,7 +28,7 @@ func ConfigDir() (string, error) {
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.ConfigError,
+		return "", errors.WrapError(errors.ConfigError,
 			"cannot determine home directory", err)
 	}
 

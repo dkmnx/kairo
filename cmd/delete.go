@@ -10,7 +10,7 @@ import (
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/crypto"
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/secrets"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
@@ -117,7 +117,7 @@ var deleteCmd = &cobra.Command{
 func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerName string) error {
 	existingSecrets, err := crypto.DecryptSecretsBytes(ctx, secretsPath, keyPath)
 	if err != nil {
-		return kairoerrors.WrapError(kairoerrors.CryptoError,
+		return errors.WrapError(errors.CryptoError,
 			"failed to decrypt secrets for cleanup", err).
 			WithContext("provider", providerName)
 	}

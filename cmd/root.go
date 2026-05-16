@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
-	kairoversion "github.com/dkmnx/kairo/internal/version"
+	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +50,7 @@ var rootCmd = &cobra.Command{
 	Long: fmt.Sprintf(`Kairo is a CLI tool for managing Claude Code API providers with
 encrypted secrets management using age encryption.
 
-Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, kairoversion.Date),
+Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Date),
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		cliCtx := CLIContextFromCmd(cmd)
