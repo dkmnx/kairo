@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Pi harness support: `pi` is now a valid harness option alongside `claude` and `qwen` (`kairo harness set pi`, `--harness pi`)
+- `env_key` option for custom providers to specify a custom environment variable name instead of the auto-derived `<PROVIDER>_API_KEY`
+- Expanded built-in provider registry to 19 providers matching piexo (zai, minimax, zhipu, moonshot, stepfun, yi, lingyiwanwu, deepseek, baichuan, hunyuan, spark, ernie, qwen, gemma, mistral, groq, together, fireworks)
+
+### Changed
+
+- Use `tap.Cancel` for error and cancel messages instead of `ui.PrintError` in tap-based commands
+- Centralize GitHub URLs in `internal/constants/urls.go` with helper functions for raw file and blob URLs
+- Google Go Style Guide compliance: doc comments on all exported symbols, remove `Get` prefix from getter functions
+- Remove unnecessary `kairoerrors`/`kairoversion` import aliases where stdlib `errors`/`version` is not also imported
+- Extract update business logic (release fetching, checksum verification, install script execution) to `internal/update` package
+
+### Fixed
+
+- Load all provider API keys for Pi harness instead of only the active provider's key
 
 ## [2.4.1] - 2026-05-15
 
