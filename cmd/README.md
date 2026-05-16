@@ -4,20 +4,21 @@ CLI command implementations using Cobra.
 
 ## Structure
 
-| File                 | Purpose                                         |
-| -------------------- | ----------------------------------------------- |
-| `root.go`            | Root command, flag wiring, provider resolution  |
-| `setup.go`           | Interactive setup and reset-secrets flow        |
-| `setup_prompts.go`   | Prompt helpers for provider setup               |
-| `list.go`            | List configured providers                       |
-| `default.go`         | Get or set default provider                     |
-| `delete.go`          | Remove provider configurations                  |
-| `harness.go`         | Manage default harness (`claude` or `qwen`)     |
-| `execution.go`       | Execute Claude/Qwen with provider configuration |
-| `update.go`          | Update to latest version                        |
-| `version.go`         | Version command                                 |
-| `context.go`         | `CLIContext` state and config cache access      |
-| `util.go`            | Shared helpers and process utilities            |
+| File                 | Purpose                                            |
+| -------------------- | -------------------------------------------------- |
+| `root.go`            | Root command, flag wiring, provider resolution     |
+| `setup.go`           | Interactive setup and reset-secrets flow           |
+| `setup_prompts.go`   | Prompt helpers for provider setup                  |
+| `list.go`            | List configured providers                          |
+| `default.go`         | Get or set default provider                        |
+| `delete.go`          | Remove provider configurations                     |
+| `harness.go`         | Manage default harness (`claude`, `qwen`, or `pi`) |
+| `execution.go`       | Execute Claude/Qwen with provider configuration    |
+| `update.go`          | Update to latest version                           |
+| `version.go`         | Version command                                    |
+| `completion.go`      | Shell completion script generation                 |
+| `context.go`         | `CLIContext` state and config cache access         |
+| `util.go`            | Shared helpers and process utilities               |
 
 ## Command Architecture
 
@@ -48,10 +49,10 @@ flowchart TB
 
 ### Harness Management
 
-| Command                    | Description                           |
-| -------------------------- | ------------------------------------- |
-| `kairo harness get`        | Get current default harness           |
-| `kairo harness set <name>` | Set default harness (`claude`/`qwen`) |
+| Command                    | Description                                |
+| -------------------------- | ------------------------------------------ |
+| `kairo harness get`        | Get current default harness                |
+| `kairo harness set <name>` | Set default harness (`claude`/`qwen`/`pi`) |
 
 ### Execution
 
@@ -64,10 +65,11 @@ flowchart TB
 
 ### Maintenance
 
-| Command           | Description              |
-| ----------------- | ------------------------ |
-| `kairo update`    | Update to latest version |
-| `kairo version`   | Display version info     |
+| Command                                    | Description                          |
+| ------------------------------------------ | ------------------------------------ |
+| `kairo update`                             | Update to latest version             |
+| `kairo version`                            | Display version info                 |
+| `kairo completion [shell]`                 | Generate shell completion script     |
 
 ## Flags
 
@@ -82,7 +84,7 @@ flowchart TB
 
 | Flag         | Purpose                                                                |
 | ------------ | ---------------------------------------------------------------------- |
-| `--harness`  | Harness to use for execution (`claude` or `qwen`)                      |
+| `--harness`  | Harness to use for execution (`claude`, `qwen`, or `pi`)               |
 | `-y, --yolo` | Skip permission prompts (`--dangerously-skip-permissions` or `--yolo`) |
 
 ## CLIContext
@@ -102,6 +104,7 @@ This keeps command handlers thin while avoiding direct business logic in `cmd/`.
 | -------- | ---------- | ------------------------ |
 | `claude` | `claude`   | Default harness          |
 | `qwen`   | `qwen`     | Uses `ANTHROPIC_API_KEY` |
+| `pi`     | `pi`       | Uses `ANTHROPIC_API_KEY` |
 
 Kairo selects the harness in this order:
 

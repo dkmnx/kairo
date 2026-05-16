@@ -70,8 +70,9 @@ kairo -- "query"     # Use the default provider
 | `kairo harness set <name>`    | Set the default harness                         |
 | `kairo update`                | Update to the latest version                    |
 | `kairo version`               | Show version information                        |
+| `kairo completion [shell]`    | Generate shell completion script                |
 
-Full reference: [docs/reference/configuration.md](docs/reference/configuration.md)
+Full reference: [cmd/README.md](cmd/README.md)
 
 ## Configuration
 
