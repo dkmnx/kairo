@@ -81,6 +81,8 @@ func runningWithRaceDetector() bool {
 	return strings.Contains(os.Getenv("GOFLAGS"), "-race")
 }
 
+// mergeEnvVars combines multiple environment variable slices, deduplicating
+// by key name. Earlier values take precedence.
 func mergeEnvVars(envs ...[]string) []string {
 	seen := make(map[string]bool)
 	var result []string

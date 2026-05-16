@@ -8,7 +8,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/ui"
-	kairoversion "github.com/dkmnx/kairo/internal/version"
+	"github.com/dkmnx/kairo/internal/version"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
 
@@ -50,7 +50,7 @@ func executePiWithoutAuth(cfg ExecutionConfig) {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, cfg.Provider.Model, cfg.Provider.Name)
+	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -91,7 +91,7 @@ func executePiWithAuth(cfg ExecutionConfig) {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, cfg.Provider.Model, cfg.Provider.Name)
+	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -128,7 +128,7 @@ func runHarnessWithWrapper(params HarnessRun) error {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, params.Provider.Model, params.Provider.Name)
+	ui.PrintBanner(version.Version, params.Provider.Model, params.Provider.Name)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -243,7 +243,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, cfg.Provider.Model, cfg.Provider.Name)
+	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

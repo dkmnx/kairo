@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/constants"
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 )
 
 // CreateTempAuthDir creates a temporary directory with restricted permissions
@@ -18,14 +18,14 @@ import (
 func CreateTempAuthDir() (string, error) {
 	authDir, err := os.MkdirTemp("", "kairo-auth-")
 	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", errors.WrapError(errors.FileSystemError,
 			"failed to create temp auth directory", err)
 	}
 
 	if err := os.Chmod(authDir, 0700); err != nil {
 		_ = os.RemoveAll(authDir)
 
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", errors.WrapError(errors.FileSystemError,
 			"failed to set auth directory permissions", err)
 	}
 
@@ -36,30 +36,30 @@ func CreateTempAuthDir() (string, error) {
 // with restricted permissions and returns its path.
 func WriteTempTokenFile(authDir, token string) (string, error) {
 	if token == "" {
-		return "", kairoerrors.NewError(kairoerrors.ValidationError,
+		return "", errors.NewError(errors.ValidationError,
 			"wrapper: token cannot be empty")
 	}
 
 	f, err := os.CreateTemp(authDir, "token-")
 	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", errors.WrapError(errors.FileSystemError,
 			"failed to create temp token file", err)
 	}
 
 	if _, err := f.WriteString(token); err != nil {
 		_ = f.Close()
 
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", errors.WrapError(errors.FileSystemError,
 			"failed to write token to temp file", err)
 	}
 
 	if err := f.Close(); err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", errors.WrapError(errors.FileSystemError,
 			"failed to close temp token file", err)
 	}
 
 	if err := os.Chmod(f.Name(), 0600); err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", errors.WrapError(errors.FileSystemError,
 			"failed to set temp file permissions", err)
 	}
 
@@ -99,11 +99,11 @@ type ScriptConfig struct {
 // Returns the script path, whether it is a Windows script, and any error.
 func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 	if cfg.TokenPath == "" {
-		return "", false, kairoerrors.NewError(kairoerrors.ValidationError,
+		return "", false, errors.NewError(errors.ValidationError,
 			"wrapper: token path cannot be empty")
 	}
 	if cfg.CliPath == "" {
-		return "", false, kairoerrors.NewError(kairoerrors.ValidationError,
+		return "", false, errors.NewError(errors.ValidationError,
 			"wrapper: CLI path cannot be empty")
 	}
 
@@ -116,7 +116,7 @@ func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 
 	f, err := os.CreateTemp(cfg.AuthDir, "wrapper-")
 	if err != nil {
-		return "", false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", false, errors.WrapError(errors.FileSystemError,
 			"failed to create temp wrapper script", err)
 	}
 
@@ -126,14 +126,14 @@ func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 		_ = f.Close()
 		_ = os.Remove(f.Name())
 
-		return "", false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", false, errors.WrapError(errors.FileSystemError,
 			"failed to write wrapper script", err)
 	}
 
 	if err := f.Close(); err != nil {
 		_ = os.Remove(f.Name())
 
-		return "", false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", false, errors.WrapError(errors.FileSystemError,
 			"failed to close wrapper script", err)
 	}
 
@@ -142,7 +142,7 @@ func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 		if err := os.Rename(f.Name(), ps1Path); err != nil {
 			_ = os.Remove(f.Name())
 
-			return "", false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+			return "", false, errors.WrapError(errors.FileSystemError,
 				"failed to rename wrapper script", err)
 		}
 
@@ -152,7 +152,7 @@ func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 	if err := os.Chmod(f.Name(), 0700); err != nil {
 		_ = os.Remove(f.Name())
 
-		return "", false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", false, errors.WrapError(errors.FileSystemError,
 			"failed to make wrapper script executable", err)
 	}
 

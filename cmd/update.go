@@ -18,7 +18,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/dkmnx/kairo/internal/constants"
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
@@ -78,7 +78,7 @@ func getLatestRelease() (*release, error) {
 	url := getLatestReleaseURL()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+		return nil, errors.WrapError(errors.NetworkError,
 			"failed to create request", err)
 	}
 
@@ -86,25 +86,25 @@ func getLatestRelease() (*release, error) {
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+		return nil, errors.WrapError(errors.NetworkError,
 			"failed to fetch release", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, kairoerrors.NewError(kairoerrors.NetworkError,
+		return nil, errors.NewError(errors.NetworkError,
 			fmt.Sprintf("API returned status %d", resp.StatusCode))
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+		return nil, errors.WrapError(errors.NetworkError,
 			"failed to read response", err)
 	}
 
 	var r release
 	if err := json.Unmarshal(body, &r); err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+		return nil, errors.WrapError(errors.NetworkError,
 			"failed to parse response", err)
 	}
 
@@ -142,19 +142,19 @@ func downloadToTempFile(url string) (string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
+		return "", errors.WrapError(errors.NetworkError,
 			"failed to create download request", err)
 	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
+		return "", errors.WrapError(errors.NetworkError,
 			"failed to download", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", kairoerrors.NewError(kairoerrors.NetworkError,
+		return "", errors.NewError(errors.NetworkError,
 			fmt.Sprintf("download failed with status %d", resp.StatusCode))
 	}
 
@@ -164,7 +164,7 @@ func downloadToTempFile(url string) (string, error) {
 	}
 	tempFile, err := os.CreateTemp("", "kairo-install-*"+ext)
 	if err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", errors.WrapError(errors.FileSystemError,
 			"failed to create temp file", err)
 	}
 
@@ -173,14 +173,14 @@ func downloadToTempFile(url string) (string, error) {
 		tempFile.Close()
 		os.Remove(tempFile.Name())
 
-		return "", kairoerrors.WrapError(kairoerrors.NetworkError,
+		return "", errors.WrapError(errors.NetworkError,
 			"failed to write to temp file", err)
 	}
 
 	if err := tempFile.Close(); err != nil {
 		os.Remove(tempFile.Name())
 
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", errors.WrapError(errors.FileSystemError,
 			"failed to close temp file", err)
 	}
 
@@ -194,7 +194,7 @@ func runInstallScript(scriptPath string) error {
 		pwshCmd.Stderr = os.Stderr
 
 		if err := pwshCmd.Run(); err != nil {
-			return kairoerrors.WrapError(kairoerrors.RuntimeError,
+			return errors.WrapError(errors.RuntimeError,
 				"powershell execution failed", err)
 		}
 
@@ -202,13 +202,13 @@ func runInstallScript(scriptPath string) error {
 	}
 
 	if err := os.Chmod(scriptPath, 0755); err != nil {
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return errors.WrapError(errors.FileSystemError,
 			"failed to make script executable", err)
 	}
 
 	shPath, err := exec.LookPath("sh")
 	if err != nil {
-		return kairoerrors.WrapError(kairoerrors.RuntimeError,
+		return errors.WrapError(errors.RuntimeError,
 			"failed to find shell", err)
 	}
 
@@ -216,7 +216,7 @@ func runInstallScript(scriptPath string) error {
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
 	if err := shCmd.Run(); err != nil {
-		return kairoerrors.WrapError(kairoerrors.RuntimeError,
+		return errors.WrapError(errors.RuntimeError,
 			"shell execution failed", err)
 	}
 
@@ -255,25 +255,25 @@ func downloadAndParseChecksums(url string) (map[string]string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+		return nil, errors.WrapError(errors.NetworkError,
 			"failed to create checksums request", err)
 	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+		return nil, errors.WrapError(errors.NetworkError,
 			"failed to download checksums", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, kairoerrors.NewError(kairoerrors.NetworkError,
+		return nil, errors.NewError(errors.NetworkError,
 			fmt.Sprintf("checksums download failed with status %d", resp.StatusCode))
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+		return nil, errors.WrapError(errors.NetworkError,
 			"failed to read checksums response", err)
 	}
 
@@ -288,7 +288,7 @@ func downloadAndParseChecksums(url string) (map[string]string, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.NetworkError,
+		return nil, errors.WrapError(errors.NetworkError,
 			"failed to parse checksums file", err)
 	}
 
@@ -298,13 +298,13 @@ func downloadAndParseChecksums(url string) (map[string]string, error) {
 func computeSHA256(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return "", kairoerrors.FileError("failed to open file for hashing", filePath, err)
+		return "", errors.FileError("failed to open file for hashing", filePath, err)
 	}
 	defer file.Close()
 
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, file); err != nil {
-		return "", kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return "", errors.WrapError(errors.FileSystemError,
 			"failed to compute file hash", err)
 	}
 
@@ -314,12 +314,12 @@ func computeSHA256(filePath string) (string, error) {
 func verifyChecksum(scriptPath, expectedHash string) error {
 	actualHash, err := computeSHA256(scriptPath)
 	if err != nil {
-		return kairoerrors.WrapError(kairoerrors.VerificationError,
+		return errors.WrapError(errors.VerificationError,
 			"failed to verify script integrity", err)
 	}
 
 	if !strings.EqualFold(actualHash, expectedHash) {
-		return kairoerrors.VerificationErr(
+		return errors.VerificationErr(
 			fmt.Sprintf("script integrity check failed (expected: %.8s..., got: %.8s...)",
 				expectedHash, actualHash),
 			nil,

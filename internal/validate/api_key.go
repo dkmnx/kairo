@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 )
 
 const (
@@ -82,7 +82,7 @@ func mustParseCIDR(s string) net.IPNet {
 // ValidateAPIKey checks that the given key meets the format requirements for the provider.
 func ValidateAPIKey(key string, providerName string) error {
 	if strings.TrimSpace(key) == "" {
-		return kairoerrors.NewError(kairoerrors.ValidationError,
+		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: API key cannot be empty or whitespace", providerName))
 	}
 
@@ -92,19 +92,19 @@ func ValidateAPIKey(key string, providerName string) error {
 	}
 
 	if len(key) < format.MinLength {
-		return kairoerrors.NewError(kairoerrors.ValidationError,
+		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: API key too short (minimum %d characters, got %d)", providerName, format.MinLength, len(key)))
 	}
 
 	if format.Prefix != "" && !strings.HasPrefix(key, format.Prefix) {
-		return kairoerrors.NewError(kairoerrors.ValidationError,
+		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: API key must start with '%s'", providerName, format.Prefix))
 	}
 
 	if format.Pattern != "" {
 		matched, err := format.matchesPattern(key)
 		if err != nil || !matched {
-			return kairoerrors.NewError(kairoerrors.ValidationError,
+			return errors.NewError(errors.ValidationError,
 				fmt.Sprintf("%s: API key format is invalid", providerName))
 		}
 	}
@@ -115,29 +115,29 @@ func ValidateAPIKey(key string, providerName string) error {
 // ValidateURL checks that the given URL is a valid HTTPS URL without blocked hosts.
 func ValidateURL(rawURL string, providerName string) error {
 	if rawURL == "" {
-		return kairoerrors.NewError(kairoerrors.ValidationError,
+		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: base URL cannot be empty", providerName))
 	}
 
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return kairoerrors.NewError(kairoerrors.ValidationError,
+		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: base URL is not a valid URL: %v", providerName, err))
 	}
 
 	if parsed.Scheme != "https" {
-		return kairoerrors.NewError(kairoerrors.ValidationError,
+		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: base URL must use HTTPS protocol", providerName))
 	}
 
 	host := parsed.Hostname()
 	if host == "" {
-		return kairoerrors.NewError(kairoerrors.ValidationError,
+		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: base URL missing host component", providerName))
 	}
 
 	if isBlockedHost(host) {
-		return kairoerrors.NewError(kairoerrors.ValidationError,
+		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: base URL cannot use blocked host: %s (localhost/private IPs not allowed)", providerName, host))
 	}
 

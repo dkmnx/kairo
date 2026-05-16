@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/validate"
 	"github.com/yarlson/tap"
@@ -21,20 +21,20 @@ var providerNamePattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 // and not reserved.
 func ValidateCustomProviderName(name string) (string, error) {
 	if name == "" {
-		return "", kairoerrors.NewError(kairoerrors.ValidationError,
+		return "", errors.NewError(errors.ValidationError,
 			"provider name is required")
 	}
 	if len(name) > validate.MaxProviderNameLength {
-		return "", kairoerrors.NewError(kairoerrors.ValidationError,
+		return "", errors.NewError(errors.ValidationError,
 			fmt.Sprintf("provider name must be at most %d characters (got %d)", validate.MaxProviderNameLength, len(name)))
 	}
 	if !providerNamePattern.MatchString(name) {
-		return "", kairoerrors.NewError(kairoerrors.ValidationError,
+		return "", errors.NewError(errors.ValidationError,
 			"provider name must start with a letter and contain only alphanumeric characters, underscores, and hyphens")
 	}
 	lowerName := strings.ToLower(name)
 	if providers.IsBuiltInProvider(lowerName) {
-		return "", kairoerrors.NewError(kairoerrors.ValidationError,
+		return "", errors.NewError(errors.ValidationError,
 			fmt.Sprintf("reserved provider name: %s", lowerName))
 	}
 
@@ -79,7 +79,7 @@ func validateConfiguredModel(cfg modelValidationConfig) error {
 		return nil
 	}
 
-	return kairoerrors.NewError(kairoerrors.ValidationError,
+	return errors.NewError(errors.ValidationError,
 		"model name is required for custom providers")
 }
 

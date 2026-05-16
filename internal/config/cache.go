@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 )
 
 // cachedConfig holds a single cached configuration entry.
@@ -72,7 +72,7 @@ func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error
 
 	cfg, err := LoadConfig(ctx, configDir)
 	if err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
+		return nil, errors.WrapError(errors.ConfigError,
 			"failed to load config from cache", err).
 			WithContext("config_dir", configDir)
 	}
