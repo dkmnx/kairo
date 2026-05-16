@@ -4,13 +4,30 @@ Built-in and custom provider configurations.
 
 ## Built-in Providers
 
-| Provider   | Base URL                             | Model                 | API Key |
-| ---------- | ------------------------------------ | --------------------- | ------- |
-| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes     |
-| `minimax`  | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes     |
-| `deepseek` | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes     |
-| `kimi`     | `https://api.kimi.com/coding/`       | `kimi-for-coding`     | Yes     |
-| `custom`   | user-defined                         | user-defined          | Yes     |
+| Provider                 | API Key Env Var        | Default Model         | API Key |
+| ------------------------ | ---------------------- | --------------------- | ------- |
+| `zai`                    | `ZAI_API_KEY`          | `glm-5.1`             | Yes     |
+| `minimax`                | `MINIMAX_API_KEY`      | `MiniMax-M2.7`        | Yes     |
+| `kimi`                   | `KIMI_API_KEY`         | `kimi-for-coding`     | Yes     |
+| `deepseek`               | `DEEPSEEK_API_KEY`     | `deepseek-v4-pro[1m]` | Yes     |
+| `anthropic`              | `ANTHROPIC_API_KEY`    | (provider-managed)    | Yes     |
+| `openai`                 | `OPENAI_API_KEY`       | (provider-managed)    | Yes     |
+| `google`                 | `GEMINI_API_KEY`       | (provider-managed)    | Yes     |
+| `mistral`                | `MISTRAL_API_KEY`      | (provider-managed)    | Yes     |
+| `groq`                   | `GROQ_API_KEY`         | (provider-managed)    | Yes     |
+| `cerebras`               | `CEREBRAS_API_KEY`     | (provider-managed)    | Yes     |
+| `cloudflare-workers-ai`  | `CLOUDFLARE_API_KEY`   | (provider-managed)    | Yes     |
+| `xai`                    | `XAI_API_KEY`          | (provider-managed)    | Yes     |
+| `openrouter`             | `OPENROUTER_API_KEY`   | (provider-managed)    | Yes     |
+| `vercel-ai-gateway`      | `AI_GATEWAY_API_KEY`   | (provider-managed)    | Yes     |
+| `opencode`               | `OPENCODE_API_KEY`     | (provider-managed)    | Yes     |
+| `huggingface`            | `HF_TOKEN`             | (provider-managed)    | Yes     |
+| `fireworks`              | `FIREWORKS_API_KEY`    | (provider-managed)    | Yes     |
+| `azure-openai-responses` | `AZURE_OPENAI_API_KEY` | (provider-managed)    | Yes     |
+| `minimax-cn`             | `MINIMAX_CN_API_KEY`   | (provider-managed)    | Yes     |
+| `custom`                 | user-defined           | user-defined          | Yes     |
+
+Providers without default base URLs and models (marked "provider-managed") are passed through to the harness CLI directly. The harness manages its own endpoint and model selection for these providers.
 
 ## Provider Details
 

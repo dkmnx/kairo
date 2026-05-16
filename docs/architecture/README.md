@@ -118,10 +118,13 @@ kairo/
 ├── cmd/                 # CLI commands and execution flow
 ├── internal/
 │   ├── config/          # Config loading, caching, migration, paths
+│   ├── constants/       # Shared constants (paths, defaults)
 │   ├── crypto/          # age/X25519 key management and encryption
 │   ├── errors/          # Typed errors
 │   ├── providers/       # Built-in provider registry
+│   ├── secrets/         # Secrets loading and saving
 │   ├── ui/              # Terminal output and prompts
+│   ├── update/          # Self-update logic
 │   ├── validate/        # Validation helpers
 │   ├── version/         # Build metadata
 │   └── wrapper/         # Secure wrapper scripts
@@ -155,13 +158,28 @@ Notes:
 
 ## Provider Registry
 
-| Provider   | Base URL                             | Model                 | API Key Required |
-| ---------- | ------------------------------------ | --------------------- | ---------------- |
-| `zai`      | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes              |
-| `minimax`  | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes              |
-| `deepseek` | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes              |
-| `kimi`     | `https://api.kimi.com/coding/`       | `kimi-for-coding`     | Yes              |
-| `custom`   | user-defined                         | user-defined          | Yes              |
+| Provider                 | Default Base URL                     | Default Model         | API Key Required |
+| ------------------------ | ------------------------------------ | --------------------- | ---------------- |
+| `zai`                    | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes              |
+| `minimax`                | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes              |
+| `deepseek`               | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes              |
+| `kimi`                   | `https://api.kimi.com/coding/`       | `kimi-for-coding`     | Yes              |
+| `anthropic`              | (provider-managed)                   | (provider-managed)    | Yes              |
+| `openai`                 | (provider-managed)                   | (provider-managed)    | Yes              |
+| `google`                 | (provider-managed)                   | (provider-managed)    | Yes              |
+| `mistral`                | (provider-managed)                   | (provider-managed)    | Yes              |
+| `groq`                   | (provider-managed)                   | (provider-managed)    | Yes              |
+| `cerebras`               | (provider-managed)                   | (provider-managed)    | Yes              |
+| `cloudflare-workers-ai`  | (provider-managed)                   | (provider-managed)    | Yes              |
+| `xai`                    | (provider-managed)                   | (provider-managed)    | Yes              |
+| `openrouter`             | (provider-managed)                   | (provider-managed)    | Yes              |
+| `vercel-ai-gateway`      | (provider-managed)                   | (provider-managed)    | Yes              |
+| `opencode`               | (provider-managed)                   | (provider-managed)    | Yes              |
+| `huggingface`            | (provider-managed)                   | (provider-managed)    | Yes              |
+| `fireworks`              | (provider-managed)                   | (provider-managed)    | Yes              |
+| `azure-openai-responses` | (provider-managed)                   | (provider-managed)    | Yes              |
+| `minimax-cn`             | (provider-managed)                   | (provider-managed)    | Yes              |
+| `custom`                 | user-defined                         | user-defined          | Yes              |
 
 ## Security Architecture
 
