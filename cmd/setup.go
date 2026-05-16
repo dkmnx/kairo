@@ -26,11 +26,16 @@ func configureProvider(params ProviderSetup) (string, error) {
 		Provider:     provider,
 		Definition:   definition,
 		Secrets:      params.Secrets,
-		IsEdit:       params.IsEdit,
+		IsEdit:       exists,
 		Exists:       exists,
 	}
 
 	displayProviderHeader(promptCfg)
+
+	var envKey string
+	if definition.APIKeyEnvVar == "" {
+		envKey = promptForEnvKey(promptCfg)
+	}
 
 	apiKey := promptForAPIKey(promptCfg)
 	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
@@ -55,6 +60,7 @@ func configureProvider(params ProviderSetup) (string, error) {
 		Definition: definition,
 		BaseURL:    baseURL,
 		Model:      model,
+		EnvKey:     envKey,
 		Exists:     exists,
 		Existing:   &provider,
 	})
@@ -71,7 +77,7 @@ func configureProvider(params ProviderSetup) (string, error) {
 		return "", err
 	}
 
-	params.Secrets[APIKeyEnvVarName(params.ProviderName)] = apiKey
+	params.Secrets[APIKeyEnvVarName(validatedName)] = apiKey
 	if err := SaveSecrets(params.CLIContext.GetRootCtx(), params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
 		return "", err
 	}
@@ -160,7 +166,6 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		_, exists := cfg.Providers[providerName]
 		if _, err := configureProvider(ProviderSetup{
 			CLIContext:   cliCtx,
 			ConfigDir:    configDir,
@@ -169,7 +174,6 @@ var setupCmd = &cobra.Command{
 			Secrets:      secretsResult.Secrets,
 			SecretsPath:  secretsResult.SecretsPath,
 			KeyPath:      secretsResult.KeyPath,
-			IsEdit:       exists,
 		}); err != nil {
 			ui.PrintError(err.Error())
 

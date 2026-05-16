@@ -13,6 +13,8 @@ import (
 	"github.com/yarlson/tap"
 )
 
+const customProviderName = "custom"
+
 var providerNamePattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 
 func ValidateCustomProviderName(name string) (string, error) {
@@ -47,7 +49,7 @@ func GetProviderDefinition(providerName string) providers.ProviderDefinition {
 }
 
 func ResolveProviderName(providerName string) (string, error) {
-	if providerName != "custom" {
+	if providerName != customProviderName {
 		return providerName, nil
 	}
 
@@ -80,6 +82,7 @@ type ProviderBuildConfig struct {
 	Definition providers.ProviderDefinition
 	BaseURL    string
 	Model      string
+	EnvKey     string
 	Exists     bool
 	Existing   *config.Provider
 }
@@ -90,10 +93,12 @@ func BuildProviderConfig(cfg ProviderBuildConfig) config.Provider {
 			Name:    cfg.Definition.Name,
 			BaseURL: cfg.BaseURL,
 			Model:   cfg.Model,
+			EnvKey:  cfg.EnvKey,
 		}
 	}
 	cfg.Existing.BaseURL = cfg.BaseURL
 	cfg.Existing.Model = cfg.Model
+	cfg.Existing.EnvKey = cfg.EnvKey
 
 	return *cfg.Existing
 }

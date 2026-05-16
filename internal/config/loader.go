@@ -22,6 +22,7 @@ type Provider struct {
 	BaseURL string   `yaml:"base_url"`
 	Model   string   `yaml:"model"`
 	EnvVars []string `yaml:"env_vars"`
+	EnvKey  string   `yaml:"env_key,omitempty"`
 }
 
 func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
