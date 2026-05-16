@@ -8,7 +8,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/ui"
-	kairoversion "github.com/dkmnx/kairo/internal/version"
+	"github.com/dkmnx/kairo/internal/version"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
 
@@ -16,6 +16,7 @@ var createTempAuthDirFn = wrapper.CreateTempAuthDir
 var writeTempTokenFileFn = wrapper.WriteTempTokenFile
 var generateWrapperScriptFn = wrapper.GenerateWrapperScript
 
+// HarnessRun holds the state for a single harness execution.
 type HarnessRun struct {
 	AuthDir       string
 	TokenPath     string
@@ -24,6 +25,88 @@ type HarnessRun struct {
 	ProviderEnv   []string
 	Provider      config.Provider
 	EnvVarName    string
+}
+
+func executePiWithoutAuth(cfg ExecutionConfig) {
+	cliArgs := cfg.HarnessArgs
+
+	if cfg.Yolo {
+		flag := yoloModeFlag(cfg.HarnessToUse)
+		if flag != "" {
+			cliArgs = append([]string{flag}, cliArgs...)
+		}
+	}
+
+	cliArgs = append(
+		[]string{"--provider", cfg.ProviderName, "--model", cfg.Provider.Model},
+		cliArgs...,
+	)
+
+	piPath, err := lookPath(cfg.HarnessBinary)
+	if err != nil {
+		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
+
+		return
+	}
+
+	ui.ClearScreen()
+	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	setupSignalHandler(cancel)
+
+	execCmd := execCommandContext(ctx, piPath, cliArgs...)
+	execCmd.Env = cfg.ProviderEnv
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	if err := execCmd.Run(); err != nil {
+		cfg.Cmd.Printf("Error running Pi: %v\n", err)
+		exitProcess(1)
+	}
+}
+
+func executePiWithAuth(cfg ExecutionConfig) {
+	cliArgs := cfg.HarnessArgs
+
+	if cfg.Yolo {
+		flag := yoloModeFlag(cfg.HarnessToUse)
+		if flag != "" {
+			cliArgs = append([]string{flag}, cliArgs...)
+		}
+	}
+
+	cliArgs = append(
+		[]string{"--provider", cfg.ProviderName, "--model", cfg.Provider.Model},
+		cliArgs...,
+	)
+
+	piPath, err := lookPath(cfg.HarnessBinary)
+	if err != nil {
+		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
+
+		return
+	}
+
+	ui.ClearScreen()
+	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	setupSignalHandler(cancel)
+
+	execCmd := execCommandContext(ctx, piPath, cliArgs...)
+	execCmd.Env = cfg.ProviderEnv
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	if err := execCmd.Run(); err != nil {
+		cfg.Cmd.Printf("Error running Pi: %v\n", err)
+		exitProcess(1)
+	}
 }
 
 func runHarnessWithWrapper(params HarnessRun) error {
@@ -45,7 +128,7 @@ func runHarnessWithWrapper(params HarnessRun) error {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, params.Provider.Model, params.Provider.Name)
+	ui.PrintBanner(version.Version, params.Provider.Model, params.Provider.Name)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -65,6 +148,16 @@ func runHarnessWithWrapper(params HarnessRun) error {
 }
 
 func executeWithAuth(cfg ExecutionConfig) {
+	if cfg.HarnessToUse == harnessPi {
+		executePiWithAuth(cfg)
+
+		return
+	}
+
+	executeWrapperWithAuth(cfg)
+}
+
+func executeWrapperWithAuth(cfg ExecutionConfig) {
 	authDir, err := createTempAuthDirFn()
 	if err != nil {
 		cfg.Cmd.Printf("Error creating auth directory: %v\n", err)
@@ -123,6 +216,12 @@ func executeWithAuth(cfg ExecutionConfig) {
 }
 
 func executeWithoutAuth(cfg ExecutionConfig) {
+	if cfg.HarnessToUse == harnessPi {
+		executePiWithoutAuth(cfg)
+
+		return
+	}
+
 	cliArgs := cfg.HarnessArgs
 
 	if cfg.Yolo {
@@ -144,7 +243,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(kairoversion.Version, cfg.Provider.Model, cfg.Provider.Name)
+	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

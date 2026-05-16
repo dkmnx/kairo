@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
-	kairoversion "github.com/dkmnx/kairo/internal/version"
+	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +33,7 @@ func setConfigDir(dir string) {
 }
 
 func getConfigDir() string {
-	return defaultCLIContext.GetConfigDir()
+	return defaultCLIContext.ConfigDir()
 }
 
 func setVerbose(enabled bool) {
@@ -41,7 +41,7 @@ func setVerbose(enabled bool) {
 }
 
 func getVerbose() bool {
-	return defaultCLIContext.GetVerbose() || verboseFlag
+	return defaultCLIContext.Verbose() || verboseFlag
 }
 
 var rootCmd = &cobra.Command{
@@ -50,11 +50,11 @@ var rootCmd = &cobra.Command{
 	Long: fmt.Sprintf(`Kairo is a CLI tool for managing Claude Code API providers with
 encrypted secrets management using age encryption.
 
-Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, kairoversion.Date),
+Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Date),
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		cliCtx := GetCLIContext(cmd)
-		configDir := cliCtx.GetConfigDir()
+		cliCtx := CLIContextFromCmd(cmd)
+		configDir := cliCtx.ConfigDir()
 		if configDir == "" {
 			cmd.Println("Error: config directory not found")
 			if err := cmd.Help(); err != nil {
@@ -64,7 +64,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			return
 		}
 
-		cfg, err := cliCtx.GetConfigCache().Get(cliCtx.GetRootCtx(), configDir)
+		cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), configDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
@@ -98,6 +98,64 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
 		harnessBinary := getHarnessBinary(harnessToUse)
 
+		if harnessToUse == harnessPi {
+			envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
+				BaseURL: provider.BaseURL,
+				Model:   provider.Model,
+				EnvVars: provider.EnvVars,
+			}, providerName)
+			if err != nil {
+				handleSecretsError(err)
+
+				return
+			}
+
+			providerEnv := envResult.ProviderEnv
+			secrets := envResult.Secrets
+
+			hasAnyKey := false
+			for pName, p := range cfg.Providers {
+				piEnvVar, ok := PiAPIKeyEnvVar(pName)
+				if !ok {
+					if p.EnvKey == "" {
+						piEnvVar = APIKeyEnvVarName(pName)
+					} else {
+						piEnvVar = p.EnvKey
+					}
+				}
+				key := APIKeyEnvVarName(pName)
+				val, found := secrets[key]
+				if !found && pName != customProviderName {
+					key = APIKeyEnvVarName(customProviderName)
+					val, found = secrets[key]
+				}
+				if found {
+					providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", piEnvVar, val))
+					hasAnyKey = true
+				}
+			}
+
+			execCfg := ExecutionConfig{
+				Cmd:           cmd,
+				ProviderEnv:   providerEnv,
+				HarnessToUse:  harnessToUse,
+				HarnessBinary: harnessBinary,
+				Provider:      provider,
+				ProviderName:  providerName,
+				HarnessArgs:   harnessArgs,
+				APIKey:        "",
+				Yolo:          yoloFlag,
+			}
+
+			if hasAnyKey {
+				executeWithAuth(execCfg)
+			} else {
+				executeWithoutAuth(execCfg)
+			}
+
+			return
+		}
+
 		envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
 			BaseURL: provider.BaseURL,
 			Model:   provider.Model,
@@ -113,13 +171,19 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		secrets := envResult.Secrets
 
 		apiKeyKey := APIKeyEnvVarName(providerName)
-		if apiKey, hasKey := secrets[apiKeyKey]; hasKey {
+		apiKey, hasKey := secrets[apiKeyKey]
+		if !hasKey {
+			apiKeyKey = APIKeyEnvVarName(customProviderName)
+			apiKey, hasKey = secrets[apiKeyKey]
+		}
+		if hasKey {
 			executeWithAuth(ExecutionConfig{
 				Cmd:           cmd,
 				ProviderEnv:   providerEnv,
 				HarnessToUse:  harnessToUse,
 				HarnessBinary: harnessBinary,
 				Provider:      provider,
+				ProviderName:  providerName,
 				HarnessArgs:   harnessArgs,
 				APIKey:        apiKey,
 				Yolo:          yoloFlag,
@@ -134,6 +198,7 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			HarnessToUse:  harnessToUse,
 			HarnessBinary: harnessBinary,
 			Provider:      provider,
+			ProviderName:  providerName,
 			HarnessArgs:   harnessArgs,
 			Yolo:          yoloFlag,
 		})
@@ -155,7 +220,7 @@ func Execute() error {
 func init() {
 	rootCmd.PersistentFlags().String("config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Verbose output")
-	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude or qwen)")
+	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude, qwen, or pi)")
 	rootCmd.Flags().BoolVarP(&yoloFlag, "yolo", "y", false,
 		"Skip permission prompts (--dangerously-skip-permissions for Claude, --yolo for Qwen)")
 

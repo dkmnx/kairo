@@ -6,10 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/errors"
 	"gopkg.in/yaml.v3"
 )
 
+// Config represents the top-level kairo configuration file.
 type Config struct {
 	DefaultProvider string              `yaml:"default_provider"`
 	Providers       map[string]Provider `yaml:"providers"`
@@ -17,18 +18,20 @@ type Config struct {
 	DefaultHarness  string              `yaml:"default_harness,omitempty"`
 }
 
+// Provider represents a single provider's configuration entry.
 type Provider struct {
 	Name    string   `yaml:"name"`
 	BaseURL string   `yaml:"base_url"`
 	Model   string   `yaml:"model"`
 	EnvVars []string `yaml:"env_vars"`
+	EnvKey  string   `yaml:"env_key,omitempty"`
 }
 
 func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 	oldConfigPath := filepath.Join(configDir, "config")
 	newConfigPath := filepath.Join(configDir, "config.yaml")
 
-	if err := kairoerrors.CheckContext(ctx); err != nil {
+	if err := errors.CheckContext(ctx); err != nil {
 		return false, err
 	}
 
@@ -38,31 +41,31 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 			return false, nil
 		}
 
-		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return false, errors.WrapError(errors.FileSystemError,
 			"failed to check old config file", err)
 	}
 
 	if _, err := os.Stat(newConfigPath); err == nil {
 		return false, nil
 	} else if !os.IsNotExist(err) {
-		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return false, errors.WrapError(errors.FileSystemError,
 			"failed to check new config file", err)
 	}
 
 	data, err := os.ReadFile(oldConfigPath)
 	if err != nil {
-		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return false, errors.WrapError(errors.FileSystemError,
 			"failed to read old config file", err)
 	}
 
 	var tempCfg Config
 	if err := yaml.Unmarshal(data, &tempCfg); err != nil {
-		return false, kairoerrors.WrapError(kairoerrors.ConfigError,
+		return false, errors.WrapError(errors.ConfigError,
 			"old config file is not valid YAML, cannot migrate", err)
 	}
 
 	if err := os.WriteFile(newConfigPath, data, oldInfo.Mode()); err != nil {
-		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return false, errors.WrapError(errors.FileSystemError,
 			"failed to write migrated config file", err)
 	}
 
@@ -70,40 +73,41 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 	if err := os.Rename(oldConfigPath, backupPath); err != nil {
 		os.Remove(newConfigPath)
 
-		return false, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return false, errors.WrapError(errors.FileSystemError,
 			"failed to backup old config file", err)
 	}
 
 	return true, nil
 }
 
+// LoadConfig reads and parses the configuration file from configDir.
 func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	configPath := filepath.Join(configDir, "config.yaml")
 
-	if err := kairoerrors.CheckContext(ctx); err != nil {
+	if err := errors.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
 	_, migrateErr := migrateConfigFile(ctx, configDir)
 	if migrateErr != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
+		return nil, errors.WrapError(errors.ConfigError,
 			"failed to migrate configuration file", migrateErr).
 			WithContext("old_path", filepath.Join(configDir, "config")).
 			WithContext("new_path", configPath).
 			WithContext("hint", "ensure you have write permissions in the config directory")
 	}
 
-	if err := kairoerrors.CheckContext(ctx); err != nil {
+	if err := errors.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, kairoerrors.ErrConfigNotFound
+			return nil, errors.ErrConfigNotFound
 		}
 
-		return nil, kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return nil, errors.WrapError(errors.FileSystemError,
 			"failed to read configuration file", err).
 			WithContext("path", configPath)
 	}
@@ -112,7 +116,7 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&cfg); err != nil {
-		return nil, kairoerrors.WrapError(kairoerrors.ConfigError,
+		return nil, errors.WrapError(errors.ConfigError,
 			"failed to parse configuration file (invalid YAML)", err).
 			WithContext("path", configPath).
 			WithContext("hint", "check YAML syntax and indentation")
@@ -141,15 +145,16 @@ func (c *Config) validate() {
 	}
 }
 
+// SaveConfig writes the configuration to configDir atomically.
 func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
-	if err := kairoerrors.CheckContext(ctx); err != nil {
+	if err := errors.CheckContext(ctx); err != nil {
 		return err
 	}
 
 	configPath := filepath.Join(configDir, "config.yaml")
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
-		return kairoerrors.WrapError(kairoerrors.ConfigError,
+		return errors.WrapError(errors.ConfigError,
 			"failed to marshal configuration to YAML", err).
 			WithContext("path", configPath)
 	}
@@ -158,7 +163,7 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 
 	file, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return errors.WrapError(errors.FileSystemError,
 			"failed to create temporary config file", err).
 			WithContext("path", tempPath)
 	}
@@ -168,7 +173,7 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 		file.Close()
 		_ = os.Remove(tempPath)
 
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return errors.WrapError(errors.FileSystemError,
 			"failed to write config data", err).
 			WithContext("path", tempPath)
 	}
@@ -176,7 +181,7 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 	if err := file.Close(); err != nil {
 		_ = os.Remove(tempPath)
 
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return errors.WrapError(errors.FileSystemError,
 			"failed to close temporary config file", err).
 			WithContext("path", tempPath)
 	}
@@ -184,7 +189,7 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 	if err := os.Rename(tempPath, configPath); err != nil {
 		_ = os.Remove(tempPath)
 
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+		return errors.WrapError(errors.FileSystemError,
 			"failed to rename temporary config file", err).
 			WithContext("temp_path", tempPath).
 			WithContext("config_path", configPath)

@@ -104,6 +104,57 @@ func TestHarnessSetInvalid(t *testing.T) {
 	}
 }
 
+func TestHarnessSetPi(t *testing.T) {
+	originalConfigDir := getConfigDir()
+	defer func() { setConfigDir(originalConfigDir) }()
+
+	tmpDir := t.TempDir()
+	setConfigDir(tmpDir)
+
+	rootCmd.SetArgs([]string{"harness", "set", "pi"})
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	cfg, err := config.LoadConfig(context.Background(), tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
+	}
+	if cfg.DefaultHarness != "pi" {
+		t.Errorf("DefaultHarness = %q, want %q", cfg.DefaultHarness, "pi")
+	}
+}
+
+func TestGetHarnessWithPi(t *testing.T) {
+	tests := []struct {
+		name          string
+		flagHarness   string
+		configHarness string
+		expected      string
+	}{
+		{"flag pi takes precedence over config claude", "pi", "claude", "pi"},
+		{"config pi used when flag empty", "", "pi", "pi"},
+		{"flag pi takes precedence over config qwen", "pi", "qwen", "pi"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getHarness(tt.flagHarness, tt.configHarness)
+			if result != tt.expected {
+				t.Errorf("getHarness() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetHarnessBinaryPi(t *testing.T) {
+	result := getHarnessBinary("pi")
+	if result != "pi" {
+		t.Errorf("getHarnessBinary('pi') = %q, want %q", result, "pi")
+	}
+}
+
 func TestHarnessSetCaseInsensitive(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -112,10 +163,13 @@ func TestHarnessSetCaseInsensitive(t *testing.T) {
 	}{
 		{"uppercase CLAUDE", "CLAUDE", "claude"},
 		{"uppercase QWEN", "QWEN", "qwen"},
+		{"uppercase PI", "PI", "pi"},
 		{"mixed case Claude", "Claude", "claude"},
 		{"mixed case Qwen", "Qwen", "qwen"},
+		{"mixed case Pi", "Pi", "pi"},
 		{"lowercase claude", "claude", "claude"},
 		{"lowercase qwen", "qwen", "qwen"},
+		{"lowercase pi", "pi", "pi"},
 	}
 
 	for _, tt := range tests {
@@ -155,6 +209,8 @@ func TestGetHarness(t *testing.T) {
 		{"defaults to claude when both empty", "", "", "claude"},
 		{"defaults to claude when config invalid", "", "invalid", "claude"},
 		{"defaults to claude when flag invalid", "invalid", "", "claude"},
+		{"flag pi takes precedence", "pi", "claude", "pi"},
+		{"config pi used", "", "pi", "pi"},
 	}
 
 	for _, tt := range tests {
@@ -175,6 +231,7 @@ func TestGetHarnessBinary(t *testing.T) {
 	}{
 		{"claude returns claude", "claude", "claude"},
 		{"qwen returns qwen", "qwen", "qwen"},
+		{"pi returns pi", "pi", "pi"},
 	}
 
 	for _, tt := range tests {

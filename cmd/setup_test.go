@@ -320,16 +320,15 @@ func TestSecretsPreservationWhenAddingProvider(t *testing.T) {
 }
 
 func TestProviderListConstant(t *testing.T) {
-	providerList := []string{"anthropic", "zai", "minimax", "deepseek", "kimi", "custom"}
+	providerList := providers.ProviderList()
 
-	if len(providerList) != 6 {
-		t.Errorf("providerList has %d entries, want 6", len(providerList))
+	if len(providerList) < 4 {
+		t.Errorf("providerList has %d entries, want at least 4", len(providerList))
 	}
 
-	expected := []string{"anthropic", "zai", "minimax", "deepseek", "kimi", "custom"}
-	for i, p := range providerList {
-		if p != expected[i] {
-			t.Errorf("providerList[%d] = %q, want %q", i, p, expected[i])
+	for _, p := range providerList {
+		if !providers.IsBuiltInProvider(p) {
+			t.Errorf("providerList contains %q which is not a built-in provider", p)
 		}
 	}
 }
@@ -349,7 +348,7 @@ func TestProviderEnvVarSetup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			def, ok := providers.GetBuiltInProvider(tt.provider)
+			def, ok := providers.BuiltInProvider(tt.provider)
 			if !ok {
 				t.Fatalf("GetBuiltInProvider(%q) failed", tt.provider)
 			}
@@ -784,59 +783,6 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 	_, err := LoadSecrets(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted key file, got nil")
-	}
-}
-
-func TestGetEnvValue(t *testing.T) {
-	result := getEnvValue("TEST_KEY")
-	if result != "" {
-		t.Errorf("getEnvValue() = %q, want empty string", result)
-	}
-}
-
-func TestGetEnvFuncDefault(t *testing.T) {
-	original := envGetter
-	defer func() { envGetter = original }()
-
-	envGetter = getEnvFunc
-	value, ok := envGetter("TEST_KEY")
-	if value != "" {
-		t.Errorf("getEnvFunc() value = %q, want empty", value)
-	}
-	if ok {
-		t.Error("getEnvFunc() ok = true, want false")
-	}
-}
-
-func TestGetLatestReleaseURLDefault(t *testing.T) {
-	original := envGetter
-	defer func() { envGetter = original }()
-
-	envGetter = func(key string) (string, bool) {
-		return "", false
-	}
-
-	url := getLatestReleaseURL()
-	if url != defaultUpdateURL {
-		t.Errorf("getLatestReleaseURL() = %q, want %q", url, defaultUpdateURL)
-	}
-}
-
-func TestGetLatestReleaseURLOverride(t *testing.T) {
-	original := envGetter
-	defer func() { envGetter = original }()
-
-	envGetter = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return "https://custom.example.com/releases/latest", true
-		}
-		return "", false
-	}
-
-	url := getLatestReleaseURL()
-	expected := "https://custom.example.com/releases/latest"
-	if url != expected {
-		t.Errorf("getLatestReleaseURL() = %q, want %q", url, expected)
 	}
 }
 

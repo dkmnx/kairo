@@ -3,6 +3,7 @@ package cmd
 import (
 	"time"
 
+	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -31,12 +32,12 @@ var versionCmd = &cobra.Command{
 }
 
 func checkForUpdates(cmd *cobra.Command) {
-	latest, err := getLatestRelease()
+	latest, err := getLatestReleaseFn()
 	if err != nil {
 		return
 	}
 
-	if versionGreaterThan(version.Version, latest.TagName) {
+	if update.VersionGreaterThan(version.Version, latest.TagName) {
 		cmd.Println()
 		cmd.Printf("A new version is available: %s\n", latest.TagName)
 		cmd.Printf("You are currently on: %s\n", version.Version)

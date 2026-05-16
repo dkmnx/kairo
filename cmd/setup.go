@@ -18,7 +18,7 @@ func configureProvider(params ProviderSetup) (string, error) {
 		return "", err
 	}
 
-	definition := GetProviderDefinition(validatedName)
+	definition := ProviderDefinition(validatedName)
 	provider, exists := params.Cfg.Providers[validatedName]
 
 	promptCfg := providerPromptConfig{
@@ -26,11 +26,16 @@ func configureProvider(params ProviderSetup) (string, error) {
 		Provider:     provider,
 		Definition:   definition,
 		Secrets:      params.Secrets,
-		IsEdit:       params.IsEdit,
+		IsEdit:       exists,
 		Exists:       exists,
 	}
 
 	displayProviderHeader(promptCfg)
+
+	var envKey string
+	if definition.APIKeyEnvVar == "" {
+		envKey = promptForEnvKey(promptCfg)
+	}
 
 	apiKey := promptForAPIKey(promptCfg)
 	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
@@ -55,6 +60,7 @@ func configureProvider(params ProviderSetup) (string, error) {
 		Definition: definition,
 		BaseURL:    baseURL,
 		Model:      model,
+		EnvKey:     envKey,
 		Exists:     exists,
 		Existing:   &provider,
 	})
@@ -71,8 +77,8 @@ func configureProvider(params ProviderSetup) (string, error) {
 		return "", err
 	}
 
-	params.Secrets[APIKeyEnvVarName(params.ProviderName)] = apiKey
-	if err := SaveSecrets(params.CLIContext.GetRootCtx(), params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
+	params.Secrets[APIKeyEnvVarName(validatedName)] = apiKey
+	if err := SaveSecrets(params.CLIContext.RootCtx(), params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
 		return "", err
 	}
 
@@ -94,7 +100,7 @@ func runResetSecrets(cliCtx *CLIContext, configDir string, secretsResult Secrets
 	}
 
 	if err := ResetSecretsFiles(
-		cliCtx.GetRootCtx(), configDir, secretsResult.SecretsPath, secretsResult.KeyPath,
+		cliCtx.RootCtx(), configDir, secretsResult.SecretsPath, secretsResult.KeyPath,
 	); err != nil {
 		return err
 	}
@@ -110,8 +116,8 @@ var setupCmd = &cobra.Command{
 	Long: "Run the interactive wizard to configure new providers or edit existing ones. " +
 		"Select a provider to edit or choose 'new provider' to add a new provider.",
 	Run: func(cmd *cobra.Command, args []string) {
-		cliCtx := GetCLIContext(cmd)
-		configDir := cliCtx.GetConfigDir()
+		cliCtx := CLIContextFromCmd(cmd)
+		configDir := cliCtx.ConfigDir()
 		if configDir == "" {
 			ui.PrintError("Could not determine config directory. Set KAIRO_CONFIG_DIR or provide --config flag.")
 
@@ -131,7 +137,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		secretsResult, err := LoadSecrets(cliCtx.GetRootCtx(), configDir)
+		secretsResult, err := LoadSecrets(cliCtx.RootCtx(), configDir)
 		if err != nil {
 			if setupResetSecrets {
 				if err := runResetSecrets(cliCtx, configDir, secretsResult); err != nil {
@@ -155,12 +161,11 @@ var setupCmd = &cobra.Command{
 
 		providerName := promptForProvider(cfg)
 		if providerName == "" {
-			ui.PrintInfo("Setup cancelled")
+			tap.Cancel("Setup cancelled")
 
 			return
 		}
 
-		_, exists := cfg.Providers[providerName]
 		if _, err := configureProvider(ProviderSetup{
 			CLIContext:   cliCtx,
 			ConfigDir:    configDir,
@@ -169,9 +174,8 @@ var setupCmd = &cobra.Command{
 			Secrets:      secretsResult.Secrets,
 			SecretsPath:  secretsResult.SecretsPath,
 			KeyPath:      secretsResult.KeyPath,
-			IsEdit:       exists,
 		}); err != nil {
-			ui.PrintError(err.Error())
+			tap.Cancel(err.Error())
 
 			return
 		}

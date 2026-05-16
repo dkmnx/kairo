@@ -40,7 +40,7 @@ func TestFullProviderConfigurationWorkflow(t *testing.T) {
 
 	var secretsBuilder string
 	for _, p := range providersToTest {
-		def, _ := providers.GetBuiltInProvider(p.name)
+		def, _ := providers.BuiltInProvider(p.name)
 		newProvider := config.Provider{
 			Name:    def.Name,
 			BaseURL: def.BaseURL,
@@ -180,7 +180,7 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	def, _ := providers.GetBuiltInProvider("zai")
+	def, _ := providers.BuiltInProvider("zai")
 	cfg.Providers["zai"] = config.Provider{
 		Name:    def.Name,
 		BaseURL: def.BaseURL,

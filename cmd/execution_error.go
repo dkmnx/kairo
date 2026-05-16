@@ -10,12 +10,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const harnessQwen = "qwen"
 const claudeYoloFlag = "--dangerously-skip-permissions"
+const qwenYoloFlag = "--yolo"
 
 func yoloModeFlag(harness string) string {
 	if harness == harnessQwen {
-		return "--yolo"
+		return qwenYoloFlag
+	}
+	if harness == harnessPi {
+		return ""
 	}
 
 	return claudeYoloFlag
@@ -48,14 +51,14 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 
 	switch runtime.GOOS {
 	case constants.WindowsGOOS:
-		cmd.Println("    irm https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.ps1 | iex")
+		cmd.Printf("    irm %s | iex\n", constants.RawGitHubFileURL("main", "scripts/install.ps1"))
 	default:
-		cmd.Println("    curl -sSL https://raw.githubusercontent.com/dkmnx/kairo/main/scripts/install.sh | sh")
+		cmd.Printf("    curl -sSL %s | sh\n", constants.RawGitHubFileURL("main", "scripts/install.sh"))
 	}
 
 	cmd.Println()
 	cmd.Println("  For manual installation, see:")
-	cmd.Println("    https://github.com/dkmnx/kairo/blob/main/docs/guides/user-guide.md#manual-installation")
+	cmd.Printf("    %s#manual-installation\n", constants.GitHubBlobURL("main", "docs/guides/user-guide.md"))
 	cmd.Println()
 	if getVerbose() {
 		cmd.Printf("Technical details: %v\n", err)
