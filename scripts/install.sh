@@ -3,7 +3,7 @@ set -e
 
 REPO="dkmnx/kairo"
 BINARY_NAME="kairo"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
+INSTALL_DIR="${INSTALL_DIR-$HOME/.local/bin}"
 
 usage() {
     cat <<EOF

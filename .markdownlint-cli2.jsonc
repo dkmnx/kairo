@@ -3,8 +3,10 @@
     "MD013": false,
     "MD041": false,
     "MD060": {
-      "style": "aligned",
-    },
+      "style": "aligned"
+    }
   },
-  "ignores": ["CHANGELOG.md"],
+  "ignores": [
+    "CHANGELOG.md"
+  ]
 }
