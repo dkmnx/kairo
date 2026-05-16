@@ -45,6 +45,81 @@ var BuiltInProviders = map[string]ProviderDefinition{
 		},
 		APIKeyEnvVar: "DEEPSEEK_API_KEY",
 	},
+	"anthropic": {
+		Name:           "Anthropic",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "ANTHROPIC_API_KEY",
+	},
+	"openai": {
+		Name:           "OpenAI",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "OPENAI_API_KEY",
+	},
+	"google": {
+		Name:           "Google",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "GEMINI_API_KEY",
+	},
+	"mistral": {
+		Name:           "Mistral",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "MISTRAL_API_KEY",
+	},
+	"groq": {
+		Name:           "Groq",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "GROQ_API_KEY",
+	},
+	"cerebras": {
+		Name:           "Cerebras",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "CEREBRAS_API_KEY",
+	},
+	"cloudflare-workers-ai": {
+		Name:           "Cloudflare Workers AI",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "CLOUDFLARE_API_KEY",
+	},
+	"xai": {
+		Name:           "xAI",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "XAI_API_KEY",
+	},
+	"openrouter": {
+		Name:           "OpenRouter",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "OPENROUTER_API_KEY",
+	},
+	"vercel-ai-gateway": {
+		Name:           "Vercel AI Gateway",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "AI_GATEWAY_API_KEY",
+	},
+	"opencode": {
+		Name:           "OpenCode",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "OPENCODE_API_KEY",
+	},
+	"huggingface": {
+		Name:           "Hugging Face",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "HF_TOKEN",
+	},
+	"fireworks": {
+		Name:           "Fireworks",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "FIREWORKS_API_KEY",
+	},
+	"azure-openai-responses": {
+		Name:           "Azure OpenAI",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "AZURE_OPENAI_API_KEY",
+	},
+	"minimax-cn": {
+		Name:           "MiniMax (CN)",
+		RequiresAPIKey: true,
+		APIKeyEnvVar:   "MINIMAX_CN_API_KEY",
+	},
 	"custom": {
 		Name:           "Custom Provider",
 		BaseURL:        "",
@@ -72,7 +147,13 @@ func GetBuiltInProvider(name string) (ProviderDefinition, bool) {
 	return def, ok
 }
 
-var providerOrder = []string{"zai", "minimax", "deepseek", "kimi"}
+var providerOrder = []string{
+	"zai", "minimax", "deepseek", "kimi",
+	"anthropic", "openai", "google", "mistral",
+	"groq", "cerebras", "cloudflare-workers-ai", "xai",
+	"openrouter", "vercel-ai-gateway", "opencode", "huggingface",
+	"fireworks", "azure-openai-responses", "minimax-cn",
+}
 
 func GetProviderList() []string {
 	return providerOrder
