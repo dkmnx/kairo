@@ -37,6 +37,10 @@ Thumbs.db
 ai_docs/
 .trae/
 .claude/
+.opencode/
+.openclaude/
+.kilo/
+.qwen/
 
 # Config files (contain sensitive data)
 .age.key
