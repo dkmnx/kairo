@@ -114,13 +114,22 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 			secrets := envResult.Secrets
 
 			hasAnyKey := false
-			for pName := range cfg.Providers {
+			for pName, p := range cfg.Providers {
 				piEnvVar, ok := PiAPIKeyEnvVar(pName)
 				if !ok {
-					continue
+					if p.EnvKey == "" {
+						piEnvVar = APIKeyEnvVarName(pName)
+					} else {
+						piEnvVar = p.EnvKey
+					}
 				}
 				key := APIKeyEnvVarName(pName)
-				if val, found := secrets[key]; found {
+				val, found := secrets[key]
+				if !found && pName != customProviderName {
+					key = APIKeyEnvVarName(customProviderName)
+					val, found = secrets[key]
+				}
+				if found {
 					providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", piEnvVar, val))
 					hasAnyKey = true
 				}
@@ -162,7 +171,12 @@ Version: %s (commit: %s, date: %s)`, kairoversion.Version, kairoversion.Commit, 
 		secrets := envResult.Secrets
 
 		apiKeyKey := APIKeyEnvVarName(providerName)
-		if apiKey, hasKey := secrets[apiKeyKey]; hasKey {
+		apiKey, hasKey := secrets[apiKeyKey]
+		if !hasKey {
+			apiKeyKey = APIKeyEnvVarName(customProviderName)
+			apiKey, hasKey = secrets[apiKeyKey]
+		}
+		if hasKey {
 			executeWithAuth(ExecutionConfig{
 				Cmd:           cmd,
 				ProviderEnv:   providerEnv,
