@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -26,31 +27,37 @@ func requireConfigDirWritable(cmd *cobra.Command) string {
 	if dir == "" {
 		return ""
 	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, constants.DirPermSecure); err != nil {
 		ui.PrintError("Error creating config directory: " + err.Error())
 		return ""
 	}
 	return dir
 }
 
-func loadConfigOrExit(cmd *cobra.Command) *config.Config {
+func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
 	dir := requireConfigDir(cmd)
 	if dir == "" {
-		return nil
+		return nil, stderrors.New("config directory not found")
 	}
 
 	cliCtx := CLIContextFromCmd(cmd)
 	cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), dir)
 	if err != nil {
 		if stderrors.Is(err, fs.ErrNotExist) {
-			ui.PrintWarn("No providers configured")
-			ui.PrintInfo("Run 'kairo setup' to get started")
-			return nil
+			printNoProvidersMessage()
+			return nil, nil
 		}
 		handleConfigError(cmd, err)
-		return nil
+		return nil, err
 	}
-	return cfg
+	return cfg, nil
+}
+
+// printNoProvidersMessage prints a standard message indicating no providers
+// are configured and directs the user to run setup.
+func printNoProvidersMessage() {
+	ui.PrintWarn("No providers configured")
+	ui.PrintInfo("Run 'kairo setup' to get started")
 }
 
 func printSecretsRecoveryHelp() {

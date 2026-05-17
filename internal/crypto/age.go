@@ -156,16 +156,26 @@ func decryptToBuffer(ctx context.Context, secretsPath, keyPath string, buf *byte
 	return nil
 }
 
-func loadRecipient(keyPath string) (age.Recipient, error) {
+// readKeyFileScanner opens a key file and returns a scanner for reading its lines.
+// The caller must close the returned file when done.
+func readKeyFileScanner(keyPath string) (*os.File, *bufio.Scanner, error) {
 	file, err := os.Open(keyPath)
 	if err != nil {
-		return nil, errors.WrapError(errors.FileSystemError,
+		return nil, nil, errors.WrapError(errors.FileSystemError,
 			"failed to open key file", err).
 			WithContext("path", keyPath)
 	}
+
+	return file, bufio.NewScanner(file), nil
+}
+
+func loadRecipient(keyPath string) (age.Recipient, error) {
+	file, scanner, err := readKeyFileScanner(keyPath)
+	if err != nil {
+		return nil, err
+	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
 	if !scanner.Scan() {
 		return nil, errors.NewError(errors.CryptoError,
 			"key file is empty").
@@ -190,15 +200,12 @@ func loadRecipient(keyPath string) (age.Recipient, error) {
 }
 
 func loadIdentity(keyPath string) (age.Identity, error) {
-	file, err := os.Open(keyPath)
+	file, scanner, err := readKeyFileScanner(keyPath)
 	if err != nil {
-		return nil, errors.WrapError(errors.FileSystemError,
-			"failed to open key file", err).
-			WithContext("path", keyPath)
+		return nil, err
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
 	if !scanner.Scan() {
 		return nil, errors.NewError(errors.CryptoError,
 			"key file is empty").

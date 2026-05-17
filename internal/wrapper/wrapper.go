@@ -22,7 +22,7 @@ func CreateTempAuthDir() (string, error) {
 			"failed to create temp auth directory", err)
 	}
 
-	if err := os.Chmod(authDir, 0700); err != nil {
+	if err := os.Chmod(authDir, constants.DirPermSecure); err != nil {
 		_ = os.RemoveAll(authDir)
 
 		return "", errors.WrapError(errors.FileSystemError,
@@ -58,7 +58,7 @@ func WriteTempTokenFile(authDir, token string) (string, error) {
 			"failed to close temp token file", err)
 	}
 
-	if err := os.Chmod(f.Name(), 0600); err != nil {
+	if err := os.Chmod(f.Name(), constants.FilePermSecure); err != nil {
 		return "", errors.WrapError(errors.FileSystemError,
 			"failed to set temp file permissions", err)
 	}
@@ -149,7 +149,7 @@ func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 		return ps1Path, true, nil
 	}
 
-	if err := os.Chmod(f.Name(), 0700); err != nil {
+	if err := os.Chmod(f.Name(), constants.FilePermExec); err != nil {
 		_ = os.Remove(f.Name())
 
 		return "", false, errors.WrapError(errors.FileSystemError,

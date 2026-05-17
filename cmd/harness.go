@@ -27,8 +27,8 @@ var harnessGetCmd = &cobra.Command{
 	Long:  "Get the currently configured default harness",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg := loadConfigOrExit(cmd)
-		if cfg == nil {
+		cfg, err := loadConfigOrExit(cmd)
+		if err != nil || cfg == nil {
 			return
 		}
 

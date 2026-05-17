@@ -16,7 +16,7 @@ import (
 
 // EnsureConfigDir creates the config directory and encryption key if they don't exist.
 func EnsureConfigDir(cliCtx *CLIContext, configDir string) error {
-	if err := os.MkdirAll(configDir, 0700); err != nil {
+	if err := os.MkdirAll(configDir, constants.DirPermSecure); err != nil {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"creating config directory", err)
 	}

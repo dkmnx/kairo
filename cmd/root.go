@@ -6,15 +6,10 @@ import (
 	"io/fs"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
-)
-
-const (
-	configCacheTTL = 5 * time.Minute
 )
 
 var (
@@ -165,11 +160,7 @@ func runPiProvider(
 	providerName, harnessToUse string,
 	harnessArgs []string,
 ) {
-	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), EnvProvider{
-		BaseURL: provider.BaseURL,
-		Model:   provider.Model,
-		EnvVars: provider.EnvVars,
-	}, providerName)
+	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), provider, providerName)
 	if err != nil {
 		handleSecretsError(err)
 
@@ -229,11 +220,7 @@ func runStandardProvider(
 	providerName, harnessToUse string,
 	harnessArgs []string,
 ) {
-	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), EnvProvider{
-		BaseURL: provider.BaseURL,
-		Model:   provider.Model,
-		EnvVars: provider.EnvVars,
-	}, providerName)
+	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), provider, providerName)
 	if err != nil {
 		handleSecretsError(err)
 

@@ -1,10 +1,42 @@
 package constants
 
+import (
+	"os"
+	"time"
+)
+
 // KeyFileName and SecretsFileName are the default file names for the
 // encryption key and encrypted secrets stored in the config directory.
 const (
 	KeyFileName     = "age.key"
 	SecretsFileName = "secrets.age"
+)
+
+// File and directory permission modes used across the application.
+var (
+	// DirPermSecure is used for directories containing sensitive data (0700).
+	DirPermSecure = os.FileMode(0700)
+
+	// DirPermDefault is used for general-purpose directories (0755).
+	DirPermDefault = os.FileMode(0755)
+
+	// FilePermSecure is used for files containing sensitive data (0600).
+	FilePermSecure = os.FileMode(0600)
+
+	// FilePermDefault is used for general-purpose files (0644).
+	FilePermDefault = os.FileMode(0644)
+
+	// FilePermExec is used for executable scripts (0755).
+	FilePermExec = os.FileMode(0755)
+)
+
+// Timeout durations used across the application.
+const (
+	// ConfigCacheTTL is how long a cached config is considered valid.
+	ConfigCacheTTL = 5 * time.Minute
+
+	// RequestTimeout is the default timeout for HTTP requests to external APIs.
+	RequestTimeout = 10 * time.Second
 )
 
 // Environment variable names for Anthropic-compatible provider configuration.
