@@ -346,10 +346,19 @@ func GetChecksumsBundleURL(tag string) string {
 	return constants.RawGitHubFileURL(tag, "scripts/checksums.txt.sigstore.json")
 }
 
+// lookPathFunc locates a binary in PATH. Overridable for testing.
+var lookPathFunc = exec.LookPath
+
+// SetLookPathFunc replaces the binary lookup function.
+// This is intended for testing only.
+func SetLookPathFunc(fn func(string) (string, error)) {
+	lookPathFunc = fn
+}
+
 // VerifyCosignBundle downloads the sigstore bundle for the checksums file and verifies
 // it using cosign. Returns nil if cosign is not installed (best-effort verification).
 func VerifyCosignBundle(tag string) error {
-	cosignPath, err := exec.LookPath("cosign")
+	cosignPath, err := lookPathFunc("cosign")
 	if err != nil {
 		return nil
 	}

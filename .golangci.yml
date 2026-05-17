@@ -123,58 +123,14 @@ linters:
           - goconst
         path: main\.go
       - linters:
-          - nlreturn
-        path: cmd/delete\.go
-      - linters:
           - goconst
-          - nlreturn
         path: cmd/harness\.go
-      - linters:
-          - goconst
-        path: cmd/version\.go
-      - linters:
-          - nlreturn
-        path: cmd/list\.go
-      - linters:
-          - nlreturn
-        path: cmd/util\.go
-      - linters:
-          - nlreturn
-        path: internal/errors/errors\.go
-      - linters:
-          - nlreturn
-        path: internal/ui/prompt\.go
-      - linters:
-          - nlreturn
-        path: internal/providers/registry\.go
       - linters:
           - staticcheck
         text: exported (function|method|type|const)
       - linters:
           - staticcheck
         text: commented out
-      - linters:
-          - cyclop
-          - funlen
-        text: MigrateConfigOnUpdate
-      - linters:
-          - cyclop
-          - funlen
-        text: GenerateWrapperScript
-      - linters:
-          - funlen
-        text: configureProvider
-      - linters:
-          - funlen
-        text: EncryptSecrets
-      - linters:
-          - cyclop
-          - funlen
-        text: migrateConfigFile
-      - linters:
-          - cyclop
-          - funlen
-        text: LoadConfig
       # gocritic: hugeParam is too noisy for struct params in prod code
       - linters:
           - gocritic

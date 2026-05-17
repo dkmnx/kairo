@@ -297,6 +297,78 @@ func TestExecuteWithoutAuth_YoloModeQwen(t *testing.T) {
 	executeWithoutAuth(cfg)
 }
 
+func TestExecuteWrapperWithAuth_QwenWrapperFails(t *testing.T) {
+	tmpDir := t.TempDir()
+	exitCalled := false
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mw.CreateTempAuthDirFn = func() (string, error) { return tmpDir, nil }
+		mw.WriteTempTokenFileFn = func(authDir, token string) (string, error) {
+			return filepath.Join(authDir, "token"), nil
+		}
+		mw.GenerateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
+			return filepath.Join(tmpDir, "wrapper.sh"), false, nil
+		}
+		mp.LookPathFn = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			return exec.Command("false")
+		}
+		mp.ExitProcessFn = func(int) { exitCalled = true }
+	})
+
+	cmd := testCmd()
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		HarnessToUse:  harnessQwen,
+		HarnessBinary: "qwen",
+		Provider: config.Provider{
+			Name:  "Qwen",
+			Model: "qwen-plus",
+		},
+		APIKey: "test-key",
+		Deps:   d,
+	}
+
+	executeWrapperWithAuth(cfg)
+
+	if !exitCalled {
+		t.Error("executeWrapperWithAuth should call ExitProcess on Qwen wrapper execution failure")
+	}
+}
+
+func TestExecuteWithoutAuth_PiExecutionError(t *testing.T) {
+	exitCalled := false
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			return exec.Command("false")
+		}
+		mp.ExitProcessFn = func(int) { exitCalled = true }
+	})
+
+	cmd := testCmd()
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		HarnessToUse:  harnessPi,
+		HarnessBinary: "pi",
+		Provider: config.Provider{
+			Name:  "Test",
+			Model: "test-model",
+		},
+		ProviderName: "test",
+		Deps:         d,
+	}
+
+	executeWithoutAuth(cfg)
+
+	if !exitCalled {
+		t.Error("executeWithoutAuth with Pi failure should call ExitProcess")
+	}
+}
+
 func TestExecuteWithAuth_AuthDirCleanup(t *testing.T) {
 	tmpDir := t.TempDir()
 	var execCalled atomic.Bool

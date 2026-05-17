@@ -1,6 +1,7 @@
 package update
 
 import (
+	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -595,5 +596,114 @@ func TestScriptNameMatchesChecksumFile(t *testing.T) {
 			t.Errorf("GetScriptNameForChecksums(%q) = %q not found in checksums map keys: %v",
 				goos, scriptName, maps.Keys(checksums))
 		}
+	}
+}
+
+func TestGetChecksumsBundleURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		tag      string
+		expected string
+	}{
+		{"v1", "v1.0.0", "https://raw.githubusercontent.com/dkmnx/kairo/v1.0.0/scripts/checksums.txt.sigstore.json"},
+		{"v2", "v2.5.1", "https://raw.githubusercontent.com/dkmnx/kairo/v2.5.1/scripts/checksums.txt.sigstore.json"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetChecksumsBundleURL(tt.tag)
+			if result != tt.expected {
+				t.Errorf("GetChecksumsBundleURL(%q) = %q, want %q", tt.tag, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetLatestRelease_InvalidURL(t *testing.T) {
+	original := EnvFunc
+	EnvFunc = func(key string) (string, bool) {
+		if key == "KAIRO_UPDATE_URL" {
+			return "://invalid-url", true
+		}
+
+		return original(key)
+	}
+	defer func() { EnvFunc = original }()
+
+	_, err := GetLatestRelease()
+	if err == nil {
+		t.Error("GetLatestRelease() should return error for invalid URL")
+	}
+}
+
+func TestVerifyCosignBundle_CosignNotInstalled(t *testing.T) {
+	original := lookPathFunc
+	lookPathFunc = func(string) (string, error) { return "", fmt.Errorf("not found") }
+	defer func() { lookPathFunc = original }()
+
+	err := VerifyCosignBundle("v1.0.0")
+	if err != nil {
+		t.Errorf("VerifyCosignBundle should return nil when cosign not installed, got: %v", err)
+	}
+}
+
+func TestVerifyCosignBundle_BundleDownloadFails(t *testing.T) {
+	original := lookPathFunc
+	lookPathFunc = func(string) (string, error) { return "/usr/bin/cosign", nil }
+	defer func() { lookPathFunc = original }()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	originalEnv := EnvFunc
+	EnvFunc = func(key string) (string, bool) {
+		if key == "KAIRO_UPDATE_URL" {
+			return server.URL, true
+		}
+
+		return originalEnv(key)
+	}
+	defer func() { EnvFunc = originalEnv }()
+
+	err := VerifyCosignBundle("v1.0.0")
+	if err == nil {
+		t.Error("VerifyCosignBundle should return error when bundle download fails")
+	}
+}
+
+func TestVerifyCosignBundle_ChecksumsDownloadFails(t *testing.T) {
+	original := lookPathFunc
+	lookPathFunc = func(string) (string, error) { return "/usr/bin/cosign", nil }
+	defer func() { lookPathFunc = original }()
+
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount == 1 {
+			// First call: bundle download succeeds
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"payload": "test"}`))
+		} else {
+			// Second call: checksums download fails
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer server.Close()
+
+	originalEnv := EnvFunc
+	EnvFunc = func(key string) (string, bool) {
+		if key == "KAIRO_UPDATE_URL" {
+			return server.URL, true
+		}
+
+		return originalEnv(key)
+	}
+	defer func() { EnvFunc = originalEnv }()
+
+	err := VerifyCosignBundle("v1.0.0")
+	if err == nil {
+		t.Error("VerifyCosignBundle should return error when checksums download fails")
 	}
 }

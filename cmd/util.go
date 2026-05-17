@@ -19,6 +19,7 @@ func requireConfigDir(cmd *cobra.Command) string {
 	if dir == "" {
 		ui.PrintError("Config directory not found")
 	}
+
 	return dir
 }
 
@@ -29,8 +30,10 @@ func requireConfigDirWritable(cmd *cobra.Command) string {
 	}
 	if err := os.MkdirAll(dir, constants.DirPermSecure); err != nil {
 		ui.PrintError("Error creating config directory: " + err.Error())
+
 		return ""
 	}
+
 	return dir
 }
 
@@ -45,11 +48,15 @@ func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
 	if err != nil {
 		if stderrors.Is(err, fs.ErrNotExist) {
 			printNoProvidersMessage()
+
 			return nil, nil
 		}
+
 		handleConfigError(cmd, err)
+
 		return nil, err
 	}
+
 	return cfg, nil
 }
 

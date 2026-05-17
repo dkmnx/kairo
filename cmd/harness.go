@@ -34,6 +34,7 @@ var harnessGetCmd = &cobra.Command{
 
 		if cfg.DefaultHarness == "" {
 			ui.PrintInfo("No default harness configured (using claude)")
+
 			return
 		}
 
@@ -52,6 +53,7 @@ var harnessSetCmd = &cobra.Command{
 		if !isValidHarness(harnessName) {
 			ui.PrintError(fmt.Sprintf("Invalid harness: '%s'", args[0]))
 			ui.PrintInfo("Valid harnesses: claude, qwen, pi")
+
 			return
 		}
 
@@ -65,6 +67,7 @@ var harnessSetCmd = &cobra.Command{
 		cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), dir)
 		if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 			handleConfigError(cmd, err)
+
 			return
 		}
 		if err != nil {
@@ -77,6 +80,7 @@ var harnessSetCmd = &cobra.Command{
 		cfg.DefaultHarness = harnessName
 		if err := config.SaveConfig(cliCtx.RootCtx(), dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
+
 			return
 		}
 
@@ -108,8 +112,10 @@ func getHarness(flagHarness, configHarness string) string {
 	}
 	if !isValidHarness(harness) {
 		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", harness))
+
 		return harnessClaude
 	}
+
 	return harness
 }
 

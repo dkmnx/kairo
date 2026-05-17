@@ -60,6 +60,7 @@ func (e *KairoError) Error() string {
 		}
 		b.WriteString(")")
 	}
+
 	return b.String()
 }
 
@@ -72,6 +73,7 @@ func (e *KairoError) Is(target error) bool {
 	if !ok {
 		return false
 	}
+
 	return e.Type == t.Type
 }
 
@@ -98,6 +100,7 @@ func (e *KairoError) WithContext(key, value string) *KairoError {
 		e.Context = make(map[string]string)
 	}
 	e.Context[key] = value
+
 	return e
 }
 

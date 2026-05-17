@@ -34,9 +34,11 @@ var deleteCmd = &cobra.Command{
 		if err != nil {
 			if stderrors.Is(err, fs.ErrNotExist) {
 				printNoProvidersMessage()
+
 				return
 			}
 			handleConfigError(cmd, err)
+
 			return
 		}
 
@@ -44,6 +46,7 @@ var deleteCmd = &cobra.Command{
 		if len(args) == 0 {
 			if len(cfg.Providers) == 0 {
 				printNoProvidersMessage()
+
 				return
 			}
 
@@ -70,6 +73,7 @@ var deleteCmd = &cobra.Command{
 			target = selected
 			if target == "" {
 				tap.Cancel("Operation canceled")
+
 				return
 			}
 		} else {
@@ -79,6 +83,7 @@ var deleteCmd = &cobra.Command{
 		_, ok := cfg.Providers[target]
 		if !ok {
 			tap.Cancel(fmt.Sprintf("Provider '%s' not configured", target))
+
 			return
 		}
 
@@ -87,6 +92,7 @@ var deleteCmd = &cobra.Command{
 		})
 		if !confirmed {
 			tap.Cancel("Operation canceled")
+
 			return
 		}
 
@@ -98,6 +104,7 @@ var deleteCmd = &cobra.Command{
 
 		if err := config.SaveConfig(cliCtx.RootCtx(), dir, cfg); err != nil {
 			tap.Cancel(fmt.Sprintf("Saving config: %v", err))
+
 			return
 		}
 
@@ -108,6 +115,7 @@ var deleteCmd = &cobra.Command{
 
 		if err := deleteProviderSecrets(cliCtx.RootCtx(), secretsPath, keyPath, target); err != nil {
 			tap.Cancel(fmt.Sprintf("Failed to clean up secrets for '%s': %v", target, err))
+
 			return
 		}
 
@@ -145,6 +153,7 @@ func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerNa
 				"could not remove empty secrets file", removeErr).
 				WithContext("path", secretsPath)
 		}
+
 		return nil
 	}
 
