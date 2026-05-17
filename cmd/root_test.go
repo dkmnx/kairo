@@ -627,3 +627,90 @@ func TestHasDoubleDash(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveAPIKey(t *testing.T) {
+	t.Run("returns provider-specific key", func(t *testing.T) {
+		secrets := map[string]string{
+			"ANTHROPIC_API_KEY": "sk-ant-xxx",
+		}
+		key, ok := resolveAPIKey(secrets, "anthropic")
+		if !ok {
+			t.Error("Expected key to be found")
+		}
+		if key != "sk-ant-xxx" {
+			t.Errorf("Expected 'sk-ant-xxx', got %q", key)
+		}
+	})
+
+	t.Run("falls back to custom provider key", func(t *testing.T) {
+		secrets := map[string]string{
+			"CUSTOM_API_KEY": "sk-custom-xxx",
+		}
+		key, ok := resolveAPIKey(secrets, "anthropic")
+		if !ok {
+			t.Error("Expected key to be found via custom fallback")
+		}
+		if key != "sk-custom-xxx" {
+			t.Errorf("Expected 'sk-custom-xxx', got %q", key)
+		}
+	})
+
+	t.Run("returns false when no key found", func(t *testing.T) {
+		secrets := map[string]string{}
+		_, ok := resolveAPIKey(secrets, "anthropic")
+		if ok {
+			t.Error("Expected no key to be found")
+		}
+	})
+}
+
+func TestHarnessFlagUsesDefaultProvider(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cfg := &config.Config{
+		DefaultProvider: "anthropic",
+		Providers: map[string]config.Provider{
+			"anthropic": {Name: "Native Anthropic", BaseURL: "https://api.anthropic.com", Model: "claude-sonnet"},
+		},
+	}
+	createConfigFile(t, tmpDir, cfg)
+
+	originalConfigDir := getConfigDir()
+	originalHarnessFlag := harnessFlag
+	setConfigDir(tmpDir)
+	harnessFlag = "claude"
+	defer func() {
+		setConfigDir(originalConfigDir)
+		harnessFlag = originalHarnessFlag
+	}()
+
+	output := &bytes.Buffer{}
+	rootCmd.SetOut(output)
+	rootCmd.SetErr(output)
+
+	var execCalled atomic.Bool
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			if file == "claude" {
+				return "/usr/bin/claude", nil
+			}
+			return "", fmt.Errorf("not found: %s", file)
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			execCalled.Store(true)
+			return exec.CommandContext(ctx, "echo", "mocked")
+		}
+		d.ExitProcess = func(int) {}
+	})
+
+	cliCtx := NewCLIContext()
+	cliCtx.SetConfigDir(tmpDir)
+	cliCtx.SetDeps(d)
+	rootCmd.SetContext(WithCLIContext(context.Background(), cliCtx))
+
+	rootCmd.Run(rootCmd, []string{"suggest one greek god"})
+
+	if !execCalled.Load() {
+		t.Error("Expected harness execution with --harness flag and default provider")
+	}
+}

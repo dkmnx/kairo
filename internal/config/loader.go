@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	stderrors "errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -39,7 +40,7 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 
 	oldInfo, err := os.Stat(oldConfigPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if stderrors.Is(err, fs.ErrNotExist) {
 			return false, nil
 		}
 
@@ -49,7 +50,7 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 
 	if _, err := os.Stat(newConfigPath); err == nil {
 		return false, nil
-	} else if !os.IsNotExist(err) {
+	} else if !stderrors.Is(err, fs.ErrNotExist) {
 		return false, errors.WrapError(errors.FileSystemError,
 			"failed to check new config file", err)
 	}
@@ -105,7 +106,7 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if stderrors.Is(err, fs.ErrNotExist) {
 			return nil, errors.ErrConfigNotFound
 		}
 

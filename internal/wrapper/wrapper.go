@@ -107,7 +107,7 @@ func GenerateWrapperScript(cfg ScriptConfig) (string, bool, error) {
 			"wrapper: CLI path cannot be empty")
 	}
 
-	envVar := "ANTHROPIC_AUTH_TOKEN"
+	envVar := constants.EnvAuthToken
 	if cfg.EnvVarName != "" {
 		envVar = cfg.EnvVarName
 	}

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
@@ -31,12 +32,12 @@ func BuildPiEnvVars(provider EnvProvider, providerName string) []string {
 // BuildBuiltInEnvVars constructs the standard Anthropic environment variables for a provider.
 func BuildBuiltInEnvVars(provider EnvProvider) []string {
 	return []string{
-		fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),
-		fmt.Sprintf("%s=%s", envModel, provider.Model),
-		fmt.Sprintf("%s=%s", envHaikuModel, provider.Model),
-		fmt.Sprintf("%s=%s", envSonnetModel, provider.Model),
-		fmt.Sprintf("%s=%s", envOpusModel, provider.Model),
-		fmt.Sprintf("%s=%s", envSmallFast, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvBaseURL, provider.BaseURL),
+		fmt.Sprintf("%s=%s", constants.EnvModel, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvHaikuModel, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvSonnetModel, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvOpusModel, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvSmallFast, provider.Model),
 		"NODE_OPTIONS=--no-deprecation",
 	}
 }

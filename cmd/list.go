@@ -1,8 +1,9 @@
 package cmd
 
 import (
+	stderrors "errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"sort"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -25,7 +26,7 @@ var listCmd = &cobra.Command{
 
 		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if stderrors.Is(err, fs.ErrNotExist) {
 				ui.PrintWarn("No providers configured")
 				ui.PrintInfo("Run 'kairo setup' to get started")
 				return
