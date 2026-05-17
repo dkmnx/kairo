@@ -341,6 +341,81 @@ func VerifyChecksum(scriptPath, expectedHash string) error {
 	return nil
 }
 
+// GetChecksumsBundleURL returns the URL for the cosign sigstore bundle of the checksums file.
+func GetChecksumsBundleURL(tag string) string {
+	return constants.RawGitHubFileURL(tag, "scripts/checksums.txt.sigstore.json")
+}
+
+// VerifyCosignBundle downloads the sigstore bundle for the checksums file and verifies
+// it using cosign. Returns nil if cosign is not installed (best-effort verification).
+func VerifyCosignBundle(tag string) error {
+	cosignPath, err := exec.LookPath("cosign")
+	if err != nil {
+		return nil
+	}
+
+	bundleURL := GetChecksumsBundleURL(tag)
+	bundleData, err := doHTTPGet(bundleURL)
+	if err != nil {
+		return errors.WrapError(errors.NetworkError,
+			"failed to download cosign bundle", err)
+	}
+
+	bundleFile, err := os.CreateTemp("", "kairo-bundle-*.sigstore.json")
+	if err != nil {
+		return errors.WrapError(errors.FileSystemError,
+			"failed to create temp bundle file", err)
+	}
+	defer os.Remove(bundleFile.Name())
+
+	if _, err := bundleFile.Write(bundleData); err != nil {
+		bundleFile.Close()
+
+		return errors.WrapError(errors.FileSystemError,
+			"failed to write bundle file", err)
+	}
+	bundleFile.Close()
+
+	checksumsURL := GetChecksumsURL(tag)
+	checksumsData, err := doHTTPGet(checksumsURL)
+	if err != nil {
+		return errors.WrapError(errors.NetworkError,
+			"failed to download checksums for verification", err)
+	}
+
+	checksumsFile, err := os.CreateTemp("", "kairo-checksums-*.txt")
+	if err != nil {
+		return errors.WrapError(errors.FileSystemError,
+			"failed to create temp checksums file", err)
+	}
+	defer os.Remove(checksumsFile.Name())
+
+	if _, err := checksumsFile.Write(checksumsData); err != nil {
+		checksumsFile.Close()
+
+		return errors.WrapError(errors.FileSystemError,
+			"failed to write checksums file", err)
+	}
+	checksumsFile.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, cosignPath,
+		"verify-blob",
+		"--bundle="+bundleFile.Name(),
+		checksumsFile.Name(),
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return errors.WrapError(errors.VerificationError,
+			"cosign bundle verification failed", err).
+			WithContext("output", string(output))
+	}
+
+	return nil
+}
+
 // GetScriptNameForChecksums returns the script filename used in the checksums file.
 func GetScriptNameForChecksums(goos string) string {
 	ext := installScriptExt
