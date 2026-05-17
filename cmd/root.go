@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	stderrors "errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 	"time"
@@ -12,13 +14,6 @@ import (
 )
 
 const (
-	envBaseURL     = "ANTHROPIC_BASE_URL"
-	envModel       = "ANTHROPIC_MODEL"
-	envHaikuModel  = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
-	envSonnetModel = "ANTHROPIC_DEFAULT_SONNET_MODEL"
-	envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
-	envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
-
 	configCacheTTL = 5 * time.Minute
 )
 
@@ -127,7 +122,7 @@ func loadRootConfig(cmd *cobra.Command, cliCtx *CLIContext) (*config.Config, boo
 
 	cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), configDir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if stderrors.Is(err, fs.ErrNotExist) {
 			cmd.Println("No providers configured. Run 'kairo setup' to get started.")
 
 			return nil, false

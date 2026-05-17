@@ -60,7 +60,9 @@ var harnessSetCmd = &cobra.Command{
 			return
 		}
 
-		cfg, err := CLIContextFromCmd(cmd).ConfigCache().Get(CLIContextFromCmd(cmd).RootCtx(), dir)
+		cliCtx := CLIContextFromCmd(cmd)
+
+		cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), dir)
 		if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
 			handleConfigError(cmd, err)
 			return
@@ -73,12 +75,12 @@ var harnessSetCmd = &cobra.Command{
 		}
 
 		cfg.DefaultHarness = harnessName
-		if err := config.SaveConfig(CLIContextFromCmd(cmd).RootCtx(), dir, cfg); err != nil {
+		if err := config.SaveConfig(cliCtx.RootCtx(), dir, cfg); err != nil {
 			ui.PrintError(fmt.Sprintf("Error saving config: %v", err))
 			return
 		}
 
-		CLIContextFromCmd(cmd).InvalidateCache(dir)
+		cliCtx.InvalidateCache(dir)
 
 		ui.PrintSuccess(fmt.Sprintf("Default harness set to: %s", harnessName))
 	},

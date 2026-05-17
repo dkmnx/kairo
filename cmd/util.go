@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	stderrors "errors"
+	"io/fs"
 	"os"
 	"os/signal"
 	"strings"
@@ -40,7 +42,7 @@ func loadConfigOrExit(cmd *cobra.Command) *config.Config {
 	cliCtx := CLIContextFromCmd(cmd)
 	cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), dir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if stderrors.Is(err, fs.ErrNotExist) {
 			ui.PrintWarn("No providers configured")
 			ui.PrintInfo("Run 'kairo setup' to get started")
 			return nil

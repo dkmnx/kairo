@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +32,7 @@ var deleteCmd = &cobra.Command{
 
 		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if stderrors.Is(err, fs.ErrNotExist) {
 				ui.PrintWarn("No providers configured")
 				return
 			}
@@ -140,13 +142,17 @@ func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerNa
 
 	if secretsContent == "" {
 		if removeErr := os.Remove(secretsPath); removeErr != nil {
-			return fmt.Errorf("could not remove empty secrets file: %w", removeErr)
+			return errors.WrapError(errors.FileSystemError,
+				"could not remove empty secrets file", removeErr).
+				WithContext("path", secretsPath)
 		}
 		return nil
 	}
 
 	if err := crypto.EncryptSecrets(ctx, secretsPath, keyPath, secretsContent); err != nil {
-		return fmt.Errorf("could not update secrets: %w", err)
+		return errors.WrapError(errors.CryptoError,
+			"could not update secrets", err).
+			WithContext("path", secretsPath)
 	}
 
 	return nil

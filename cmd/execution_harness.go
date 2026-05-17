@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/dkmnx/kairo/internal/wrapper"
@@ -68,7 +69,8 @@ func executePi(cfg ExecutionConfig) error {
 func runHarnessWithWrapper(deps *Deps, params HarnessRun) error {
 	harnessPath, err := deps.LookPath(params.HarnessBinary)
 	if err != nil {
-		return fmt.Errorf("'%s' command not found in PATH", params.HarnessBinary)
+		return kairoerrors.WrapError(kairoerrors.RuntimeError,
+			fmt.Sprintf("'%s' command not found in PATH", params.HarnessBinary), err)
 	}
 
 	wrapperCfg := wrapper.ScriptConfig{
@@ -80,7 +82,8 @@ func runHarnessWithWrapper(deps *Deps, params HarnessRun) error {
 	}
 	wrapperScript, useCmdExe, err := deps.GenerateWrapperScript(wrapperCfg)
 	if err != nil {
-		return fmt.Errorf("generating wrapper script: %w", err)
+		return kairoerrors.WrapError(kairoerrors.RuntimeError,
+			"generating wrapper script", err)
 	}
 
 	ui.ClearScreen()

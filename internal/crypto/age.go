@@ -5,7 +5,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	stderrors "errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -221,7 +223,7 @@ func EnsureKeyExists(ctx context.Context, configDir string) error {
 	if err == nil {
 		return nil
 	}
-	if !os.IsNotExist(err) {
+	if !stderrors.Is(err, fs.ErrNotExist) {
 		return errors.WrapError(errors.FileSystemError,
 			"failed to check key file status", err).
 			WithContext("path", keyPath)

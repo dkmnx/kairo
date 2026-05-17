@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -86,7 +87,7 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 	result.SecretsPath = filepath.Join(configDir, constants.SecretsFileName)
 	result.KeyPath = filepath.Join(configDir, constants.KeyFileName)
 
-	if _, err := os.Stat(result.SecretsPath); os.IsNotExist(err) {
+	if _, err := os.Stat(result.SecretsPath); errors.Is(err, fs.ErrNotExist) {
 		return result, nil
 	}
 
@@ -106,12 +107,12 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 
 // ResetSecretsFiles deletes and regenerates the encryption key and secrets files.
 func ResetSecretsFiles(ctx context.Context, configDir, secretsPath, keyPath string) error {
-	if err := os.Remove(keyPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(keyPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to remove old key file", err)
 	}
 
-	if err := os.Remove(secretsPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(secretsPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to remove old secrets file", err)
 	}
