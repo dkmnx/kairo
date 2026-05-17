@@ -59,8 +59,12 @@ jobs:
           echo "Install script checksums verified."
 
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, macos, windows]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -73,11 +77,14 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Run tests with coverage
+        shell: bash
         run: |
           go test -race -coverprofile=coverage.out -covermode=atomic ./...
           go tool cover -func=coverage.out
 
       - name: Check coverage threshold
+        if: matrix.os == 'ubuntu'
+        shell: bash
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
