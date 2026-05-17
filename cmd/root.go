@@ -205,12 +205,16 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 	},
 }
 
+var defaultProviderExplicit bool
+
 func Execute() error {
 	args := os.Args[1:]
 
 	defer func() {
 		rootCmd.SetArgs(nil)
 	}()
+
+	defaultProviderExplicit = hasDoubleDash(args)
 
 	rootCmd.SetArgs(args)
 
@@ -243,6 +247,25 @@ func splitArgs(args []string) ([]string, []string) {
 	return args, nil
 }
 
+func hasDoubleDash(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--" {
+			return true
+		}
+		if args[i] == "-" || !strings.HasPrefix(args[i], "-") {
+			return false
+		}
+		if strings.Contains(args[i], "=") {
+			continue
+		}
+		if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+			i++
+		}
+	}
+
+	return false
+}
+
 func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
 	kairoArgs, harnessArgs := splitArgs(args)
 
@@ -273,7 +296,7 @@ func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) 
 }
 
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
-	if len(args) == 0 {
+	if len(args) == 0 || defaultProviderExplicit {
 		if cfg.DefaultProvider == "" {
 			cmd.Println("No default provider set.")
 			cmd.Println()
@@ -285,7 +308,8 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 
 			return nil, nil, ""
 		}
-		args = []string{cfg.DefaultProvider}
+
+		return []string{cfg.DefaultProvider}, args, cfg.DefaultProvider
 	}
 
 	providerName, harnessArgs := getProviderFromArgs(cmd, cfg, args)

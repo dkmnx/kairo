@@ -164,6 +164,59 @@ func TestRootCmd(t *testing.T) {
 			t.Errorf("Expected 'not configured' error, got: %s", result)
 		}
 	})
+
+	t.Run("double dash uses default provider", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &config.Config{
+			DefaultProvider: "anthropic",
+			Providers: map[string]config.Provider{
+				"anthropic": {Name: "Native Anthropic", BaseURL: "https://api.anthropic.com", Model: "claude-sonnet"},
+			},
+		}
+		configPath := createConfigFile(t, tmpDir, cfg)
+
+		originalConfigDir := getConfigDir()
+		setConfigDir(tmpDir)
+		defer func() {
+			setConfigDir(originalConfigDir)
+			os.Remove(configPath)
+		}()
+
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+		rootCmd.SetErr(output)
+
+		originalLookPath := lookPath
+		lookPath = func(file string) (string, error) {
+			if file == "claude" {
+				return "/usr/bin/claude", nil
+			}
+			return originalLookPath(file)
+		}
+		defer func() { lookPath = originalLookPath }()
+
+		var execCalled atomic.Bool
+		originalExecCommandContext := execCommandContext
+		execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			execCalled.Store(true)
+			return originalExecCommandContext(ctx, "echo", "mocked")
+		}
+		defer func() { execCommandContext = originalExecCommandContext }()
+
+		originalExitProcess := exitProcess
+		exitProcess = func(int) {}
+		defer func() { exitProcess = originalExitProcess }()
+
+		defaultProviderExplicit = true
+		defer func() { defaultProviderExplicit = false }()
+
+		rootCmd.Run(rootCmd, []string{"hello"})
+
+		if !execCalled.Load() {
+			t.Error("Expected harness execution with default provider")
+		}
+	})
 }
 
 func TestExecute(t *testing.T) {
@@ -554,6 +607,33 @@ func TestGetProviderFromArgs(t *testing.T) {
 				if arg != tt.wantArgs[i] {
 					t.Errorf("getProviderFromArgs() args[%d] = %q, want %q", i, arg, tt.wantArgs[i])
 				}
+			}
+		})
+	}
+}
+
+func TestHasDoubleDash(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"bare double dash", []string{"--", "hello"}, true},
+		{"flag then double dash", []string{"-v", "--", "hello"}, true},
+		{"long flag with value then double dash", []string{"--harness", "pi", "--", "hello"}, true},
+		{"long flag with equals then double dash", []string{"--harness=pi", "--", "hello"}, true},
+		{"provider then double dash", []string{"anthropic", "--", "hello"}, false},
+		{"provider without double dash", []string{"anthropic", "hello"}, false},
+		{"no args", []string{}, false},
+		{"flags only no double dash", []string{"-v", "--harness", "pi"}, false},
+		{"single dash positional", []string{"-", "hello"}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := hasDoubleDash(tt.args)
+			if got != tt.want {
+				t.Errorf("hasDoubleDash(%v) = %v, want %v", tt.args, got, tt.want)
 			}
 		})
 	}
