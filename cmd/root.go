@@ -145,6 +145,7 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 				HarnessArgs:   harnessArgs,
 				APIKey:        "",
 				Yolo:          yoloFlag,
+				Deps:          cliCtx.Deps(),
 			}
 
 			if hasAnyKey {
@@ -187,6 +188,7 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 				HarnessArgs:   harnessArgs,
 				APIKey:        apiKey,
 				Yolo:          yoloFlag,
+				Deps:          cliCtx.Deps(),
 			})
 
 			return
@@ -201,6 +203,7 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 			ProviderName:  providerName,
 			HarnessArgs:   harnessArgs,
 			Yolo:          yoloFlag,
+			Deps:          cliCtx.Deps(),
 		})
 	},
 }

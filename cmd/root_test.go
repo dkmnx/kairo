@@ -96,37 +96,27 @@ func TestRootCmd(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetErr(output)
 
-		originalLookPath := lookPath
-		lookPath = func(file string) (string, error) {
-			if file == "claude" {
-				return "/usr/bin/claude", nil
-			}
-			return originalLookPath(file)
-		}
-		defer func() { lookPath = originalLookPath }()
-
 		var execCalled atomic.Bool
-		originalExecCommand := execCommand
-		execCommand = func(name string, arg ...string) *exec.Cmd {
-			execCalled.Store(true)
-			cmd := originalExecCommand("echo", "mocked")
-			cmd.Args = []string{"echo", "mocked"}
-			return cmd
-		}
-		defer func() { execCommand = originalExecCommand }()
+		d := testDeps(func(d *Deps) {
+			d.LookPath = func(file string) (string, error) {
+				if file == "claude" {
+					return "/usr/bin/claude", nil
+				}
+				return "", fmt.Errorf("not found: %s", file)
+			}
+			d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+				execCalled.Store(true)
+				cmd := exec.CommandContext(ctx, "echo", "mocked")
+				cmd.Args = []string{"echo", "mocked"}
+				return cmd
+			}
+			d.ExitProcess = func(int) {}
+		})
 
-		originalExecCommandContext := execCommandContext
-		execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-			execCalled.Store(true)
-			cmd := originalExecCommandContext(ctx, "echo", "mocked")
-			cmd.Args = []string{"echo", "mocked"}
-			return cmd
-		}
-		defer func() { execCommandContext = originalExecCommandContext }()
-
-		originalExitProcess := exitProcess
-		exitProcess = func(int) {}
-		defer func() { exitProcess = originalExitProcess }()
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDir(tmpDir)
+		cliCtx.SetDeps(d)
+		rootCmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 
 		rootCmd.Run(rootCmd, []string{"anthropic"})
 
@@ -187,26 +177,25 @@ func TestRootCmd(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetErr(output)
 
-		originalLookPath := lookPath
-		lookPath = func(file string) (string, error) {
-			if file == "claude" {
-				return "/usr/bin/claude", nil
-			}
-			return originalLookPath(file)
-		}
-		defer func() { lookPath = originalLookPath }()
-
 		var execCalled atomic.Bool
-		originalExecCommandContext := execCommandContext
-		execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-			execCalled.Store(true)
-			return originalExecCommandContext(ctx, "echo", "mocked")
-		}
-		defer func() { execCommandContext = originalExecCommandContext }()
+		d := testDeps(func(d *Deps) {
+			d.LookPath = func(file string) (string, error) {
+				if file == "claude" {
+					return "/usr/bin/claude", nil
+				}
+				return "", fmt.Errorf("not found: %s", file)
+			}
+			d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+				execCalled.Store(true)
+				return exec.CommandContext(ctx, "echo", "mocked")
+			}
+			d.ExitProcess = func(int) {}
+		})
 
-		originalExitProcess := exitProcess
-		exitProcess = func(int) {}
-		defer func() { exitProcess = originalExitProcess }()
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDir(tmpDir)
+		cliCtx.SetDeps(d)
+		rootCmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 
 		defaultProviderExplicit = true
 		defer func() { defaultProviderExplicit = false }()

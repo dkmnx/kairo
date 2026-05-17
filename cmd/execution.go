@@ -19,6 +19,7 @@ type ExecutionConfig struct {
 	HarnessArgs   []string
 	APIKey        string
 	Yolo          bool
+	Deps          *Deps
 }
 
 // WrapperCmd holds parameters for building a wrapper shell command.
@@ -28,9 +29,9 @@ type WrapperCmd struct {
 	IsWindows     bool
 }
 
-func buildWrapperCommand(params WrapperCmd) *exec.Cmd {
+func buildWrapperCommand(deps *Deps, params WrapperCmd) *exec.Cmd {
 	if params.IsWindows {
-		return execCommandContext(
+		return deps.ExecCommandContext(
 			params.Ctx,
 			"powershell",
 			"-NoProfile",
@@ -41,5 +42,5 @@ func buildWrapperCommand(params WrapperCmd) *exec.Cmd {
 		)
 	}
 
-	return execCommandContext(params.Ctx, params.WrapperScript)
+	return deps.ExecCommandContext(params.Ctx, params.WrapperScript)
 }

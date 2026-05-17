@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"os"
-	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -57,14 +56,6 @@ func printSecretsRecoveryHelp() {
 	ui.PrintInfo("or remove both files and run 'kairo setup --reset-secrets' to re-enter API keys.")
 	ui.PrintInfo("Use --verbose for more details.")
 }
-
-var lookPath = exec.LookPath
-
-var execCommand = exec.Command
-
-var execCommandContext = exec.CommandContext
-
-var exitProcess = os.Exit
 
 func parseIntOrZero(input string) int {
 	var result int

@@ -32,7 +32,9 @@ var versionCmd = &cobra.Command{
 }
 
 func checkForUpdates(cmd *cobra.Command) {
-	latest, err := getLatestReleaseFn()
+	deps := CLIContextFromCmd(cmd).Deps()
+
+	latest, err := deps.GetLatestRelease()
 	if err != nil {
 		return
 	}

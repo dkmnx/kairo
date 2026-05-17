@@ -11,7 +11,7 @@ import (
 type cliContextKey struct{}
 
 // CLIContext holds shared CLI state: config directory, verbosity, config cache,
-// and the root context. It is safe for concurrent use.
+// root context, and external dependencies. It is safe for concurrent use.
 type CLIContext struct {
 	configDir   string
 	configDirMu sync.RWMutex
@@ -19,6 +19,7 @@ type CLIContext struct {
 	verboseMu   sync.RWMutex
 	configCache *config.ConfigCache
 	rootCtx     context.Context
+	deps        *Deps
 }
 
 // NewCLIContext creates a CLIContext with default settings.
@@ -26,6 +27,7 @@ func NewCLIContext() *CLIContext {
 	return &CLIContext{
 		configCache: config.NewConfigCache(configCacheTTL),
 		rootCtx:     context.Background(),
+		deps:        NewDeps(),
 	}
 }
 
@@ -78,6 +80,16 @@ func (c *CLIContext) ConfigCache() *config.ConfigCache {
 // RootCtx returns the root context for the CLI session.
 func (c *CLIContext) RootCtx() context.Context {
 	return c.rootCtx
+}
+
+// Deps returns the external dependencies for this CLI session.
+func (c *CLIContext) Deps() *Deps {
+	return c.deps
+}
+
+// SetDeps replaces the external dependencies. For use in tests.
+func (c *CLIContext) SetDeps(d *Deps) {
+	c.deps = d
 }
 
 // InvalidateCache removes the cached configuration for the given directory.
