@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dkmnx/kairo/internal/constants"
 )
@@ -478,6 +479,102 @@ func TestGetScriptNameForChecksums(t *testing.T) {
 				t.Errorf("GetScriptNameForChecksums(%q) = %q, want %q", tt.goos, result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestSetHTTPClient(t *testing.T) {
+	old := httpClient
+	defer func() { httpClient = old }()
+
+	SetHTTPClient(&http.Client{Timeout: 0})
+	if httpClient.Timeout != 0 {
+		t.Error("SetHTTPClient() did not set the client")
+	}
+}
+
+func TestSetEnvFunc(t *testing.T) {
+	old := EnvFunc
+	defer func() { EnvFunc = old }()
+
+	called := false
+	SetEnvFunc(func(key string) (string, bool) {
+		called = true
+		return "val", true
+	})
+
+	val, ok := EnvFunc("test")
+	if !ok || val != "val" || !called {
+		t.Error("SetEnvFunc() did not set the function")
+	}
+}
+
+func TestDoHTTPGet_InvalidURL(t *testing.T) {
+	_, err := doHTTPGet("://invalid-url")
+	if err == nil {
+		t.Error("doHTTPGet() should return error for invalid URL")
+	}
+}
+
+func TestDoHTTPGet_ConnectionRefused(t *testing.T) {
+	// Use the SetHTTPClient to override timeout for faster test
+	oldClient := httpClient
+	defer func() { httpClient = oldClient }()
+	SetHTTPClient(&http.Client{Timeout: 100 * time.Millisecond})
+
+	_, err := doHTTPGet("http://127.0.0.1:1")
+	if err == nil {
+		t.Error("doHTTPGet() should return error when connection is refused")
+	}
+}
+
+func TestDoHTTPGet_NotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	_, err := doHTTPGet(server.URL)
+	if err == nil {
+		t.Error("doHTTPGet() should return error for 404")
+	}
+}
+
+func TestDownloadToTempFile_WriteFails(t *testing.T) {
+	// Server that closes connection prematurely, causing io.Copy to fail
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		// Hijack and close the connection to cause write failure
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Skip("server does not support hijacking")
+		}
+		conn, _, _ := hj.Hijack()
+		conn.Close()
+	}))
+	defer server.Close()
+
+	_, err := DownloadToTempFile(server.URL)
+	if err == nil {
+		t.Error("DownloadToTempFile() should return error when write fails")
+	}
+}
+
+func TestRunInstallScript_ChmodFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping Unix-specific test on Windows")
+	}
+
+	err := RunInstallScript("/invalid/path/to/script.sh")
+	if err == nil {
+		t.Error("RunInstallScript() should return error for non-writable path")
+	}
+}
+
+func TestVerifyChecksum_FileNotFound(t *testing.T) {
+	err := VerifyChecksum("/nonexistent/file.sh", "abcdef")
+	if err == nil {
+		t.Error("VerifyChecksum() should return error for nonexistent file")
 	}
 }
 
