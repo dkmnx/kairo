@@ -143,12 +143,14 @@ type ProviderDefinition struct {
 // IsBuiltInProvider reports whether name is a recognized built-in provider.
 func IsBuiltInProvider(name string) bool {
 	_, ok := BuiltInProviders[name]
+
 	return ok
 }
 
 // BuiltInProvider returns the definition for the named built-in provider.
 func BuiltInProvider(name string) (ProviderDefinition, bool) {
 	def, ok := BuiltInProviders[name]
+
 	return def, ok
 }
 
@@ -172,6 +174,7 @@ func ProviderList() []string {
 			result = append(result, name)
 		}
 	}
+
 	return result
 }
 
@@ -181,6 +184,7 @@ func RequiresAPIKey(name string) bool {
 	if !ok {
 		return true
 	}
+
 	return def.RequiresAPIKey
 }
 
@@ -194,5 +198,6 @@ func APIKeyEnvVarFor(name string) (string, bool) {
 	if def.APIKeyEnvVar == "" {
 		return "", false
 	}
+
 	return def.APIKeyEnvVar, true
 }

@@ -21,6 +21,7 @@ var listCmd = &cobra.Command{
 		dir := requireConfigDir(cmd)
 		if dir == "" {
 			ui.PrintInfo("Run 'kairo setup' to configure providers")
+
 			return
 		}
 
@@ -28,14 +29,17 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			if stderrors.Is(err, fs.ErrNotExist) {
 				printNoProvidersMessage()
+
 				return
 			}
 			handleConfigError(cmd, err)
+
 			return
 		}
 
 		if len(cfg.Providers) == 0 {
 			printNoProvidersMessage()
+
 			return
 		}
 
@@ -88,7 +92,9 @@ func sortProviderNames(provs map[string]config.Provider, defaultProvider string)
 		if names[j] == defaultProvider {
 			return false
 		}
+
 		return names[i] < names[j]
 	})
+
 	return names
 }
