@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.5.1] - 2026-05-17
+
 ### Changed
 
 - Install script checksums now auto-regenerated via pre-commit hook when `scripts/install.sh` or `scripts/install.ps1` are modified
@@ -1214,7 +1216,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.5.1...HEAD
+[v2.5.1]: https://github.com/dkmnx/kairo/compare/v2.5.0...v2.5.1
 [v2.5.0]: https://github.com/dkmnx/kairo/compare/v2.4.1...v2.5.0
 [2.4.1]: https://github.com/dkmnx/kairo/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/dkmnx/kairo/compare/v2.3.7...v2.4.0
