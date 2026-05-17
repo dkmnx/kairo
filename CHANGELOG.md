@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Decompose root command Run function into focused helpers (loadRootConfig, lookupProvider, runPiProvider, runStandardProvider, resolveAPIKey)
+- Replace mutable global vars with Deps struct for dependency injection, eliminating save-override-restore test patterns
+- Centralize ANTHROPIC environment variable constants to internal/constants package
+- Migrate all os.IsNotExist usage to errors.Is(err, fs.ErrNotExist)
+- Wrap bare fmt.Errorf in cmd package with proper KairoError types
+- Add named file/directory permission constants (DirPermSecure, FilePermSecure, etc.) replacing magic numbers
+- Consolidate repeated "No providers configured" boilerplate into single helper
+- Replace EnvProvider type with config.Provider to eliminate duplication
+- Extract fsutil.WriteAtomic for atomic file writes shared by config and crypto packages
+- Preserve user-set models during config migration instead of overwriting with built-in defaults
+- Add ErrBinaryOutdated sentinel error replacing fragile string-matching on YAML parse errors
+- Remove panic from validate package, use os.Exit(1) instead
+- Wrap fsutil.WriteAtomic errors with FileError for better context
+- Add SetHTTPClient/SetEnvFunc setters for update package test injection
+- Add pi harness and complete provider list across all documentation
+- Migrate golangci-lint from v1.64.8 to v2.12.2
+
+### Fixed
+
+- Use default provider when arguments start with `--` separator instead of treating them as provider name
+- Use default provider when `--harness` flag is provided, forwarding positional args as harness arguments
+
 ## [v2.5.1] - 2026-05-17
 
 ### Changed
