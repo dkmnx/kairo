@@ -103,6 +103,10 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Verifying script integrity...\n")
 
+		if err := deps.Update.VerifyCosignBundle(latest.TagName); err != nil {
+			cmd.Printf("Warning: cosign verification skipped or failed: %v\n", err)
+		}
+
 		if err := deps.Update.VerifyChecksum(tempFile, expectedHash); err != nil {
 			ui.PrintError(fmt.Sprintf("Security verification failed: %v", err))
 			cmd.Println("Downloaded script has been removed. Please try again later or report this issue.")

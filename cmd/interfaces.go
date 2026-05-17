@@ -29,6 +29,7 @@ type UpdateService interface {
 	DownloadToTempFile(url string) (string, error)
 	DownloadAndParseChecksums(url string) (map[string]string, error)
 	VerifyChecksum(scriptPath, expectedHash string) error
+	VerifyCosignBundle(tag string) error
 	RunInstallScript(scriptPath string) error
 }
 

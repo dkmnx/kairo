@@ -53,6 +53,9 @@ func (prodUpdateService) VerifyChecksum(scriptPath, expectedHash string) error {
 func (prodUpdateService) RunInstallScript(scriptPath string) error {
 	return update.RunInstallScript(scriptPath)
 }
+func (prodUpdateService) VerifyCosignBundle(tag string) error {
+	return update.VerifyCosignBundle(tag)
+}
 
 // NewDeps returns a Deps with production implementations.
 func NewDeps() *Deps {

@@ -43,6 +43,7 @@ type mockUpdate struct {
 	DownloadToTempFileFn        func(url string) (string, error)
 	DownloadAndParseChecksumsFn func(url string) (map[string]string, error)
 	VerifyChecksumFn            func(scriptPath, expectedHash string) error
+	VerifyCosignBundleFn        func(tag string) error
 	RunInstallScriptFn          func(scriptPath string) error
 }
 
@@ -59,6 +60,7 @@ func (m *mockUpdate) DownloadAndParseChecksums(url string) (map[string]string, e
 func (m *mockUpdate) VerifyChecksum(scriptPath, expectedHash string) error {
 	return m.VerifyChecksumFn(scriptPath, expectedHash)
 }
+func (m *mockUpdate) VerifyCosignBundle(tag string) error { return m.VerifyCosignBundleFn(tag) }
 func (m *mockUpdate) RunInstallScript(scriptPath string) error {
 	return m.RunInstallScriptFn(scriptPath)
 }
@@ -82,6 +84,7 @@ func testDeps(overrides ...func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate
 		DownloadToTempFileFn:        func(string) (string, error) { return "", nil },
 		DownloadAndParseChecksumsFn: func(string) (map[string]string, error) { return nil, nil },
 		VerifyChecksumFn:            func(string, string) error { return nil },
+		VerifyCosignBundleFn:        func(string) error { return nil },
 		RunInstallScriptFn:          func(string) error { return nil },
 	}
 	for _, fn := range overrides {
