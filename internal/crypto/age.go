@@ -157,8 +157,28 @@ func decryptToBuffer(ctx context.Context, secretsPath, keyPath string, buf *byte
 }
 
 // readKeyFileScanner opens a key file and returns a scanner for reading its lines.
+func checkKeyFilePermissions(keyPath string) error {
+	info, err := os.Stat(keyPath)
+	if err != nil {
+		return err
+	}
+	if info.Mode().Perm()&0o077 != 0 {
+		return errors.NewError(errors.CryptoError,
+			"key file has overly permissive permissions").
+			WithContext("path", keyPath).
+			WithContext("mode", fmt.Sprintf("%04o", info.Mode().Perm())).
+			WithContext("hint", "fix with: chmod 600 <keyfile>")
+	}
+
+	return nil
+}
+
 // The caller must close the returned file when done.
 func readKeyFileScanner(keyPath string) (*os.File, *bufio.Scanner, error) {
+	if err := checkKeyFilePermissions(keyPath); err != nil {
+		return nil, nil, err
+	}
+
 	file, err := os.Open(keyPath)
 	if err != nil {
 		return nil, nil, errors.WrapError(errors.FileSystemError,
