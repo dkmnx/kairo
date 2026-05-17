@@ -158,6 +158,10 @@ func decryptToBuffer(ctx context.Context, secretsPath, keyPath string, buf *byte
 
 // readKeyFileScanner opens a key file and returns a scanner for reading its lines.
 func checkKeyFilePermissions(keyPath string) error {
+	if runtime.GOOS == "windows" {
+		return nil
+	}
+
 	info, err := os.Stat(keyPath)
 	if err != nil {
 		return err

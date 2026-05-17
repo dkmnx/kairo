@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -31,6 +32,10 @@ func TestWriteAtomic(t *testing.T) {
 	})
 
 	t.Run("creates file with 0600 permissions", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Unix permissions not enforced on Windows")
+		}
+
 		tmpDir := t.TempDir()
 		path := filepath.Join(tmpDir, "secure.txt")
 
