@@ -460,7 +460,7 @@ func TestBuildProviderEnvironment_Success(t *testing.T) {
 
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
-	result, err := BuildProviderEnv(cliCtx, tmpDir, EnvProvider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "test-provider")
+	result, err := BuildProviderEnv(cliCtx, tmpDir, config.Provider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "test-provider")
 	if err != nil {
 		t.Fatalf("BuildProviderEnv() should succeed with no secrets file, got: %v", err)
 	}
@@ -647,7 +647,7 @@ func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
-	result, err := BuildProviderEnv(cliCtx, tmpDir, EnvProvider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "ollama")
+	result, err := BuildProviderEnv(cliCtx, tmpDir, config.Provider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "ollama")
 	if err != nil {
 		t.Fatalf("BuildProviderEnv() for provider without API key should not error, got: %v", err)
 	}
@@ -675,7 +675,7 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
-	result, err := BuildProviderEnv(cliCtx, tmpDir, EnvProvider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "ollama")
+	result, err := BuildProviderEnv(cliCtx, tmpDir, config.Provider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars}, "ollama")
 	if err != nil {
 		t.Fatalf("BuildProviderEnv() error = %v", err)
 	}
@@ -722,7 +722,7 @@ func TestBuildBuiltInEnvVars_Extended(t *testing.T) {
 			Model:   "test-model-v1.0-beta",
 		}
 
-		envVars := BuildBuiltInEnvVars(EnvProvider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars})
+		envVars := BuildBuiltInEnvVars(config.Provider{BaseURL: provider.BaseURL, Model: provider.Model, EnvVars: provider.EnvVars})
 		if len(envVars) == 0 {
 			t.Error("buildBuiltInEnvVars() returned empty slice")
 		}
@@ -906,7 +906,7 @@ func TestExecuteWithoutAuth_PiHarnessNotFound(t *testing.T) {
 }
 
 func TestBuildPiEnvVars(t *testing.T) {
-	provider := EnvProvider{
+	provider := config.Provider{
 		BaseURL: "https://api.z.ai/api/anthropic",
 		Model:   "glm-5.1",
 	}

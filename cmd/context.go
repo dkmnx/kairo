@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +26,7 @@ type CLIContext struct {
 // NewCLIContext creates a CLIContext with default settings.
 func NewCLIContext() *CLIContext {
 	return &CLIContext{
-		configCache: config.NewConfigCache(configCacheTTL),
+		configCache: config.NewConfigCache(constants.ConfigCacheTTL),
 		rootCtx:     context.Background(),
 		deps:        NewDeps(),
 	}

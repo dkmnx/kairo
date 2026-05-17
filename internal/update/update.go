@@ -16,14 +16,11 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/errors"
 )
-
-const requestTimeout = 10 * time.Second
 
 const (
 	checksumsFilename   = "checksums.txt"
@@ -32,7 +29,7 @@ const (
 )
 
 var httpClient = &http.Client{
-	Timeout: requestTimeout,
+	Timeout: constants.RequestTimeout,
 }
 
 // SetHTTPClient replaces the HTTP client used for update operations.
@@ -65,6 +62,40 @@ func SetEnvFunc(fn func(key string) (string, bool)) {
 	EnvFunc = fn
 }
 
+// doHTTPGet performs an HTTP GET request and returns the response body.
+// The caller is responsible for any additional header setting or response
+// processing beyond the status code check and body read.
+func doHTTPGet(url string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, errors.WrapError(errors.NetworkError,
+			"failed to create request", err)
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, errors.WrapError(errors.NetworkError,
+			"failed to fetch", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.NewError(errors.NetworkError,
+			fmt.Sprintf("request failed with status %d", resp.StatusCode))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.WrapError(errors.NetworkError,
+			"failed to read response", err)
+	}
+
+	return body, nil
+}
+
 // GetLatestReleaseURL returns the URL to check for the latest release.
 func GetLatestReleaseURL() string {
 	if url, ok := EnvFunc("KAIRO_UPDATE_URL"); ok && url != "" {
@@ -76,7 +107,7 @@ func GetLatestReleaseURL() string {
 
 // GetLatestRelease fetches the latest release information from GitHub.
 func GetLatestRelease() (*Release, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
 	url := GetLatestReleaseURL()
@@ -140,7 +171,7 @@ func GetInstallScriptURL(goos, tag string) string {
 
 // DownloadToTempFile downloads a URL to a temporary file and returns its path.
 func DownloadToTempFile(url string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -204,7 +235,7 @@ func RunInstallScript(scriptPath string) error {
 		return nil
 	}
 
-	if err := os.Chmod(scriptPath, 0755); err != nil {
+	if err := os.Chmod(scriptPath, constants.FilePermExec); err != nil {
 		return errors.WrapError(errors.FileSystemError,
 			"failed to make script executable", err)
 	}
@@ -256,31 +287,10 @@ func ParseChecksumLine(line string) (hash, filename string, ok bool) {
 
 // DownloadAndParseChecksums downloads and parses a checksums file from the given URL.
 func DownloadAndParseChecksums(url string) (map[string]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to create checksums request", err)
-	}
-
-	resp, err := httpClient.Do(req)
+	body, err := doHTTPGet(url)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to download checksums", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.NewError(errors.NetworkError,
-			fmt.Sprintf("checksums download failed with status %d", resp.StatusCode))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to read checksums response", err)
 	}
 
 	checksums := make(map[string]string)

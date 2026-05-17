@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/spf13/cobra"
 )
 
@@ -129,14 +130,14 @@ PowerShell:
 			closeOut = true
 		} else if completionSave {
 			defaultPath := getDefaultCompletionPath(args[0])
-			if err := os.MkdirAll(filepath.Dir(defaultPath), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(defaultPath), constants.DirPermDefault); err != nil {
 				cmd.Printf("Error creating directory: %v\n", err)
 
 				return
 			}
 
 			if args[0] == shellPowerShell {
-				if err := os.WriteFile(defaultPath, []byte(powerShellCompletionScript), 0644); err != nil {
+				if err := os.WriteFile(defaultPath, []byte(powerShellCompletionScript), constants.FilePermDefault); err != nil {
 					cmd.Printf("Error writing completion file: %v\n", err)
 
 					return

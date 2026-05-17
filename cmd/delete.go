@@ -33,7 +33,7 @@ var deleteCmd = &cobra.Command{
 		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
 		if err != nil {
 			if stderrors.Is(err, fs.ErrNotExist) {
-				ui.PrintWarn("No providers configured")
+				printNoProvidersMessage()
 				return
 			}
 			handleConfigError(cmd, err)
@@ -43,8 +43,7 @@ var deleteCmd = &cobra.Command{
 		var target string
 		if len(args) == 0 {
 			if len(cfg.Providers) == 0 {
-				ui.PrintWarn("No providers configured")
-				ui.PrintInfo("Run 'kairo setup' to get started")
+				printNoProvidersMessage()
 				return
 			}
 
