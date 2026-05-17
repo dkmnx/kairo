@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"bytes"
-	"net/http"
-	"net/http/httptest"
+	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -67,37 +67,24 @@ func TestVersionCommand(t *testing.T) {
 }
 
 func TestCheckForUpdatesAvailable(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/repos/dkmnx/kairo/releases/latest" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{
-				"tag_name": "v2.0.0",
-				"html_url": "https://github.com/dkmnx/kairo/releases/tag/v2.0.0"
-			}`))
-			return
-		}
-		http.NotFound(w, r)
-	}))
-	defer server.Close()
-
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
-	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
-
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
+
+	d := testDeps(func(_ *mockProcess, _ *mockWrapper, mu *mockUpdate) {
+		mu.GetLatestReleaseFn = func() (*update.Release, error) {
+			return &update.Release{TagName: "v2.0.0", HTMLURL: "https://github.com/dkmnx/kairo/releases/tag/v2.0.0"}, nil
+		}
+	})
+
+	cliCtx := NewCLIContext()
+	cliCtx.SetDeps(d)
 
 	buf := new(bytes.Buffer)
 	cmd := &cobra.Command{}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
+	cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 
 	checkForUpdates(cmd)
 
@@ -111,34 +98,24 @@ func TestCheckForUpdatesAvailable(t *testing.T) {
 }
 
 func TestCheckForUpdatesNoUpdate(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/repos/dkmnx/kairo/releases/latest" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"tag_name": "v1.0.0"}`))
-			return
-		}
-		http.NotFound(w, r)
-	}))
-	defer server.Close()
-
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
-	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
-
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
+
+	d := testDeps(func(_ *mockProcess, _ *mockWrapper, mu *mockUpdate) {
+		mu.GetLatestReleaseFn = func() (*update.Release, error) {
+			return &update.Release{TagName: "v1.0.0"}, nil
+		}
+	})
+
+	cliCtx := NewCLIContext()
+	cliCtx.SetDeps(d)
 
 	buf := new(bytes.Buffer)
 	cmd := &cobra.Command{}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
+	cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 
 	checkForUpdates(cmd)
 
@@ -149,28 +126,20 @@ func TestCheckForUpdatesNoUpdate(t *testing.T) {
 }
 
 func TestCheckForUpdatesAPIError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Not Found", http.StatusNotFound)
-	}))
-	defer server.Close()
-
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
+	d := testDeps(func(_ *mockProcess, _ *mockWrapper, mu *mockUpdate) {
+		mu.GetLatestReleaseFn = func() (*update.Release, error) {
+			return nil, fmt.Errorf("API error")
 		}
-		return "", false
-	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
+	})
 
-	originalVersion := version.Version
-	version.Version = "v1.0.0"
-	defer func() { version.Version = originalVersion }()
+	cliCtx := NewCLIContext()
+	cliCtx.SetDeps(d)
 
 	buf := new(bytes.Buffer)
 	cmd := &cobra.Command{}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
+	cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 
 	checkForUpdates(cmd)
 

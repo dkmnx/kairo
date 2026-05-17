@@ -55,7 +55,7 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(d, run)
+	err := runHarnessWithWrapper(context.Background(), d, run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when harness not found")
 	}
@@ -89,7 +89,7 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(d, run)
+	err := runHarnessWithWrapper(context.Background(), d, run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when wrapper generation fails")
 	}
@@ -133,7 +133,7 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(d, run)
+	err := runHarnessWithWrapper(context.Background(), d, run)
 	if err != nil {
 		t.Fatalf("runHarnessWithWrapper() should succeed, got error: %v", err)
 	}

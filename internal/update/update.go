@@ -29,14 +29,26 @@ const (
 	installScriptExtPS1 = ".ps1"
 )
 
-var httpClient = &http.Client{
-	Timeout: constants.RequestTimeout,
+// Client holds injectable dependencies for update operations.
+type Client struct {
+	HTTPClient   *http.Client
+	EnvFunc      func(key string) (string, bool)
+	LookPathFunc func(string) (string, error)
 }
 
-// SetHTTPClient replaces the HTTP client used for update operations.
-// This is intended for testing only.
-func SetHTTPClient(client *http.Client) {
-	httpClient = client
+// NewClient returns a Client with production defaults.
+func NewClient() *Client {
+	return &Client{
+		HTTPClient: &http.Client{Timeout: constants.RequestTimeout},
+		EnvFunc: func(key string) (string, bool) {
+			if v := os.Getenv(key); v != "" {
+				return v, true
+			}
+
+			return "", false
+		},
+		LookPathFunc: exec.LookPath,
+	}
 }
 
 // Release holds the relevant fields from a GitHub release response.
@@ -46,27 +58,8 @@ type Release struct {
 	Body    string `json:"body"`
 }
 
-// EnvFunc retrieves an environment variable value.
-// It can be overridden for testing via SetEnvFunc.
-var EnvFunc = func(key string) (string, bool) {
-	value := os.Getenv(key)
-	if value != "" {
-		return value, true
-	}
-
-	return "", false
-}
-
-// SetEnvFunc replaces the environment variable lookup function.
-// This is intended for testing only.
-func SetEnvFunc(fn func(key string) (string, bool)) {
-	EnvFunc = fn
-}
-
 // doHTTPGet performs an HTTP GET request and returns the response body.
-// The caller is responsible for any additional header setting or response
-// processing beyond the status code check and body read.
-func doHTTPGet(url string) ([]byte, error) {
+func (c *Client) doHTTPGet(url string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
@@ -76,7 +69,7 @@ func doHTTPGet(url string) ([]byte, error) {
 			"failed to create request", err)
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to fetch", err)
@@ -98,8 +91,8 @@ func doHTTPGet(url string) ([]byte, error) {
 }
 
 // GetLatestReleaseURL returns the URL to check for the latest release.
-func GetLatestReleaseURL() string {
-	if url, ok := EnvFunc("KAIRO_UPDATE_URL"); ok && url != "" {
+func (c *Client) GetLatestReleaseURL() string {
+	if url, ok := c.EnvFunc("KAIRO_UPDATE_URL"); ok && url != "" {
 		return url
 	}
 
@@ -107,11 +100,11 @@ func GetLatestReleaseURL() string {
 }
 
 // GetLatestRelease fetches the latest release information from GitHub.
-func GetLatestRelease() (*Release, error) {
+func (c *Client) GetLatestRelease() (*Release, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
-	url := GetLatestReleaseURL()
+	url := c.GetLatestReleaseURL()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
@@ -120,7 +113,7 @@ func GetLatestRelease() (*Release, error) {
 
 	req.Header.Set("User-Agent", "kairo-cli")
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to fetch release", err)
@@ -171,7 +164,7 @@ func GetInstallScriptURL(goos, tag string) string {
 }
 
 // DownloadToTempFile downloads a URL to a temporary file and returns its path.
-func DownloadToTempFile(url string) (string, error) {
+func (c *Client) DownloadToTempFile(url string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
@@ -181,7 +174,7 @@ func DownloadToTempFile(url string) (string, error) {
 			"failed to create download request", err)
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return "", errors.WrapError(errors.NetworkError,
 			"failed to download", err)
@@ -289,8 +282,8 @@ func ParseChecksumLine(line string) (hash, filename string, ok bool) {
 }
 
 // DownloadAndParseChecksums downloads and parses a checksums file from the given URL.
-func DownloadAndParseChecksums(url string) (map[string]string, error) {
-	body, err := doHTTPGet(url)
+func (c *Client) DownloadAndParseChecksums(url string) (map[string]string, error) {
+	body, err := c.doHTTPGet(url)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to download checksums", err)
@@ -346,25 +339,16 @@ func GetChecksumsBundleURL(tag string) string {
 	return constants.RawGitHubFileURL(tag, "scripts/checksums.txt.sigstore.json")
 }
 
-// lookPathFunc locates a binary in PATH. Overridable for testing.
-var lookPathFunc = exec.LookPath
-
-// SetLookPathFunc replaces the binary lookup function.
-// This is intended for testing only.
-func SetLookPathFunc(fn func(string) (string, error)) {
-	lookPathFunc = fn
-}
-
 // VerifyCosignBundle downloads the sigstore bundle for the checksums file and verifies
 // it using cosign. Returns nil if cosign is not installed (best-effort verification).
-func VerifyCosignBundle(tag string) error {
-	cosignPath, err := lookPathFunc("cosign")
+func (c *Client) VerifyCosignBundle(tag string) error {
+	cosignPath, err := c.LookPathFunc("cosign")
 	if err != nil {
 		return nil
 	}
 
 	bundleURL := GetChecksumsBundleURL(tag)
-	bundleData, err := doHTTPGet(bundleURL)
+	bundleData, err := c.doHTTPGet(bundleURL)
 	if err != nil {
 		return errors.WrapError(errors.NetworkError,
 			"failed to download cosign bundle", err)
@@ -386,7 +370,7 @@ func VerifyCosignBundle(tag string) error {
 	bundleFile.Close()
 
 	checksumsURL := GetChecksumsURL(tag)
-	checksumsData, err := doHTTPGet(checksumsURL)
+	checksumsData, err := c.doHTTPGet(checksumsURL)
 	if err != nil {
 		return errors.WrapError(errors.NetworkError,
 			"failed to download checksums for verification", err)

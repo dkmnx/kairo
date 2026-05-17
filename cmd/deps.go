@@ -33,19 +33,21 @@ func (prodWrapperService) GenerateWrapperScript(cfg wrapper.ScriptConfig) (strin
 }
 
 // prodUpdateService delegates update operations to the update and ui packages.
-type prodUpdateService struct{}
+type prodUpdateService struct {
+	client *update.Client
+}
 
-func (prodUpdateService) GetLatestRelease() (*update.Release, error) {
-	return update.GetLatestRelease()
+func (s *prodUpdateService) GetLatestRelease() (*update.Release, error) {
+	return s.client.GetLatestRelease()
 }
 func (prodUpdateService) ConfirmUpdate(message string) (bool, error) {
 	return ui.Confirm(message)
 }
-func (prodUpdateService) DownloadToTempFile(url string) (string, error) {
-	return update.DownloadToTempFile(url)
+func (s *prodUpdateService) DownloadToTempFile(url string) (string, error) {
+	return s.client.DownloadToTempFile(url)
 }
-func (prodUpdateService) DownloadAndParseChecksums(url string) (map[string]string, error) {
-	return update.DownloadAndParseChecksums(url)
+func (s *prodUpdateService) DownloadAndParseChecksums(url string) (map[string]string, error) {
+	return s.client.DownloadAndParseChecksums(url)
 }
 func (prodUpdateService) VerifyChecksum(scriptPath, expectedHash string) error {
 	return update.VerifyChecksum(scriptPath, expectedHash)
@@ -53,8 +55,8 @@ func (prodUpdateService) VerifyChecksum(scriptPath, expectedHash string) error {
 func (prodUpdateService) RunInstallScript(scriptPath string) error {
 	return update.RunInstallScript(scriptPath)
 }
-func (prodUpdateService) VerifyCosignBundle(tag string) error {
-	return update.VerifyCosignBundle(tag)
+func (s *prodUpdateService) VerifyCosignBundle(tag string) error {
+	return s.client.VerifyCosignBundle(tag)
 }
 
 // NewDeps returns a Deps with production implementations.
@@ -62,6 +64,6 @@ func NewDeps() *Deps {
 	return &Deps{
 		Process: osProcessRunner{},
 		Wrapper: prodWrapperService{},
-		Update:  prodUpdateService{},
+		Update:  &prodUpdateService{client: update.NewClient()},
 	}
 }

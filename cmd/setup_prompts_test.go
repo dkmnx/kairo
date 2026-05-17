@@ -10,6 +10,16 @@ import (
 	"github.com/yarlson/tap"
 )
 
+func mustProvider(t *testing.T, name string) providers.ProviderDefinition {
+	t.Helper()
+	def, ok := providers.BuiltInProvider(name)
+	if !ok {
+		t.Fatalf("provider %q not found", name)
+	}
+
+	return def
+}
+
 func setupTapTest(t *testing.T) (*tap.MockReadable, *tap.MockWritable) {
 	t.Helper()
 	in := tap.NewMockReadable()
@@ -463,7 +473,7 @@ func TestDisplayProviderHeader_EditExisting(t *testing.T) {
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
 		Provider:     config.Provider{Name: "Z.AI"},
-		Definition:   providers.BuiltInProviders["zai"],
+		Definition:   mustProvider(t, "zai"),
 		IsEdit:       true,
 		Exists:       true,
 	}
@@ -474,7 +484,7 @@ func TestDisplayProviderHeader_NewOnly(t *testing.T) {
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
 		Provider:     config.Provider{Name: "Z.AI"},
-		Definition:   providers.BuiltInProviders["zai"],
+		Definition:   mustProvider(t, "zai"),
 		IsEdit:       false,
 		Exists:       false,
 	}
@@ -487,7 +497,7 @@ func TestPromptForBaseURL(t *testing.T) {
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
 		Provider:     config.Provider{Name: "Z.AI"},
-		Definition:   providers.BuiltInProviders["zai"],
+		Definition:   mustProvider(t, "zai"),
 		IsEdit:       false,
 		Exists:       false,
 	}
@@ -514,7 +524,7 @@ func TestPromptForModel(t *testing.T) {
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
 		Provider:     config.Provider{Name: "Z.AI"},
-		Definition:   providers.BuiltInProviders["zai"],
+		Definition:   mustProvider(t, "zai"),
 		IsEdit:       false,
 		Exists:       false,
 	}
@@ -541,7 +551,7 @@ func TestPromptForEnvKey(t *testing.T) {
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
 		Provider:     config.Provider{Name: "Z.AI"},
-		Definition:   providers.BuiltInProviders["zai"],
+		Definition:   mustProvider(t, "zai"),
 		IsEdit:       false,
 		Exists:       false,
 	}

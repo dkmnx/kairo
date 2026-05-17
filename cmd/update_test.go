@@ -101,20 +101,21 @@ func TestUpdateCommand(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
+	c := &update.Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL + "/repos/dkmnx/kairo/releases/latest", true
+			}
+			return "", false
+		},
 	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
 
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := update.GetLatestRelease()
+	latest, err := c.GetLatestRelease()
 	if err != nil {
 		t.Fatalf("GetLatestRelease() error = %v", err)
 	}
@@ -140,20 +141,21 @@ func TestUpdateCommandNoNewVersion(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
+	c := &update.Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL + "/repos/dkmnx/kairo/releases/latest", true
+			}
+			return "", false
+		},
 	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
 
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := update.GetLatestRelease()
+	latest, err := c.GetLatestRelease()
 	if err != nil {
 		t.Fatalf("GetLatestRelease() error = %v", err)
 	}
@@ -169,16 +171,17 @@ func TestUpdateCommandAPIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
+	c := &update.Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL + "/repos/dkmnx/kairo/releases/latest", true
+			}
+			return "", false
+		},
 	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
 
-	_, err := update.GetLatestRelease()
+	_, err := c.GetLatestRelease()
 	if err == nil {
 		t.Error("GetLatestRelease() should return error on API failure")
 	}
@@ -199,20 +202,21 @@ func TestVersionNotification(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
+	c := &update.Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL + "/repos/dkmnx/kairo/releases/latest", true
+			}
+			return "", false
+		},
 	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
 
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := update.GetLatestRelease()
+	latest, err := c.GetLatestRelease()
 	if err != nil {
 		t.Fatalf("GetLatestRelease() error = %v", err)
 	}
@@ -233,7 +237,8 @@ func TestDownloadToTempFileErrorHandlingConnectionClose(t *testing.T) {
 		}))
 		defer server.Close()
 
-		_, err := update.DownloadToTempFile(server.URL)
+		c := update.NewClient()
+		_, err := c.DownloadToTempFile(server.URL)
 		if err == nil {
 			t.Error("should return error when server closes early")
 		}

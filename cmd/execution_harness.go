@@ -53,7 +53,7 @@ func executePi(cfg ExecutionConfig) error {
 	ui.ClearScreen()
 	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
 	setupSignalHandler(cancel)
 
@@ -66,7 +66,7 @@ func executePi(cfg ExecutionConfig) error {
 	return execCmd.Run()
 }
 
-func runHarnessWithWrapper(deps *Deps, params HarnessRun) error {
+func runHarnessWithWrapper(ctx context.Context, deps *Deps, params HarnessRun) error {
 	harnessPath, err := deps.Process.LookPath(params.HarnessBinary)
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.RuntimeError,
@@ -88,10 +88,6 @@ func runHarnessWithWrapper(deps *Deps, params HarnessRun) error {
 
 	ui.ClearScreen()
 	ui.PrintBanner(version.Version, params.Provider.Model, params.Provider.Name)
-
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-	setupSignalHandler(cancel)
 
 	execCmd := buildWrapperCommand(deps, WrapperCmd{
 		Ctx:           ctx,
@@ -120,6 +116,10 @@ func executeWithAuth(cfg ExecutionConfig) {
 }
 
 func executeWrapperWithAuth(cfg ExecutionConfig) {
+	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
+	defer cancel()
+	setupSignalHandler(cancel)
+
 	authDir, err := cfg.Deps.Wrapper.CreateTempAuthDir()
 	if err != nil {
 		cfg.Cmd.Printf("Error creating auth directory: %v\n", err)
@@ -160,7 +160,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 		run.CliArgs = append(qwenAuthArgs(cfg.Provider.Model), run.CliArgs...)
 		run.EnvVarName = "ANTHROPIC_API_KEY"
 
-		if err := runHarnessWithWrapper(cfg.Deps, run); err != nil {
+		if err := runHarnessWithWrapper(ctx, cfg.Deps, run); err != nil {
 			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
 			cfg.Deps.Process.ExitProcess(1)
 		}
@@ -168,7 +168,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 		return
 	}
 
-	if err := runHarnessWithWrapper(cfg.Deps, run); err != nil {
+	if err := runHarnessWithWrapper(ctx, cfg.Deps, run); err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
 		cfg.Deps.Process.ExitProcess(1)
 	}
@@ -207,7 +207,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	ui.ClearScreen()
 	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
 	setupSignalHandler(cancel)
 

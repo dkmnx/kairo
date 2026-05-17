@@ -1,7 +1,7 @@
 package providers
 
-// BuiltInProviders maps provider short names to their definitions.
-var BuiltInProviders = map[string]ProviderDefinition{
+// builtInProviders maps provider short names to their definitions.
+var builtInProviders = map[string]ProviderDefinition{
 	"zai": {
 		Name:           "Z.AI",
 		BaseURL:        "https://api.z.ai/api/anthropic",
@@ -142,20 +142,20 @@ type ProviderDefinition struct {
 
 // IsBuiltInProvider reports whether name is a recognized built-in provider.
 func IsBuiltInProvider(name string) bool {
-	_, ok := BuiltInProviders[name]
+	_, ok := builtInProviders[name]
 
 	return ok
 }
 
 // BuiltInProvider returns the definition for the named built-in provider.
 func BuiltInProvider(name string) (ProviderDefinition, bool) {
-	def, ok := BuiltInProviders[name]
+	def, ok := builtInProviders[name]
 
 	return def, ok
 }
 
 // providerOrder defines the canonical display order for providers.
-// It must contain exactly the same keys as BuiltInProviders.
+// It must contain exactly the same keys as builtInProviders.
 var providerOrder = []string{
 	"zai", "minimax", "deepseek", "kimi",
 	"anthropic", "openai", "google", "mistral",
@@ -166,11 +166,11 @@ var providerOrder = []string{
 }
 
 // ProviderList returns the ordered list of built-in provider names.
-// Entries not present in BuiltInProviders are silently excluded.
+// Entries not present in builtInProviders are silently excluded.
 func ProviderList() []string {
 	result := make([]string, 0, len(providerOrder))
 	for _, name := range providerOrder {
-		if _, ok := BuiltInProviders[name]; ok {
+		if _, ok := builtInProviders[name]; ok {
 			result = append(result, name)
 		}
 	}
@@ -180,7 +180,7 @@ func ProviderList() []string {
 
 // RequiresAPIKey reports whether the named provider requires an API key.
 func RequiresAPIKey(name string) bool {
-	def, ok := BuiltInProviders[name]
+	def, ok := builtInProviders[name]
 	if !ok {
 		return true
 	}
@@ -191,7 +191,7 @@ func RequiresAPIKey(name string) bool {
 // APIKeyEnvVarFor returns the environment variable name for the named
 // provider's API key, if one is defined.
 func APIKeyEnvVarFor(name string) (string, bool) {
-	def, ok := BuiltInProviders[name]
+	def, ok := builtInProviders[name]
 	if !ok {
 		return "", false
 	}
