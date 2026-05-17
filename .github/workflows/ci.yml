@@ -46,9 +46,8 @@ jobs:
 
       - name: Verify install script checksums
         run: |
-          cd scripts
-          expected=$(sha256sum install.sh install.ps1)
-          actual=$(tail -n +3 checksums.txt)
+          expected=$(sha256sum scripts/install.sh scripts/install.ps1)
+          actual=$(sed -n '/^[0-9a-f]/p' scripts/checksums.txt)
           if [ "$expected" != "$actual" ]; then
             echo "Checksum mismatch! Expected:" >&2
             echo "$expected" >&2
