@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Install script checksums now auto-regenerated via pre-commit hook when `scripts/install.sh` or `scripts/install.ps1` are modified
+
+### Fixed
+
+- Update command checksum verification failure caused by stale `checksums.txt` after install script modification
+
 ## [v2.5.0] - 2026-05-17
 
 ### Added
