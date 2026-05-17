@@ -777,3 +777,52 @@ func TestGenerateWrapperScript_ScriptIsDeletedAfterUse(t *testing.T) {
 		}
 	}
 }
+
+func TestWriteTempTokenFile_CloseError(t *testing.T) {
+	_, err := WriteTempTokenFile("/nonexistent/path/that/does/not/exist", "test-token")
+	if err == nil {
+		t.Error("WriteTempTokenFile() should fail in non-existent directory")
+	}
+}
+
+func TestGenerateUnixScript(t *testing.T) {
+	cfg := ScriptConfig{
+		AuthDir:   "/tmp/auth",
+		TokenPath: "/tmp/auth/token",
+		CliPath:   "/usr/bin/claude",
+		CliArgs:   []string{"--help", "--verbose"},
+	}
+
+	content := generateUnixScript("ANTHROPIC_AUTH_TOKEN", cfg)
+
+	if !strings.Contains(content, "#!/bin/sh") {
+		t.Error("Unix script should start with shebang")
+	}
+	if !strings.Contains(content, "export ANTHROPIC_AUTH_TOKEN=") {
+		t.Error("Unix script should export auth token")
+	}
+	if !strings.Contains(content, "rm -f") {
+		t.Error("Unix script should remove token file")
+	}
+	if !strings.Contains(content, "exec") {
+		t.Error("Unix script should use exec")
+	}
+	if !strings.Contains(content, "--help") || !strings.Contains(content, "--verbose") {
+		t.Error("Unix script should include CLI args")
+	}
+}
+
+func TestGenerateUnixScript_CustomEnvVar(t *testing.T) {
+	cfg := ScriptConfig{
+		AuthDir:   "/tmp/auth",
+		TokenPath: "/tmp/auth/token",
+		CliPath:   "/usr/bin/claude",
+		CliArgs:   []string{},
+	}
+
+	content := generateUnixScript("MY_API_KEY", cfg)
+
+	if !strings.Contains(content, "export MY_API_KEY=") {
+		t.Error("Unix script should use custom env var")
+	}
+}
