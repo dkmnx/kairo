@@ -27,6 +27,8 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
+      - uses: sigstore/cosign-installer@v3
+
       - name: Generate release notes
         run: |
           awk '/^## \[Unreleased\]/{skip=1; next} /^## \[/{skip=0; c++; if(c>1)exit; if(c==1)next} !skip && c>0' CHANGELOG.md | tail -c +2 > /tmp/release-notes.txt
