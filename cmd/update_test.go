@@ -49,23 +49,23 @@ providers:
 		t.Fatalf("failed to write temp script: %v", err)
 	}
 
-	d := testDeps(func(d *Deps) {
-		d.GetLatestRelease = func() (*update.Release, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mu.GetLatestReleaseFn = func() (*update.Release, error) {
 			return &update.Release{TagName: "v2.3.5"}, nil
 		}
-		d.ConfirmUpdate = func(string) (bool, error) {
+		mu.ConfirmUpdateFn = func(string) (bool, error) {
 			return true, nil
 		}
-		d.DownloadToTempFile = func(string) (string, error) {
+		mu.DownloadToTempFileFn = func(string) (string, error) {
 			return tempScriptPath, nil
 		}
-		d.DownloadAndParseChecksums = func(string) (map[string]string, error) {
+		mu.DownloadAndParseChecksumsFn = func(string) (map[string]string, error) {
 			return map[string]string{update.GetScriptNameForChecksums(runtime.GOOS): "ignored"}, nil
 		}
-		d.VerifyChecksum = func(string, string) error {
+		mu.VerifyChecksumFn = func(string, string) error {
 			return nil
 		}
-		d.RunInstallScript = func(string) error {
+		mu.RunInstallScriptFn = func(string) error {
 			return nil
 		}
 	})

@@ -43,7 +43,7 @@ func executePi(cfg ExecutionConfig) error {
 		cliArgs...,
 	)
 
-	piPath, err := cfg.Deps.LookPath(cfg.HarnessBinary)
+	piPath, err := cfg.Deps.Process.LookPath(cfg.HarnessBinary)
 	if err != nil {
 		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
 
@@ -57,7 +57,7 @@ func executePi(cfg ExecutionConfig) error {
 	defer cancel()
 	setupSignalHandler(cancel)
 
-	execCmd := cfg.Deps.ExecCommandContext(ctx, piPath, cliArgs...)
+	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, piPath, cliArgs...)
 	execCmd.Env = cfg.ProviderEnv
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
@@ -67,7 +67,7 @@ func executePi(cfg ExecutionConfig) error {
 }
 
 func runHarnessWithWrapper(deps *Deps, params HarnessRun) error {
-	harnessPath, err := deps.LookPath(params.HarnessBinary)
+	harnessPath, err := deps.Process.LookPath(params.HarnessBinary)
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.RuntimeError,
 			fmt.Sprintf("'%s' command not found in PATH", params.HarnessBinary), err)
@@ -80,7 +80,7 @@ func runHarnessWithWrapper(deps *Deps, params HarnessRun) error {
 		CliArgs:    params.CliArgs,
 		EnvVarName: params.EnvVarName,
 	}
-	wrapperScript, useCmdExe, err := deps.GenerateWrapperScript(wrapperCfg)
+	wrapperScript, useCmdExe, err := deps.Wrapper.GenerateWrapperScript(wrapperCfg)
 	if err != nil {
 		return kairoerrors.WrapError(kairoerrors.RuntimeError,
 			"generating wrapper script", err)
@@ -110,7 +110,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 	if cfg.HarnessToUse == harnessPi {
 		if err := executePi(cfg); err != nil {
 			cfg.Cmd.Printf("Error running Pi: %v\n", err)
-			cfg.Deps.ExitProcess(1)
+			cfg.Deps.Process.ExitProcess(1)
 		}
 
 		return
@@ -120,7 +120,7 @@ func executeWithAuth(cfg ExecutionConfig) {
 }
 
 func executeWrapperWithAuth(cfg ExecutionConfig) {
-	authDir, err := cfg.Deps.CreateTempAuthDir()
+	authDir, err := cfg.Deps.Wrapper.CreateTempAuthDir()
 	if err != nil {
 		cfg.Cmd.Printf("Error creating auth directory: %v\n", err)
 
@@ -135,7 +135,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	}
 	defer cleanup()
 
-	tokenPath, err := cfg.Deps.WriteTempTokenFile(authDir, cfg.APIKey)
+	tokenPath, err := cfg.Deps.Wrapper.WriteTempTokenFile(authDir, cfg.APIKey)
 	if err != nil {
 		cfg.Cmd.Printf("Error creating secure token file: %v\n", err)
 
@@ -162,7 +162,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 
 		if err := runHarnessWithWrapper(cfg.Deps, run); err != nil {
 			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
-			cfg.Deps.ExitProcess(1)
+			cfg.Deps.Process.ExitProcess(1)
 		}
 
 		return
@@ -170,7 +170,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 
 	if err := runHarnessWithWrapper(cfg.Deps, run); err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
-		cfg.Deps.ExitProcess(1)
+		cfg.Deps.Process.ExitProcess(1)
 	}
 }
 
@@ -178,7 +178,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	if cfg.HarnessToUse == harnessPi {
 		if err := executePi(cfg); err != nil {
 			cfg.Cmd.Printf("Error running Pi: %v\n", err)
-			cfg.Deps.ExitProcess(1)
+			cfg.Deps.Process.ExitProcess(1)
 		}
 
 		return
@@ -197,7 +197,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 		return
 	}
 
-	claudePath, err := cfg.Deps.LookPath(cfg.HarnessBinary)
+	claudePath, err := cfg.Deps.Process.LookPath(cfg.HarnessBinary)
 	if err != nil {
 		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
 
@@ -211,7 +211,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	defer cancel()
 	setupSignalHandler(cancel)
 
-	execCmd := cfg.Deps.ExecCommandContext(ctx, claudePath, cliArgs...)
+	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, claudePath, cliArgs...)
 	execCmd.Env = cfg.ProviderEnv
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
@@ -219,6 +219,6 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 
 	if err := execCmd.Run(); err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
-		cfg.Deps.ExitProcess(1)
+		cfg.Deps.Process.ExitProcess(1)
 	}
 }

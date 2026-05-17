@@ -43,7 +43,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 			return
 		}
 
-		latest, err := deps.GetLatestRelease()
+		latest, err := deps.Update.GetLatestRelease()
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error checking for updates: %v", err))
 
@@ -60,7 +60,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		installScriptURL := update.GetInstallScriptURL(runtime.GOOS, latest.TagName)
 
-		confirmed, err := deps.ConfirmUpdate("Do you want to proceed with installation?")
+		confirmed, err := deps.Update.ConfirmUpdate("Do you want to proceed with installation?")
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error reading input: %v", err))
 
@@ -74,7 +74,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("\nDownloading install script from: %s\n", installScriptURL)
 
-		tempFile, err := deps.DownloadToTempFile(installScriptURL)
+		tempFile, err := deps.Update.DownloadToTempFile(installScriptURL)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error downloading install script: %v", err))
 
@@ -87,7 +87,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Downloading checksums from: %s\n", checksumsURL)
 
-		checksums, err := deps.DownloadAndParseChecksums(checksumsURL)
+		checksums, err := deps.Update.DownloadAndParseChecksums(checksumsURL)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error downloading checksums: %v", err))
 
@@ -103,7 +103,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Verifying script integrity...\n")
 
-		if err := deps.VerifyChecksum(tempFile, expectedHash); err != nil {
+		if err := deps.Update.VerifyChecksum(tempFile, expectedHash); err != nil {
 			ui.PrintError(fmt.Sprintf("Security verification failed: %v", err))
 			cmd.Println("Downloaded script has been removed. Please try again later or report this issue.")
 
@@ -112,7 +112,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Running install script...\n\n")
 
-		if err := deps.RunInstallScript(tempFile); err != nil {
+		if err := deps.Update.RunInstallScript(tempFile); err != nil {
 			ui.PrintError(fmt.Sprintf("Error during installation: %v", err))
 
 			return
