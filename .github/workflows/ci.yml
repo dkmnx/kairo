@@ -105,6 +105,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Build for ${{ matrix.os }}
+        shell: bash
         run: |
           EXT=""
           if [ "${{ matrix.os }}" = "windows" ]; then EXT=".exe"; fi
