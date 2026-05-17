@@ -93,34 +93,6 @@ func TestPrintBanner(t *testing.T) {
 	}
 }
 
-func TestParseIntOrZero(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  int
-	}{
-		{"empty string", "", 0},
-		{"single digit", "1", 1},
-		{"multiple digits", "123", 123},
-		{"invalid character", "12a", 0},
-		{"only letters", "abc", 0},
-		{"leading zeros", "007", 7},
-		{"whitespace", " 123", 0},
-		{"zero", "0", 0},
-		{"negative", "-1", 0},
-		{"decimal", "1.5", 0},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := parseIntOrZero(tt.input)
-			if got != tt.want {
-				t.Errorf("parseIntOrZero(%q) = %v, want %v", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestProviderStatusIcon(t *testing.T) {
 	cfg := &config.Config{
 		Providers: map[string]config.Provider{

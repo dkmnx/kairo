@@ -14,6 +14,7 @@ func TestProviderList(t *testing.T) {
 		"groq", "cerebras", "cloudflare-workers-ai", "xai",
 		"openrouter", "vercel-ai-gateway", "opencode", "huggingface",
 		"fireworks", "azure-openai-responses", "minimax-cn",
+		"custom",
 	}
 
 	if len(providers) != len(expected) {
@@ -39,6 +40,7 @@ func TestProviderListContainsAllBuiltIns(t *testing.T) {
 		"groq", "cerebras", "cloudflare-workers-ai", "xai",
 		"openrouter", "vercel-ai-gateway", "opencode", "huggingface",
 		"fireworks", "azure-openai-responses", "minimax-cn",
+		"custom",
 	}
 
 	for _, name := range allBuiltins {
