@@ -44,6 +44,21 @@ jobs:
       - name: Check go.mod tidy
         run: go mod tidy && git diff --exit-code go.mod go.sum
 
+      - name: Verify install script checksums
+        run: |
+          cd scripts
+          expected=$(sha256sum install.sh install.ps1)
+          actual=$(tail -n +3 checksums.txt)
+          if [ "$expected" != "$actual" ]; then
+            echo "Checksum mismatch! Expected:" >&2
+            echo "$expected" >&2
+            echo "Actual:" >&2
+            echo "$actual" >&2
+            echo "Run 'pre-commit run update-checksums --all-files' to fix." >&2
+            exit 1
+          fi
+          echo "Install script checksums verified."
+
   test:
     name: Test
     runs-on: ubuntu-latest
