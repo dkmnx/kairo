@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -644,4 +645,78 @@ func parseFuzzConfig(input string) *config.Config {
 	}
 
 	return cfg
+}
+
+func TestValidateAPIKey_PatternMismatch(t *testing.T) {
+	// No built-in providers have patterns currently, so we test via matchesPattern directly
+	kf := &KeyFormat{Pattern: "^sk-[a-z]+$"}
+	matched, err := kf.matchesPattern("sk-123")
+	if err == nil && matched {
+		t.Error("matchesPattern() should not match digits with [a-z] pattern")
+	}
+}
+
+func TestValidateURL_InvalidParse(t *testing.T) {
+	err := ValidateURL("://invalid-url", "TestProvider")
+	if err == nil {
+		t.Error("ValidateURL() should fail for unparsable URL")
+	}
+}
+
+func TestCompilePattern_InvalidRegex(t *testing.T) {
+	kf := &KeyFormat{Pattern: "[invalid"}
+	err := kf.compilePattern()
+	if err == nil {
+		t.Error("compilePattern() should return error for invalid regex")
+	}
+}
+
+func TestCompilePattern_EmptyPattern(t *testing.T) {
+	kf := &KeyFormat{Pattern: ""}
+	err := kf.compilePattern()
+	if err != nil {
+		t.Errorf("compilePattern() should return nil for empty pattern, got: %v", err)
+	}
+}
+
+func TestCompilePattern_AlreadyCompiled(t *testing.T) {
+	compiled := regexp.MustCompile(`^valid$`)
+	kf := &KeyFormat{Pattern: "^valid$", compiled: compiled}
+	err := kf.compilePattern()
+	if err != nil {
+		t.Errorf("compilePattern() should return nil when already compiled, got: %v", err)
+	}
+	if kf.compiled != compiled {
+		t.Error("compilePattern() should not replace existing compiled pattern")
+	}
+}
+
+func TestValidateProviderModel_DefaultModelEmpty(t *testing.T) {
+	// custom provider with no default model should skip validation
+	err := ValidateProviderModel("custom", "my-model")
+	if err != nil {
+		t.Errorf("ValidateProviderModel() should skip for custom provider, got: %v", err)
+	}
+}
+
+func TestValidateProviderModel_NonBuiltInProvider(t *testing.T) {
+	// Non-built-in provider with non-empty model should skip
+	err := ValidateProviderModel("nonexistent", "some-model")
+	if err != nil {
+		t.Errorf("ValidateProviderModel() should skip for unknown provider, got: %v", err)
+	}
+}
+
+func TestValidateURL_SchemeNotHTTPS(t *testing.T) {
+	err := ValidateURL("http://api.example.com", "TestProvider")
+	if err == nil {
+		t.Error("ValidateURL() should fail for non-HTTPS URL")
+	}
+}
+
+func TestValidateURL_EmptyHost(t *testing.T) {
+	err := ValidateURL("https:///path", "TestProvider")
+	if err == nil {
+		t.Error("ValidateURL() should fail for URL with empty host")
+	}
 }
