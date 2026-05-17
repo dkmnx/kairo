@@ -63,7 +63,7 @@ var deleteCmd = &cobra.Command{
 				Hint: "Remove a configured provider from Kairo",
 			})
 
-			selected := tap.Select(context.Background(), tap.SelectOptions[string]{
+			selected := tap.Select(cliCtx.RootCtx(), tap.SelectOptions[string]{
 				Message: "Select provider to delete",
 				Options: options,
 			})
@@ -82,7 +82,7 @@ var deleteCmd = &cobra.Command{
 			return
 		}
 
-		confirmed := tap.Confirm(context.Background(), tap.ConfirmOptions{
+		confirmed := tap.Confirm(cliCtx.RootCtx(), tap.ConfirmOptions{
 			Message: fmt.Sprintf("Are you sure you want to delete '%s'?", target),
 		})
 		if !confirmed {

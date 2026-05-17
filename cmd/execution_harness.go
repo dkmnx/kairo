@@ -53,7 +53,7 @@ func executePi(cfg ExecutionConfig) error {
 	ui.ClearScreen()
 	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	setupSignalHandler(cancel)
 
@@ -89,7 +89,7 @@ func runHarnessWithWrapper(deps *Deps, params HarnessRun) error {
 	ui.ClearScreen()
 	ui.PrintBanner(version.Version, params.Provider.Model, params.Provider.Name)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	setupSignalHandler(cancel)
 
@@ -207,7 +207,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	ui.ClearScreen()
 	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	setupSignalHandler(cancel)
 
