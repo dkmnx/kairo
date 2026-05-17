@@ -66,17 +66,6 @@ func printSecretsRecoveryHelp() {
 	ui.PrintInfo("Use --verbose for more details.")
 }
 
-func parseIntOrZero(input string) int {
-	var result int
-	for _, c := range input {
-		if c < '0' || c > '9' {
-			return 0
-		}
-		result = result*10 + int(c-'0')
-	}
-	return result
-}
-
 func runningWithRaceDetector() bool {
 	return strings.Contains(os.Getenv("GOFLAGS"), "-race")
 }

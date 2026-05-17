@@ -160,6 +160,7 @@ var providerOrder = []string{
 	"groq", "cerebras", "cloudflare-workers-ai", "xai",
 	"openrouter", "vercel-ai-gateway", "opencode", "huggingface",
 	"fireworks", "azure-openai-responses", "minimax-cn",
+	"custom",
 }
 
 // ProviderList returns the ordered list of built-in provider names.
