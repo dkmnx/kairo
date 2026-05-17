@@ -10,46 +10,55 @@ import (
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
 
-// Deps holds all external dependencies that can be replaced in tests.
-// Production code uses NewDeps(); tests inject custom implementations via CLIContext.
-type Deps struct {
-	// Process operations
-	LookPath           func(file string) (string, error)
-	ExecCommand        func(name string, arg ...string) *exec.Cmd
-	ExecCommandContext func(ctx context.Context, name string, arg ...string) *exec.Cmd
-	ExitProcess        func(code int)
+// osProcessRunner delegates process operations to the os/exec and os packages.
+type osProcessRunner struct{}
 
-	// Wrapper operations
-	CreateTempAuthDir     func() (string, error)
-	WriteTempTokenFile    func(authDir, token string) (string, error)
-	GenerateWrapperScript func(cfg wrapper.ScriptConfig) (string, bool, error)
+func (osProcessRunner) LookPath(file string) (string, error) { return exec.LookPath(file) }
+func (osProcessRunner) ExecCommandContext(ctx context.Context, name string, arg ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, name, arg...)
+}
+func (osProcessRunner) ExitProcess(code int) { os.Exit(code) }
 
-	// Update operations
-	GetLatestRelease          func() (*update.Release, error)
-	ConfirmUpdate             func(message string) (bool, error)
-	DownloadToTempFile        func(url string) (string, error)
-	DownloadAndParseChecksums func(url string) (map[string]string, error)
-	VerifyChecksum            func(scriptPath, expectedHash string) error
-	RunInstallScript          func(scriptPath string) error
+// prodWrapperService delegates wrapper operations to the wrapper package.
+type prodWrapperService struct{}
+
+func (prodWrapperService) CreateTempAuthDir() (string, error) {
+	return wrapper.CreateTempAuthDir()
+}
+func (prodWrapperService) WriteTempTokenFile(authDir, token string) (string, error) {
+	return wrapper.WriteTempTokenFile(authDir, token)
+}
+func (prodWrapperService) GenerateWrapperScript(cfg wrapper.ScriptConfig) (string, bool, error) {
+	return wrapper.GenerateWrapperScript(cfg)
+}
+
+// prodUpdateService delegates update operations to the update and ui packages.
+type prodUpdateService struct{}
+
+func (prodUpdateService) GetLatestRelease() (*update.Release, error) {
+	return update.GetLatestRelease()
+}
+func (prodUpdateService) ConfirmUpdate(message string) (bool, error) {
+	return ui.Confirm(message)
+}
+func (prodUpdateService) DownloadToTempFile(url string) (string, error) {
+	return update.DownloadToTempFile(url)
+}
+func (prodUpdateService) DownloadAndParseChecksums(url string) (map[string]string, error) {
+	return update.DownloadAndParseChecksums(url)
+}
+func (prodUpdateService) VerifyChecksum(scriptPath, expectedHash string) error {
+	return update.VerifyChecksum(scriptPath, expectedHash)
+}
+func (prodUpdateService) RunInstallScript(scriptPath string) error {
+	return update.RunInstallScript(scriptPath)
 }
 
 // NewDeps returns a Deps with production implementations.
 func NewDeps() *Deps {
 	return &Deps{
-		LookPath:           exec.LookPath,
-		ExecCommand:        exec.Command,
-		ExecCommandContext: exec.CommandContext,
-		ExitProcess:        os.Exit,
-
-		CreateTempAuthDir:     wrapper.CreateTempAuthDir,
-		WriteTempTokenFile:    wrapper.WriteTempTokenFile,
-		GenerateWrapperScript: wrapper.GenerateWrapperScript,
-
-		GetLatestRelease:          update.GetLatestRelease,
-		ConfirmUpdate:             ui.Confirm,
-		DownloadToTempFile:        update.DownloadToTempFile,
-		DownloadAndParseChecksums: update.DownloadAndParseChecksums,
-		VerifyChecksum:            update.VerifyChecksum,
-		RunInstallScript:          update.RunInstallScript,
+		Process: osProcessRunner{},
+		Wrapper: prodWrapperService{},
+		Update:  prodUpdateService{},
 	}
 }

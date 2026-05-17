@@ -31,7 +31,7 @@ type WrapperCmd struct {
 
 func buildWrapperCommand(deps *Deps, params WrapperCmd) *exec.Cmd {
 	if params.IsWindows {
-		return deps.ExecCommandContext(
+		return deps.Process.ExecCommandContext(
 			params.Ctx,
 			"powershell",
 			"-NoProfile",
@@ -42,5 +42,5 @@ func buildWrapperCommand(deps *Deps, params WrapperCmd) *exec.Cmd {
 		)
 	}
 
-	return deps.ExecCommandContext(params.Ctx, params.WrapperScript)
+	return deps.Process.ExecCommandContext(params.Ctx, params.WrapperScript)
 }

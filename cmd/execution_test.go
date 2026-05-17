@@ -17,14 +17,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func testDeps(overrides ...func(d *Deps)) *Deps {
-	d := NewDeps()
-	for _, fn := range overrides {
-		fn(d)
-	}
-	return d
-}
-
 func testCmd() *cobra.Command {
 	cmd := &cobra.Command{}
 	var buf bytes.Buffer
@@ -44,8 +36,8 @@ func outputOf(cmd *cobra.Command) string {
 }
 
 func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "", fmt.Errorf("command not found: %s", file)
 		}
 	})
@@ -75,9 +67,12 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 }
 
 func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
+		}
+		mw.GenerateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
+			return "", false, fmt.Errorf("wrapper: token path cannot be empty")
 		}
 	})
 
@@ -106,16 +101,16 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 }
 
 func TestRunHarnessWithWrapper_Success(t *testing.T) {
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			cmd := exec.Command("echo", "mocked")
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	tmpDir := t.TempDir()
@@ -146,8 +141,8 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 
 func TestBuildWrapperCommand_Windows(t *testing.T) {
 	var capturedCmd *exec.Cmd
-	d := testDeps(func(d *Deps) {
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			capturedCmd = exec.CommandContext(ctx, name, arg...)
 			return capturedCmd
 		}
@@ -202,11 +197,11 @@ func TestBuildWrapperCommand_Unix(t *testing.T) {
 
 func TestExecuteWithAuth_TokenFileWriteFails(t *testing.T) {
 	tmpDir := t.TempDir()
-	d := testDeps(func(d *Deps) {
-		d.CreateTempAuthDir = func() (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mw.CreateTempAuthDirFn = func() (string, error) {
 			return tmpDir, nil
 		}
-		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+		mw.WriteTempTokenFileFn = func(authDir, token string) (string, error) {
 			return "", fmt.Errorf("token file write failed")
 		}
 	})
@@ -239,24 +234,24 @@ func TestExecuteWithAuth_TokenFileWriteFails(t *testing.T) {
 func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 	tmpDir := t.TempDir()
 	var execCalled atomic.Bool
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.CreateTempAuthDir = func() (string, error) {
+		mw.CreateTempAuthDirFn = func() (string, error) {
 			return tmpDir, nil
 		}
 		tokenPath := filepath.Join(tmpDir, "token")
-		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+		mw.WriteTempTokenFileFn = func(authDir, token string) (string, error) {
 			return tokenPath, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			execCalled.Store(true)
 			cmd := exec.Command("echo", "mocked")
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	cmd := testCmd()
@@ -286,24 +281,24 @@ func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 	tmpDir := t.TempDir()
 	var execCalled atomic.Bool
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.CreateTempAuthDir = func() (string, error) {
+		mw.CreateTempAuthDirFn = func() (string, error) {
 			return tmpDir, nil
 		}
 		tokenPath := filepath.Join(tmpDir, "token")
-		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+		mw.WriteTempTokenFileFn = func(authDir, token string) (string, error) {
 			return tokenPath, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			execCalled.Store(true)
 			cmd := exec.Command("echo", "mocked")
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	cmd := testCmd()
@@ -333,28 +328,28 @@ func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 	tmpDir := t.TempDir()
 	var capturedCfg wrapper.ScriptConfig
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.CreateTempAuthDir = func() (string, error) {
+		mw.CreateTempAuthDirFn = func() (string, error) {
 			return tmpDir, nil
 		}
 		tokenPath := filepath.Join(tmpDir, "token")
-		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+		mw.WriteTempTokenFileFn = func(authDir, token string) (string, error) {
 			return tokenPath, nil
 		}
-		d.GenerateWrapperScript = func(cfg wrapper.ScriptConfig) (string, bool, error) {
+		mw.GenerateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
 			capturedCfg = cfg
 			scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
 			return scriptPath, true, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			cmd := exec.Command("echo", "mocked")
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	cmd := testCmd()
@@ -392,28 +387,28 @@ func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
 	tmpDir := t.TempDir()
 	var capturedCfg wrapper.ScriptConfig
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.CreateTempAuthDir = func() (string, error) {
+		mw.CreateTempAuthDirFn = func() (string, error) {
 			return tmpDir, nil
 		}
 		tokenPath := filepath.Join(tmpDir, "token")
-		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+		mw.WriteTempTokenFileFn = func(authDir, token string) (string, error) {
 			return tokenPath, nil
 		}
-		d.GenerateWrapperScript = func(cfg wrapper.ScriptConfig) (string, bool, error) {
+		mw.GenerateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
 			capturedCfg = cfg
 			scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
 			return scriptPath, true, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			cmd := exec.Command("echo", "mocked")
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	cmd := testCmd()
@@ -518,8 +513,8 @@ func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
 }
 
 func TestExecuteWithoutAuth_HarnessNotFound(t *testing.T) {
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "", fmt.Errorf("command not found: %s", file)
 		}
 	})
@@ -550,15 +545,15 @@ func TestExecuteWithoutAuth_HarnessNotFound(t *testing.T) {
 
 func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
 	exitProcessCalled := false
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			cmd := exec.Command("false") // 'false' always returns non-zero exit
 			return cmd
 		}
-		d.ExitProcess = func(int) {
+		mp.ExitProcessFn = func(int) {
 			exitProcessCalled = true
 		}
 	})
@@ -588,16 +583,16 @@ func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
 
 func TestExecuteWithoutAuth_YoloModeClaude(t *testing.T) {
 	var capturedArgs []string
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			capturedArgs = arg
 			cmd := exec.Command("echo", "mocked")
 			return cmd
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	cmd := testCmd()
@@ -749,17 +744,17 @@ func TestBuildBuiltInEnvVars_Extended(t *testing.T) {
 
 func TestExecuteWithAuth_PiHarness(t *testing.T) {
 	var capturedArgs []string
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			capturedArgs = arg
 			cmd := exec.Command("echo", "mocked")
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	cmd := testCmd()
@@ -795,17 +790,17 @@ func TestExecuteWithAuth_PiHarness(t *testing.T) {
 
 func TestExecuteWithoutAuth_PiHarness(t *testing.T) {
 	var capturedArgs []string
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			capturedArgs = arg
 			cmd := exec.Command("echo", "mocked")
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	cmd := testCmd()
@@ -837,17 +832,17 @@ func TestExecuteWithoutAuth_PiHarness(t *testing.T) {
 
 func TestExecuteWithAuth_PiYoloMode(t *testing.T) {
 	var capturedArgs []string
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/" + file, nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			capturedArgs = arg
 			cmd := exec.Command("echo", "mocked")
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	cmd := testCmd()
@@ -878,8 +873,8 @@ func TestExecuteWithAuth_PiYoloMode(t *testing.T) {
 }
 
 func TestExecuteWithoutAuth_PiHarnessNotFound(t *testing.T) {
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "", fmt.Errorf("not found")
 		}
 	})

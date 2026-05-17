@@ -21,6 +21,8 @@ type CLIContext struct {
 	configCache *config.ConfigCache
 	rootCtx     context.Context
 	deps        *Deps
+
+	defaultProviderExplicit bool
 }
 
 // NewCLIContext creates a CLIContext with default settings.
@@ -96,6 +98,17 @@ func (c *CLIContext) SetDeps(d *Deps) {
 // InvalidateCache removes the cached configuration for the given directory.
 func (c *CLIContext) InvalidateCache(dir string) {
 	c.configCache.Invalidate(dir)
+}
+
+// SetDefaultProviderExplicit records whether the user passed "--" to separate
+// kairo flags from harness flags.
+func (c *CLIContext) SetDefaultProviderExplicit(v bool) {
+	c.defaultProviderExplicit = v
+}
+
+// DefaultProviderExplicit reports whether the user passed "--".
+func (c *CLIContext) DefaultProviderExplicit() bool {
+	return c.defaultProviderExplicit
 }
 
 var defaultCLIContext = NewCLIContext()

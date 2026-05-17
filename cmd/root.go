@@ -70,8 +70,7 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 	},
 }
 
-var defaultProviderExplicit bool
-
+// Execute runs the root command.
 func Execute() error {
 	args := os.Args[1:]
 
@@ -79,7 +78,7 @@ func Execute() error {
 		rootCmd.SetArgs(nil)
 	}()
 
-	defaultProviderExplicit = hasDoubleDash(args)
+	defaultCLIContext.SetDefaultProviderExplicit(hasDoubleDash(args))
 
 	rootCmd.SetArgs(args)
 
@@ -322,7 +321,9 @@ func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) 
 }
 
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
-	if len(args) == 0 || defaultProviderExplicit || harnessFlag != "" {
+	cliCtx := CLIContextFromCmd(cmd)
+
+	if len(args) == 0 || cliCtx.DefaultProviderExplicit() || harnessFlag != "" {
 		if cfg.DefaultProvider == "" {
 			cmd.Println("No default provider set.")
 			cmd.Println()

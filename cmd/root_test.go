@@ -98,20 +98,20 @@ func TestRootCmd(t *testing.T) {
 		rootCmd.SetErr(output)
 
 		var execCalled atomic.Bool
-		d := testDeps(func(d *Deps) {
-			d.LookPath = func(file string) (string, error) {
+		d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+			mp.LookPathFn = func(file string) (string, error) {
 				if file == "claude" {
 					return "/usr/bin/claude", nil
 				}
 				return "", fmt.Errorf("not found: %s", file)
 			}
-			d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 				execCalled.Store(true)
 				cmd := exec.CommandContext(ctx, "echo", "mocked")
 				cmd.Args = []string{"echo", "mocked"}
 				return cmd
 			}
-			d.ExitProcess = func(int) {}
+			mp.ExitProcessFn = func(int) {}
 		})
 
 		cliCtx := NewCLIContext()
@@ -179,27 +179,25 @@ func TestRootCmd(t *testing.T) {
 		rootCmd.SetErr(output)
 
 		var execCalled atomic.Bool
-		d := testDeps(func(d *Deps) {
-			d.LookPath = func(file string) (string, error) {
+		d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+			mp.LookPathFn = func(file string) (string, error) {
 				if file == "claude" {
 					return "/usr/bin/claude", nil
 				}
 				return "", fmt.Errorf("not found: %s", file)
 			}
-			d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 				execCalled.Store(true)
 				return exec.CommandContext(ctx, "echo", "mocked")
 			}
-			d.ExitProcess = func(int) {}
+			mp.ExitProcessFn = func(int) {}
 		})
 
 		cliCtx := NewCLIContext()
 		cliCtx.SetConfigDir(tmpDir)
 		cliCtx.SetDeps(d)
+		cliCtx.SetDefaultProviderExplicit(true)
 		rootCmd.SetContext(WithCLIContext(context.Background(), cliCtx))
-
-		defaultProviderExplicit = true
-		defer func() { defaultProviderExplicit = false }()
 
 		rootCmd.Run(rootCmd, []string{"hello"})
 
@@ -690,18 +688,18 @@ func TestHarnessFlagUsesDefaultProvider(t *testing.T) {
 	rootCmd.SetErr(output)
 
 	var execCalled atomic.Bool
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			if file == "claude" {
 				return "/usr/bin/claude", nil
 			}
 			return "", fmt.Errorf("not found: %s", file)
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			execCalled.Store(true)
 			return exec.CommandContext(ctx, "echo", "mocked")
 		}
-		d.ExitProcess = func(int) {}
+		mp.ExitProcessFn = func(int) {}
 	})
 
 	cliCtx := NewCLIContext()
@@ -807,11 +805,11 @@ func TestRunPiProviderWithAuth(t *testing.T) {
 	cliCtx.SetConfigDir(tmpDir)
 
 	var execCalled bool
-	d := testDeps(func(d *Deps) {
-		d.LookPath = func(file string) (string, error) {
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mp.LookPathFn = func(file string) (string, error) {
 			return "/usr/bin/pi", nil
 		}
-		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			execCalled = true
 			return exec.CommandContext(ctx, "echo", "mocked")
 		}
