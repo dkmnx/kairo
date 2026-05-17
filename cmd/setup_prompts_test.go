@@ -456,3 +456,108 @@ func TestPromptForField_EditMaintainsExisting(t *testing.T) {
 		t.Errorf("promptForField(edit maintain) = %q, want %q", result, "https://existing.url")
 	}
 }
+
+func TestDisplayProviderHeader_EditExisting(t *testing.T) {
+	// displayProviderHeader doesn't use SetTermIO - it just calls tap.Message
+	// Test that it doesn't panic
+	cfg := providerPromptConfig{
+		ProviderName: "zai",
+		Provider:     config.Provider{Name: "Z.AI"},
+		Definition:   providers.BuiltInProviders["zai"],
+		IsEdit:       true,
+		Exists:       true,
+	}
+	displayProviderHeader(cfg)
+}
+
+func TestDisplayProviderHeader_NewOnly(t *testing.T) {
+	cfg := providerPromptConfig{
+		ProviderName: "zai",
+		Provider:     config.Provider{Name: "Z.AI"},
+		Definition:   providers.BuiltInProviders["zai"],
+		IsEdit:       false,
+		Exists:       false,
+	}
+	displayProviderHeader(cfg)
+}
+
+func TestPromptForBaseURL(t *testing.T) {
+	in, _ := setupTapTest(t)
+
+	cfg := providerPromptConfig{
+		ProviderName: "zai",
+		Provider:     config.Provider{Name: "Z.AI"},
+		Definition:   providers.BuiltInProviders["zai"],
+		IsEdit:       false,
+		Exists:       false,
+	}
+
+	resultCh := make(chan string)
+	go func() {
+		resultCh <- promptForBaseURL(cfg)
+	}()
+
+	time.Sleep(time.Millisecond)
+	emitText(in, "https://custom.api.com")
+	emitReturn(in)
+
+	result := <-resultCh
+
+	if result != "https://custom.api.com" {
+		t.Errorf("promptForBaseURL() = %q, want %q", result, "https://custom.api.com")
+	}
+}
+
+func TestPromptForModel(t *testing.T) {
+	in, _ := setupTapTest(t)
+
+	cfg := providerPromptConfig{
+		ProviderName: "zai",
+		Provider:     config.Provider{Name: "Z.AI"},
+		Definition:   providers.BuiltInProviders["zai"],
+		IsEdit:       false,
+		Exists:       false,
+	}
+
+	resultCh := make(chan string)
+	go func() {
+		resultCh <- promptForModel(cfg)
+	}()
+
+	time.Sleep(time.Millisecond)
+	emitText(in, "custom-model")
+	emitReturn(in)
+
+	result := <-resultCh
+
+	if result != "custom-model" {
+		t.Errorf("promptForModel() = %q, want %q", result, "custom-model")
+	}
+}
+
+func TestPromptForEnvKey(t *testing.T) {
+	in, _ := setupTapTest(t)
+
+	cfg := providerPromptConfig{
+		ProviderName: "zai",
+		Provider:     config.Provider{Name: "Z.AI"},
+		Definition:   providers.BuiltInProviders["zai"],
+		IsEdit:       false,
+		Exists:       false,
+	}
+
+	resultCh := make(chan string)
+	go func() {
+		resultCh <- promptForEnvKey(cfg)
+	}()
+
+	time.Sleep(time.Millisecond)
+	emitText(in, "CUSTOM_API_KEY")
+	emitReturn(in)
+
+	result := <-resultCh
+
+	if result != "CUSTOM_API_KEY" {
+		t.Errorf("promptForEnvKey() = %q, want %q", result, "CUSTOM_API_KEY")
+	}
+}
