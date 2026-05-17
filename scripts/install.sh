@@ -90,6 +90,20 @@ download_and_install() {
     curl -fsSL -o "$checksum_path" "https://github.com/$REPO/releases/download/$version/${BINARY_NAME}_${version_no_prefix}_checksums.txt" || true
 
     if [ -f "$checksum_path" ]; then
+        # Verify cosign signature if cosign is available
+        bundle_path="$checksum_path.sigstore.json"
+        if command -v cosign >/dev/null 2>&1; then
+            if curl -fsSL -o "$bundle_path" "https://github.com/$REPO/releases/download/$version/${BINARY_NAME}_${version_no_prefix}_checksums.txt.sigstore.json" 2>/dev/null; then
+                log "Verifying cosign signature..."
+                cosign verify-blob --bundle="$bundle_path" "$checksum_path" || {
+                    error "Cosign signature verification failed"
+                }
+                log "Cosign signature verified"
+            fi
+        else
+            log "Warning: cosign not found, skipping signature verification"
+        fi
+
         cd "$tmpdir"
         sha256sum -c "$checksum_path" --ignore-missing || error "Checksum verification failed"
     else
