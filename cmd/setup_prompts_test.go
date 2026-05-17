@@ -37,7 +37,7 @@ func TestPromptForNewProvider(t *testing.T) {
 		resultCh <- promptForNewProvider(context.Background())
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitReturn(in)
 
 	result := <-resultCh
@@ -61,7 +61,7 @@ func TestPromptForProvider_NoExistingProviders(t *testing.T) {
 		resultCh <- promptForProvider(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitReturn(in)
 
 	result := <-resultCh
@@ -87,7 +87,7 @@ func TestPromptForProvider_WithExistingProviders(t *testing.T) {
 		resultCh <- promptForProvider(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitReturn(in)
 
 	result := <-resultCh
@@ -112,7 +112,7 @@ func TestPromptForExistingOrNewProvider_SelectExisting(t *testing.T) {
 		resultCh <- promptForExistingOrNewProvider(context.Background(), cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitReturn(in)
 
 	result := <-resultCh
@@ -137,7 +137,7 @@ func TestPromptForAPIKey_NewInput(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitText(in, "sk-zai")
 	emitReturn(in)
 
@@ -164,7 +164,7 @@ func TestPromptForAPIKey_EditKeep(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	// Confirm "Modify API key?" -> n + return
 	emitText(in, "n")
 	emitReturn(in)
@@ -192,13 +192,13 @@ func TestPromptForAPIKey_EditChange(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	// Confirm "Modify API key?" -> y + return
 	emitText(in, "y")
 	emitReturn(in)
 
 	// Wait for password prompt to register handler
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	// New password
 	emitText(in, "new-key")
 	emitReturn(in)
@@ -225,7 +225,7 @@ func TestPromptForField_NewInput(t *testing.T) {
 		resultCh <- promptForField(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitText(in, "https://custom.url")
 	emitReturn(in)
 
@@ -251,7 +251,7 @@ func TestPromptForField_NewInputBlank(t *testing.T) {
 		resultCh <- promptForField(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitReturn(in)
 
 	result := <-resultCh
@@ -277,7 +277,7 @@ func TestPromptForFieldEdit_Keep(t *testing.T) {
 		resultCh <- promptForFieldEdit(context.Background(), cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	// Confirm "Modify Model? (current: glm-5)" -> n + return
 	emitText(in, "n")
 	emitReturn(in)
@@ -305,13 +305,13 @@ func TestPromptForFieldEdit_Change(t *testing.T) {
 		resultCh <- promptForFieldEdit(context.Background(), cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	// Confirm "Modify Model? (current: glm-5)" -> y + return
 	emitText(in, "y")
 	emitReturn(in)
 
 	// Wait for text prompt to register handler
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	// New model text
 	emitText(in, "new-model")
 	emitReturn(in)
@@ -339,7 +339,7 @@ func TestPromptForFieldEdit_NoCurrent(t *testing.T) {
 		resultCh <- promptForFieldEdit(context.Background(), cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitText(in, "new")
 	emitReturn(in)
 
@@ -366,7 +366,7 @@ func TestPromptForAPIKey_EditNoExistingKey(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitText(in, "sk-new")
 	emitReturn(in)
 
@@ -393,7 +393,7 @@ func TestPromptForAPIKey_CustomProviderFallback(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitText(in, "n")
 	emitReturn(in)
 
@@ -420,7 +420,7 @@ func TestPromptForFieldEdit_KeepByEnter(t *testing.T) {
 		resultCh <- promptForFieldEdit(context.Background(), cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitReturn(in)
 
 	result := <-resultCh
@@ -446,7 +446,7 @@ func TestPromptForField_EditMaintainsExisting(t *testing.T) {
 		resultCh <- promptForField(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitText(in, "n")
 	emitReturn(in)
 
@@ -497,7 +497,7 @@ func TestPromptForBaseURL(t *testing.T) {
 		resultCh <- promptForBaseURL(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitText(in, "https://custom.api.com")
 	emitReturn(in)
 
@@ -524,7 +524,7 @@ func TestPromptForModel(t *testing.T) {
 		resultCh <- promptForModel(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitText(in, "custom-model")
 	emitReturn(in)
 
@@ -551,7 +551,7 @@ func TestPromptForEnvKey(t *testing.T) {
 		resultCh <- promptForEnvKey(cfg)
 	}()
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	emitText(in, "CUSTOM_API_KEY")
 	emitReturn(in)
 
