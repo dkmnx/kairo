@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -58,7 +57,7 @@ func ResolveProviderName(providerName string) (string, error) {
 		return providerName, nil
 	}
 
-	customName := tap.Text(context.Background(), tap.TextOptions{
+	customName := tap.Text(defaultCLIContext.RootCtx(), tap.TextOptions{
 		Message: "Provider name",
 	})
 

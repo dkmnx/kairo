@@ -152,6 +152,8 @@ func BuiltInProvider(name string) (ProviderDefinition, bool) {
 	return def, ok
 }
 
+// providerOrder defines the canonical display order for providers.
+// It must contain exactly the same keys as BuiltInProviders.
 var providerOrder = []string{
 	"zai", "minimax", "deepseek", "kimi",
 	"anthropic", "openai", "google", "mistral",
@@ -161,8 +163,15 @@ var providerOrder = []string{
 }
 
 // ProviderList returns the ordered list of built-in provider names.
+// Entries not present in BuiltInProviders are silently excluded.
 func ProviderList() []string {
-	return providerOrder
+	result := make([]string, 0, len(providerOrder))
+	for _, name := range providerOrder {
+		if _, ok := BuiltInProviders[name]; ok {
+			result = append(result, name)
+		}
+	}
+	return result
 }
 
 // RequiresAPIKey reports whether the named provider requires an API key.

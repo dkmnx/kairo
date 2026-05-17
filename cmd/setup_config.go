@@ -59,7 +59,7 @@ func AddAndSaveProvider(params AddProviderParams) error {
 	if params.SetAsDefault && params.Cfg.DefaultProvider == "" {
 		params.Cfg.DefaultProvider = params.ProviderName
 	}
-	if err := config.SaveConfig(context.Background(), params.ConfigDir, params.Cfg); err != nil {
+	if err := config.SaveConfig(params.CLIContext.RootCtx(), params.ConfigDir, params.Cfg); err != nil {
 		return kairoerrors.WrapError(kairoerrors.ConfigError,
 			"saving config", err)
 	}

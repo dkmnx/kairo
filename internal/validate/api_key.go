@@ -55,11 +55,26 @@ func (kf *KeyFormat) matchesPattern(key string) (bool, error) {
 }
 
 var providerKeyFormats = map[string]KeyFormat{
-	"zai":      {MinLength: minAPIKeyLength},
-	"minimax":  {MinLength: minAPIKeyLength},
-	"kimi":     {MinLength: minAPIKeyLength},
-	"deepseek": {MinLength: minAPIKeyLength},
-	"custom":   {MinLength: defaultMinKeyLength},
+	"zai":                    {MinLength: minAPIKeyLength},
+	"minimax":                {MinLength: minAPIKeyLength},
+	"kimi":                   {MinLength: minAPIKeyLength},
+	"deepseek":               {MinLength: minAPIKeyLength},
+	"anthropic":              {Prefix: "sk-ant-", MinLength: minAPIKeyLength},
+	"openai":                 {Prefix: "sk-", MinLength: minAPIKeyLength},
+	"google":                 {MinLength: minAPIKeyLength},
+	"mistral":                {MinLength: minAPIKeyLength},
+	"groq":                   {Prefix: "gsk_", MinLength: minAPIKeyLength},
+	"cerebras":               {MinLength: minAPIKeyLength},
+	"cloudflare-workers-ai":  {MinLength: minAPIKeyLength},
+	"xai":                    {MinLength: minAPIKeyLength},
+	"openrouter":             {Prefix: "sk-or-", MinLength: minAPIKeyLength},
+	"vercel-ai-gateway":      {MinLength: minAPIKeyLength},
+	"opencode":               {MinLength: minAPIKeyLength},
+	"huggingface":            {MinLength: minAPIKeyLength},
+	"fireworks":              {MinLength: minAPIKeyLength},
+	"azure-openai-responses": {MinLength: minAPIKeyLength},
+	"minimax-cn":             {MinLength: minAPIKeyLength},
+	"custom":                 {MinLength: defaultMinKeyLength},
 }
 
 var (
