@@ -47,10 +47,14 @@ kairo/
 ├── cmd/                # Cobra command layer
 ├── internal/           # Business logic
 │   ├── config/         # Config loading, migration, caching, paths
+│   ├── constants/      # Shared constants (paths, defaults)
 │   ├── crypto/         # age/X25519 key management and encryption
 │   ├── errors/         # Typed errors
+│   ├── fsutil/         # Atomic file write utility
 │   ├── providers/      # Built-in provider registry
+│   ├── secrets/        # Secrets loading and saving
 │   ├── ui/             # Terminal output and prompts
+│   ├── update/         # Self-update logic
 │   ├── validate/       # Validation helpers
 │   ├── version/        # Build metadata
 │   └── wrapper/        # Secure wrapper scripts for token passing

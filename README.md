@@ -16,15 +16,15 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/dkmnx/kairo/ci.yml?branch=main&style=flat-square)](https://github.com/dkmnx/kairo/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-**Go CLI wrapper for Claude Code and Qwen Code with X25519-encrypted API keys.**
+**One CLI for every AI coding agent. Keys encrypted, providers unlocked.**
 
 ## Overview
 
 Kairo provides multi-provider API management with secure credential storage:
 
-- **Multi-harness**: Claude Code and Qwen Code
+- **Multi-harness**: Claude Code, Qwen Code, and Pi
 - **Secure encryption**: age/X25519 for all API keys at rest
-- **Built-in providers**: Z.AI, MiniMax, Kimi, DeepSeek, and custom providers
+- **Built-in providers**: Z.AI, MiniMax, Moonshot AI, DeepSeek, Anthropic, OpenAI, Google, Mistral, Groq, Cerebras, Cloudflare Workers AI, xAI, OpenRouter, Vercel AI Gateway, OpenCode, Hugging Face, Fireworks, Azure OpenAI, and custom providers
 - **Cross-platform**: Linux, macOS, Windows
 
 ## Quick Start
@@ -44,6 +44,9 @@ npm install -g @anthropic-ai/claude-code
 
 # Qwen Code
 npm install -g @qwen-code/qwen-code@latest
+
+# Pi
+npm install -g @earendil-works/pi-coding-agent
 ```
 
 ### Setup

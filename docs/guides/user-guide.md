@@ -33,6 +33,9 @@ npm install -g @anthropic-ai/claude-code
 
 # Qwen Code
 npm install -g @qwen-code/qwen-code@latest
+
+# Pi
+npm install -g @earendil-works/pi-coding-agent
 ```
 
 Verify:
@@ -41,6 +44,8 @@ Verify:
 claude --version
 # or
 qwen --version
+# or
+pi --version
 ```
 
 ## Quick Start
