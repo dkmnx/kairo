@@ -35,6 +35,12 @@ var httpClient = &http.Client{
 	Timeout: requestTimeout,
 }
 
+// SetHTTPClient replaces the HTTP client used for update operations.
+// This is intended for testing only.
+func SetHTTPClient(client *http.Client) {
+	httpClient = client
+}
+
 // Release holds the relevant fields from a GitHub release response.
 type Release struct {
 	TagName string `json:"tag_name"`
@@ -42,8 +48,8 @@ type Release struct {
 	Body    string `json:"body"`
 }
 
-// EnvFunc is a function that retrieves an environment variable value.
-// It can be overridden for testing.
+// EnvFunc retrieves an environment variable value.
+// It can be overridden for testing via SetEnvFunc.
 var EnvFunc = func(key string) (string, bool) {
 	value := os.Getenv(key)
 	if value != "" {
@@ -51,6 +57,12 @@ var EnvFunc = func(key string) (string, bool) {
 	}
 
 	return "", false
+}
+
+// SetEnvFunc replaces the environment variable lookup function.
+// This is intended for testing only.
+func SetEnvFunc(fn func(key string) (string, bool)) {
+	EnvFunc = fn
 }
 
 // GetLatestReleaseURL returns the URL to check for the latest release.

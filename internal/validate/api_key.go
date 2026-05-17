@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -73,7 +74,8 @@ var (
 func mustParseCIDR(s string) net.IPNet {
 	_, ipnet, err := net.ParseCIDR(s)
 	if err != nil {
-		panic(fmt.Sprintf("invalid CIDR %s: %v", s, err))
+		fmt.Fprintf(os.Stderr, "kairo: invalid hardcoded CIDR %q: %v\n", s, err)
+		os.Exit(1)
 	}
 
 	return *ipnet

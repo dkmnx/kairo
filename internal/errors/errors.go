@@ -29,6 +29,10 @@ var ErrConfigNotFound = errors.New("configuration file not found")
 // ErrUserCancelled is returned when the user cancels an interactive prompt.
 var ErrUserCancelled = errors.New("user cancelled input")
 
+// ErrBinaryOutdated is returned when the configuration file contains fields
+// not recognized by this binary version, indicating an upgrade is needed.
+var ErrBinaryOutdated = errors.New("your installed kairo binary is outdated")
+
 // KairoError is a structured error with a type classification, message,
 // optional cause, and key-value context metadata.
 type KairoError struct {
