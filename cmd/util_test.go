@@ -187,3 +187,30 @@ func TestRequireConfigDir(t *testing.T) {
 		}
 	})
 }
+
+func TestPrintNoProvidersMessage(t *testing.T) {
+	// Simply verify no panic - output goes to stderr
+	printNoProvidersMessage()
+}
+
+func TestRequireConfigDirWritable_MkdirFails(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Make parent read-only so MkdirAll fails
+	if err := os.Chmod(tmpDir, 0500); err != nil {
+		t.Fatalf("failed to chmod temp dir: %v", err)
+	}
+	defer os.Chmod(tmpDir, 0700) // restore for cleanup
+
+	testConfigDir := filepath.Join(tmpDir, "subdir", "config")
+
+	cliCtx := NewCLIContext()
+	cliCtx.SetConfigDir(testConfigDir)
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
+
+	result := requireConfigDirWritable(cmd)
+	if result != "" {
+		t.Errorf("requireConfigDirWritable() = %q, want empty string when mkdir fails", result)
+	}
+}
