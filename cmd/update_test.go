@@ -44,46 +44,35 @@ providers:
 	version.Version = "v2.3.4"
 	defer func() { version.Version = originalVersion }()
 
-	originalGetLatestReleaseFn := getLatestReleaseFn
-	originalConfirmUpdateFn := confirmUpdateFn
-	originalDownloadToTempFileFn := downloadToTempFileFn
-	originalDownloadAndParseChecksumsFn := downloadAndParseChecksumsFn
-	originalVerifyChecksumFn := verifyChecksumFn
-	originalRunInstallScriptFn := runInstallScriptFn
-	defer func() {
-		getLatestReleaseFn = originalGetLatestReleaseFn
-		confirmUpdateFn = originalConfirmUpdateFn
-		downloadToTempFileFn = originalDownloadToTempFileFn
-		downloadAndParseChecksumsFn = originalDownloadAndParseChecksumsFn
-		verifyChecksumFn = originalVerifyChecksumFn
-		runInstallScriptFn = originalRunInstallScriptFn
-	}()
-
-	getLatestReleaseFn = func() (*update.Release, error) {
-		return &update.Release{TagName: "v2.3.5"}, nil
-	}
-	confirmUpdateFn = func(string) (bool, error) {
-		return true, nil
-	}
 	tempScriptPath := filepath.Join(tmpDir, "install.sh")
 	if err := os.WriteFile(tempScriptPath, []byte("#!/bin/sh\nexit 0\n"), 0755); err != nil {
 		t.Fatalf("failed to write temp script: %v", err)
 	}
-	downloadToTempFileFn = func(string) (string, error) {
-		return tempScriptPath, nil
-	}
-	downloadAndParseChecksumsFn = func(string) (map[string]string, error) {
-		return map[string]string{update.GetScriptNameForChecksums(runtime.GOOS): "ignored"}, nil
-	}
-	verifyChecksumFn = func(string, string) error {
-		return nil
-	}
-	runInstallScriptFn = func(string) error {
-		return nil
-	}
+
+	d := testDeps(func(d *Deps) {
+		d.GetLatestRelease = func() (*update.Release, error) {
+			return &update.Release{TagName: "v2.3.5"}, nil
+		}
+		d.ConfirmUpdate = func(string) (bool, error) {
+			return true, nil
+		}
+		d.DownloadToTempFile = func(string) (string, error) {
+			return tempScriptPath, nil
+		}
+		d.DownloadAndParseChecksums = func(string) (map[string]string, error) {
+			return map[string]string{update.GetScriptNameForChecksums(runtime.GOOS): "ignored"}, nil
+		}
+		d.VerifyChecksum = func(string, string) error {
+			return nil
+		}
+		d.RunInstallScript = func(string) error {
+			return nil
+		}
+	})
 
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
+	cliCtx.SetDeps(d)
 	updateCmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 	updateCmd.Run(updateCmd, nil)
 
@@ -125,9 +114,9 @@ func TestUpdateCommand(t *testing.T) {
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := getLatestReleaseFn()
+	latest, err := update.GetLatestRelease()
 	if err != nil {
-		t.Fatalf("getLatestReleaseFn() error = %v", err)
+		t.Fatalf("GetLatestRelease() error = %v", err)
 	}
 
 	if latest.TagName != "v1.2.0" {
@@ -164,9 +153,9 @@ func TestUpdateCommandNoNewVersion(t *testing.T) {
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := getLatestReleaseFn()
+	latest, err := update.GetLatestRelease()
 	if err != nil {
-		t.Fatalf("getLatestReleaseFn() error = %v", err)
+		t.Fatalf("GetLatestRelease() error = %v", err)
 	}
 
 	if update.VersionGreaterThan(version.Version, latest.TagName) {
@@ -189,9 +178,9 @@ func TestUpdateCommandAPIError(t *testing.T) {
 	}
 	defer func() { update.EnvFunc = originalEnvFunc }()
 
-	_, err := getLatestReleaseFn()
+	_, err := update.GetLatestRelease()
 	if err == nil {
-		t.Error("getLatestReleaseFn() should return error on API failure")
+		t.Error("GetLatestRelease() should return error on API failure")
 	}
 }
 
@@ -223,9 +212,9 @@ func TestVersionNotification(t *testing.T) {
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := getLatestReleaseFn()
+	latest, err := update.GetLatestRelease()
 	if err != nil {
-		t.Fatalf("getLatestReleaseFn() error = %v", err)
+		t.Fatalf("GetLatestRelease() error = %v", err)
 	}
 
 	if !update.VersionGreaterThan(version.Version, latest.TagName) {

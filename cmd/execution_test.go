@@ -17,13 +17,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
-	originalLookPath := lookPath
-	defer func() { lookPath = originalLookPath }()
-
-	lookPath = func(file string) (string, error) {
-		return "", fmt.Errorf("command not found: %s", file)
+func testDeps(overrides ...func(d *Deps)) *Deps {
+	d := NewDeps()
+	for _, fn := range overrides {
+		fn(d)
 	}
+	return d
+}
+
+func testCmd() *cobra.Command {
+	cmd := &cobra.Command{}
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	return cmd
+}
+
+func outputOf(cmd *cobra.Command) string {
+	if cmd.OutOrStdout() == nil {
+		return ""
+	}
+	buf, ok := cmd.OutOrStdout().(*bytes.Buffer)
+	if !ok {
+		return ""
+	}
+	return buf.String()
+}
+
+func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "", fmt.Errorf("command not found: %s", file)
+		}
+	})
 
 	run := HarnessRun{
 		AuthDir:       "/tmp/test-auth",
@@ -38,7 +63,7 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(run)
+	err := runHarnessWithWrapper(d, run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when harness not found")
 	}
@@ -50,12 +75,11 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 }
 
 func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
-	originalLookPath := lookPath
-	defer func() { lookPath = originalLookPath }()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+	})
 
 	run := HarnessRun{
 		AuthDir:       "/tmp/test-auth",
@@ -70,7 +94,7 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(run)
+	err := runHarnessWithWrapper(d, run)
 	if err == nil {
 		t.Fatal("runHarnessWithWrapper() should return error when wrapper generation fails")
 	}
@@ -82,26 +106,17 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 }
 
 func TestRunHarnessWithWrapper_Success(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		cmd := execCommand("echo", "mocked")
-		cmd.Env = []string{"TEST=value"}
-		return cmd
-	}
-
-	exitProcess = func(int) {}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			cmd := exec.Command("echo", "mocked")
+			cmd.Env = []string{"TEST=value"}
+			return cmd
+		}
+		d.ExitProcess = func(int) {}
+	})
 
 	tmpDir := t.TempDir()
 
@@ -123,21 +138,20 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 		},
 	}
 
-	err := runHarnessWithWrapper(run)
+	err := runHarnessWithWrapper(d, run)
 	if err != nil {
 		t.Fatalf("runHarnessWithWrapper() should succeed, got error: %v", err)
 	}
 }
 
 func TestBuildWrapperCommand_Windows(t *testing.T) {
-	originalExecCommandContext := execCommandContext
-	defer func() { execCommandContext = originalExecCommandContext }()
-
 	var capturedCmd *exec.Cmd
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		capturedCmd = exec.CommandContext(ctx, name, arg...)
-		return capturedCmd
-	}
+	d := testDeps(func(d *Deps) {
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			capturedCmd = exec.CommandContext(ctx, name, arg...)
+			return capturedCmd
+		}
+	})
 
 	ctx := context.Background()
 	params := WrapperCmd{
@@ -146,7 +160,7 @@ func TestBuildWrapperCommand_Windows(t *testing.T) {
 		IsWindows:     true,
 	}
 
-	cmd := buildWrapperCommand(params)
+	cmd := buildWrapperCommand(d, params)
 
 	if cmd == nil {
 		t.Fatal("buildWrapperCommand() should return non-nil cmd for Windows")
@@ -167,6 +181,7 @@ func TestBuildWrapperCommand_Windows(t *testing.T) {
 }
 
 func TestBuildWrapperCommand_Unix(t *testing.T) {
+	d := NewDeps()
 	ctx := context.Background()
 	params := WrapperCmd{
 		Ctx:           ctx,
@@ -174,7 +189,7 @@ func TestBuildWrapperCommand_Unix(t *testing.T) {
 		IsWindows:     false,
 	}
 
-	cmd := buildWrapperCommand(params)
+	cmd := buildWrapperCommand(d, params)
 
 	if cmd == nil {
 		t.Fatal("buildWrapperCommand() should return non-nil cmd for Unix")
@@ -186,24 +201,17 @@ func TestBuildWrapperCommand_Unix(t *testing.T) {
 }
 
 func TestExecuteWithAuth_TokenFileWriteFails(t *testing.T) {
-	originalWriteTempTokenFile := writeTempTokenFileFn
-	defer func() { writeTempTokenFileFn = originalWriteTempTokenFile }()
-
-	writeTempTokenFileFn = func(authDir, token string) (string, error) {
-		return "", fmt.Errorf("token file write failed")
-	}
-
-	originalCreateTempAuthDir := createTempAuthDirFn
-	defer func() { createTempAuthDirFn = originalCreateTempAuthDir }()
-
 	tmpDir := t.TempDir()
-	createTempAuthDirFn = func() (string, error) {
-		return tmpDir, nil
-	}
+	d := testDeps(func(d *Deps) {
+		d.CreateTempAuthDir = func() (string, error) {
+			return tmpDir, nil
+		}
+		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+			return "", fmt.Errorf("token file write failed")
+		}
+	})
 
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -217,57 +225,41 @@ func TestExecuteWithAuth_TokenFileWriteFails(t *testing.T) {
 		},
 		HarnessArgs: []string{"--test"},
 		APIKey:      "test-api-key",
+		Deps:        d,
 	}
 
 	executeWithAuth(cfg)
 
-	result := output.String()
+	result := outputOf(cmd)
 	if !strings.Contains(result, "Error creating secure token file") {
 		t.Errorf("Output should contain 'Error creating secure token file', got: %s", result)
 	}
 }
 
 func TestExecuteWithAuth_QwenHarness(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	originalCreateTempAuthDir := createTempAuthDirFn
-	originalWriteTempTokenFile := writeTempTokenFileFn
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-		createTempAuthDirFn = originalCreateTempAuthDir
-		writeTempTokenFileFn = originalWriteTempTokenFile
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
 	tmpDir := t.TempDir()
-	createTempAuthDirFn = func() (string, error) {
-		return tmpDir, nil
-	}
-
-	tokenPath := filepath.Join(tmpDir, "token")
-	writeTempTokenFileFn = func(authDir, token string) (string, error) {
-		return tokenPath, nil
-	}
-
 	var execCalled atomic.Bool
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		execCalled.Store(true)
-		cmd := execCommand("echo", "mocked")
-		cmd.Env = []string{"TEST=value"}
-		return cmd
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.CreateTempAuthDir = func() (string, error) {
+			return tmpDir, nil
+		}
+		tokenPath := filepath.Join(tmpDir, "token")
+		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+			return tokenPath, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			execCalled.Store(true)
+			cmd := exec.Command("echo", "mocked")
+			cmd.Env = []string{"TEST=value"}
+			return cmd
+		}
+		d.ExitProcess = func(int) {}
+	})
 
-	exitProcess = func(int) {}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -281,56 +273,40 @@ func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 		},
 		HarnessArgs: []string{"--test"},
 		APIKey:      "test-api-key",
+		Deps:        d,
 	}
 
 	executeWithAuth(cfg)
 
 	if !execCalled.Load() {
-		t.Error("executeWithAuth() should call execCommandContext for Qwen harness")
+		t.Error("executeWithAuth() should call ExecCommandContext for Qwen harness")
 	}
 }
 
 func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	originalCreateTempAuthDir := createTempAuthDirFn
-	originalWriteTempTokenFile := writeTempTokenFileFn
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-		createTempAuthDirFn = originalCreateTempAuthDir
-		writeTempTokenFileFn = originalWriteTempTokenFile
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
 	tmpDir := t.TempDir()
-	createTempAuthDirFn = func() (string, error) {
-		return tmpDir, nil
-	}
-
-	tokenPath := filepath.Join(tmpDir, "token")
-	writeTempTokenFileFn = func(authDir, token string) (string, error) {
-		return tokenPath, nil
-	}
-
 	var execCalled atomic.Bool
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		execCalled.Store(true)
-		cmd := execCommand("echo", "mocked")
-		cmd.Env = []string{"TEST=value"}
-		return cmd
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.CreateTempAuthDir = func() (string, error) {
+			return tmpDir, nil
+		}
+		tokenPath := filepath.Join(tmpDir, "token")
+		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+			return tokenPath, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			execCalled.Store(true)
+			cmd := exec.Command("echo", "mocked")
+			cmd.Env = []string{"TEST=value"}
+			return cmd
+		}
+		d.ExitProcess = func(int) {}
+	})
 
-	exitProcess = func(int) {}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -344,63 +320,44 @@ func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 		},
 		HarnessArgs: []string{"--test"},
 		APIKey:      "test-api-key",
+		Deps:        d,
 	}
 
 	executeWithAuth(cfg)
 
 	if !execCalled.Load() {
-		t.Error("executeWithAuth() should call execCommandContext for Claude harness")
+		t.Error("executeWithAuth() should call ExecCommandContext for Claude harness")
 	}
 }
 
 func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	originalCreateTempAuthDir := createTempAuthDirFn
-	originalWriteTempTokenFile := writeTempTokenFileFn
-	originalGenerateWrapperScript := generateWrapperScriptFn
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-		createTempAuthDirFn = originalCreateTempAuthDir
-		writeTempTokenFileFn = originalWriteTempTokenFile
-		generateWrapperScriptFn = originalGenerateWrapperScript
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
 	tmpDir := t.TempDir()
-	createTempAuthDirFn = func() (string, error) {
-		return tmpDir, nil
-	}
-
-	tokenPath := filepath.Join(tmpDir, "token")
-	writeTempTokenFileFn = func(authDir, token string) (string, error) {
-		return tokenPath, nil
-	}
-
 	var capturedCfg wrapper.ScriptConfig
-	generateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
-		capturedCfg = cfg
-		scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
-		return scriptPath, true, nil
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.CreateTempAuthDir = func() (string, error) {
+			return tmpDir, nil
+		}
+		tokenPath := filepath.Join(tmpDir, "token")
+		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+			return tokenPath, nil
+		}
+		d.GenerateWrapperScript = func(cfg wrapper.ScriptConfig) (string, bool, error) {
+			capturedCfg = cfg
+			scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
+			return scriptPath, true, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			cmd := exec.Command("echo", "mocked")
+			cmd.Env = []string{"TEST=value"}
+			return cmd
+		}
+		d.ExitProcess = func(int) {}
+	})
 
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		cmd := execCommand("echo", "mocked")
-		cmd.Env = []string{"TEST=value"}
-		return cmd
-	}
-
-	exitProcess = func(int) {}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -415,6 +372,7 @@ func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 		HarnessArgs: []string{"--test"},
 		APIKey:      "test-api-key",
 		Yolo:        true,
+		Deps:        d,
 	}
 
 	executeWithAuth(cfg)
@@ -432,53 +390,33 @@ func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 }
 
 func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	originalCreateTempAuthDir := createTempAuthDirFn
-	originalWriteTempTokenFile := writeTempTokenFileFn
-	originalGenerateWrapperScript := generateWrapperScriptFn
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-		createTempAuthDirFn = originalCreateTempAuthDir
-		writeTempTokenFileFn = originalWriteTempTokenFile
-		generateWrapperScriptFn = originalGenerateWrapperScript
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
 	tmpDir := t.TempDir()
-	createTempAuthDirFn = func() (string, error) {
-		return tmpDir, nil
-	}
-
-	tokenPath := filepath.Join(tmpDir, "token")
-	writeTempTokenFileFn = func(authDir, token string) (string, error) {
-		return tokenPath, nil
-	}
-
 	var capturedCfg wrapper.ScriptConfig
-	generateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
-		capturedCfg = cfg
-		scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
-		return scriptPath, true, nil
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.CreateTempAuthDir = func() (string, error) {
+			return tmpDir, nil
+		}
+		tokenPath := filepath.Join(tmpDir, "token")
+		d.WriteTempTokenFile = func(authDir, token string) (string, error) {
+			return tokenPath, nil
+		}
+		d.GenerateWrapperScript = func(cfg wrapper.ScriptConfig) (string, bool, error) {
+			capturedCfg = cfg
+			scriptPath := filepath.Join(tmpDir, "test-wrapper.ps1")
+			return scriptPath, true, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			cmd := exec.Command("echo", "mocked")
+			cmd.Env = []string{"TEST=value"}
+			return cmd
+		}
+		d.ExitProcess = func(int) {}
+	})
 
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		cmd := execCommand("echo", "mocked")
-		cmd.Env = []string{"TEST=value"}
-		return cmd
-	}
-
-	exitProcess = func(int) {}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -493,6 +431,7 @@ func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
 		HarnessArgs: []string{"--test"},
 		APIKey:      "test-api-key",
 		Yolo:        true,
+		Deps:        d,
 	}
 
 	executeWithAuth(cfg)
@@ -559,9 +498,7 @@ func TestApiKeyEnvVarName(t *testing.T) {
 }
 
 func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -574,22 +511,20 @@ func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
 			Model:   "test-model",
 		},
 		HarnessArgs: []string{"--test"},
+		Deps:        NewDeps(),
 	}
 
 	executeWithoutAuth(cfg)
 }
 
 func TestExecuteWithoutAuth_HarnessNotFound(t *testing.T) {
-	originalLookPath := lookPath
-	defer func() { lookPath = originalLookPath }()
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "", fmt.Errorf("command not found: %s", file)
+		}
+	})
 
-	lookPath = func(file string) (string, error) {
-		return "", fmt.Errorf("command not found: %s", file)
-	}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -602,43 +537,33 @@ func TestExecuteWithoutAuth_HarnessNotFound(t *testing.T) {
 			Model:   "test-model",
 		},
 		HarnessArgs: []string{"--test"},
+		Deps:        d,
 	}
 
 	executeWithoutAuth(cfg)
 
-	result := output.String()
+	result := outputOf(cmd)
 	if !strings.Contains(result, "command not found in PATH") {
 		t.Errorf("Output should contain 'command not found in PATH', got: %s", result)
 	}
 }
 
 func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		cmd := execCommand("false") // 'false' always returns non-zero exit
-		return cmd
-	}
-
 	exitProcessCalled := false
-	exitProcess = func(int) {
-		exitProcessCalled = true
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			cmd := exec.Command("false") // 'false' always returns non-zero exit
+			return cmd
+		}
+		d.ExitProcess = func(int) {
+			exitProcessCalled = true
+		}
+	})
 
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -651,41 +576,31 @@ func TestExecuteWithoutAuth_ExecutionFails(t *testing.T) {
 			Model:   "test-model",
 		},
 		HarnessArgs: []string{"--test"},
+		Deps:        d,
 	}
 
 	executeWithoutAuth(cfg)
 
 	if !exitProcessCalled {
-		t.Error("executeWithoutAuth() should call exitProcess on execution failure")
+		t.Error("executeWithoutAuth() should call ExitProcess on execution failure")
 	}
 }
 
 func TestExecuteWithoutAuth_YoloModeClaude(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
 	var capturedArgs []string
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		capturedArgs = arg
-		cmd := execCommand("echo", "mocked")
-		return cmd
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			capturedArgs = arg
+			cmd := exec.Command("echo", "mocked")
+			return cmd
+		}
+		d.ExitProcess = func(int) {}
+	})
 
-	exitProcess = func(int) {}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -699,6 +614,7 @@ func TestExecuteWithoutAuth_YoloModeClaude(t *testing.T) {
 		},
 		HarnessArgs: []string{"--test"},
 		Yolo:        true,
+		Deps:        d,
 	}
 
 	executeWithoutAuth(cfg)
@@ -779,9 +695,7 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 }
 
 func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -794,6 +708,7 @@ func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
 			Model:   "qwen-model",
 		},
 		HarnessArgs: []string{"--test"},
+		Deps:        NewDeps(),
 	}
 
 	executeWithoutAuth(cfg)
@@ -833,32 +748,21 @@ func TestBuildBuiltInEnvVars_Extended(t *testing.T) {
 }
 
 func TestExecuteWithAuth_PiHarness(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
 	var capturedArgs []string
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		capturedArgs = arg
-		cmd := exec.Command("echo", "mocked")
-		cmd.Env = []string{"TEST=value"}
-		return cmd
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			capturedArgs = arg
+			cmd := exec.Command("echo", "mocked")
+			cmd.Env = []string{"TEST=value"}
+			return cmd
+		}
+		d.ExitProcess = func(int) {}
+	})
 
-	exitProcess = func(int) {}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -873,6 +777,7 @@ func TestExecuteWithAuth_PiHarness(t *testing.T) {
 		ProviderName: "zai",
 		HarnessArgs:  []string{"--session", "test"},
 		APIKey:       "test-api-key",
+		Deps:         d,
 	}
 
 	executeWithAuth(cfg)
@@ -889,32 +794,21 @@ func TestExecuteWithAuth_PiHarness(t *testing.T) {
 }
 
 func TestExecuteWithoutAuth_PiHarness(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
 	var capturedArgs []string
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		capturedArgs = arg
-		cmd := exec.Command("echo", "mocked")
-		cmd.Env = []string{"TEST=value"}
-		return cmd
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			capturedArgs = arg
+			cmd := exec.Command("echo", "mocked")
+			cmd.Env = []string{"TEST=value"}
+			return cmd
+		}
+		d.ExitProcess = func(int) {}
+	})
 
-	exitProcess = func(int) {}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -928,6 +822,7 @@ func TestExecuteWithoutAuth_PiHarness(t *testing.T) {
 		},
 		ProviderName: "deepseek",
 		HarnessArgs:  []string{"--continue"},
+		Deps:         d,
 	}
 
 	executeWithoutAuth(cfg)
@@ -941,32 +836,21 @@ func TestExecuteWithoutAuth_PiHarness(t *testing.T) {
 }
 
 func TestExecuteWithAuth_PiYoloMode(t *testing.T) {
-	originalLookPath := lookPath
-	originalExecCommandContext := execCommandContext
-	originalExitProcess := exitProcess
-	defer func() {
-		lookPath = originalLookPath
-		execCommandContext = originalExecCommandContext
-		exitProcess = originalExitProcess
-	}()
-
-	lookPath = func(file string) (string, error) {
-		return "/usr/bin/" + file, nil
-	}
-
 	var capturedArgs []string
-	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		capturedArgs = arg
-		cmd := exec.Command("echo", "mocked")
-		cmd.Env = []string{"TEST=value"}
-		return cmd
-	}
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		d.ExecCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			capturedArgs = arg
+			cmd := exec.Command("echo", "mocked")
+			cmd.Env = []string{"TEST=value"}
+			return cmd
+		}
+		d.ExitProcess = func(int) {}
+	})
 
-	exitProcess = func(int) {}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -981,6 +865,7 @@ func TestExecuteWithAuth_PiYoloMode(t *testing.T) {
 		HarnessArgs: []string{},
 		APIKey:      "test-key",
 		Yolo:        true,
+		Deps:        d,
 	}
 
 	executeWithAuth(cfg)
@@ -993,16 +878,13 @@ func TestExecuteWithAuth_PiYoloMode(t *testing.T) {
 }
 
 func TestExecuteWithoutAuth_PiHarnessNotFound(t *testing.T) {
-	originalLookPath := lookPath
-	defer func() { lookPath = originalLookPath }()
+	d := testDeps(func(d *Deps) {
+		d.LookPath = func(file string) (string, error) {
+			return "", fmt.Errorf("not found")
+		}
+	})
 
-	lookPath = func(file string) (string, error) {
-		return "", fmt.Errorf("not found")
-	}
-
-	cmd := &cobra.Command{}
-	var output bytes.Buffer
-	cmd.SetOut(&output)
+	cmd := testCmd()
 
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
@@ -1013,12 +895,13 @@ func TestExecuteWithoutAuth_PiHarnessNotFound(t *testing.T) {
 			Name:  "Test",
 			Model: "test-model",
 		},
+		Deps: d,
 	}
 
 	executeWithoutAuth(cfg)
 
-	if !strings.Contains(output.String(), "'pi' command not found in PATH") {
-		t.Errorf("expected 'not found in PATH' error, got %q", output.String())
+	if !strings.Contains(outputOf(cmd), "'pi' command not found in PATH") {
+		t.Errorf("expected 'not found in PATH' error, got %q", outputOf(cmd))
 	}
 }
 
