@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/constants"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -25,8 +26,7 @@ func yoloModeFlag(harness string) string {
 }
 
 func handleConfigError(cmd *cobra.Command, err error) {
-	errStr := err.Error()
-	if isOutdatedBinaryError(errStr) {
+	if isBinaryOutdatedError(err) {
 		promptUpgrade(cmd, err)
 
 		return
@@ -34,10 +34,22 @@ func handleConfigError(cmd *cobra.Command, err error) {
 	cmd.Printf("Error loading config: %v\n", err)
 }
 
-func isOutdatedBinaryError(errStr string) bool {
-	return (strings.Contains(errStr, "field") && strings.Contains(errStr, "not found in type")) ||
-		strings.Contains(errStr, "configuration file contains field(s) not recognized") ||
-		strings.Contains(errStr, "your installed kairo binary is outdated")
+func isBinaryOutdatedError(err error) bool {
+	errStr := err.Error()
+
+	if strings.Contains(errStr, kairoerrors.ErrBinaryOutdated.Error()) {
+		return true
+	}
+
+	if strings.Contains(errStr, "field") && strings.Contains(errStr, "not found in type") {
+		return true
+	}
+
+	if strings.Contains(errStr, "configuration file contains field(s) not recognized") {
+		return true
+	}
+
+	return false
 }
 
 func promptUpgrade(cmd *cobra.Command, err error) {

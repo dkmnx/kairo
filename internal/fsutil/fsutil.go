@@ -2,6 +2,8 @@ package fsutil
 
 import (
 	"os"
+
+	"github.com/dkmnx/kairo/internal/errors"
 )
 
 const atomicFilePerms = 0o600
@@ -14,7 +16,7 @@ func WriteAtomic(path string, writeFn func(f *os.File) error) error {
 
 	f, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, atomicFilePerms)
 	if err != nil {
-		return err
+		return errors.FileError("failed to create temp file", tempPath, err)
 	}
 
 	if err := writeFn(f); err != nil {
@@ -27,13 +29,13 @@ func WriteAtomic(path string, writeFn func(f *os.File) error) error {
 	if err := f.Close(); err != nil {
 		os.Remove(tempPath)
 
-		return err
+		return errors.FileError("failed to close temp file", tempPath, err)
 	}
 
 	if err := os.Rename(tempPath, path); err != nil {
 		os.Remove(tempPath)
 
-		return err
+		return errors.FileError("failed to rename temp file", path, err)
 	}
 
 	return nil

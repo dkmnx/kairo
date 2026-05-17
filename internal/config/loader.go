@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"context"
+	stderrors "errors"
 	"os"
 	"path/filepath"
 
@@ -117,6 +118,13 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&cfg); err != nil {
+		if isUnknownFieldError(err) {
+			return nil, errors.WrapError(errors.ConfigError,
+				"configuration file contains field(s) not recognized by this version of kairo", err).
+				WithContext("path", configPath).
+				WithContext("hint", "your installed kairo binary is outdated, please upgrade")
+		}
+
 		return nil, errors.WrapError(errors.ConfigError,
 			"failed to parse configuration file (invalid YAML)", err).
 			WithContext("path", configPath).
@@ -134,6 +142,14 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	cfg.validate()
 
 	return &cfg, nil
+}
+
+// isUnknownFieldError reports whether the error is a YAML type error caused by
+// unknown fields, indicating the binary is outdated relative to the config file.
+func isUnknownFieldError(err error) bool {
+	var typeErr *yaml.TypeError
+
+	return stderrors.As(err, &typeErr)
 }
 
 func (c *Config) validate() {
