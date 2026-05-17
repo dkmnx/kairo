@@ -2,11 +2,11 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
 	"strings"
 
-	"github.com/dkmnx/kairo/internal/errors"
+	kairoErrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
@@ -25,11 +25,11 @@ type MigrationResult struct {
 func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationResult, error) {
 	cfg, err := LoadConfig(ctx, configDir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, kairoErrors.ErrConfigNotFound) {
 			return nil, nil
 		}
 
-		return nil, errors.WrapError(errors.ConfigError,
+		return nil, kairoErrors.WrapError(kairoErrors.ConfigError,
 			"failed to load config for migration", err)
 	}
 
@@ -43,6 +43,7 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationRes
 
 	var changes []MigrationChange
 	var skipped []string
+	defaultsUpdated := false
 
 	for providerName, provider := range cfg.Providers {
 		builtinDef, ok := providers.BuiltInProvider(providerName)
@@ -57,26 +58,31 @@ func MigrateConfigOnUpdate(ctx context.Context, configDir string) (*MigrationRes
 		}
 
 		userModel := provider.Model
-		if userModel == builtinDef.Model {
-			cfg.DefaultModels[providerName] = builtinDef.Model
 
+		if cfg.DefaultModels[providerName] != builtinDef.Model {
+			cfg.DefaultModels[providerName] = builtinDef.Model
+			defaultsUpdated = true
+		}
+
+		if userModel == builtinDef.Model {
 			continue
 		}
 
-		provider.Model = builtinDef.Model
-		cfg.Providers[providerName] = provider
-		cfg.DefaultModels[providerName] = builtinDef.Model
-		changes = append(changes, MigrationChange{
-			Provider: providerName,
-			Field:    "model",
-			Old:      userModel,
-			New:      builtinDef.Model,
-		})
+		if userModel == "" {
+			provider.Model = builtinDef.Model
+			cfg.Providers[providerName] = provider
+			changes = append(changes, MigrationChange{
+				Provider: providerName,
+				Field:    "model",
+				Old:      userModel,
+				New:      builtinDef.Model,
+			})
+		}
 	}
 
-	if len(changes) > 0 {
+	if len(changes) > 0 || defaultsUpdated {
 		if err := SaveConfig(ctx, configDir, cfg); err != nil {
-			return nil, errors.WrapError(errors.ConfigError,
+			return nil, kairoErrors.WrapError(kairoErrors.ConfigError,
 				"failed to save config after migration", err)
 		}
 	}

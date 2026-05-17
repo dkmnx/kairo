@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/fsutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -159,40 +160,14 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 			WithContext("path", configPath)
 	}
 
-	tempPath := configPath + ".tmp"
+	if err := fsutil.WriteAtomic(configPath, func(f *os.File) error {
+		_, writeErr := f.Write(data)
 
-	file, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
-	if err != nil {
+		return writeErr
+	}); err != nil {
 		return errors.WrapError(errors.FileSystemError,
-			"failed to create temporary config file", err).
-			WithContext("path", tempPath)
-	}
-
-	_, err = file.Write(data)
-	if err != nil {
-		file.Close()
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to write config data", err).
-			WithContext("path", tempPath)
-	}
-
-	if err := file.Close(); err != nil {
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to close temporary config file", err).
-			WithContext("path", tempPath)
-	}
-
-	if err := os.Rename(tempPath, configPath); err != nil {
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to rename temporary config file", err).
-			WithContext("temp_path", tempPath).
-			WithContext("config_path", configPath)
+			"failed to save configuration file", err).
+			WithContext("path", configPath)
 	}
 
 	return nil

@@ -9,7 +9,7 @@ import (
 )
 
 func TestMigrateConfigOnUpdate(t *testing.T) {
-	t.Run("UpdatesModelWhenBuiltinDefaultChanges", func(t *testing.T) {
+	t.Run("PreservesUserModelWhenDifferentFromBuiltin", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
@@ -31,8 +31,8 @@ default_models:
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		if len(result.Changes) == 0 {
-			t.Error("Expected migration changes, got none")
+		if len(result.Changes) != 0 {
+			t.Errorf("Expected no migration changes, got %d", len(result.Changes))
 		}
 
 		cfg, err := LoadConfig(context.Background(), tmpDir)
@@ -45,8 +45,8 @@ default_models:
 			t.Fatal("minimax provider not found")
 		}
 
-		if provider.Model != "MiniMax-M2.7" {
-			t.Errorf("Provider model = %q, want %q", provider.Model, "MiniMax-M2.7")
+		if provider.Model != "MiniMax-M2" {
+			t.Errorf("Provider model = %q, want %q (user model should be preserved)", provider.Model, "MiniMax-M2")
 		}
 
 		if cfg.DefaultModels["minimax"] != "MiniMax-M2.7" {
@@ -75,7 +75,7 @@ providers:
 		}
 
 		if len(result.Changes) == 0 {
-			t.Error("Expected migration changes for empty model")
+			t.Error("Expected migration changes for empty model, got none")
 		}
 
 		cfg, err := LoadConfig(context.Background(), tmpDir)
@@ -83,12 +83,17 @@ providers:
 			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 		}
 
-		if cfg.Providers["minimax"].Model != "MiniMax-M2.7" {
-			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.7")
+		provider, ok := cfg.Providers["minimax"]
+		if !ok {
+			t.Fatal("minimax provider not found")
+		}
+
+		if provider.Model != "MiniMax-M2.7" {
+			t.Errorf("Provider model = %q, want %q", provider.Model, "MiniMax-M2.7")
 		}
 	})
 
-	t.Run("NoChangesWhenModelAlreadyMatchesBuiltin", func(t *testing.T) {
+	t.Run("NoChangeWhenModelAlreadyMatches", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
@@ -98,10 +103,94 @@ providers:
     name: MiniMax
     base_url: https://api.minimax.io/anthropic
     model: MiniMax-M2.7
+`
+		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
+		}
+
+		if len(result.Changes) != 0 {
+			t.Errorf("Expected no changes when model matches, got %d", len(result.Changes))
+		}
+	})
+
+	t.Run("NoChangeForNonBuiltinProvider", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		configContent := `default_provider: myprovider
+providers:
+  myprovider:
+    name: My Provider
+    base_url: https://myprovider.api.com
+    model: myprovider-v1
+`
+		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
+		}
+
+		if len(result.Changes) != 0 {
+			t.Errorf("Expected no changes for non-builtin provider, got %d", len(result.Changes))
+		}
+
+		if len(result.SkippedProviders) != 1 || result.SkippedProviders[0] != "myprovider" {
+			t.Errorf("Expected 'myprovider' in skipped providers, got %v", result.SkippedProviders)
+		}
+	})
+
+	t.Run("NoChangeForBuiltinWithoutModel", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		configContent := `default_provider: anthropic
+providers:
+  anthropic:
+    name: Anthropic
+    base_url: https://api.anthropic.com
+    model: claude-3-opus
+`
+		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
+		}
+
+		if len(result.Changes) != 0 {
+			t.Errorf("Expected no changes for provider without builtin model, got %d", len(result.Changes))
+		}
+	})
+
+	t.Run("NoSaveWhenNoChanges", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		originalContent := `default_provider: minimax
+providers:
+  minimax:
+    name: MiniMax
+    base_url: https://api.minimax.io/anthropic
+    model: MiniMax-M2.7
 default_models:
   minimax: MiniMax-M2.7
 `
-		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+		if err := os.WriteFile(configPath, []byte(originalContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		originalStat, err := os.Stat(configPath)
+		if err != nil {
 			t.Fatal(err)
 		}
 
@@ -114,91 +203,30 @@ default_models:
 			t.Errorf("Expected no changes, got %d", len(result.Changes))
 		}
 
-		cfg, err := LoadConfig(context.Background(), tmpDir)
+		newStat, err := os.Stat(configPath)
 		if err != nil {
-			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
+			t.Fatal(err)
 		}
 
-		if cfg.Providers["minimax"].Model != "MiniMax-M2.7" {
-			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.7")
+		if originalStat.ModTime() != newStat.ModTime() {
+			t.Error("Config file was modified despite no changes being needed")
 		}
 	})
 
-	t.Run("UpdatesUserSetModelToNewBuiltin", func(t *testing.T) {
+	t.Run("ReturnsNilForMissingConfig", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		configPath := filepath.Join(tmpDir, "config.yaml")
-
-		configContent := `default_provider: minimax
-providers:
-  minimax:
-    name: MiniMax
-    base_url: https://api.minimax.io/anthropic
-    model: MiniMax-M2
-default_models:
-  minimax: MiniMax-M2
-`
-		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
-			t.Fatal(err)
-		}
 
 		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
 		if err != nil {
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		if len(result.Changes) == 0 {
-			t.Error("Expected migration changes when user model differs from builtin")
-		}
-
-		cfg, err := LoadConfig(context.Background(), tmpDir)
-		if err != nil {
-			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
-		}
-
-		if cfg.Providers["minimax"].Model != "MiniMax-M2.7" {
-			t.Errorf("Provider model = %q, want %q", cfg.Providers["minimax"].Model, "MiniMax-M2.7")
+		if result != nil {
+			t.Errorf("Expected nil result for missing config, got %v", result)
 		}
 	})
 
-	t.Run("NoMigrationForNonBuiltinProvider", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		configPath := filepath.Join(tmpDir, "config.yaml")
-
-		configContent := `default_provider: myprovider
-providers:
-  myprovider:
-    name: My Custom Provider
-    base_url: https://api.custom.com
-    model: my-model
-`
-		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
-			t.Fatal(err)
-		}
-
-		result, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
-		if err != nil {
-			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
-		}
-
-		if len(result.Changes) != 0 {
-			t.Errorf("Expected no changes for custom provider, got %d", len(result.Changes))
-		}
-
-		if len(result.SkippedProviders) != 1 || result.SkippedProviders[0] != "myprovider" {
-			t.Errorf("Expected myprovider to be skipped, got %v", result.SkippedProviders)
-		}
-	})
-
-	t.Run("NoMigrationWhenNoConfig", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		_, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
-		if err == nil {
-			t.Error("Expected error for missing config")
-		}
-	})
-
-	t.Run("NoMigrationWhenNoProviders", func(t *testing.T) {
+	t.Run("ReturnsNilForEmptyProviders", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
@@ -214,21 +242,109 @@ providers: {}
 			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
 		}
 
-		if result != nil && len(result.Changes) != 0 {
-			t.Errorf("Expected no changes for empty providers, got %d", len(result.Changes))
+		if result != nil {
+			t.Errorf("Expected nil result for empty providers, got %v", result)
 		}
 	})
 
-	t.Run("ProviderWithNoBuiltinModelNotMigrated", func(t *testing.T) {
+	t.Run("InitializesDefaultModelsIfNil", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
-		configContent := `default_provider: anthropic
+		configContent := `default_provider: minimax
 providers:
-  anthropic:
-    name: Native Anthropic
-    base_url: ""
+  minimax:
+    name: MiniMax
+    base_url: https://api.minimax.io/anthropic
+    model: MiniMax-M2.7
+`
+		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
+		}
+
+		cfg, err := LoadConfig(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
+		}
+
+		if cfg.DefaultModels == nil {
+			t.Error("DefaultModels should be initialized, got nil")
+		}
+
+		if cfg.DefaultModels["minimax"] != "MiniMax-M2.7" {
+			t.Errorf("DefaultModels[minimax] = %q, want %q", cfg.DefaultModels["minimax"], "MiniMax-M2.7")
+		}
+	})
+
+	t.Run("PopulatesDefaultModelsForMatchingModels", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		configContent := `default_provider: minimax
+providers:
+  minimax:
+    name: MiniMax
+    base_url: https://api.minimax.io/anthropic
+    model: MiniMax-M2.7
+`
+		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err := MigrateConfigOnUpdate(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatalf("MigrateConfigOnUpdate(context.Background(), ) error = %v", err)
+		}
+
+		cfg, err := LoadConfig(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
+		}
+
+		if cfg.DefaultModels["minimax"] != "MiniMax-M2.7" {
+			t.Errorf("DefaultModels[minimax] = %q, want %q", cfg.DefaultModels["minimax"], "MiniMax-M2.7")
+		}
+	})
+
+	t.Run("HandlesContextCancellation", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		configContent := `default_provider: minimax
+providers:
+  minimax:
+    name: MiniMax
+    base_url: https://api.minimax.io/anthropic
     model: ""
+`
+		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
+			t.Fatal(err)
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		_, err := MigrateConfigOnUpdate(ctx, tmpDir)
+		if err == nil {
+			t.Error("Expected error for cancelled context")
+		}
+	})
+
+	t.Run("PreservesCustomModelAndUpdatesDefaultModels", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		configContent := `default_provider: kimi
+providers:
+  kimi:
+    name: Moonshot AI
+    base_url: https://api.kimi.com/coding/
+    model: my-custom-kimi-model
 `
 		if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 			t.Fatal(err)
@@ -240,35 +356,61 @@ providers:
 		}
 
 		if len(result.Changes) != 0 {
-			t.Errorf("Expected no changes for provider without builtin model, got %d", len(result.Changes))
+			t.Errorf("Expected no changes for custom model, got %d", len(result.Changes))
+		}
+
+		cfg, err := LoadConfig(context.Background(), tmpDir)
+		if err != nil {
+			t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
+		}
+
+		provider, ok := cfg.Providers["kimi"]
+		if !ok {
+			t.Fatal("kimi provider not found")
+		}
+
+		if provider.Model != "my-custom-kimi-model" {
+			t.Errorf("Provider model = %q, want %q (custom model should be preserved)", provider.Model, "my-custom-kimi-model")
+		}
+
+		if cfg.DefaultModels["kimi"] != "kimi-for-coding" {
+			t.Errorf("DefaultModels[kimi] = %q, want %q", cfg.DefaultModels["kimi"], "kimi-for-coding")
 		}
 	})
 }
 
 func TestFormatMigrationChanges(t *testing.T) {
-	t.Run("FormatsChangesCorrectly", func(t *testing.T) {
-		changes := []MigrationChange{
-			{Provider: "minimax", Field: "model", Old: "MiniMax-M2", New: "MiniMax-M2.7"},
-			{Provider: "zai", Field: "model", Old: "glm-4.5", New: "glm-5.1"},
-		}
-
-		result := FormatMigrationChanges(changes)
-		if result == "" {
-			t.Error("Expected non-empty formatted output")
-		}
-
-		if !strings.Contains(result, "minimax") {
-			t.Error("Formatted output should contain 'minimax'")
-		}
-		if !strings.Contains(result, "MiniMax-M2") || !strings.Contains(result, "MiniMax-M2.7") {
-			t.Error("Formatted output should show old and new values")
+	t.Run("EmptyChanges", func(t *testing.T) {
+		result := FormatMigrationChanges(nil)
+		if result != "" {
+			t.Errorf("FormatMigrationChanges(nil) = %q, want empty", result)
 		}
 	})
 
-	t.Run("ReturnsEmptyForNoChanges", func(t *testing.T) {
-		result := FormatMigrationChanges([]MigrationChange{})
-		if result != "" {
-			t.Errorf("Expected empty string for no changes, got %q", result)
+	t.Run("SingleChange", func(t *testing.T) {
+		changes := []MigrationChange{
+			{Provider: "minimax", Field: "model", Old: "MiniMax-M2", New: "MiniMax-M2.7"},
+		}
+		result := FormatMigrationChanges(changes)
+		if !strings.Contains(result, "minimax") {
+			t.Error("Expected result to contain provider name")
+		}
+		if !strings.Contains(result, "MiniMax-M2") {
+			t.Error("Expected result to contain old model")
+		}
+		if !strings.Contains(result, "MiniMax-M2.7") {
+			t.Error("Expected result to contain new model")
+		}
+	})
+
+	t.Run("MultipleChanges", func(t *testing.T) {
+		changes := []MigrationChange{
+			{Provider: "minimax", Field: "model", Old: "MiniMax-M2", New: "MiniMax-M2.7"},
+			{Provider: "kimi", Field: "model", Old: "kimi-old", New: "kimi-for-coding"},
+		}
+		result := FormatMigrationChanges(changes)
+		if !strings.Contains(result, "minimax") || !strings.Contains(result, "kimi") {
+			t.Error("Expected result to contain both provider names")
 		}
 	})
 }
