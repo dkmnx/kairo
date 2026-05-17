@@ -84,9 +84,10 @@ func TestVersionGreaterThanInvalidVersions(t *testing.T) {
 }
 
 func TestEnvFunc(t *testing.T) {
+	c := NewClient()
 	t.Run("returns value and true when env var is set", func(t *testing.T) {
 		t.Setenv("KAIRO_TEST_VAR", "test-value")
-		value, ok := EnvFunc("KAIRO_TEST_VAR")
+		value, ok := c.EnvFunc("KAIRO_TEST_VAR")
 		if !ok {
 			t.Error("EnvFunc() ok = false, want true")
 		}
@@ -96,7 +97,7 @@ func TestEnvFunc(t *testing.T) {
 	})
 	t.Run("returns empty string and false when env var is not set", func(t *testing.T) {
 		_ = os.Unsetenv("KAIRO_NONEXISTENT_VAR")
-		value, ok := EnvFunc("KAIRO_NONEXISTENT_VAR")
+		value, ok := c.EnvFunc("KAIRO_NONEXISTENT_VAR")
 		if ok {
 			t.Error("EnvFunc() ok = true, want false")
 		}
@@ -106,7 +107,7 @@ func TestEnvFunc(t *testing.T) {
 	})
 	t.Run("returns false for empty env var", func(t *testing.T) {
 		t.Setenv("KAIRO_EMPTY_VAR", "")
-		value, ok := EnvFunc("KAIRO_EMPTY_VAR")
+		value, ok := c.EnvFunc("KAIRO_EMPTY_VAR")
 		if ok {
 			t.Error("EnvFunc() ok = true, want false for empty value")
 		}
@@ -124,15 +125,16 @@ func TestGetLatestRelease(t *testing.T) {
 			_, _ = w.Write([]byte(`{"tag_name":"v2.0.0","html_url":"https://github.com/dkmnx/kairo/releases/tag/v2.0.0","body":"Release v2.0.0"}`))
 		}))
 		defer server.Close()
-		original := EnvFunc
-		EnvFunc = func(key string) (string, bool) {
-			if key == "KAIRO_UPDATE_URL" {
-				return server.URL, true
-			}
-			return original(key)
+		c := &Client{
+			HTTPClient: &http.Client{},
+			EnvFunc: func(key string) (string, bool) {
+				if key == "KAIRO_UPDATE_URL" {
+					return server.URL, true
+				}
+				return "", false
+			},
 		}
-		defer func() { EnvFunc = original }()
-		release, err := GetLatestRelease()
+		release, err := c.GetLatestRelease()
 		if err != nil {
 			t.Fatalf("GetLatestRelease() error = %v", err)
 		}
@@ -145,15 +147,16 @@ func TestGetLatestRelease(t *testing.T) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
 		defer server.Close()
-		original := EnvFunc
-		EnvFunc = func(key string) (string, bool) {
-			if key == "KAIRO_UPDATE_URL" {
-				return server.URL, true
-			}
-			return original(key)
+		c := &Client{
+			HTTPClient: &http.Client{},
+			EnvFunc: func(key string) (string, bool) {
+				if key == "KAIRO_UPDATE_URL" {
+					return server.URL, true
+				}
+				return "", false
+			},
 		}
-		defer func() { EnvFunc = original }()
-		_, err := GetLatestRelease()
+		_, err := c.GetLatestRelease()
 		if err == nil {
 			t.Error("GetLatestRelease() should return error for 500 status")
 		}
@@ -165,15 +168,16 @@ func TestGetLatestRelease(t *testing.T) {
 			_, _ = w.Write([]byte(`{"invalid": json}`))
 		}))
 		defer server.Close()
-		original := EnvFunc
-		EnvFunc = func(key string) (string, bool) {
-			if key == "KAIRO_UPDATE_URL" {
-				return server.URL, true
-			}
-			return original(key)
+		c := &Client{
+			HTTPClient: &http.Client{},
+			EnvFunc: func(key string) (string, bool) {
+				if key == "KAIRO_UPDATE_URL" {
+					return server.URL, true
+				}
+				return "", false
+			},
 		}
-		defer func() { EnvFunc = original }()
-		_, err := GetLatestRelease()
+		_, err := c.GetLatestRelease()
 		if err == nil {
 			t.Error("GetLatestRelease() should return error for invalid JSON")
 		}
@@ -182,15 +186,24 @@ func TestGetLatestRelease(t *testing.T) {
 
 func TestGetLatestReleaseURL(t *testing.T) {
 	t.Run("uses environment variable when set", func(t *testing.T) {
-		t.Setenv("KAIRO_UPDATE_URL", "https://custom.example.com/releases/latest")
-		url := GetLatestReleaseURL()
+		c := &Client{
+			EnvFunc: func(key string) (string, bool) {
+				if key == "KAIRO_UPDATE_URL" {
+					return "https://custom.example.com/releases/latest", true
+				}
+				return "", false
+			},
+		}
+		url := c.GetLatestReleaseURL()
 		if url != "https://custom.example.com/releases/latest" {
 			t.Errorf("GetLatestReleaseURL() = %q, want %q", url, "https://custom.example.com/releases/latest")
 		}
 	})
 	t.Run("uses default URL when env var is not set", func(t *testing.T) {
-		_ = os.Unsetenv("KAIRO_UPDATE_URL")
-		url := GetLatestReleaseURL()
+		c := &Client{
+			EnvFunc: func(string) (string, bool) { return "", false },
+		}
+		url := c.GetLatestReleaseURL()
 		if url != constants.GitHubAPIReleasesLatest {
 			t.Errorf("GetLatestReleaseURL() = %q, want %q", url, constants.GitHubAPIReleasesLatest)
 		}
@@ -225,7 +238,8 @@ func TestDownloadToTempFile(t *testing.T) {
 		_, _ = w.Write([]byte("#!/bin/bash\necho 'install script content'"))
 	}))
 	defer server.Close()
-	tempFile, err := DownloadToTempFile(server.URL)
+	c := NewClient()
+	tempFile, err := c.DownloadToTempFile(server.URL)
 	if err != nil {
 		t.Fatalf("DownloadToTempFile() error = %v", err)
 	}
@@ -244,15 +258,17 @@ func TestDownloadToTempFileHTTPError(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
-	_, err := DownloadToTempFile(server.URL)
+	c := NewClient()
+	_, err := c.DownloadToTempFile(server.URL)
 	if err == nil {
 		t.Error("DownloadToTempFile() should return error on HTTP failure")
 	}
 }
 
 func TestDownloadToTempFileErrorHandling(t *testing.T) {
+	c := NewClient()
 	t.Run("returns error for invalid URL", func(t *testing.T) {
-		_, err := DownloadToTempFile("://invalid-url")
+		_, err := c.DownloadToTempFile("://invalid-url")
 		if err == nil {
 			t.Error("should return error for invalid URL")
 		}
@@ -262,7 +278,7 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
 		defer server.Close()
-		_, err := DownloadToTempFile(server.URL)
+		_, err := c.DownloadToTempFile(server.URL)
 		if err == nil {
 			t.Error("should return error on 500 status")
 		}
@@ -278,7 +294,7 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 			_, _ = w.Write(largeData)
 		}))
 		defer server.Close()
-		tempFile, err := DownloadToTempFile(server.URL)
+		tempFile, err := c.DownloadToTempFile(server.URL)
 		if err != nil {
 			t.Errorf("failed with large download: %v", err)
 		}
@@ -300,7 +316,8 @@ func TestDownloadToTempFileExtension(t *testing.T) {
 		_, _ = w.Write([]byte("test content"))
 	}))
 	defer server.Close()
-	tempFile, err := DownloadToTempFile(server.URL)
+	c := NewClient()
+	tempFile, err := c.DownloadToTempFile(server.URL)
 	if err != nil {
 		t.Fatalf("DownloadToTempFile() error = %v", err)
 	}
@@ -403,6 +420,7 @@ func TestParseChecksumLine(t *testing.T) {
 }
 
 func TestDownloadAndParseChecksums(t *testing.T) {
+	c := NewClient()
 	t.Run("parses valid checksums file", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/plain")
@@ -410,7 +428,7 @@ func TestDownloadAndParseChecksums(t *testing.T) {
 			_, _ = w.Write([]byte("# Comment\n\n07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790  scripts/install.sh\n"))
 		}))
 		defer server.Close()
-		checksums, err := DownloadAndParseChecksums(server.URL)
+		checksums, err := c.DownloadAndParseChecksums(server.URL)
 		if err != nil {
 			t.Fatalf("error = %v", err)
 		}
@@ -423,7 +441,7 @@ func TestDownloadAndParseChecksums(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 		}))
 		defer server.Close()
-		_, err := DownloadAndParseChecksums(server.URL)
+		_, err := c.DownloadAndParseChecksums(server.URL)
 		if err == nil {
 			t.Error("should return error on 404")
 		}
@@ -483,46 +501,21 @@ func TestGetScriptNameForChecksums(t *testing.T) {
 	}
 }
 
-func TestSetHTTPClient(t *testing.T) {
-	old := httpClient
-	defer func() { httpClient = old }()
-
-	SetHTTPClient(&http.Client{Timeout: 0})
-	if httpClient.Timeout != 0 {
-		t.Error("SetHTTPClient() did not set the client")
-	}
-}
-
-func TestSetEnvFunc(t *testing.T) {
-	old := EnvFunc
-	defer func() { EnvFunc = old }()
-
-	called := false
-	SetEnvFunc(func(key string) (string, bool) {
-		called = true
-		return "val", true
-	})
-
-	val, ok := EnvFunc("test")
-	if !ok || val != "val" || !called {
-		t.Error("SetEnvFunc() did not set the function")
-	}
-}
-
 func TestDoHTTPGet_InvalidURL(t *testing.T) {
-	_, err := doHTTPGet("://invalid-url")
+	c := NewClient()
+	_, err := c.doHTTPGet("://invalid-url")
 	if err == nil {
 		t.Error("doHTTPGet() should return error for invalid URL")
 	}
 }
 
 func TestDoHTTPGet_ConnectionRefused(t *testing.T) {
-	// Use the SetHTTPClient to override timeout for faster test
-	oldClient := httpClient
-	defer func() { httpClient = oldClient }()
-	SetHTTPClient(&http.Client{Timeout: 100 * time.Millisecond})
-
-	_, err := doHTTPGet("http://127.0.0.1:1")
+	c := &Client{
+		HTTPClient:   &http.Client{Timeout: 100 * time.Millisecond},
+		EnvFunc:      func(string) (string, bool) { return "", false },
+		LookPathFunc: func(string) (string, error) { return "", fmt.Errorf("not found") },
+	}
+	_, err := c.doHTTPGet("http://127.0.0.1:1")
 	if err == nil {
 		t.Error("doHTTPGet() should return error when connection is refused")
 	}
@@ -534,7 +527,8 @@ func TestDoHTTPGet_NotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := doHTTPGet(server.URL)
+	c := NewClient()
+	_, err := c.doHTTPGet(server.URL)
 	if err == nil {
 		t.Error("doHTTPGet() should return error for 404")
 	}
@@ -555,7 +549,8 @@ func TestDownloadToTempFile_WriteFails(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := DownloadToTempFile(server.URL)
+	c := NewClient()
+	_, err := c.DownloadToTempFile(server.URL)
 	if err == nil {
 		t.Error("DownloadToTempFile() should return error when write fails")
 	}
@@ -586,7 +581,8 @@ func TestScriptNameMatchesChecksumFile(t *testing.T) {
 		_, _ = w.Write([]byte("# Kairo release checksums\n07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790  scripts/install.sh\na197cd3c17f40fad8ae08df1ce42633e454491319df40097abf78da01db5aaae  scripts/install.ps1\n"))
 	}))
 	defer server.Close()
-	checksums, err := DownloadAndParseChecksums(server.URL)
+	c := NewClient()
+	checksums, err := c.DownloadAndParseChecksums(server.URL)
 	if err != nil {
 		t.Fatalf("error = %v", err)
 	}
@@ -619,64 +615,56 @@ func TestGetChecksumsBundleURL(t *testing.T) {
 }
 
 func TestGetLatestRelease_InvalidURL(t *testing.T) {
-	original := EnvFunc
-	EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return "://invalid-url", true
-		}
-
-		return original(key)
+	c := &Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return "://invalid-url", true
+			}
+			return "", false
+		},
 	}
-	defer func() { EnvFunc = original }()
-
-	_, err := GetLatestRelease()
+	_, err := c.GetLatestRelease()
 	if err == nil {
 		t.Error("GetLatestRelease() should return error for invalid URL")
 	}
 }
 
 func TestVerifyCosignBundle_CosignNotInstalled(t *testing.T) {
-	original := lookPathFunc
-	lookPathFunc = func(string) (string, error) { return "", fmt.Errorf("not found") }
-	defer func() { lookPathFunc = original }()
-
-	err := VerifyCosignBundle("v1.0.0")
+	c := &Client{
+		HTTPClient:   &http.Client{},
+		EnvFunc:      func(string) (string, bool) { return "", false },
+		LookPathFunc: func(string) (string, error) { return "", fmt.Errorf("not found") },
+	}
+	err := c.VerifyCosignBundle("v1.0.0")
 	if err != nil {
 		t.Errorf("VerifyCosignBundle should return nil when cosign not installed, got: %v", err)
 	}
 }
 
 func TestVerifyCosignBundle_BundleDownloadFails(t *testing.T) {
-	original := lookPathFunc
-	lookPathFunc = func(string) (string, error) { return "/usr/bin/cosign", nil }
-	defer func() { lookPathFunc = original }()
-
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 
-	originalEnv := EnvFunc
-	EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL, true
-		}
-
-		return originalEnv(key)
+	c := &Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL, true
+			}
+			return "", false
+		},
+		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
 	}
-	defer func() { EnvFunc = originalEnv }()
-
-	err := VerifyCosignBundle("v1.0.0")
+	err := c.VerifyCosignBundle("v1.0.0")
 	if err == nil {
 		t.Error("VerifyCosignBundle should return error when bundle download fails")
 	}
 }
 
 func TestVerifyCosignBundle_ChecksumsDownloadFails(t *testing.T) {
-	original := lookPathFunc
-	lookPathFunc = func(string) (string, error) { return "/usr/bin/cosign", nil }
-	defer func() { lookPathFunc = original }()
-
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
@@ -692,17 +680,17 @@ func TestVerifyCosignBundle_ChecksumsDownloadFails(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalEnv := EnvFunc
-	EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL, true
-		}
-
-		return originalEnv(key)
+	c := &Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL, true
+			}
+			return "", false
+		},
+		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
 	}
-	defer func() { EnvFunc = originalEnv }()
-
-	err := VerifyCosignBundle("v1.0.0")
+	err := c.VerifyCosignBundle("v1.0.0")
 	if err == nil {
 		t.Error("VerifyCosignBundle should return error when checksums download fails")
 	}
