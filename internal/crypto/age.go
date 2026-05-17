@@ -13,6 +13,7 @@ import (
 	"filippo.io/age"
 	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/fsutil"
 )
 
 // GenerateKey creates a new X25519 keypair and writes it to keyPath atomically.
@@ -28,40 +29,14 @@ func GenerateKey(ctx context.Context, keyPath string) error {
 			WithContext("path", keyPath)
 	}
 
-	tempKeyPath := keyPath + ".tmp"
+	if err := fsutil.WriteAtomic(keyPath, func(f *os.File) error {
+		_, writeErr := fmt.Fprintf(f, "%s\n%s\n", key.String(), key.Recipient().String())
 
-	keyFile, err := os.OpenFile(tempKeyPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
-	if err != nil {
+		return writeErr
+	}); err != nil {
 		return errors.WrapError(errors.FileSystemError,
-			"failed to create temporary key file", err).
-			WithContext("path", tempKeyPath)
-	}
-
-	_, err = fmt.Fprintf(keyFile, "%s\n%s\n", key.String(), key.Recipient().String())
-	if err != nil {
-		keyFile.Close()
-		_ = os.Remove(tempKeyPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to write key to file", err).
-			WithContext("path", tempKeyPath)
-	}
-
-	if err := keyFile.Close(); err != nil {
-		_ = os.Remove(tempKeyPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to close temporary key file", err).
-			WithContext("path", tempKeyPath)
-	}
-
-	if err := os.Rename(tempKeyPath, keyPath); err != nil {
-		_ = os.Remove(tempKeyPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to rename temporary key file", err).
-			WithContext("temp_path", tempKeyPath).
-			WithContext("key_path", keyPath)
+			"failed to write key file", err).
+			WithContext("path", keyPath)
 	}
 
 	return nil
@@ -81,59 +56,28 @@ func EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) e
 			WithContext("secrets_path", secretsPath)
 	}
 
-	tempPath := secretsPath + ".tmp"
+	if err := fsutil.WriteAtomic(secretsPath, func(f *os.File) error {
+		encryptor, encErr := age.Encrypt(f, recipient)
+		if encErr != nil {
+			return errors.WrapError(errors.CryptoError,
+				"failed to initialize encryption", encErr)
+		}
 
-	file, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
-	if err != nil {
+		if _, writeErr := encryptor.Write([]byte(secrets)); writeErr != nil {
+			return errors.WrapError(errors.CryptoError,
+				"failed to encrypt secrets", writeErr)
+		}
+
+		if closeErr := encryptor.Close(); closeErr != nil {
+			return errors.WrapError(errors.CryptoError,
+				"failed to finalize encryption", closeErr)
+		}
+
+		return nil
+	}); err != nil {
 		return errors.WrapError(errors.FileSystemError,
-			"failed to create temporary secrets file", err).
-			WithContext("path", tempPath)
-	}
-
-	encryptor, err := age.Encrypt(file, recipient)
-	if err != nil {
-		file.Close()
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.CryptoError,
-			"failed to initialize encryption", err).
-			WithContext("secrets_path", secretsPath)
-	}
-
-	_, err = encryptor.Write([]byte(secrets))
-	if err != nil {
-		encryptor.Close()
-		file.Close()
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.CryptoError,
-			"failed to encrypt secrets", err)
-	}
-
-	if err := encryptor.Close(); err != nil {
-		file.Close()
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.CryptoError,
-			"failed to finalize encryption", err).
-			WithContext("secrets_path", secretsPath)
-	}
-
-	if err := file.Close(); err != nil {
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to close temporary file", err).
-			WithContext("path", tempPath)
-	}
-
-	if err := os.Rename(tempPath, secretsPath); err != nil {
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to replace secrets file", err).
-			WithContext("temp_path", tempPath).
-			WithContext("secrets_path", secretsPath)
+			"failed to write encrypted secrets file", err).
+			WithContext("path", secretsPath)
 	}
 
 	return nil

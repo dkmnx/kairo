@@ -27,48 +27,11 @@ type HarnessRun struct {
 	EnvVarName    string
 }
 
-func executePiWithoutAuth(cfg ExecutionConfig) {
-	cliArgs := cfg.HarnessArgs
-
-	if cfg.Yolo {
-		flag := yoloModeFlag(cfg.HarnessToUse)
-		if flag != "" {
-			cliArgs = append([]string{flag}, cliArgs...)
-		}
-	}
-
-	cliArgs = append(
-		[]string{"--provider", cfg.ProviderName, "--model", cfg.Provider.Model},
-		cliArgs...,
-	)
-
-	piPath, err := lookPath(cfg.HarnessBinary)
-	if err != nil {
-		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
-
-		return
-	}
-
-	ui.ClearScreen()
-	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	setupSignalHandler(cancel)
-
-	execCmd := execCommandContext(ctx, piPath, cliArgs...)
-	execCmd.Env = cfg.ProviderEnv
-	execCmd.Stdin = os.Stdin
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
-
-	if err := execCmd.Run(); err != nil {
-		cfg.Cmd.Printf("Error running Pi: %v\n", err)
-		exitProcess(1)
-	}
+func qwenAuthArgs(model string) []string {
+	return []string{"--auth-type", "anthropic", "--model", model}
 }
 
-func executePiWithAuth(cfg ExecutionConfig) {
+func executePi(cfg ExecutionConfig) error {
 	cliArgs := cfg.HarnessArgs
 
 	if cfg.Yolo {
@@ -87,7 +50,7 @@ func executePiWithAuth(cfg ExecutionConfig) {
 	if err != nil {
 		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
 
-		return
+		return nil
 	}
 
 	ui.ClearScreen()
@@ -103,10 +66,7 @@ func executePiWithAuth(cfg ExecutionConfig) {
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 
-	if err := execCmd.Run(); err != nil {
-		cfg.Cmd.Printf("Error running Pi: %v\n", err)
-		exitProcess(1)
-	}
+	return execCmd.Run()
 }
 
 func runHarnessWithWrapper(params HarnessRun) error {
@@ -149,7 +109,10 @@ func runHarnessWithWrapper(params HarnessRun) error {
 
 func executeWithAuth(cfg ExecutionConfig) {
 	if cfg.HarnessToUse == harnessPi {
-		executePiWithAuth(cfg)
+		if err := executePi(cfg); err != nil {
+			cfg.Cmd.Printf("Error running Pi: %v\n", err)
+			exitProcess(1)
+		}
 
 		return
 	}
@@ -195,10 +158,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	}
 
 	if cfg.HarnessToUse == harnessQwen {
-		run.CliArgs = append(
-			[]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model},
-			run.CliArgs...,
-		)
+		run.CliArgs = append(qwenAuthArgs(cfg.Provider.Model), run.CliArgs...)
 		run.EnvVarName = "ANTHROPIC_API_KEY"
 
 		if err := runHarnessWithWrapper(run); err != nil {
@@ -217,7 +177,10 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 
 func executeWithoutAuth(cfg ExecutionConfig) {
 	if cfg.HarnessToUse == harnessPi {
-		executePiWithoutAuth(cfg)
+		if err := executePi(cfg); err != nil {
+			cfg.Cmd.Printf("Error running Pi: %v\n", err)
+			exitProcess(1)
+		}
 
 		return
 	}
