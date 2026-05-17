@@ -331,7 +331,7 @@ providers:
 
 		_, err := MigrateConfigOnUpdate(ctx, tmpDir)
 		if err == nil {
-			t.Error("Expected error for cancelled context")
+			t.Error("Expected error for canceled context")
 		}
 	})
 

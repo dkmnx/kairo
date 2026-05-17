@@ -27,7 +27,7 @@ const (
 var ErrConfigNotFound = errors.New("configuration file not found")
 
 // ErrUserCancelled is returned when the user cancels an interactive prompt.
-var ErrUserCancelled = errors.New("user cancelled input")
+var ErrUserCancelled = errors.New("user canceled input")
 
 // ErrBinaryOutdated is returned when the configuration file contains fields
 // not recognized by this binary version, indicating an upgrade is needed.
@@ -107,7 +107,7 @@ func FileError(message, path string, cause error) *KairoError {
 		WithContext("path", path)
 }
 
-// CheckContext returns ctx.Err() if the context has been cancelled or expired.
+// CheckContext returns ctx.Err() if the context has been canceled or expired.
 func CheckContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():

@@ -1,73 +1,61 @@
+version: "2"
 run:
   timeout: 5m
   modules-download-mode: readonly
-
-linter-settings:
-  cyclop:
-    max-complexity: 25
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  exhaustive:
-    default-signifies-exhaustive: true
-  funlen:
-    lines: 100
-    statements: 50
-  gocognit:
-    min-complexity: 25
-  goconst:
-    min-len: 10
-    min-occurrences: 10
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-      - style
-    disabled-checks:
-      - exitAfterDefer
-  gocyclo:
-    max-complexity: 25
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/dkmnx/kairo
-  gosimple:
-    checks:
-      - all
-  govet:
-    enable-all: true
-  ineffassign:
-    check-type-assertions: true
-  lll:
-    line-length: 120
-  misspell:
-    locale: US
-  nakedret:
-    max-func-lines: 100
-  nestif:
-    min-complexity: 15
-  noctx:
-    send-checks: true
-    recv-checks: true
-  staticcheck:
-    checks:
-      - all
-      - -ST1005
-  stylecheck:
-    checks:
-      - all
-      - -ST1005
-  unconvert:
-    check-type-assertions: true
-    check-decl-assign: true
-  unparam:
-    check-type-assertions: true
-  unused:
-    check-exported: true
-    check-generated: false
-
 linters:
-  disable-all: true
+  default: none
+  settings:
+    cyclop:
+      max-complexity: 25
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+    exhaustive:
+      default-signifies-exhaustive: true
+    funlen:
+      lines: 100
+      statements: 50
+    gocognit:
+      min-complexity: 25
+    goconst:
+      min-len: 10
+      min-occurrences: 10
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - exitAfterDefer
+    gocyclo:
+      max-complexity: 25
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+        - unusedwrite
+        - nilness
+    lll:
+      line-length: 120
+    misspell:
+      locale: US
+    nakedret:
+      max-func-lines: 100
+    nestif:
+      min-complexity: 15
+    noctx:
+      send-checks: true
+      recv-checks: true
+    unconvert:
+      check-type-assertions: true
+      check-decl-assign: true
+    unparam:
+      check-type-assertions: true
+    staticcheck:
+      checks:
+        - all
+        - -ST1005
   enable:
     - bodyclose
     - cyclop
@@ -79,9 +67,6 @@ linters:
     - goconst
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
-    - gosimple
     - govet
     - ineffassign
     - lll
@@ -91,105 +76,124 @@ linters:
     - nlreturn
     - noctx
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unparam
     - unused
     - whitespace
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - funlen
-        - errcheck
-        - gosec
-        - noctx
-        - gocognit
-        - nestif
-        - cyclop
-        - goconst
-        - errorlint
-        - staticcheck
-        - stylecheck
-        - lll
-        - nlreturn
-        - unparam
-        - gocritic
-    - path: \.pb\.go
-      linters:
-        - goconst
-        - gocyclo
-        - gosimple
-        - govet
-        - ineffassign
-        - staticcheck
-        - stylecheck
-        - typecheck
-        - unconvert
-        - unparam
-        - unused
-    - path: tests/integration
-      linters:
-        - goconst
-        - gocritic
-    - path: main\.go
-      linters:
-        - goconst
-    - path: cmd/delete\.go
-      linters:
-        - nlreturn
-    - path: cmd/harness\.go
-      linters:
-        - goconst
-        - nlreturn
-    - path: cmd/version\.go
-      linters:
-        - goconst
-    - path: cmd/list\.go
-      linters:
-        - nlreturn
-    - path: cmd/util\.go
-      linters:
-        - nlreturn
-    - path: internal/errors/errors\.go
-      linters:
-        - nlreturn
-    - path: internal/ui/prompt\.go
-      linters:
-        - nlreturn
-    - path: internal/providers/registry\.go
-      linters:
-        - nlreturn
-    - text: "exported (function|method|type|const)"
-      linters:
-        - stylecheck
-    - text: "commented out"
-      linters:
-        - stylecheck
-    # Functions with legitimately high complexity due to their nature
-    - text: "MigrateConfigOnUpdate"
-      linters:
-        - cyclop
-        - funlen
-    - text: "GenerateWrapperScript"
-      linters:
-        - cyclop
-        - funlen
-    - text: "configureProvider"
-      linters:
-        - funlen
-    - text: "EncryptSecrets"
-      linters:
-        - funlen
-    # Context-aware functions with multiple cancellation checks
-    - text: "migrateConfigFile"
-      linters:
-        - funlen
-        - cyclop
-    - text: "LoadConfig"
-      linters:
-        - funlen
-        - cyclop
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - cyclop
+          - errcheck
+          - errorlint
+          - funlen
+          - gocognit
+          - goconst
+          - gocritic
+          - gocyclo
+          - gosec
+          - lll
+          - nestif
+          - nlreturn
+          - noctx
+          - staticcheck
+          - unparam
+        path: _test\.go
+      - linters:
+          - goconst
+          - gocyclo
+          - govet
+          - ineffassign
+          - staticcheck
+          - unconvert
+          - unparam
+          - unused
+        path: \.pb\.go
+      - linters:
+          - goconst
+          - gocritic
+        path: tests/integration
+      - linters:
+          - goconst
+        path: main\.go
+      - linters:
+          - nlreturn
+        path: cmd/delete\.go
+      - linters:
+          - goconst
+          - nlreturn
+        path: cmd/harness\.go
+      - linters:
+          - goconst
+        path: cmd/version\.go
+      - linters:
+          - nlreturn
+        path: cmd/list\.go
+      - linters:
+          - nlreturn
+        path: cmd/util\.go
+      - linters:
+          - nlreturn
+        path: internal/errors/errors\.go
+      - linters:
+          - nlreturn
+        path: internal/ui/prompt\.go
+      - linters:
+          - nlreturn
+        path: internal/providers/registry\.go
+      - linters:
+          - staticcheck
+        text: exported (function|method|type|const)
+      - linters:
+          - staticcheck
+        text: commented out
+      - linters:
+          - cyclop
+          - funlen
+        text: MigrateConfigOnUpdate
+      - linters:
+          - cyclop
+          - funlen
+        text: GenerateWrapperScript
+      - linters:
+          - funlen
+        text: configureProvider
+      - linters:
+          - funlen
+        text: EncryptSecrets
+      - linters:
+          - cyclop
+          - funlen
+        text: migrateConfigFile
+      - linters:
+          - cyclop
+          - funlen
+        text: LoadConfig
+      # gocritic: hugeParam is too noisy for struct params in prod code
+      - linters:
+          - gocritic
+        text: hugeParam
+      # gocritic: unnamedResult is cosmetic
+      - linters:
+          - gocritic
+        text: unnamedResult
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

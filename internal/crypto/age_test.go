@@ -15,11 +15,11 @@ func TestGenerateKey_CancelledContext(t *testing.T) {
 	keyPath := filepath.Join(tmpDir, "age.key")
 	err := GenerateKey(ctx, keyPath)
 	if err == nil {
-		t.Error("GenerateKey with cancelled context should return error")
+		t.Error("GenerateKey with canceled context should return error")
 	}
 
 	if _, statErr := os.Stat(keyPath); statErr == nil {
-		t.Error("key file should not be created with cancelled context")
+		t.Error("key file should not be created with canceled context")
 	}
 }
 
@@ -33,7 +33,7 @@ func TestEncryptSecrets_CancelledContext(t *testing.T) {
 
 	err := EncryptSecrets(ctx, secretsPath, keyPath, "test=secret")
 	if err == nil {
-		t.Error("EncryptSecrets with cancelled context should return error")
+		t.Error("EncryptSecrets with canceled context should return error")
 	}
 }
 
@@ -47,7 +47,7 @@ func TestDecryptSecrets_CancelledContext(t *testing.T) {
 
 	_, err := DecryptSecrets(ctx, secretsPath, keyPath)
 	if err == nil {
-		t.Error("DecryptSecrets with cancelled context should return error")
+		t.Error("DecryptSecrets with canceled context should return error")
 	}
 }
 
@@ -61,7 +61,7 @@ func TestDecryptSecretsBytes_CancelledContext(t *testing.T) {
 
 	_, err := DecryptSecretsBytes(ctx, secretsPath, keyPath)
 	if err == nil {
-		t.Error("DecryptSecretsBytes with cancelled context should return error")
+		t.Error("DecryptSecretsBytes with canceled context should return error")
 	}
 }
 
@@ -72,7 +72,7 @@ func TestEnsureKeyExists_CancelledContext(t *testing.T) {
 	tmpDir := t.TempDir()
 	err := EnsureKeyExists(ctx, tmpDir)
 	if err == nil {
-		t.Error("EnsureKeyExists with cancelled context should return error")
+		t.Error("EnsureKeyExists with canceled context should return error")
 	}
 }
 

@@ -76,9 +76,9 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 }
 
-func sortProviderNames(providers map[string]config.Provider, defaultProvider string) []string {
-	names := make([]string, 0, len(providers))
-	for name := range providers {
+func sortProviderNames(provs map[string]config.Provider, defaultProvider string) []string {
+	names := make([]string, 0, len(provs))
+	for name := range provs {
 		names = append(names, name)
 	}
 	sort.Slice(names, func(i, j int) bool {

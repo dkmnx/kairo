@@ -2,6 +2,7 @@
 package ui
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
@@ -29,11 +31,16 @@ const (
 func ClearScreen() {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", "cls")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		cmd = exec.CommandContext(ctx, "cmd", "/c", "cls")
 	} else {
-		cmd = exec.Command("clear")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		cmd = exec.CommandContext(ctx, "clear")
 	}
 	cmd.Stdout = os.Stdout
+	// Best-effort clear; ignore terminal errors
 	_ = cmd.Run()
 }
 

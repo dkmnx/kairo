@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/dkmnx/kairo/internal/constants"
@@ -69,7 +70,7 @@ func doHTTPGet(url string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to create request", err)
@@ -111,7 +112,7 @@ func GetLatestRelease() (*Release, error) {
 	defer cancel()
 
 	url := GetLatestReleaseURL()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to create request", err)
@@ -174,7 +175,7 @@ func DownloadToTempFile(url string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return "", errors.WrapError(errors.NetworkError,
 			"failed to create download request", err)
@@ -224,7 +225,9 @@ func DownloadToTempFile(url string) (string, error) {
 // RunInstallScript executes the install script at the given path.
 func RunInstallScript(scriptPath string) error {
 	if runtime.GOOS == constants.WindowsGOOS {
-		pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		pwshCmd := exec.CommandContext(ctx, "powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 		pwshCmd.Stdout = os.Stdout
 		pwshCmd.Stderr = os.Stderr
 		if err := pwshCmd.Run(); err != nil {
@@ -246,7 +249,7 @@ func RunInstallScript(scriptPath string) error {
 			"failed to find shell", err)
 	}
 
-	shCmd := exec.Command(shPath, scriptPath)
+	shCmd := exec.CommandContext(context.Background(), shPath, scriptPath)
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
 	if err := shCmd.Run(); err != nil {

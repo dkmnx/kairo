@@ -97,7 +97,7 @@ func FormatMigrationChanges(changes []MigrationChange) string {
 	var b strings.Builder
 	b.WriteString("\nConfig updates:")
 	for _, c := range changes {
-		b.WriteString(fmt.Sprintf("\n  %s: %s -> %s", c.Provider, c.Old, c.New))
+		fmt.Fprintf(&b, "\n  %s: %s -> %s", c.Provider, c.Old, c.New)
 	}
 
 	return b.String()
