@@ -69,7 +69,8 @@ kairo/
 1. Add the provider definition in `internal/providers/registry.go`:
 
 ```go
-var BuiltInProviders = map[string]ProviderDefinition{
+var builtInProviders = map[string]ProviderDefinition{
+    // ... existing entries ...
     "newprovider": {
         Name:           "New Provider",
         BaseURL:        "https://api.newprovider.com/anthropic",
