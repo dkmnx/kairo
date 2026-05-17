@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -194,6 +195,10 @@ func TestPrintNoProvidersMessage(t *testing.T) {
 }
 
 func TestRequireConfigDirWritable_MkdirFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod does not prevent directory creation on Windows")
+	}
+
 	tmpDir := t.TempDir()
 	// Make parent read-only so MkdirAll fails
 	if err := os.Chmod(tmpDir, 0500); err != nil {
