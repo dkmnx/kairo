@@ -82,7 +82,7 @@ func mustParseCIDR(s string) net.IPNet {
 }
 
 // ValidateAPIKey checks that the given key meets the format requirements for the provider.
-func ValidateAPIKey(key string, providerName string) error {
+func ValidateAPIKey(key, providerName string) error {
 	if strings.TrimSpace(key) == "" {
 		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: API key cannot be empty or whitespace", providerName))
@@ -115,7 +115,7 @@ func ValidateAPIKey(key string, providerName string) error {
 }
 
 // ValidateURL checks that the given URL is a valid HTTPS URL without blocked hosts.
-func ValidateURL(rawURL string, providerName string) error {
+func ValidateURL(rawURL, providerName string) error {
 	if rawURL == "" {
 		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: base URL cannot be empty", providerName))

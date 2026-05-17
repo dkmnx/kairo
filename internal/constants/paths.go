@@ -15,19 +15,19 @@ const (
 // File and directory permission modes used across the application.
 var (
 	// DirPermSecure is used for directories containing sensitive data (0700).
-	DirPermSecure = os.FileMode(0700)
+	DirPermSecure = os.FileMode(0o700)
 
-	// DirPermDefault is used for general-purpose directories (0755).
-	DirPermDefault = os.FileMode(0755)
+	// DirPermDefault is used for general-purpose directories (0o755).
+	DirPermDefault = os.FileMode(0o755)
 
-	// FilePermSecure is used for files containing sensitive data (0600).
-	FilePermSecure = os.FileMode(0600)
+	// FilePermSecure is used for files containing sensitive data (0o600).
+	FilePermSecure = os.FileMode(0o600)
 
-	// FilePermDefault is used for general-purpose files (0644).
-	FilePermDefault = os.FileMode(0644)
+	// FilePermDefault is used for general-purpose files (0o644).
+	FilePermDefault = os.FileMode(0o644)
 
-	// FilePermExec is used for executable scripts (0755).
-	FilePermExec = os.FileMode(0755)
+	// FilePermExec is used for executable scripts (0o755).
+	FilePermExec = os.FileMode(0o755)
 )
 
 // Timeout durations used across the application.

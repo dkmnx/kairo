@@ -69,7 +69,7 @@ var deleteCmd = &cobra.Command{
 			})
 			target = selected
 			if target == "" {
-				tap.Cancel("Operation cancelled")
+				tap.Cancel("Operation canceled")
 				return
 			}
 		} else {
@@ -86,7 +86,7 @@ var deleteCmd = &cobra.Command{
 			Message: fmt.Sprintf("Are you sure you want to delete '%s'?", target),
 		})
 		if !confirmed {
-			tap.Cancel("Operation cancelled")
+			tap.Cancel("Operation canceled")
 			return
 		}
 

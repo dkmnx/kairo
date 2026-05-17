@@ -411,8 +411,8 @@ func TestClearScreen(t *testing.T) {
 
 func TestErrUserCancelled(t *testing.T) {
 	t.Run("error is defined and can be checked", func(t *testing.T) {
-		if kairoerrors.ErrUserCancelled.Error() != "user cancelled input" {
-			t.Errorf("ErrUserCancelled.Error() = %q, want %q", kairoerrors.ErrUserCancelled.Error(), "user cancelled input")
+		if kairoerrors.ErrUserCancelled.Error() != "user canceled input" {
+			t.Errorf("ErrUserCancelled.Error() = %q, want %q", kairoerrors.ErrUserCancelled.Error(), "user canceled input")
 		}
 
 		if !errors.Is(kairoerrors.ErrUserCancelled, kairoerrors.ErrUserCancelled) {

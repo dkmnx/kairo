@@ -161,7 +161,7 @@ var setupCmd = &cobra.Command{
 
 		providerName := promptForProvider(cfg)
 		if providerName == "" {
-			tap.Cancel("Setup cancelled")
+			tap.Cancel("Setup canceled")
 
 			return
 		}

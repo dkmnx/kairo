@@ -14,7 +14,7 @@ func TestLoadConfig_CancelledContext(t *testing.T) {
 	tmpDir := t.TempDir()
 	_, err := LoadConfig(ctx, tmpDir)
 	if err == nil {
-		t.Error("LoadConfig with cancelled context should return error")
+		t.Error("LoadConfig with canceled context should return error")
 	}
 }
 
@@ -26,7 +26,7 @@ func TestSaveConfig_CancelledContext(t *testing.T) {
 	cfg := &Config{Providers: map[string]Provider{}}
 	err := SaveConfig(ctx, tmpDir, cfg)
 	if err == nil {
-		t.Error("SaveConfig with cancelled context should return error")
+		t.Error("SaveConfig with canceled context should return error")
 	}
 }
 
@@ -37,10 +37,10 @@ func TestMigrateConfigFile_CancelledContext(t *testing.T) {
 	tmpDir := t.TempDir()
 	migrated, err := migrateConfigFile(ctx, tmpDir)
 	if err == nil {
-		t.Error("migrateConfigFile with cancelled context should return error")
+		t.Error("migrateConfigFile with canceled context should return error")
 	}
 	if migrated {
-		t.Error("migrateConfigFile should not report migration on cancelled context")
+		t.Error("migrateConfigFile should not report migration on canceled context")
 	}
 }
 

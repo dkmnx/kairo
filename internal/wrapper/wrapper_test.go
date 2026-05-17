@@ -1,6 +1,7 @@
 package wrapper
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -552,7 +553,7 @@ func TestGenerateWrapperScript_ControlCharacterEscaping(t *testing.T) {
 }
 
 func TestExecCommand(t *testing.T) {
-	cmd := ExecCommand("echo", "test")
+	cmd := ExecCommandContext(context.Background(), "echo", "test")
 	if cmd == nil {
 		t.Fatal("ExecCommand() should return a valid command")
 	}

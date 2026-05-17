@@ -67,7 +67,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 			return
 		}
 		if !confirmed {
-			cmd.Println("Installation cancelled.")
+			cmd.Println("Installation canceled.")
 
 			return
 		}
