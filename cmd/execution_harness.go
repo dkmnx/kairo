@@ -22,6 +22,7 @@ type HarnessRun struct {
 	ProviderEnv   []string
 	Provider      config.Provider
 	EnvVarName    string
+	Harness       string
 }
 
 func qwenAuthArgs(model string) []string {
@@ -51,7 +52,12 @@ func executePi(cfg ExecutionConfig) error {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
+	ui.PrintBanner(ui.Banner{
+		Version:      version.Version,
+		ModelName:    cfg.Provider.Model,
+		ProviderName: cfg.Provider.Name,
+		Harness:      cfg.HarnessToUse,
+	})
 
 	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
@@ -87,7 +93,12 @@ func runHarnessWithWrapper(ctx context.Context, deps *Deps, params HarnessRun) e
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(version.Version, params.Provider.Model, params.Provider.Name)
+	ui.PrintBanner(ui.Banner{
+		Version:      version.Version,
+		ModelName:    params.Provider.Model,
+		ProviderName: params.Provider.Name,
+		Harness:      params.Harness,
+	})
 
 	execCmd := buildWrapperCommand(deps, WrapperCmd{
 		Ctx:           ctx,
@@ -150,6 +161,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 		CliArgs:       cliArgs,
 		ProviderEnv:   cfg.ProviderEnv,
 		Provider:      cfg.Provider,
+		Harness:       cfg.HarnessToUse,
 	}
 
 	if cfg.Yolo {
@@ -205,7 +217,12 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
+	ui.PrintBanner(ui.Banner{
+		Version:      version.Version,
+		ModelName:    cfg.Provider.Model,
+		ProviderName: cfg.Provider.Name,
+		Harness:      cfg.HarnessToUse,
+	})
 
 	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
