@@ -85,10 +85,33 @@ func isEmptyInput(err error) bool {
 	return !errors.Is(err, io.EOF) && !isInterrupted(err)
 }
 
+// Banner holds the information displayed at startup.
+type Banner struct {
+	Version      string
+	ModelName    string
+	ProviderName string
+	Harness      string
+}
+
 // PrintBanner displays the kairo startup banner with version and provider info.
-func PrintBanner(version, modelName, providerName string) {
-	banner := fmt.Sprintf("kairo %s · %s · %s", version, modelName, providerName)
-	fmt.Printf("%s%s%s\n\n", Gray, banner, Reset)
+func PrintBanner(b Banner) {
+	info := ""
+	if b.Harness == "pi" {
+		banner := `
+ __           .__
+|  | _______  |__|______  ____
+|  |/ /\__  \ |  \_  __ \/  _ \
+|    <  / __ \|  ||  | \(  <_> )
+|__|_ \(____  /__||__|   \____/
+     \/     \/`
+
+		info = fmt.Sprintf("\n\n%s\n", b.Version)
+		fmt.Printf("%s%s%s", Gray, banner, Reset)
+	} else {
+		info = fmt.Sprintf("%s · %s · %s\n\n", b.Version, b.ModelName, b.ProviderName)
+	}
+
+	fmt.Printf("%s%s%s", Gray, info, Reset)
 }
 
 // Confirm prompts the user for a y/N confirmation.

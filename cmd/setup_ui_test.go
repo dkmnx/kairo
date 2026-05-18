@@ -35,6 +35,7 @@ func TestPrintBanner(t *testing.T) {
 		name     string
 		version  string
 		provider config.Provider
+		harness  string
 		wantSub  string
 	}{
 		{
@@ -44,7 +45,8 @@ func TestPrintBanner(t *testing.T) {
 				Model: "claude-sonnet-4-20250514",
 				Name:  "MiniMax",
 			},
-			wantSub: "kairo v0.1.0 · claude-sonnet-4-20250514 · MiniMax",
+			harness: "claude",
+			wantSub: "v0.1.0 · claude-sonnet-4-20250514 · MiniMax",
 		},
 		{
 			name:    "banner with custom provider and model",
@@ -53,7 +55,8 @@ func TestPrintBanner(t *testing.T) {
 				Model: "custom-model",
 				Name:  "Custom Provider",
 			},
-			wantSub: "kairo vdev · custom-model · Custom Provider",
+			harness: "claude",
+			wantSub: "vdev · custom-model · Custom Provider",
 		},
 	}
 
@@ -65,7 +68,12 @@ func TestPrintBanner(t *testing.T) {
 
 			done := make(chan struct{})
 			go func() {
-				ui.PrintBanner(tt.version, tt.provider.Model, tt.provider.Name)
+				ui.PrintBanner(ui.Banner{
+					Version:      tt.version,
+					ModelName:    tt.provider.Model,
+					ProviderName: tt.provider.Name,
+					Harness:      tt.harness,
+				})
 				w.Close()
 				close(done)
 			}()

@@ -51,6 +51,7 @@ func TestRunHarnessWithWrapper_HarnessNotFound(t *testing.T) {
 			BaseURL: "https://test.com",
 			Model:   "test-model",
 		},
+		Harness: "claude",
 	}
 
 	err := runHarnessWithWrapper(context.Background(), d, run)
@@ -85,6 +86,7 @@ func TestRunHarnessWithWrapper_WrapperGenerationFails(t *testing.T) {
 			BaseURL: "https://test.com",
 			Model:   "test-model",
 		},
+		Harness: "claude",
 	}
 
 	err := runHarnessWithWrapper(context.Background(), d, run)
@@ -129,6 +131,7 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 			BaseURL: "https://test.com",
 			Model:   "test-model",
 		},
+		Harness: "claude",
 	}
 
 	err := runHarnessWithWrapper(context.Background(), d, run)

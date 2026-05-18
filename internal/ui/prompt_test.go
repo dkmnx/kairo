@@ -128,17 +128,18 @@ func TestPrintBanner(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("1.0.0-dev", "claude-sonnet-4-20250514", "Z.AI")
+		PrintBanner(Banner{
+			Version:      "1.0.0-dev",
+			ModelName:    "claude-sonnet-4-20250514",
+			ProviderName: "Z.AI",
+			Harness:      "claude",
+		})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
 		os.Stdout = originalStdout
 
 		output := buf.String()
-
-		if !strings.Contains(output, "kairo") {
-			t.Error("PrintBanner should contain kairo")
-		}
 
 		if !strings.Contains(output, "1.0.0-dev") {
 			t.Error("PrintBanner should display version")
@@ -157,13 +158,66 @@ func TestPrintBanner(t *testing.T) {
 		}
 	})
 
+	t.Run("contains ASCII art banner for pi harness", func(t *testing.T) {
+		buf := new(bytes.Buffer)
+		originalStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		PrintBanner(Banner{
+			Version:      "1.0.0-dev",
+			ModelName:    "claude-sonnet-4-20250514",
+			ProviderName: "Z.AI",
+			Harness:      "pi",
+		})
+
+		w.Close()
+		_, _ = buf.ReadFrom(r)
+		os.Stdout = originalStdout
+
+		output := buf.String()
+
+		if !strings.Contains(output, "______") {
+			t.Error("PrintBanner should contain ASCII art for pi harness")
+		}
+	})
+
+	t.Run("does not show ASCII art for non-pi harness", func(t *testing.T) {
+		buf := new(bytes.Buffer)
+		originalStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		PrintBanner(Banner{
+			Version:      "1.0.0-dev",
+			ModelName:    "claude-sonnet-4-20250514",
+			ProviderName: "Z.AI",
+			Harness:      "claude",
+		})
+
+		w.Close()
+		_, _ = buf.ReadFrom(r)
+		os.Stdout = originalStdout
+
+		output := buf.String()
+
+		if strings.Contains(output, "______") {
+			t.Error("PrintBanner should not contain ASCII art for non-pi harness")
+		}
+	})
+
 	t.Run("handles custom provider and model", func(t *testing.T) {
 		buf := new(bytes.Buffer)
 		originalStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		PrintBanner("2.0.0", "custom-model", "mycustomprovider")
+		PrintBanner(Banner{
+			Version:      "2.0.0",
+			ModelName:    "custom-model",
+			ProviderName: "mycustomprovider",
+			Harness:      "claude",
+		})
 
 		w.Close()
 		_, _ = buf.ReadFrom(r)
