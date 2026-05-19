@@ -394,9 +394,14 @@ func (c *Client) VerifyCosignBundle(tag string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml",
+		constants.GitHubRepo)
+
 	cmd := exec.CommandContext(ctx, cosignPath,
 		"verify-blob",
 		"--bundle="+bundleFile.Name(),
+		"--certificate-identity-regexp="+certIdentityRegexp,
+		"--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
 		checksumsFile.Name(),
 	)
 	output, err := cmd.CombinedOutput()
