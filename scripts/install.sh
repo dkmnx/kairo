@@ -95,7 +95,11 @@ download_and_install() {
         if command -v cosign >/dev/null 2>&1; then
             if curl -fsSL -o "$bundle_path" "https://github.com/$REPO/releases/download/$version/${BINARY_NAME}_${version_no_prefix}_checksums.txt.sigstore.json" 2>/dev/null; then
                 log "Verifying cosign signature..."
-                cosign verify-blob --bundle="$bundle_path" "$checksum_path" || {
+                cosign verify-blob \
+                    --bundle="$bundle_path" \
+                    --certificate-identity-regexp="^https://github\.com/$REPO/\.github/workflows/release\.yml" \
+                    --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+                    "$checksum_path" || {
                     error "Cosign signature verification failed"
                 }
                 log "Cosign signature verified"
