@@ -231,7 +231,11 @@ function Install-Binary {
             # Download checksums file separately for cosign verification
             Invoke-WebRequest -Uri "https://github.com/$Repo/releases/download/$Version/${BinaryName}_${versionNoPrefix}_checksums.txt" -OutFile $downloadedChecksums -UseBasicParsing
             Write-Log "Verifying cosign signature..."
-            & cosign verify-blob --bundle="$bundlePath" "$downloadedChecksums"
+            & cosign verify-blob `
+                --bundle="$bundlePath" `
+                --certificate-identity-regexp="^https://github\.com/$Repo/\.github/workflows/release\.yml" `
+                --certificate-oidc-issuer="https://token.actions.githubusercontent.com" `
+                "$downloadedChecksums"
             if ($LASTEXITCODE -ne 0) {
                 Write-Error-Log "Cosign signature verification failed"
                 Remove-Item -Path $archivePath -Force
