@@ -1,13 +1,15 @@
 package cmd
 
 import (
+	stderrors "errors"
+	"io/fs"
 	"os"
-	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -17,6 +19,7 @@ func requireConfigDir(cmd *cobra.Command) string {
 	if dir == "" {
 		ui.PrintError("Config directory not found")
 	}
+
 	return dir
 }
 
@@ -25,56 +28,49 @@ func requireConfigDirWritable(cmd *cobra.Command) string {
 	if dir == "" {
 		return ""
 	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, constants.DirPermSecure); err != nil {
 		ui.PrintError("Error creating config directory: " + err.Error())
+
 		return ""
 	}
+
 	return dir
 }
 
-func loadConfigOrExit(cmd *cobra.Command) *config.Config {
+func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
 	dir := requireConfigDir(cmd)
 	if dir == "" {
-		return nil
+		return nil, stderrors.New("config directory not found")
 	}
 
 	cliCtx := CLIContextFromCmd(cmd)
 	cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), dir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			ui.PrintWarn("No providers configured")
-			ui.PrintInfo("Run 'kairo setup' to get started")
-			return nil
+		if stderrors.Is(err, fs.ErrNotExist) {
+			printNoProvidersMessage()
+
+			return nil, nil
 		}
+
 		handleConfigError(cmd, err)
-		return nil
+
+		return nil, err
 	}
-	return cfg
+
+	return cfg, nil
+}
+
+// printNoProvidersMessage prints a standard message indicating no providers
+// are configured and directs the user to run setup.
+func printNoProvidersMessage() {
+	ui.PrintWarn("No providers configured")
+	ui.PrintInfo("Run 'kairo setup' to get started")
 }
 
 func printSecretsRecoveryHelp() {
 	ui.PrintInfo("Restore 'age.key' and 'secrets.age' from backup,")
 	ui.PrintInfo("or remove both files and run 'kairo setup --reset-secrets' to re-enter API keys.")
 	ui.PrintInfo("Use --verbose for more details.")
-}
-
-var lookPath = exec.LookPath
-
-var execCommand = exec.Command
-
-var execCommandContext = exec.CommandContext
-
-var exitProcess = os.Exit
-
-func parseIntOrZero(input string) int {
-	var result int
-	for _, c := range input {
-		if c < '0' || c > '9' {
-			return 0
-		}
-		result = result*10 + int(c-'0')
-	}
-	return result
 }
 
 func runningWithRaceDetector() bool {

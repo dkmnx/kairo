@@ -1,25 +1,15 @@
 package cmd
 
 import (
+	stderrors "errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
-)
-
-const (
-	envBaseURL     = "ANTHROPIC_BASE_URL"
-	envModel       = "ANTHROPIC_MODEL"
-	envHaikuModel  = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
-	envSonnetModel = "ANTHROPIC_DEFAULT_SONNET_MODEL"
-	envOpusModel   = "ANTHROPIC_DEFAULT_OPUS_MODEL"
-	envSmallFast   = "ANTHROPIC_SMALL_FAST_MODEL"
-
-	configCacheTTL = 5 * time.Minute
 )
 
 var (
@@ -54,31 +44,9 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 	Args: cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		cliCtx := CLIContextFromCmd(cmd)
-		configDir := cliCtx.ConfigDir()
-		if configDir == "" {
-			cmd.Println("Error: config directory not found")
-			if err := cmd.Help(); err != nil {
-				cmd.Println(err)
-			}
 
-			return
-		}
-
-		cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), configDir)
-		if err != nil {
-			if os.IsNotExist(err) {
-				cmd.Println("No providers configured. Run 'kairo setup' to get started.")
-
-				return
-			}
-			handleConfigError(cmd, err)
-
-			return
-		}
-
-		if len(cfg.Providers) == 0 {
-			cmd.Println("No providers configured. Run 'kairo setup' to get started.")
-
+		cfg, ok := loadRootConfig(cmd, cliCtx)
+		if !ok {
 			return
 		}
 
@@ -87,130 +55,30 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 			return
 		}
 
-		provider, ok := cfg.Providers[providerName]
+		provider, ok := lookupProvider(cmd, cfg, providerName)
 		if !ok {
-			cmd.Printf("Error: provider '%s' not configured\n", providerName)
-			cmd.Println("Run 'kairo list' to see configured providers")
-
 			return
 		}
 
 		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
-		harnessBinary := getHarnessBinary(harnessToUse)
 
 		if harnessToUse == harnessPi {
-			envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
-				BaseURL: provider.BaseURL,
-				Model:   provider.Model,
-				EnvVars: provider.EnvVars,
-			}, providerName)
-			if err != nil {
-				handleSecretsError(err)
-
-				return
-			}
-
-			providerEnv := envResult.ProviderEnv
-			secrets := envResult.Secrets
-
-			hasAnyKey := false
-			for pName, p := range cfg.Providers {
-				piEnvVar, ok := PiAPIKeyEnvVar(pName)
-				if !ok {
-					if p.EnvKey == "" {
-						piEnvVar = APIKeyEnvVarName(pName)
-					} else {
-						piEnvVar = p.EnvKey
-					}
-				}
-				key := APIKeyEnvVarName(pName)
-				val, found := secrets[key]
-				if !found && pName != customProviderName {
-					key = APIKeyEnvVarName(customProviderName)
-					val, found = secrets[key]
-				}
-				if found {
-					providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", piEnvVar, val))
-					hasAnyKey = true
-				}
-			}
-
-			execCfg := ExecutionConfig{
-				Cmd:           cmd,
-				ProviderEnv:   providerEnv,
-				HarnessToUse:  harnessToUse,
-				HarnessBinary: harnessBinary,
-				Provider:      provider,
-				ProviderName:  providerName,
-				HarnessArgs:   harnessArgs,
-				APIKey:        "",
-				Yolo:          yoloFlag,
-			}
-
-			if hasAnyKey {
-				executeWithAuth(execCfg)
-			} else {
-				executeWithoutAuth(execCfg)
-			}
-
-			return
+			runPiProvider(cmd, cliCtx, cfg, provider, providerName, harnessToUse, harnessArgs)
+		} else {
+			runStandardProvider(cmd, cliCtx, provider, providerName, harnessToUse, harnessArgs)
 		}
-
-		envResult, err := BuildProviderEnv(cliCtx, configDir, EnvProvider{
-			BaseURL: provider.BaseURL,
-			Model:   provider.Model,
-			EnvVars: provider.EnvVars,
-		}, providerName)
-		if err != nil {
-			handleSecretsError(err)
-
-			return
-		}
-
-		providerEnv := envResult.ProviderEnv
-		secrets := envResult.Secrets
-
-		apiKeyKey := APIKeyEnvVarName(providerName)
-		apiKey, hasKey := secrets[apiKeyKey]
-		if !hasKey {
-			apiKeyKey = APIKeyEnvVarName(customProviderName)
-			apiKey, hasKey = secrets[apiKeyKey]
-		}
-		if hasKey {
-			executeWithAuth(ExecutionConfig{
-				Cmd:           cmd,
-				ProviderEnv:   providerEnv,
-				HarnessToUse:  harnessToUse,
-				HarnessBinary: harnessBinary,
-				Provider:      provider,
-				ProviderName:  providerName,
-				HarnessArgs:   harnessArgs,
-				APIKey:        apiKey,
-				Yolo:          yoloFlag,
-			})
-
-			return
-		}
-
-		executeWithoutAuth(ExecutionConfig{
-			Cmd:           cmd,
-			ProviderEnv:   providerEnv,
-			HarnessToUse:  harnessToUse,
-			HarnessBinary: harnessBinary,
-			Provider:      provider,
-			ProviderName:  providerName,
-			HarnessArgs:   harnessArgs,
-			Yolo:          yoloFlag,
-		})
 	},
 }
 
+// Execute runs the root command.
 func Execute() error {
 	args := os.Args[1:]
 
 	defer func() {
 		rootCmd.SetArgs(nil)
 	}()
+
+	defaultCLIContext.SetDefaultProviderExplicit(hasDoubleDash(args))
 
 	rootCmd.SetArgs(args)
 
@@ -233,6 +101,167 @@ func init() {
 	}
 }
 
+// loadRootConfig loads and validates the configuration. Returns nil config on error
+// after printing an appropriate message to cmd.
+func loadRootConfig(cmd *cobra.Command, cliCtx *CLIContext) (*config.Config, bool) {
+	configDir := cliCtx.ConfigDir()
+	if configDir == "" {
+		cmd.Println("Error: config directory not found")
+		if err := cmd.Help(); err != nil {
+			cmd.Println(err)
+		}
+
+		return nil, false
+	}
+
+	cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), configDir)
+	if err != nil {
+		if stderrors.Is(err, fs.ErrNotExist) {
+			cmd.Println("No providers configured. Run 'kairo setup' to get started.")
+
+			return nil, false
+		}
+		handleConfigError(cmd, err)
+
+		return nil, false
+	}
+
+	if len(cfg.Providers) == 0 {
+		cmd.Println("No providers configured. Run 'kairo setup' to get started.")
+
+		return nil, false
+	}
+
+	return cfg, true
+}
+
+// lookupProvider finds the named provider in the configuration.
+// Prints an error and returns false if not found.
+func lookupProvider(cmd *cobra.Command, cfg *config.Config, providerName string) (config.Provider, bool) {
+	provider, ok := cfg.Providers[providerName]
+	if !ok {
+		cmd.Printf("Error: provider '%s' not configured\n", providerName)
+		cmd.Println("Run 'kairo list' to see configured providers")
+
+		return config.Provider{}, false
+	}
+
+	return provider, true
+}
+
+// runPiProvider handles the Pi harness execution path, which injects all provider
+// API keys as environment variables rather than using a single API key.
+func runPiProvider(
+	cmd *cobra.Command,
+	cliCtx *CLIContext,
+	cfg *config.Config,
+	provider config.Provider,
+	providerName, harnessToUse string,
+	harnessArgs []string,
+) {
+	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), provider, providerName)
+	if err != nil {
+		handleSecretsError(err)
+
+		return
+	}
+
+	providerEnv := envResult.ProviderEnv
+	secrets := envResult.Secrets
+
+	hasAnyKey := false
+	for pName, p := range cfg.Providers {
+		piEnvVar, ok := PiAPIKeyEnvVar(pName)
+		if !ok {
+			if p.EnvKey == "" {
+				piEnvVar = APIKeyEnvVarName(pName)
+			} else {
+				piEnvVar = p.EnvKey
+			}
+		}
+		key := APIKeyEnvVarName(pName)
+		val, found := secrets[key]
+		if !found && pName != customProviderName {
+			key = APIKeyEnvVarName(customProviderName)
+			val, found = secrets[key]
+		}
+		if found {
+			providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", piEnvVar, val))
+			hasAnyKey = true
+		}
+	}
+
+	execCfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   providerEnv,
+		HarnessToUse:  harnessToUse,
+		HarnessBinary: getHarnessBinary(harnessToUse),
+		Provider:      provider,
+		ProviderName:  providerName,
+		HarnessArgs:   harnessArgs,
+		Yolo:          yoloFlag,
+		Deps:          cliCtx.Deps(),
+	}
+
+	if hasAnyKey {
+		executeWithAuth(execCfg)
+	} else {
+		executeWithoutAuth(execCfg)
+	}
+}
+
+// runStandardProvider handles the Claude/Qwen harness execution path with
+// single-provider API key lookup and fallback to the custom provider key.
+func runStandardProvider(
+	cmd *cobra.Command,
+	cliCtx *CLIContext,
+	provider config.Provider,
+	providerName, harnessToUse string,
+	harnessArgs []string,
+) {
+	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), provider, providerName)
+	if err != nil {
+		handleSecretsError(err)
+
+		return
+	}
+
+	apiKey, hasKey := resolveAPIKey(envResult.Secrets, providerName)
+
+	execCfg := ExecutionConfig{
+		Cmd:           cmd,
+		ProviderEnv:   envResult.ProviderEnv,
+		HarnessToUse:  harnessToUse,
+		HarnessBinary: getHarnessBinary(harnessToUse),
+		Provider:      provider,
+		ProviderName:  providerName,
+		HarnessArgs:   harnessArgs,
+		APIKey:        apiKey,
+		Yolo:          yoloFlag,
+		Deps:          cliCtx.Deps(),
+	}
+
+	if hasKey {
+		executeWithAuth(execCfg)
+	} else {
+		executeWithoutAuth(execCfg)
+	}
+}
+
+// resolveAPIKey looks up the API key for the named provider, falling back to
+// the custom provider key if the provider-specific key is not found.
+func resolveAPIKey(secrets map[string]string, providerName string) (string, bool) {
+	if key, ok := secrets[APIKeyEnvVarName(providerName)]; ok {
+		return key, true
+	}
+
+	if key, ok := secrets[APIKeyEnvVarName(customProviderName)]; ok {
+		return key, true
+	}
+
+	return "", false
+}
+
 func splitArgs(args []string) ([]string, []string) {
 	for i, arg := range args {
 		if arg == "--" {
@@ -241,6 +270,25 @@ func splitArgs(args []string) ([]string, []string) {
 	}
 
 	return args, nil
+}
+
+func hasDoubleDash(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--" {
+			return true
+		}
+		if args[i] == "-" || !strings.HasPrefix(args[i], "-") {
+			return false
+		}
+		if strings.Contains(args[i], "=") {
+			continue
+		}
+		if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+			i++
+		}
+	}
+
+	return false
 }
 
 func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
@@ -273,7 +321,9 @@ func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) 
 }
 
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
-	if len(args) == 0 {
+	cliCtx := CLIContextFromCmd(cmd)
+
+	if len(args) == 0 || cliCtx.DefaultProviderExplicit() || harnessFlag != "" {
 		if cfg.DefaultProvider == "" {
 			cmd.Println("No default provider set.")
 			cmd.Println()
@@ -285,7 +335,8 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 
 			return nil, nil, ""
 		}
-		args = []string{cfg.DefaultProvider}
+
+		return []string{cfg.DefaultProvider}, args, cfg.DefaultProvider
 	}
 
 	providerName, harnessArgs := getProviderFromArgs(cmd, cfg, args)

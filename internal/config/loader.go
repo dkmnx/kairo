@@ -3,10 +3,13 @@ package config
 import (
 	"bytes"
 	"context"
+	stderrors "errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/fsutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,7 +40,7 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 
 	oldInfo, err := os.Stat(oldConfigPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if stderrors.Is(err, fs.ErrNotExist) {
 			return false, nil
 		}
 
@@ -47,7 +50,7 @@ func migrateConfigFile(ctx context.Context, configDir string) (bool, error) {
 
 	if _, err := os.Stat(newConfigPath); err == nil {
 		return false, nil
-	} else if !os.IsNotExist(err) {
+	} else if !stderrors.Is(err, fs.ErrNotExist) {
 		return false, errors.WrapError(errors.FileSystemError,
 			"failed to check new config file", err)
 	}
@@ -103,7 +106,7 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if stderrors.Is(err, fs.ErrNotExist) {
 			return nil, errors.ErrConfigNotFound
 		}
 
@@ -116,6 +119,13 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&cfg); err != nil {
+		if isUnknownFieldError(err) {
+			return nil, errors.WrapError(errors.ConfigError,
+				"configuration file contains field(s) not recognized by this version of kairo", err).
+				WithContext("path", configPath).
+				WithContext("hint", "your installed kairo binary is outdated, please upgrade")
+		}
+
 		return nil, errors.WrapError(errors.ConfigError,
 			"failed to parse configuration file (invalid YAML)", err).
 			WithContext("path", configPath).
@@ -133,6 +143,14 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	cfg.validate()
 
 	return &cfg, nil
+}
+
+// isUnknownFieldError reports whether the error is a YAML type error caused by
+// unknown fields, indicating the binary is outdated relative to the config file.
+func isUnknownFieldError(err error) bool {
+	var typeErr *yaml.TypeError
+
+	return stderrors.As(err, &typeErr)
 }
 
 func (c *Config) validate() {
@@ -159,40 +177,14 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 			WithContext("path", configPath)
 	}
 
-	tempPath := configPath + ".tmp"
+	if err := fsutil.WriteAtomic(configPath, func(f *os.File) error {
+		_, writeErr := f.Write(data)
 
-	file, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
-	if err != nil {
+		return writeErr
+	}); err != nil {
 		return errors.WrapError(errors.FileSystemError,
-			"failed to create temporary config file", err).
-			WithContext("path", tempPath)
-	}
-
-	_, err = file.Write(data)
-	if err != nil {
-		file.Close()
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to write config data", err).
-			WithContext("path", tempPath)
-	}
-
-	if err := file.Close(); err != nil {
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to close temporary config file", err).
-			WithContext("path", tempPath)
-	}
-
-	if err := os.Rename(tempPath, configPath); err != nil {
-		_ = os.Remove(tempPath)
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to rename temporary config file", err).
-			WithContext("temp_path", tempPath).
-			WithContext("config_path", configPath)
+			"failed to save configuration file", err).
+			WithContext("path", configPath)
 	}
 
 	return nil

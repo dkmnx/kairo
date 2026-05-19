@@ -128,22 +128,9 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	originalConfigDir := getConfigDir()
-	originalLookPath := lookPath
-	originalExecCommand := execCommand
-	defer func() {
-		setConfigDir(originalConfigDir)
-		lookPath = originalLookPath
-		execCommand = originalExecCommand
-	}()
+	defer func() { setConfigDir(originalConfigDir) }()
 
 	setConfigDir(tmpDir)
-
-	lookPath = func(file string) (string, error) {
-		if file == "claude" {
-			return "/usr/bin/claude", nil
-		}
-		return originalLookPath(file)
-	}
 
 	cfg := &config.Config{
 		DefaultProvider: "anthropic",

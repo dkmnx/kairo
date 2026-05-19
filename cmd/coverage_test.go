@@ -111,7 +111,7 @@ func TestBuildSecretsEnvVars(t *testing.T) {
 }
 
 func TestBuildBuiltInEnvVars(t *testing.T) {
-	provider := EnvProvider{
+	provider := config.Provider{
 		BaseURL: "https://api.test.com",
 		Model:   "test-model",
 	}

@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,19 +32,21 @@ var deleteCmd = &cobra.Command{
 
 		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
 		if err != nil {
-			if os.IsNotExist(err) {
-				ui.PrintWarn("No providers configured")
+			if stderrors.Is(err, fs.ErrNotExist) {
+				printNoProvidersMessage()
+
 				return
 			}
 			handleConfigError(cmd, err)
+
 			return
 		}
 
 		var target string
 		if len(args) == 0 {
 			if len(cfg.Providers) == 0 {
-				ui.PrintWarn("No providers configured")
-				ui.PrintInfo("Run 'kairo setup' to get started")
+				printNoProvidersMessage()
+
 				return
 			}
 
@@ -62,13 +66,14 @@ var deleteCmd = &cobra.Command{
 				Hint: "Remove a configured provider from Kairo",
 			})
 
-			selected := tap.Select(context.Background(), tap.SelectOptions[string]{
+			selected := tap.Select(cliCtx.RootCtx(), tap.SelectOptions[string]{
 				Message: "Select provider to delete",
 				Options: options,
 			})
 			target = selected
 			if target == "" {
-				tap.Cancel("Operation cancelled")
+				tap.Cancel("Operation canceled")
+
 				return
 			}
 		} else {
@@ -78,14 +83,16 @@ var deleteCmd = &cobra.Command{
 		_, ok := cfg.Providers[target]
 		if !ok {
 			tap.Cancel(fmt.Sprintf("Provider '%s' not configured", target))
+
 			return
 		}
 
-		confirmed := tap.Confirm(context.Background(), tap.ConfirmOptions{
+		confirmed := tap.Confirm(cliCtx.RootCtx(), tap.ConfirmOptions{
 			Message: fmt.Sprintf("Are you sure you want to delete '%s'?", target),
 		})
 		if !confirmed {
-			tap.Cancel("Operation cancelled")
+			tap.Cancel("Operation canceled")
+
 			return
 		}
 
@@ -97,6 +104,7 @@ var deleteCmd = &cobra.Command{
 
 		if err := config.SaveConfig(cliCtx.RootCtx(), dir, cfg); err != nil {
 			tap.Cancel(fmt.Sprintf("Saving config: %v", err))
+
 			return
 		}
 
@@ -107,6 +115,7 @@ var deleteCmd = &cobra.Command{
 
 		if err := deleteProviderSecrets(cliCtx.RootCtx(), secretsPath, keyPath, target); err != nil {
 			tap.Cancel(fmt.Sprintf("Failed to clean up secrets for '%s': %v", target, err))
+
 			return
 		}
 
@@ -140,13 +149,18 @@ func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerNa
 
 	if secretsContent == "" {
 		if removeErr := os.Remove(secretsPath); removeErr != nil {
-			return fmt.Errorf("could not remove empty secrets file: %w", removeErr)
+			return errors.WrapError(errors.FileSystemError,
+				"could not remove empty secrets file", removeErr).
+				WithContext("path", secretsPath)
 		}
+
 		return nil
 	}
 
 	if err := crypto.EncryptSecrets(ctx, secretsPath, keyPath, secretsContent); err != nil {
-		return fmt.Errorf("could not update secrets: %w", err)
+		return errors.WrapError(errors.CryptoError,
+			"could not update secrets", err).
+			WithContext("path", secretsPath)
 	}
 
 	return nil

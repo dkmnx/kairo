@@ -20,8 +20,8 @@ var defaultCmd = &cobra.Command{
 			return
 		}
 
-		cfg := loadConfigOrExit(cmd)
-		if cfg == nil {
+		cfg, err := loadConfigOrExit(cmd)
+		if err != nil || cfg == nil {
 			if len(args) > 0 {
 				ui.PrintError(fmt.Sprintf("Provider '%s' not found in config", args[0]))
 			}

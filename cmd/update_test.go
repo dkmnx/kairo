@@ -44,46 +44,35 @@ providers:
 	version.Version = "v2.3.4"
 	defer func() { version.Version = originalVersion }()
 
-	originalGetLatestReleaseFn := getLatestReleaseFn
-	originalConfirmUpdateFn := confirmUpdateFn
-	originalDownloadToTempFileFn := downloadToTempFileFn
-	originalDownloadAndParseChecksumsFn := downloadAndParseChecksumsFn
-	originalVerifyChecksumFn := verifyChecksumFn
-	originalRunInstallScriptFn := runInstallScriptFn
-	defer func() {
-		getLatestReleaseFn = originalGetLatestReleaseFn
-		confirmUpdateFn = originalConfirmUpdateFn
-		downloadToTempFileFn = originalDownloadToTempFileFn
-		downloadAndParseChecksumsFn = originalDownloadAndParseChecksumsFn
-		verifyChecksumFn = originalVerifyChecksumFn
-		runInstallScriptFn = originalRunInstallScriptFn
-	}()
-
-	getLatestReleaseFn = func() (*update.Release, error) {
-		return &update.Release{TagName: "v2.3.5"}, nil
-	}
-	confirmUpdateFn = func(string) (bool, error) {
-		return true, nil
-	}
 	tempScriptPath := filepath.Join(tmpDir, "install.sh")
 	if err := os.WriteFile(tempScriptPath, []byte("#!/bin/sh\nexit 0\n"), 0755); err != nil {
 		t.Fatalf("failed to write temp script: %v", err)
 	}
-	downloadToTempFileFn = func(string) (string, error) {
-		return tempScriptPath, nil
-	}
-	downloadAndParseChecksumsFn = func(string) (map[string]string, error) {
-		return map[string]string{update.GetScriptNameForChecksums(runtime.GOOS): "ignored"}, nil
-	}
-	verifyChecksumFn = func(string, string) error {
-		return nil
-	}
-	runInstallScriptFn = func(string) error {
-		return nil
-	}
+
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mu.GetLatestReleaseFn = func() (*update.Release, error) {
+			return &update.Release{TagName: "v2.3.5"}, nil
+		}
+		mu.ConfirmUpdateFn = func(string) (bool, error) {
+			return true, nil
+		}
+		mu.DownloadToTempFileFn = func(string) (string, error) {
+			return tempScriptPath, nil
+		}
+		mu.DownloadAndParseChecksumsFn = func(string) (map[string]string, error) {
+			return map[string]string{update.GetScriptNameForChecksums(runtime.GOOS): "ignored"}, nil
+		}
+		mu.VerifyChecksumFn = func(string, string) error {
+			return nil
+		}
+		mu.RunInstallScriptFn = func(string) error {
+			return nil
+		}
+	})
 
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(tmpDir)
+	cliCtx.SetDeps(d)
 	updateCmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 	updateCmd.Run(updateCmd, nil)
 
@@ -112,22 +101,23 @@ func TestUpdateCommand(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
+	c := &update.Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL + "/repos/dkmnx/kairo/releases/latest", true
+			}
+			return "", false
+		},
 	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
 
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := getLatestReleaseFn()
+	latest, err := c.GetLatestRelease()
 	if err != nil {
-		t.Fatalf("getLatestReleaseFn() error = %v", err)
+		t.Fatalf("GetLatestRelease() error = %v", err)
 	}
 
 	if latest.TagName != "v1.2.0" {
@@ -151,22 +141,23 @@ func TestUpdateCommandNoNewVersion(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
+	c := &update.Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL + "/repos/dkmnx/kairo/releases/latest", true
+			}
+			return "", false
+		},
 	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
 
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := getLatestReleaseFn()
+	latest, err := c.GetLatestRelease()
 	if err != nil {
-		t.Fatalf("getLatestReleaseFn() error = %v", err)
+		t.Fatalf("GetLatestRelease() error = %v", err)
 	}
 
 	if update.VersionGreaterThan(version.Version, latest.TagName) {
@@ -180,18 +171,19 @@ func TestUpdateCommandAPIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
+	c := &update.Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL + "/repos/dkmnx/kairo/releases/latest", true
+			}
+			return "", false
+		},
 	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
 
-	_, err := getLatestReleaseFn()
+	_, err := c.GetLatestRelease()
 	if err == nil {
-		t.Error("getLatestReleaseFn() should return error on API failure")
+		t.Error("GetLatestRelease() should return error on API failure")
 	}
 }
 
@@ -210,22 +202,23 @@ func TestVersionNotification(t *testing.T) {
 	}))
 	defer server.Close()
 
-	originalEnvFunc := update.EnvFunc
-	update.EnvFunc = func(key string) (string, bool) {
-		if key == "KAIRO_UPDATE_URL" {
-			return server.URL + "/repos/dkmnx/kairo/releases/latest", true
-		}
-		return "", false
+	c := &update.Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_UPDATE_URL" {
+				return server.URL + "/repos/dkmnx/kairo/releases/latest", true
+			}
+			return "", false
+		},
 	}
-	defer func() { update.EnvFunc = originalEnvFunc }()
 
 	originalVersion := version.Version
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := getLatestReleaseFn()
+	latest, err := c.GetLatestRelease()
 	if err != nil {
-		t.Fatalf("getLatestReleaseFn() error = %v", err)
+		t.Fatalf("GetLatestRelease() error = %v", err)
 	}
 
 	if !update.VersionGreaterThan(version.Version, latest.TagName) {
@@ -244,7 +237,8 @@ func TestDownloadToTempFileErrorHandlingConnectionClose(t *testing.T) {
 		}))
 		defer server.Close()
 
-		_, err := update.DownloadToTempFile(server.URL)
+		c := update.NewClient()
+		_, err := c.DownloadToTempFile(server.URL)
 		if err == nil {
 			t.Error("should return error when server closes early")
 		}

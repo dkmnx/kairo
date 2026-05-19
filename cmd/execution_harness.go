@@ -7,14 +7,11 @@ import (
 	"sync"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
-
-var createTempAuthDirFn = wrapper.CreateTempAuthDir
-var writeTempTokenFileFn = wrapper.WriteTempTokenFile
-var generateWrapperScriptFn = wrapper.GenerateWrapperScript
 
 // HarnessRun holds the state for a single harness execution.
 type HarnessRun struct {
@@ -25,9 +22,14 @@ type HarnessRun struct {
 	ProviderEnv   []string
 	Provider      config.Provider
 	EnvVarName    string
+	Harness       string
 }
 
-func executePiWithoutAuth(cfg ExecutionConfig) {
+func qwenAuthArgs(model string) []string {
+	return []string{"--auth-type", "anthropic", "--model", model}
+}
+
+func executePi(cfg ExecutionConfig) error {
 	cliArgs := cfg.HarnessArgs
 
 	if cfg.Yolo {
@@ -42,77 +44,39 @@ func executePiWithoutAuth(cfg ExecutionConfig) {
 		cliArgs...,
 	)
 
-	piPath, err := lookPath(cfg.HarnessBinary)
+	piPath, err := cfg.Deps.Process.LookPath(cfg.HarnessBinary)
 	if err != nil {
 		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
 
-		return
+		return nil
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
+	ui.PrintBanner(ui.Banner{
+		Version:      version.Version,
+		ModelName:    cfg.Provider.Model,
+		ProviderName: cfg.Provider.Name,
+		Harness:      cfg.HarnessToUse,
+	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
 	setupSignalHandler(cancel)
 
-	execCmd := execCommandContext(ctx, piPath, cliArgs...)
+	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, piPath, cliArgs...)
 	execCmd.Env = cfg.ProviderEnv
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 
-	if err := execCmd.Run(); err != nil {
-		cfg.Cmd.Printf("Error running Pi: %v\n", err)
-		exitProcess(1)
-	}
+	return execCmd.Run()
 }
 
-func executePiWithAuth(cfg ExecutionConfig) {
-	cliArgs := cfg.HarnessArgs
-
-	if cfg.Yolo {
-		flag := yoloModeFlag(cfg.HarnessToUse)
-		if flag != "" {
-			cliArgs = append([]string{flag}, cliArgs...)
-		}
-	}
-
-	cliArgs = append(
-		[]string{"--provider", cfg.ProviderName, "--model", cfg.Provider.Model},
-		cliArgs...,
-	)
-
-	piPath, err := lookPath(cfg.HarnessBinary)
+func runHarnessWithWrapper(ctx context.Context, deps *Deps, params HarnessRun) error {
+	harnessPath, err := deps.Process.LookPath(params.HarnessBinary)
 	if err != nil {
-		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
-
-		return
-	}
-
-	ui.ClearScreen()
-	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	setupSignalHandler(cancel)
-
-	execCmd := execCommandContext(ctx, piPath, cliArgs...)
-	execCmd.Env = cfg.ProviderEnv
-	execCmd.Stdin = os.Stdin
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
-
-	if err := execCmd.Run(); err != nil {
-		cfg.Cmd.Printf("Error running Pi: %v\n", err)
-		exitProcess(1)
-	}
-}
-
-func runHarnessWithWrapper(params HarnessRun) error {
-	harnessPath, err := lookPath(params.HarnessBinary)
-	if err != nil {
-		return fmt.Errorf("'%s' command not found in PATH", params.HarnessBinary)
+		return kairoerrors.WrapError(kairoerrors.RuntimeError,
+			fmt.Sprintf("'%s' command not found in PATH", params.HarnessBinary), err)
 	}
 
 	wrapperCfg := wrapper.ScriptConfig{
@@ -122,19 +86,21 @@ func runHarnessWithWrapper(params HarnessRun) error {
 		CliArgs:    params.CliArgs,
 		EnvVarName: params.EnvVarName,
 	}
-	wrapperScript, useCmdExe, err := generateWrapperScriptFn(wrapperCfg)
+	wrapperScript, useCmdExe, err := deps.Wrapper.GenerateWrapperScript(wrapperCfg)
 	if err != nil {
-		return fmt.Errorf("generating wrapper script: %w", err)
+		return kairoerrors.WrapError(kairoerrors.RuntimeError,
+			"generating wrapper script", err)
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(version.Version, params.Provider.Model, params.Provider.Name)
+	ui.PrintBanner(ui.Banner{
+		Version:      version.Version,
+		ModelName:    params.Provider.Model,
+		ProviderName: params.Provider.Name,
+		Harness:      params.Harness,
+	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	setupSignalHandler(cancel)
-
-	execCmd := buildWrapperCommand(WrapperCmd{
+	execCmd := buildWrapperCommand(deps, WrapperCmd{
 		Ctx:           ctx,
 		WrapperScript: wrapperScript,
 		IsWindows:     useCmdExe,
@@ -149,7 +115,10 @@ func runHarnessWithWrapper(params HarnessRun) error {
 
 func executeWithAuth(cfg ExecutionConfig) {
 	if cfg.HarnessToUse == harnessPi {
-		executePiWithAuth(cfg)
+		if err := executePi(cfg); err != nil {
+			cfg.Cmd.Printf("Error running Pi: %v\n", err)
+			cfg.Deps.Process.ExitProcess(1)
+		}
 
 		return
 	}
@@ -158,7 +127,11 @@ func executeWithAuth(cfg ExecutionConfig) {
 }
 
 func executeWrapperWithAuth(cfg ExecutionConfig) {
-	authDir, err := createTempAuthDirFn()
+	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
+	defer cancel()
+	setupSignalHandler(cancel)
+
+	authDir, err := cfg.Deps.Wrapper.CreateTempAuthDir()
 	if err != nil {
 		cfg.Cmd.Printf("Error creating auth directory: %v\n", err)
 
@@ -173,7 +146,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	}
 	defer cleanup()
 
-	tokenPath, err := writeTempTokenFileFn(authDir, cfg.APIKey)
+	tokenPath, err := cfg.Deps.Wrapper.WriteTempTokenFile(authDir, cfg.APIKey)
 	if err != nil {
 		cfg.Cmd.Printf("Error creating secure token file: %v\n", err)
 
@@ -188,6 +161,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 		CliArgs:       cliArgs,
 		ProviderEnv:   cfg.ProviderEnv,
 		Provider:      cfg.Provider,
+		Harness:       cfg.HarnessToUse,
 	}
 
 	if cfg.Yolo {
@@ -195,29 +169,29 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	}
 
 	if cfg.HarnessToUse == harnessQwen {
-		run.CliArgs = append(
-			[]string{"--auth-type", "anthropic", "--model", cfg.Provider.Model},
-			run.CliArgs...,
-		)
+		run.CliArgs = append(qwenAuthArgs(cfg.Provider.Model), run.CliArgs...)
 		run.EnvVarName = "ANTHROPIC_API_KEY"
 
-		if err := runHarnessWithWrapper(run); err != nil {
+		if err := runHarnessWithWrapper(ctx, cfg.Deps, run); err != nil {
 			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
-			exitProcess(1)
+			cfg.Deps.Process.ExitProcess(1)
 		}
 
 		return
 	}
 
-	if err := runHarnessWithWrapper(run); err != nil {
+	if err := runHarnessWithWrapper(ctx, cfg.Deps, run); err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
-		exitProcess(1)
+		cfg.Deps.Process.ExitProcess(1)
 	}
 }
 
 func executeWithoutAuth(cfg ExecutionConfig) {
 	if cfg.HarnessToUse == harnessPi {
-		executePiWithoutAuth(cfg)
+		if err := executePi(cfg); err != nil {
+			cfg.Cmd.Printf("Error running Pi: %v\n", err)
+			cfg.Deps.Process.ExitProcess(1)
+		}
 
 		return
 	}
@@ -235,7 +209,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 		return
 	}
 
-	claudePath, err := lookPath(cfg.HarnessBinary)
+	claudePath, err := cfg.Deps.Process.LookPath(cfg.HarnessBinary)
 	if err != nil {
 		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
 
@@ -243,13 +217,18 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	}
 
 	ui.ClearScreen()
-	ui.PrintBanner(version.Version, cfg.Provider.Model, cfg.Provider.Name)
+	ui.PrintBanner(ui.Banner{
+		Version:      version.Version,
+		ModelName:    cfg.Provider.Model,
+		ProviderName: cfg.Provider.Name,
+		Harness:      cfg.HarnessToUse,
+	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
 	setupSignalHandler(cancel)
 
-	execCmd := execCommandContext(ctx, claudePath, cliArgs...)
+	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, claudePath, cliArgs...)
 	execCmd.Env = cfg.ProviderEnv
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
@@ -257,6 +236,6 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 
 	if err := execCmd.Run(); err != nil {
 		cfg.Cmd.Printf("Error running Claude: %v\n", err)
-		exitProcess(1)
+		cfg.Deps.Process.ExitProcess(1)
 	}
 }

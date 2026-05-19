@@ -27,7 +27,11 @@ const (
 var ErrConfigNotFound = errors.New("configuration file not found")
 
 // ErrUserCancelled is returned when the user cancels an interactive prompt.
-var ErrUserCancelled = errors.New("user cancelled input")
+var ErrUserCancelled = errors.New("user canceled input")
+
+// ErrBinaryOutdated is returned when the configuration file contains fields
+// not recognized by this binary version, indicating an upgrade is needed.
+var ErrBinaryOutdated = errors.New("your installed kairo binary is outdated")
 
 // KairoError is a structured error with a type classification, message,
 // optional cause, and key-value context metadata.
@@ -56,6 +60,7 @@ func (e *KairoError) Error() string {
 		}
 		b.WriteString(")")
 	}
+
 	return b.String()
 }
 
@@ -68,6 +73,7 @@ func (e *KairoError) Is(target error) bool {
 	if !ok {
 		return false
 	}
+
 	return e.Type == t.Type
 }
 
@@ -94,6 +100,7 @@ func (e *KairoError) WithContext(key, value string) *KairoError {
 		e.Context = make(map[string]string)
 	}
 	e.Context[key] = value
+
 	return e
 }
 
@@ -103,7 +110,7 @@ func FileError(message, path string, cause error) *KairoError {
 		WithContext("path", path)
 }
 
-// CheckContext returns ctx.Err() if the context has been cancelled or expired.
+// CheckContext returns ctx.Err() if the context has been canceled or expired.
 func CheckContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():

@@ -36,7 +36,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 
       - name: Run golangci-lint
         run: golangci-lint run ./...
@@ -44,9 +44,27 @@ jobs:
       - name: Check go.mod tidy
         run: go mod tidy && git diff --exit-code go.mod go.sum
 
+      - name: Verify install script checksums
+        run: |
+          expected=$(sha256sum scripts/install.sh scripts/install.ps1)
+          actual=$(sed -n '/^[0-9a-f]/p' scripts/checksums.txt)
+          if [ "$expected" != "$actual" ]; then
+            echo "Checksum mismatch! Expected:" >&2
+            echo "$expected" >&2
+            echo "Actual:" >&2
+            echo "$actual" >&2
+            echo "Run 'pre-commit run update-checksums --all-files' to fix." >&2
+            exit 1
+          fi
+          echo "Install script checksums verified."
+
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, macos, windows]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -59,11 +77,14 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Run tests with coverage
+        shell: bash
         run: |
           go test -race -coverprofile=coverage.out -covermode=atomic ./...
           go tool cover -func=coverage.out
 
       - name: Check coverage threshold
+        if: matrix.os == 'ubuntu'
+        shell: bash
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
@@ -74,7 +95,7 @@ jobs:
 
   platform:
     name: Build (${{ matrix.os }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
       matrix:
@@ -91,6 +112,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Build for ${{ matrix.os }}
+        shell: bash
         run: |
           EXT=""
           if [ "${{ matrix.os }}" = "windows" ]; then EXT=".exe"; fi

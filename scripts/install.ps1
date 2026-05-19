@@ -220,6 +220,33 @@ function Install-Binary {
         exit 1
     }
 
+    # Verify cosign signature if cosign is available
+    if (Get-Command cosign -ErrorAction SilentlyContinue) {
+        $bundleUrl = "https://github.com/$Repo/releases/download/$Version/${BinaryName}_${versionNoPrefix}_checksums.txt.sigstore.json"
+        $bundlePath = Join-Path $tmpDir "${BinaryName}_${versionNoPrefix}_checksums.txt.sigstore.json"
+        $downloadedChecksums = Join-Path $tmpDir "${BinaryName}_${versionNoPrefix}_checksums.txt"
+
+        try {
+            Invoke-WebRequest -Uri $bundleUrl -OutFile $bundlePath -UseBasicParsing
+            # Download checksums file separately for cosign verification
+            Invoke-WebRequest -Uri "https://github.com/$Repo/releases/download/$Version/${BinaryName}_${versionNoPrefix}_checksums.txt" -OutFile $downloadedChecksums -UseBasicParsing
+            Write-Log "Verifying cosign signature..."
+            & cosign verify-blob --bundle="$bundlePath" "$downloadedChecksums"
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error-Log "Cosign signature verification failed"
+                Remove-Item -Path $archivePath -Force
+                exit 1
+            }
+            Write-Log "Cosign signature verified"
+        }
+        catch {
+            Write-Log "Warning: Cosign bundle not found, skipping signature verification"
+        }
+    }
+    else {
+        Write-Log "Warning: cosign not found, skipping signature verification"
+    }
+
     Write-Log "Extracting archive..."
     try {
         Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force

@@ -23,16 +23,32 @@ import (
 	"github.com/dkmnx/kairo/internal/errors"
 )
 
-const requestTimeout = 10 * time.Second
-
 const (
 	checksumsFilename   = "checksums.txt"
 	installScriptExt    = ".sh"
 	installScriptExtPS1 = ".ps1"
 )
 
-var httpClient = &http.Client{
-	Timeout: requestTimeout,
+// Client holds injectable dependencies for update operations.
+type Client struct {
+	HTTPClient   *http.Client
+	EnvFunc      func(key string) (string, bool)
+	LookPathFunc func(string) (string, error)
+}
+
+// NewClient returns a Client with production defaults.
+func NewClient() *Client {
+	return &Client{
+		HTTPClient: &http.Client{Timeout: constants.RequestTimeout},
+		EnvFunc: func(key string) (string, bool) {
+			if v := os.Getenv(key); v != "" {
+				return v, true
+			}
+
+			return "", false
+		},
+		LookPathFunc: exec.LookPath,
+	}
 }
 
 // Release holds the relevant fields from a GitHub release response.
@@ -42,20 +58,41 @@ type Release struct {
 	Body    string `json:"body"`
 }
 
-// EnvFunc is a function that retrieves an environment variable value.
-// It can be overridden for testing.
-var EnvFunc = func(key string) (string, bool) {
-	value := os.Getenv(key)
-	if value != "" {
-		return value, true
+// doHTTPGet performs an HTTP GET request and returns the response body.
+func (c *Client) doHTTPGet(url string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return nil, errors.WrapError(errors.NetworkError,
+			"failed to create request", err)
 	}
 
-	return "", false
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, errors.WrapError(errors.NetworkError,
+			"failed to fetch", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.NewError(errors.NetworkError,
+			fmt.Sprintf("request failed with status %d", resp.StatusCode))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.WrapError(errors.NetworkError,
+			"failed to read response", err)
+	}
+
+	return body, nil
 }
 
 // GetLatestReleaseURL returns the URL to check for the latest release.
-func GetLatestReleaseURL() string {
-	if url, ok := EnvFunc("KAIRO_UPDATE_URL"); ok && url != "" {
+func (c *Client) GetLatestReleaseURL() string {
+	if url, ok := c.EnvFunc("KAIRO_UPDATE_URL"); ok && url != "" {
 		return url
 	}
 
@@ -63,12 +100,12 @@ func GetLatestReleaseURL() string {
 }
 
 // GetLatestRelease fetches the latest release information from GitHub.
-func GetLatestRelease() (*Release, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+func (c *Client) GetLatestRelease() (*Release, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
-	url := GetLatestReleaseURL()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	url := c.GetLatestReleaseURL()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to create request", err)
@@ -76,7 +113,7 @@ func GetLatestRelease() (*Release, error) {
 
 	req.Header.Set("User-Agent", "kairo-cli")
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to fetch release", err)
@@ -127,17 +164,17 @@ func GetInstallScriptURL(goos, tag string) string {
 }
 
 // DownloadToTempFile downloads a URL to a temporary file and returns its path.
-func DownloadToTempFile(url string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+func (c *Client) DownloadToTempFile(url string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return "", errors.WrapError(errors.NetworkError,
 			"failed to create download request", err)
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return "", errors.WrapError(errors.NetworkError,
 			"failed to download", err)
@@ -181,7 +218,9 @@ func DownloadToTempFile(url string) (string, error) {
 // RunInstallScript executes the install script at the given path.
 func RunInstallScript(scriptPath string) error {
 	if runtime.GOOS == constants.WindowsGOOS {
-		pwshCmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		pwshCmd := exec.CommandContext(ctx, "powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 		pwshCmd.Stdout = os.Stdout
 		pwshCmd.Stderr = os.Stderr
 		if err := pwshCmd.Run(); err != nil {
@@ -192,7 +231,7 @@ func RunInstallScript(scriptPath string) error {
 		return nil
 	}
 
-	if err := os.Chmod(scriptPath, 0755); err != nil {
+	if err := os.Chmod(scriptPath, constants.FilePermExec); err != nil {
 		return errors.WrapError(errors.FileSystemError,
 			"failed to make script executable", err)
 	}
@@ -203,7 +242,7 @@ func RunInstallScript(scriptPath string) error {
 			"failed to find shell", err)
 	}
 
-	shCmd := exec.Command(shPath, scriptPath)
+	shCmd := exec.CommandContext(context.Background(), shPath, scriptPath)
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
 	if err := shCmd.Run(); err != nil {
@@ -243,32 +282,11 @@ func ParseChecksumLine(line string) (hash, filename string, ok bool) {
 }
 
 // DownloadAndParseChecksums downloads and parses a checksums file from the given URL.
-func DownloadAndParseChecksums(url string) (map[string]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to create checksums request", err)
-	}
-
-	resp, err := httpClient.Do(req)
+func (c *Client) DownloadAndParseChecksums(url string) (map[string]string, error) {
+	body, err := c.doHTTPGet(url)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to download checksums", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.NewError(errors.NetworkError,
-			fmt.Sprintf("checksums download failed with status %d", resp.StatusCode))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to read checksums response", err)
 	}
 
 	checksums := make(map[string]string)
@@ -311,6 +329,81 @@ func VerifyChecksum(scriptPath, expectedHash string) error {
 			nil,
 		).WithContext("expected", expectedHash).
 			WithContext("actual", actualHash)
+	}
+
+	return nil
+}
+
+// GetChecksumsBundleURL returns the URL for the cosign sigstore bundle of the checksums file.
+func GetChecksumsBundleURL(tag string) string {
+	return constants.RawGitHubFileURL(tag, "scripts/checksums.txt.sigstore.json")
+}
+
+// VerifyCosignBundle downloads the sigstore bundle for the checksums file and verifies
+// it using cosign. Returns nil if cosign is not installed (best-effort verification).
+func (c *Client) VerifyCosignBundle(tag string) error {
+	cosignPath, err := c.LookPathFunc("cosign")
+	if err != nil {
+		return nil
+	}
+
+	bundleURL := GetChecksumsBundleURL(tag)
+	bundleData, err := c.doHTTPGet(bundleURL)
+	if err != nil {
+		return errors.WrapError(errors.NetworkError,
+			"failed to download cosign bundle", err)
+	}
+
+	bundleFile, err := os.CreateTemp("", "kairo-bundle-*.sigstore.json")
+	if err != nil {
+		return errors.WrapError(errors.FileSystemError,
+			"failed to create temp bundle file", err)
+	}
+	defer os.Remove(bundleFile.Name())
+
+	if _, err := bundleFile.Write(bundleData); err != nil {
+		bundleFile.Close()
+
+		return errors.WrapError(errors.FileSystemError,
+			"failed to write bundle file", err)
+	}
+	bundleFile.Close()
+
+	checksumsURL := GetChecksumsURL(tag)
+	checksumsData, err := c.doHTTPGet(checksumsURL)
+	if err != nil {
+		return errors.WrapError(errors.NetworkError,
+			"failed to download checksums for verification", err)
+	}
+
+	checksumsFile, err := os.CreateTemp("", "kairo-checksums-*.txt")
+	if err != nil {
+		return errors.WrapError(errors.FileSystemError,
+			"failed to create temp checksums file", err)
+	}
+	defer os.Remove(checksumsFile.Name())
+
+	if _, err := checksumsFile.Write(checksumsData); err != nil {
+		checksumsFile.Close()
+
+		return errors.WrapError(errors.FileSystemError,
+			"failed to write checksums file", err)
+	}
+	checksumsFile.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, cosignPath,
+		"verify-blob",
+		"--bundle="+bundleFile.Name(),
+		checksumsFile.Name(),
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return errors.WrapError(errors.VerificationError,
+			"cosign bundle verification failed", err).
+			WithContext("output", string(output))
 	}
 
 	return nil

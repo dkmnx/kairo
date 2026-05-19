@@ -1,0 +1,282 @@
+package cmd
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"runtime"
+	"strings"
+	"testing"
+
+	"github.com/dkmnx/kairo/internal/config"
+)
+
+func TestExecute(t *testing.T) {
+	t.Run("valid command executes successfully", func(t *testing.T) {
+		oldArgs := os.Args
+		defer func() { os.Args = oldArgs }()
+
+		os.Args = []string{"kairo", "--help"}
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+		rootCmd.SetArgs(nil) // Reset any args from previous tests
+
+		originalConfigDir := getConfigDir()
+		originalVerbose := getVerbose()
+		setConfigDir("")
+		setVerbose(false)
+		defer func() {
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
+		}()
+
+		err := Execute()
+
+		if err != nil {
+			t.Errorf("Execute() should succeed, got error: %v", err)
+		}
+
+		result := output.String()
+		if !containsString(result, "Available Commands:") {
+			t.Errorf("Expected help output, got: %s", result)
+		}
+	})
+
+	t.Run("invalid command treated as provider name", func(t *testing.T) {
+		oldArgs := os.Args
+		defer func() { os.Args = oldArgs }()
+
+		os.Args = []string{"kairo", "invalid-command-that-does-not-exist"}
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+		rootCmd.SetErr(output)
+		rootCmd.SetArgs(nil) // Reset any args from previous tests
+
+		originalConfigDir := getConfigDir()
+		originalVerbose := getVerbose()
+		setConfigDir("")
+		setVerbose(false)
+		defer func() {
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
+		}()
+
+		err := Execute()
+
+		if err != nil {
+			t.Errorf("Execute() should succeed, got error: %v", err)
+		}
+
+		result := output.String()
+		if containsString(result, "unknown command") {
+			t.Errorf("Should not show 'unknown command' from Cobra parser, got: %s", result)
+		}
+	})
+
+	t.Run("with --verbose flag", func(t *testing.T) {
+		oldArgs := os.Args
+		defer func() { os.Args = oldArgs }()
+
+		os.Args = []string{"kairo", "--verbose", "--help"}
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+		rootCmd.SetArgs(nil) // Reset any args from previous tests
+
+		originalConfigDir := getConfigDir()
+		originalVerbose := getVerbose()
+		setConfigDir("")
+		setVerbose(false)
+		defer func() {
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
+		}()
+
+		err := Execute()
+
+		if err != nil {
+			t.Errorf("Execute() with --verbose should succeed, got error: %v", err)
+		}
+
+		if !getVerbose() {
+			t.Error("verbose flag should be set")
+		}
+	})
+
+	t.Run("with --config flag", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		oldArgs := os.Args
+		defer func() { os.Args = oldArgs }()
+
+		os.Args = []string{"kairo", "--config", tmpDir, "--help"}
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+		rootCmd.SetArgs(nil) // Reset any args from previous tests
+
+		originalConfigDir := getConfigDir()
+		originalVerbose := getVerbose()
+		setConfigDir("")
+		setVerbose(false)
+		defer func() {
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
+		}()
+
+		err := Execute()
+
+		if err != nil {
+			t.Errorf("Execute() with --config should succeed, got error: %v", err)
+		}
+
+		// Note: We can't reliably check configDir value here because it's a global variable
+	})
+
+	t.Run("provider shorthand without default - switches to provider", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &config.Config{
+			DefaultProvider: "",
+			Providers: map[string]config.Provider{
+				"anthropic": {Name: "Native Anthropic"},
+			},
+		}
+		configPath := createConfigFile(t, tmpDir, cfg)
+
+		oldArgs := os.Args
+		defer func() { os.Args = oldArgs }()
+
+		os.Args = []string{"kairo", "--config", tmpDir, "anthropic"}
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+		rootCmd.SetErr(output)
+		rootCmd.SetArgs(nil)
+
+		originalConfigDir := getConfigDir()
+		originalVerbose := getVerbose()
+		setConfigDir(tmpDir) // Use tmpDir, not empty string
+		setVerbose(false)
+		defer func() {
+			setConfigDir(originalConfigDir)
+			setVerbose(originalVerbose)
+			os.Remove(configPath)
+		}()
+
+		rootCmd.SetArgs([]string{"--config", tmpDir, "anthropic"})
+
+		// Note: This test verifies the provider shorthand behavior with rootCmd.Run
+		rootCmd.Run(rootCmd, []string{"--config", tmpDir, "anthropic"})
+
+		result := output.String()
+		if containsString(result, "unknown command") {
+			t.Errorf("Got 'unknown command' error, output: %s", result)
+		}
+	})
+}
+
+func TestHandleConfigError(t *testing.T) {
+	t.Run("unknown field error shows helpful guide", func(t *testing.T) {
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+
+		err := fmt.Errorf("field default_harness not found in type config.Config (path=/home/user/.config/kairo/config.yaml)")
+
+		originalVerbose := getVerbose()
+		setVerbose(false)
+		defer func() { setVerbose(originalVerbose) }()
+
+		handleConfigError(rootCmd, err)
+
+		result := output.String()
+
+		installScript := "install.ps1"
+		if runtime.GOOS != "windows" {
+			installScript = "install.sh"
+		}
+		expectedMessages := []string{
+			"Your kairo binary is outdated",
+			"configuration file contains newer fields",
+			"installation script",
+			"github.com/dkmnx/kairo",
+			installScript,
+		}
+
+		for _, msg := range expectedMessages {
+			if !containsString(result, msg) {
+				t.Errorf("Expected message %q not found in output:\n%s", msg, result)
+			}
+		}
+	})
+
+	t.Run("unknown field error with verbose shows technical details", func(t *testing.T) {
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+
+		err := fmt.Errorf("field default_harness not found in type config.Config")
+
+		originalVerbose := getVerbose()
+		setVerbose(true)
+		defer func() { setVerbose(originalVerbose) }()
+
+		handleConfigError(rootCmd, err)
+
+		result := output.String()
+
+		if !containsString(result, "Technical details:") {
+			t.Errorf("Expected 'Technical details:' in verbose output:\n%s", result)
+		}
+		if !containsString(result, "field default_harness") {
+			t.Errorf("Expected error details in verbose output:\n%s", result)
+		}
+	})
+
+	t.Run("other errors show default message", func(t *testing.T) {
+		output := &bytes.Buffer{}
+		rootCmd.SetOut(output)
+
+		err := fmt.Errorf("some other config error")
+
+		originalVerbose := getVerbose()
+		setVerbose(false)
+		defer func() { setVerbose(originalVerbose) }()
+
+		handleConfigError(rootCmd, err)
+
+		result := output.String()
+
+		if !containsString(result, "Error loading config:") {
+			t.Errorf("Expected default error message, got:\n%s", result)
+		}
+		if !containsString(result, "some other config error") {
+			t.Errorf("Expected error text in output:\n%s", result)
+		}
+	})
+}
+
+func TestContainsSubstring(t *testing.T) {
+	tests := []struct {
+		name     string
+		s        string
+		substr   string
+		expected bool
+	}{
+		{"substring exists", "hello world", "world", true},
+		{"substring at start", "hello world", "hello", true},
+		{"substring at end", "hello world", "world", true},
+		{"substring in middle", "hello world test", "world", true},
+		{"exact match", "hello", "hello", true},
+		{"empty substring", "hello", "", true},
+		{"substring not found", "hello world", "goodbye", false},
+		{"case sensitive", "Hello World", "hello", false},
+		{"longer substring than string", "hi", "hello", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := strings.Contains(tt.s, tt.substr)
+			if result != tt.expected {
+				t.Errorf("strings.Contains(%q, %q) = %v, want %v",
+					tt.s, tt.substr, result, tt.expected)
+			}
+		})
+	}
+}

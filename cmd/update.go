@@ -11,15 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	getLatestReleaseFn          = update.GetLatestRelease
-	confirmUpdateFn             = ui.Confirm
-	downloadToTempFileFn        = update.DownloadToTempFile
-	downloadAndParseChecksumsFn = update.DownloadAndParseChecksums
-	verifyChecksumFn            = update.VerifyChecksum
-	runInstallScriptFn          = update.RunInstallScript
-)
-
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update kairo to the latest version",
@@ -43,6 +34,8 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.sh (Unix)
 https://github.com/dkmnx/kairo/blob/<tag>/scripts/install.ps1 (Windows)
 https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 	Run: func(cmd *cobra.Command, args []string) {
+		deps := CLIContextFromCmd(cmd).Deps()
+
 		currentVersion := version.Version
 		if currentVersion == "dev" {
 			cmd.Println("Cannot update development version")
@@ -50,7 +43,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 			return
 		}
 
-		latest, err := getLatestReleaseFn()
+		latest, err := deps.Update.GetLatestRelease()
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error checking for updates: %v", err))
 
@@ -67,21 +60,21 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		installScriptURL := update.GetInstallScriptURL(runtime.GOOS, latest.TagName)
 
-		confirmed, err := confirmUpdateFn("Do you want to proceed with installation?")
+		confirmed, err := deps.Update.ConfirmUpdate("Do you want to proceed with installation?")
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error reading input: %v", err))
 
 			return
 		}
 		if !confirmed {
-			cmd.Println("Installation cancelled.")
+			cmd.Println("Installation canceled.")
 
 			return
 		}
 
 		cmd.Printf("\nDownloading install script from: %s\n", installScriptURL)
 
-		tempFile, err := downloadToTempFileFn(installScriptURL)
+		tempFile, err := deps.Update.DownloadToTempFile(installScriptURL)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error downloading install script: %v", err))
 
@@ -94,7 +87,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Downloading checksums from: %s\n", checksumsURL)
 
-		checksums, err := downloadAndParseChecksumsFn(checksumsURL)
+		checksums, err := deps.Update.DownloadAndParseChecksums(checksumsURL)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error downloading checksums: %v", err))
 
@@ -110,7 +103,11 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Verifying script integrity...\n")
 
-		if err := verifyChecksumFn(tempFile, expectedHash); err != nil {
+		if err := deps.Update.VerifyCosignBundle(latest.TagName); err != nil {
+			cmd.Printf("Warning: cosign verification skipped or failed: %v\n", err)
+		}
+
+		if err := deps.Update.VerifyChecksum(tempFile, expectedHash); err != nil {
 			ui.PrintError(fmt.Sprintf("Security verification failed: %v", err))
 			cmd.Println("Downloaded script has been removed. Please try again later or report this issue.")
 
@@ -119,7 +116,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Running install script...\n\n")
 
-		if err := runInstallScriptFn(tempFile); err != nil {
+		if err := deps.Update.RunInstallScript(tempFile); err != nil {
 			ui.PrintError(fmt.Sprintf("Error during installation: %v", err))
 
 			return
