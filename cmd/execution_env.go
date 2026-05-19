@@ -5,15 +5,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/providers"
 )
-
-// EnvProvider holds provider configuration needed for environment variable construction.
-type EnvProvider struct {
-	BaseURL string
-	Model   string
-	EnvVars []string
-}
 
 // PiAPIKeyEnvVar returns the API key environment variable name for a Pi provider.
 func PiAPIKeyEnvVar(providerName string) (string, bool) {
@@ -21,7 +16,7 @@ func PiAPIKeyEnvVar(providerName string) (string, bool) {
 }
 
 // BuildPiEnvVars constructs the environment variables for the Pi harness.
-func BuildPiEnvVars(provider EnvProvider, providerName string) []string {
+func BuildPiEnvVars(provider config.Provider, providerName string) []string {
 	return []string{
 		fmt.Sprintf("PI_PROVIDER=%s", providerName),
 		fmt.Sprintf("PI_MODEL=%s", provider.Model),
@@ -29,14 +24,14 @@ func BuildPiEnvVars(provider EnvProvider, providerName string) []string {
 }
 
 // BuildBuiltInEnvVars constructs the standard Anthropic environment variables for a provider.
-func BuildBuiltInEnvVars(provider EnvProvider) []string {
+func BuildBuiltInEnvVars(provider config.Provider) []string {
 	return []string{
-		fmt.Sprintf("%s=%s", envBaseURL, provider.BaseURL),
-		fmt.Sprintf("%s=%s", envModel, provider.Model),
-		fmt.Sprintf("%s=%s", envHaikuModel, provider.Model),
-		fmt.Sprintf("%s=%s", envSonnetModel, provider.Model),
-		fmt.Sprintf("%s=%s", envOpusModel, provider.Model),
-		fmt.Sprintf("%s=%s", envSmallFast, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvBaseURL, provider.BaseURL),
+		fmt.Sprintf("%s=%s", constants.EnvModel, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvHaikuModel, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvSonnetModel, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvOpusModel, provider.Model),
+		fmt.Sprintf("%s=%s", constants.EnvSmallFast, provider.Model),
 		"NODE_OPTIONS=--no-deprecation",
 	}
 }
@@ -72,7 +67,7 @@ type EnvBuildResult struct {
 func BuildProviderEnv(
 	cliCtx *CLIContext,
 	configDir string,
-	provider EnvProvider,
+	provider config.Provider,
 	providerName string,
 ) (EnvBuildResult, error) {
 	builtIn := BuildBuiltInEnvVars(provider)

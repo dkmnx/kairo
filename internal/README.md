@@ -102,7 +102,7 @@ Key functions:
 Built-in providers:
 
 | Provider                 | Default Base URL                     | Default Model         | API Key |
-| ------------------------ | ------------------------------------ | --------------------- | ------- |
+| :----------------------- | :----------------------------------- | :-------------------- | :------ |
 | `zai`                    | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes     |
 | `minimax`                | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes     |
 | `deepseek`               | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes     |
@@ -123,7 +123,6 @@ Built-in providers:
 | `azure-openai-responses` | (provider-managed)                   | (provider-managed)    | Yes     |
 | `minimax-cn`             | (provider-managed)                   | (provider-managed)    | Yes     |
 | `custom`                 | user-defined                         | user-defined          | Yes     |
-
 ### `validate/`
 
 Validation for API keys, URLs, models, and cross-provider env-var conflicts.
@@ -169,7 +168,7 @@ Examples:
 
 - `PrintSuccess`, `PrintWarn`, `PrintError`, `PrintInfo`
 - `Prompt`, `PromptSecret`, `PromptWithDefault`, `Confirm`
-- `PrintBanner(version, provider)`
+- `PrintBanner(Banner{Version, ModelName, ProviderName, Harness})`
 
 ### `errors/`
 

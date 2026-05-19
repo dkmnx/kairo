@@ -5,13 +5,14 @@ import (
 	"sync"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/spf13/cobra"
 )
 
 type cliContextKey struct{}
 
 // CLIContext holds shared CLI state: config directory, verbosity, config cache,
-// and the root context. It is safe for concurrent use.
+// root context, and external dependencies. It is safe for concurrent use.
 type CLIContext struct {
 	configDir   string
 	configDirMu sync.RWMutex
@@ -19,13 +20,17 @@ type CLIContext struct {
 	verboseMu   sync.RWMutex
 	configCache *config.ConfigCache
 	rootCtx     context.Context
+	deps        *Deps
+
+	defaultProviderExplicit bool
 }
 
 // NewCLIContext creates a CLIContext with default settings.
 func NewCLIContext() *CLIContext {
 	return &CLIContext{
-		configCache: config.NewConfigCache(configCacheTTL),
+		configCache: config.NewConfigCache(constants.ConfigCacheTTL),
 		rootCtx:     context.Background(),
+		deps:        NewDeps(),
 	}
 }
 
@@ -80,9 +85,30 @@ func (c *CLIContext) RootCtx() context.Context {
 	return c.rootCtx
 }
 
+// Deps returns the external dependencies for this CLI session.
+func (c *CLIContext) Deps() *Deps {
+	return c.deps
+}
+
+// SetDeps replaces the external dependencies. For use in tests.
+func (c *CLIContext) SetDeps(d *Deps) {
+	c.deps = d
+}
+
 // InvalidateCache removes the cached configuration for the given directory.
 func (c *CLIContext) InvalidateCache(dir string) {
 	c.configCache.Invalidate(dir)
+}
+
+// SetDefaultProviderExplicit records whether the user passed "--" to separate
+// kairo flags from harness flags.
+func (c *CLIContext) SetDefaultProviderExplicit(v bool) {
+	c.defaultProviderExplicit = v
+}
+
+// DefaultProviderExplicit reports whether the user passed "--".
+func (c *CLIContext) DefaultProviderExplicit() bool {
+	return c.defaultProviderExplicit
 }
 
 var defaultCLIContext = NewCLIContext()

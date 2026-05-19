@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
 	"github.com/spf13/cobra"
@@ -96,7 +96,7 @@ func runResetSecrets(cliCtx *CLIContext, configDir string, secretsResult Secrets
 
 	confirmed, err := ui.Confirm("Continue")
 	if err != nil || !confirmed {
-		return errors.New("operation cancelled by user")
+		return kairoerrors.ErrUserCancelled
 	}
 
 	if err := ResetSecretsFiles(
@@ -161,7 +161,7 @@ var setupCmd = &cobra.Command{
 
 		providerName := promptForProvider(cfg)
 		if providerName == "" {
-			tap.Cancel("Setup cancelled")
+			tap.Cancel("Setup canceled")
 
 			return
 		}

@@ -595,6 +595,52 @@ func TestEncryptSecretsWithFailingTempFile(t *testing.T) {
 	}
 }
 
+func TestCheckKeyFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping permission test on Windows")
+	}
+	if os.Getuid() == 0 {
+		t.Skip("Skipping permission test when running as root")
+	}
+
+	tmpDir := t.TempDir()
+
+	t.Run("0600 should pass", func(t *testing.T) {
+		path := filepath.Join(tmpDir, "valid.key")
+		if err := os.WriteFile(path, []byte("test"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := checkKeyFilePermissions(path); err != nil {
+			t.Errorf("expected no error for 0600, got: %v", err)
+		}
+	})
+
+	t.Run("0644 should fail", func(t *testing.T) {
+		path := filepath.Join(tmpDir, "permissive.key")
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		err := checkKeyFilePermissions(path)
+		if err == nil {
+			t.Fatal("expected error for 0644, got nil")
+		}
+		if !strings.Contains(err.Error(), "permissive") {
+			t.Errorf("error should contain 'permissive', got: %v", err)
+		}
+	})
+
+	t.Run("0777 should fail", func(t *testing.T) {
+		path := filepath.Join(tmpDir, "wide-open.key")
+		if err := os.WriteFile(path, []byte("test"), 0777); err != nil {
+			t.Fatal(err)
+		}
+		err := checkKeyFilePermissions(path)
+		if err == nil {
+			t.Fatal("expected error for 0777, got nil")
+		}
+	})
+}
+
 func TestDecryptSecrets_OpenError(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping readonly test on Windows")

@@ -22,13 +22,19 @@ func buildProviderListOptions(providerList []string) []tap.SelectOption[string] 
 }
 
 func promptForProvider(cfg *config.Config) string {
-	ctx := context.Background()
+	ctx := promptContext()
 
 	if len(cfg.Providers) == 0 {
 		return promptForNewProvider(ctx)
 	}
 
 	return promptForExistingOrNewProvider(ctx, cfg)
+}
+
+// promptContext returns the CLI root context for interactive prompts.
+// Falls back to context.Background if no CLI context is available.
+func promptContext() context.Context {
+	return defaultCLIContext.RootCtx()
 }
 
 func promptForNewProvider(ctx context.Context) string {
@@ -85,7 +91,7 @@ func displayProviderHeader(cfg providerPromptConfig) {
 }
 
 func promptForAPIKey(cfg providerPromptConfig) string {
-	ctx := context.Background()
+	ctx := promptContext()
 
 	if !cfg.IsEdit || !cfg.Exists {
 		return tap.Password(ctx, tap.PasswordOptions{Message: "API Key"})
@@ -117,7 +123,7 @@ type promptFieldConfig struct {
 }
 
 func promptForField(cfg promptFieldConfig) string {
-	ctx := context.Background()
+	ctx := promptContext()
 
 	if cfg.IsEdit && cfg.Exists {
 		return promptForFieldEdit(ctx, cfg)

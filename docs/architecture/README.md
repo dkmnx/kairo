@@ -4,7 +4,7 @@ System architecture and design documentation for Kairo.
 
 ## Overview
 
-Kairo is a Go CLI for routing Claude Code or Qwen Code through configured providers while keeping API keys encrypted at rest.
+Kairo is a Go CLI for routing Claude Code, Qwen Code, or Pi through configured providers while keeping API keys encrypted at rest.
 
 Core characteristics:
 
@@ -47,6 +47,7 @@ flowchart TB
     subgraph External
         Claude[Claude Code CLI]
         Qwen[Qwen Code CLI]
+        Pi[Pi CLI]
         APIs[Provider APIs]
     end
 
@@ -65,8 +66,10 @@ flowchart TB
     Crypto --> KeyFile
     Execution --> Claude
     Execution --> Qwen
+    Execution --> Pi
     Claude --> APIs
     Qwen --> APIs
+    Pi --> APIs
 ```
 
 ## Setup Flow
@@ -107,7 +110,7 @@ sequenceDiagram
     CLI->>Config: LoadConfig()
     CLI->>Crypto: DecryptSecrets()
     CLI->>Wrapper: write temp token file + wrapper script
-    Wrapper->>Harness: exec claude or qwen
+    Wrapper->>Harness: exec claude, qwen, or pi
     Harness->>Wrapper: token file removed after read
 ```
 

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -15,7 +16,7 @@ import (
 
 // EnsureConfigDir creates the config directory and encryption key if they don't exist.
 func EnsureConfigDir(cliCtx *CLIContext, configDir string) error {
-	if err := os.MkdirAll(configDir, 0700); err != nil {
+	if err := os.MkdirAll(configDir, constants.DirPermSecure); err != nil {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"creating config directory", err)
 	}
@@ -58,7 +59,7 @@ func AddAndSaveProvider(params AddProviderParams) error {
 	if params.SetAsDefault && params.Cfg.DefaultProvider == "" {
 		params.Cfg.DefaultProvider = params.ProviderName
 	}
-	if err := config.SaveConfig(context.Background(), params.ConfigDir, params.Cfg); err != nil {
+	if err := config.SaveConfig(params.CLIContext.RootCtx(), params.ConfigDir, params.Cfg); err != nil {
 		return kairoerrors.WrapError(kairoerrors.ConfigError,
 			"saving config", err)
 	}
@@ -86,7 +87,7 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 	result.SecretsPath = filepath.Join(configDir, constants.SecretsFileName)
 	result.KeyPath = filepath.Join(configDir, constants.KeyFileName)
 
-	if _, err := os.Stat(result.SecretsPath); os.IsNotExist(err) {
+	if _, err := os.Stat(result.SecretsPath); errors.Is(err, fs.ErrNotExist) {
 		return result, nil
 	}
 
@@ -106,12 +107,12 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 
 // ResetSecretsFiles deletes and regenerates the encryption key and secrets files.
 func ResetSecretsFiles(ctx context.Context, configDir, secretsPath, keyPath string) error {
-	if err := os.Remove(keyPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(keyPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to remove old key file", err)
 	}
 
-	if err := os.Remove(secretsPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(secretsPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to remove old secrets file", err)
 	}

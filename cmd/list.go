@@ -1,8 +1,9 @@
 package cmd
 
 import (
+	stderrors "errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"sort"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -20,23 +21,25 @@ var listCmd = &cobra.Command{
 		dir := requireConfigDir(cmd)
 		if dir == "" {
 			ui.PrintInfo("Run 'kairo setup' to configure providers")
+
 			return
 		}
 
 		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
 		if err != nil {
-			if os.IsNotExist(err) {
-				ui.PrintWarn("No providers configured")
-				ui.PrintInfo("Run 'kairo setup' to get started")
+			if stderrors.Is(err, fs.ErrNotExist) {
+				printNoProvidersMessage()
+
 				return
 			}
 			handleConfigError(cmd, err)
+
 			return
 		}
 
 		if len(cfg.Providers) == 0 {
-			ui.PrintWarn("No providers configured")
-			ui.PrintInfo("Run 'kairo setup' to get started")
+			printNoProvidersMessage()
+
 			return
 		}
 
@@ -77,9 +80,9 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 }
 
-func sortProviderNames(providers map[string]config.Provider, defaultProvider string) []string {
-	names := make([]string, 0, len(providers))
-	for name := range providers {
+func sortProviderNames(provs map[string]config.Provider, defaultProvider string) []string {
+	names := make([]string, 0, len(provs))
+	for name := range provs {
 		names = append(names, name)
 	}
 	sort.Slice(names, func(i, j int) bool {
@@ -89,7 +92,9 @@ func sortProviderNames(providers map[string]config.Provider, defaultProvider str
 		if names[j] == defaultProvider {
 			return false
 		}
+
 		return names[i] < names[j]
 	})
+
 	return names
 }

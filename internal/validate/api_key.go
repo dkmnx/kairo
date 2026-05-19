@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -54,11 +55,26 @@ func (kf *KeyFormat) matchesPattern(key string) (bool, error) {
 }
 
 var providerKeyFormats = map[string]KeyFormat{
-	"zai":      {MinLength: minAPIKeyLength},
-	"minimax":  {MinLength: minAPIKeyLength},
-	"kimi":     {MinLength: minAPIKeyLength},
-	"deepseek": {MinLength: minAPIKeyLength},
-	"custom":   {MinLength: defaultMinKeyLength},
+	"zai":                    {MinLength: minAPIKeyLength},
+	"minimax":                {MinLength: minAPIKeyLength},
+	"kimi":                   {MinLength: minAPIKeyLength},
+	"deepseek":               {MinLength: minAPIKeyLength},
+	"anthropic":              {Prefix: "sk-ant-", MinLength: minAPIKeyLength},
+	"openai":                 {Prefix: "sk-", MinLength: minAPIKeyLength},
+	"google":                 {MinLength: minAPIKeyLength},
+	"mistral":                {MinLength: minAPIKeyLength},
+	"groq":                   {Prefix: "gsk_", MinLength: minAPIKeyLength},
+	"cerebras":               {MinLength: minAPIKeyLength},
+	"cloudflare-workers-ai":  {MinLength: minAPIKeyLength},
+	"xai":                    {MinLength: minAPIKeyLength},
+	"openrouter":             {Prefix: "sk-or-", MinLength: minAPIKeyLength},
+	"vercel-ai-gateway":      {MinLength: minAPIKeyLength},
+	"opencode":               {MinLength: minAPIKeyLength},
+	"huggingface":            {MinLength: minAPIKeyLength},
+	"fireworks":              {MinLength: minAPIKeyLength},
+	"azure-openai-responses": {MinLength: minAPIKeyLength},
+	"minimax-cn":             {MinLength: minAPIKeyLength},
+	"custom":                 {MinLength: defaultMinKeyLength},
 }
 
 var (
@@ -73,14 +89,15 @@ var (
 func mustParseCIDR(s string) net.IPNet {
 	_, ipnet, err := net.ParseCIDR(s)
 	if err != nil {
-		panic(fmt.Sprintf("invalid CIDR %s: %v", s, err))
+		fmt.Fprintf(os.Stderr, "kairo: invalid hardcoded CIDR %q: %v\n", s, err)
+		os.Exit(1)
 	}
 
 	return *ipnet
 }
 
 // ValidateAPIKey checks that the given key meets the format requirements for the provider.
-func ValidateAPIKey(key string, providerName string) error {
+func ValidateAPIKey(key, providerName string) error {
 	if strings.TrimSpace(key) == "" {
 		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: API key cannot be empty or whitespace", providerName))
@@ -113,7 +130,7 @@ func ValidateAPIKey(key string, providerName string) error {
 }
 
 // ValidateURL checks that the given URL is a valid HTTPS URL without blocked hosts.
-func ValidateURL(rawURL string, providerName string) error {
+func ValidateURL(rawURL, providerName string) error {
 	if rawURL == "" {
 		return errors.NewError(errors.ValidationError,
 			fmt.Sprintf("%s: base URL cannot be empty", providerName))

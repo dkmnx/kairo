@@ -2,6 +2,7 @@
 package ui
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 )
@@ -29,11 +31,16 @@ const (
 func ClearScreen() {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", "cls")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		cmd = exec.CommandContext(ctx, "cmd", "/c", "cls")
 	} else {
-		cmd = exec.Command("clear")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		cmd = exec.CommandContext(ctx, "clear")
 	}
 	cmd.Stdout = os.Stdout
+	// Best-effort clear; ignore terminal errors
 	_ = cmd.Run()
 }
 
@@ -66,6 +73,7 @@ func isInterrupted(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return errors.Is(err, os.ErrClosed) || errors.Is(err, io.EOF) || strings.Contains(err.Error(), "interrupted")
 }
 
@@ -73,13 +81,37 @@ func isEmptyInput(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return !errors.Is(err, io.EOF) && !isInterrupted(err)
 }
 
+// Banner holds the information displayed at startup.
+type Banner struct {
+	Version      string
+	ModelName    string
+	ProviderName string
+	Harness      string
+}
+
 // PrintBanner displays the kairo startup banner with version and provider info.
-func PrintBanner(version, modelName, providerName string) {
-	banner := fmt.Sprintf("kairo %s · %s · %s", version, modelName, providerName)
-	fmt.Printf("%s%s%s\n\n", Gray, banner, Reset)
+func PrintBanner(b Banner) {
+	info := ""
+	if b.Harness == "pi" {
+		banner := `
+ __           .__
+|  | _______  |__|______  ____
+|  |/ /\__  \ |  \_  __ \/  _ \
+|    <  / __ \|  ||  | \(  <_> )
+|__|_ \(____  /__||__|   \____/
+     \/     \/`
+
+		info = fmt.Sprintf("\n\n%s\n", b.Version)
+		fmt.Printf("%s%s%s", Gray, banner, Reset)
+	} else {
+		info = fmt.Sprintf("%s · %s · %s\n\n", b.Version, b.ModelName, b.ProviderName)
+	}
+
+	fmt.Printf("%s%s%s", Gray, info, Reset)
 }
 
 // Confirm prompts the user for a y/N confirmation.
@@ -94,8 +126,10 @@ func Confirm(prompt string) (bool, error) {
 		if errors.Is(err, io.EOF) || isInterrupted(err) {
 			return false, kairoerrors.ErrUserCancelled
 		}
+
 		return false, err
 	}
 	input = strings.TrimSpace(strings.ToLower(input))
+
 	return input == "y" || input == "yes", nil
 }
