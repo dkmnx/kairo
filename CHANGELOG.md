@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.6.1] - 2026-05-19
+
+### Changed
+
+- Add cosign v2 keyless verification fix to changelog
+
 ### Fixed
 
 - Add certificate identity and OIDC issuer flags for cosign v2 keyless verification
@@ -1259,7 +1265,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.6.1...HEAD
+[v2.6.1]: https://github.com/dkmnx/kairo/compare/v2.6.0...v2.6.1
 [v2.6.0]: https://github.com/dkmnx/kairo/compare/v2.5.1...v2.6.0
 [v2.5.1]: https://github.com/dkmnx/kairo/compare/v2.5.0...v2.5.1
 [v2.5.0]: https://github.com/dkmnx/kairo/compare/v2.4.1...v2.5.0
