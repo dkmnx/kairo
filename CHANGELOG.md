@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Add certificate identity and OIDC issuer flags for cosign v2 keyless verification
+
 ## [v2.6.0] - 2026-05-19
 
 ### Added
