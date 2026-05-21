@@ -1,23 +1,24 @@
+// Package fsutil provides atomic file writing utilities for safe config persistence.
 package fsutil
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/dkmnx/kairo/internal/errors"
 )
 
-const atomicFilePerms = 0o600
-
-// WriteAtomic writes to a file atomically by writing to a temp file then renaming.
-// The writeFn receives the open temp file and should handle all writing.
-// On any error, the temp file is cleaned up automatically.
+// WriteAtomic writes to a file atomically by writing to a temp file in the
+// same directory then renaming. The writeFn receives the open temp file and
+// should handle all writing. On any error, the temp file is cleaned up automatically.
 func WriteAtomic(path string, writeFn func(f *os.File) error) error {
 	tempPath := path + ".tmp"
 
-	f, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, atomicFilePerms)
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp.*")
 	if err != nil {
 		return errors.FileError("failed to create temp file", tempPath, err)
 	}
+	tempPath = f.Name()
 
 	if err := writeFn(f); err != nil {
 		f.Close()
