@@ -12,13 +12,11 @@ import (
 // same directory then renaming. The writeFn receives the open temp file and
 // should handle all writing. On any error, the temp file is cleaned up automatically.
 func WriteAtomic(path string, writeFn func(f *os.File) error) error {
-	tempPath := path + ".tmp"
-
 	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp.*")
 	if err != nil {
-		return errors.FileError("failed to create temp file", tempPath, err)
+		return errors.FileError("failed to create temp file", path, err)
 	}
-	tempPath = f.Name()
+	tempPath := f.Name()
 
 	if err := writeFn(f); err != nil {
 		f.Close()
