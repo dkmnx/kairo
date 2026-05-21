@@ -38,29 +38,31 @@ func (m *mockWrapper) GenerateWrapperScript(cfg wrapper.ScriptConfig) (string, b
 
 // mockUpdate is a test double for UpdateService.
 type mockUpdate struct {
-	GetLatestReleaseFn          func() (*update.Release, error)
+	FetchLatestReleaseFn        func(ctx context.Context) (*update.Release, error)
 	ConfirmUpdateFn             func(message string) (bool, error)
-	DownloadToTempFileFn        func(url string) (string, error)
-	DownloadAndParseChecksumsFn func(url string) (map[string]string, error)
+	DownloadToTempFileFn        func(ctx context.Context, url string) (string, error)
+	DownloadAndParseChecksumsFn func(ctx context.Context, url string) (map[string]string, error)
 	VerifyChecksumFn            func(scriptPath, expectedHash string) error
-	VerifyCosignBundleFn        func(tag string) error
+	VerifyCosignBundleFn        func(ctx context.Context, tag string) error
 	RunInstallScriptFn          func(scriptPath string) error
 }
 
-func (m *mockUpdate) GetLatestRelease() (*update.Release, error) {
-	return m.GetLatestReleaseFn()
+func (m *mockUpdate) FetchLatestRelease(ctx context.Context) (*update.Release, error) {
+	return m.FetchLatestReleaseFn(ctx)
 }
 func (m *mockUpdate) ConfirmUpdate(message string) (bool, error) { return m.ConfirmUpdateFn(message) }
-func (m *mockUpdate) DownloadToTempFile(url string) (string, error) {
-	return m.DownloadToTempFileFn(url)
+func (m *mockUpdate) DownloadToTempFile(ctx context.Context, url string) (string, error) {
+	return m.DownloadToTempFileFn(ctx, url)
 }
-func (m *mockUpdate) DownloadAndParseChecksums(url string) (map[string]string, error) {
-	return m.DownloadAndParseChecksumsFn(url)
+func (m *mockUpdate) DownloadAndParseChecksums(ctx context.Context, url string) (map[string]string, error) {
+	return m.DownloadAndParseChecksumsFn(ctx, url)
 }
 func (m *mockUpdate) VerifyChecksum(scriptPath, expectedHash string) error {
 	return m.VerifyChecksumFn(scriptPath, expectedHash)
 }
-func (m *mockUpdate) VerifyCosignBundle(tag string) error { return m.VerifyCosignBundleFn(tag) }
+func (m *mockUpdate) VerifyCosignBundle(ctx context.Context, tag string) error {
+	return m.VerifyCosignBundleFn(ctx, tag)
+}
 func (m *mockUpdate) RunInstallScript(scriptPath string) error {
 	return m.RunInstallScriptFn(scriptPath)
 }
@@ -79,12 +81,12 @@ func testDeps(overrides ...func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate
 		GenerateWrapperScriptFn: func(wrapper.ScriptConfig) (string, bool, error) { return "", false, nil },
 	}
 	mu := &mockUpdate{
-		GetLatestReleaseFn:          func() (*update.Release, error) { return nil, nil },
+		FetchLatestReleaseFn:        func(context.Context) (*update.Release, error) { return nil, nil },
 		ConfirmUpdateFn:             func(string) (bool, error) { return false, nil },
-		DownloadToTempFileFn:        func(string) (string, error) { return "", nil },
-		DownloadAndParseChecksumsFn: func(string) (map[string]string, error) { return nil, nil },
+		DownloadToTempFileFn:        func(context.Context, string) (string, error) { return "", nil },
+		DownloadAndParseChecksumsFn: func(context.Context, string) (map[string]string, error) { return nil, nil },
 		VerifyChecksumFn:            func(string, string) error { return nil },
-		VerifyCosignBundleFn:        func(string) error { return nil },
+		VerifyCosignBundleFn:        func(context.Context, string) error { return nil },
 		RunInstallScriptFn:          func(string) error { return nil },
 	}
 	for _, fn := range overrides {
