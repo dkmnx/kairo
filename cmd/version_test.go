@@ -72,7 +72,7 @@ func TestCheckForUpdatesAvailable(t *testing.T) {
 	defer func() { version.Version = originalVersion }()
 
 	d := testDeps(func(_ *mockProcess, _ *mockWrapper, mu *mockUpdate) {
-		mu.GetLatestReleaseFn = func() (*update.Release, error) {
+		mu.FetchLatestReleaseFn = func(ctx context.Context) (*update.Release, error) {
 			return &update.Release{TagName: "v2.0.0", HTMLURL: "https://github.com/dkmnx/kairo/releases/tag/v2.0.0"}, nil
 		}
 	})
@@ -103,7 +103,7 @@ func TestCheckForUpdatesNoUpdate(t *testing.T) {
 	defer func() { version.Version = originalVersion }()
 
 	d := testDeps(func(_ *mockProcess, _ *mockWrapper, mu *mockUpdate) {
-		mu.GetLatestReleaseFn = func() (*update.Release, error) {
+		mu.FetchLatestReleaseFn = func(ctx context.Context) (*update.Release, error) {
 			return &update.Release{TagName: "v1.0.0"}, nil
 		}
 	})
@@ -127,7 +127,7 @@ func TestCheckForUpdatesNoUpdate(t *testing.T) {
 
 func TestCheckForUpdatesAPIError(t *testing.T) {
 	d := testDeps(func(_ *mockProcess, _ *mockWrapper, mu *mockUpdate) {
-		mu.GetLatestReleaseFn = func() (*update.Release, error) {
+		mu.FetchLatestReleaseFn = func(ctx context.Context) (*update.Release, error) {
 			return nil, fmt.Errorf("API error")
 		}
 	})

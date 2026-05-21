@@ -43,7 +43,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 			return
 		}
 
-		latest, err := deps.Update.GetLatestRelease()
+		latest, err := deps.Update.FetchLatestRelease(cmd.Context())
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error checking for updates: %v", err))
 
@@ -58,7 +58,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Updating to %s...\n", latest.TagName)
 
-		installScriptURL := update.GetInstallScriptURL(runtime.GOOS, latest.TagName)
+		installScriptURL := update.InstallScriptURL(runtime.GOOS, latest.TagName)
 
 		confirmed, err := deps.Update.ConfirmUpdate("Do you want to proceed with installation?")
 		if err != nil {
@@ -74,7 +74,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("\nDownloading install script from: %s\n", installScriptURL)
 
-		tempFile, err := deps.Update.DownloadToTempFile(installScriptURL)
+		tempFile, err := deps.Update.DownloadToTempFile(cmd.Context(), installScriptURL)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error downloading install script: %v", err))
 
@@ -82,12 +82,12 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 		}
 		defer os.Remove(tempFile)
 
-		scriptName := update.GetScriptNameForChecksums(runtime.GOOS)
-		checksumsURL := update.GetChecksumsURL(latest.TagName)
+		scriptName := update.ScriptNameForChecksums(runtime.GOOS)
+		checksumsURL := update.ChecksumsURL(latest.TagName)
 
 		cmd.Printf("Downloading checksums from: %s\n", checksumsURL)
 
-		checksums, err := deps.Update.DownloadAndParseChecksums(checksumsURL)
+		checksums, err := deps.Update.DownloadAndParseChecksums(cmd.Context(), checksumsURL)
 		if err != nil {
 			ui.PrintError(fmt.Sprintf("Error downloading checksums: %v", err))
 
@@ -103,7 +103,7 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 
 		cmd.Printf("Verifying script integrity...\n")
 
-		if err := deps.Update.VerifyCosignBundle(latest.TagName); err != nil {
+		if err := deps.Update.VerifyCosignBundle(cmd.Context(), latest.TagName); err != nil {
 			cmd.Printf("Warning: cosign verification skipped or failed: %v\n", err)
 		}
 
