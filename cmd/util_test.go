@@ -128,9 +128,10 @@ func TestRunningWithRaceDetector(t *testing.T) {
 
 func TestSetupSignalHandler(t *testing.T) {
 	t.Run("signal handler sets up without panic", func(t *testing.T) {
-		setupSignalHandler(func() {
+		stop := setupSignalHandler(func() {
 			// cancel callback
 		})
+		stop()
 	})
 }
 
