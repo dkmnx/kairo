@@ -60,7 +60,6 @@ func TestWriteAtomic(t *testing.T) {
 	t.Run("cleans up temp file on write error", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		path := filepath.Join(tmpDir, "fail.txt")
-		tempPath := path + ".tmp"
 
 		writeErr := errors.New("write failed")
 		err := WriteAtomic(path, func(f *os.File) error {
@@ -74,8 +73,9 @@ func TestWriteAtomic(t *testing.T) {
 			t.Error("target file should not exist after write error")
 		}
 
-		if _, err := os.Stat(tempPath); !os.IsNotExist(err) {
-			t.Error("temp file should be cleaned up after write error")
+		matches, _ := filepath.Glob(filepath.Join(tmpDir, "fail.txt.tmp.*"))
+		if len(matches) > 0 {
+			t.Errorf("temp file should be cleaned up after write error, found: %v", matches)
 		}
 	})
 
@@ -94,9 +94,9 @@ func TestWriteAtomic(t *testing.T) {
 			t.Error("expected error from double close")
 		}
 
-		tempPath := path + ".tmp"
-		if _, err := os.Stat(tempPath); !os.IsNotExist(err) {
-			t.Error("temp file should be cleaned up after close error")
+		matches, _ := filepath.Glob(filepath.Join(tmpDir, "close-fail.txt.tmp.*"))
+		if len(matches) > 0 {
+			t.Errorf("temp file should be cleaned up after close error, found: %v", matches)
 		}
 	})
 
