@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Add missing package and type doc comments to config, constants, errors, fsutil, and providers packages
+- Remove redundant `ConfigDir` global state — overrides handled exclusively through `CLIContext.SetConfigDir`
+- Rename `Get`-prefixed update functions and add `context.Context` to blocking methods
+
+### Fixed
+
+- Prevent goroutine leak in `setupSignalHandler` by returning a stop function for cleanup
+- Create temp file in target directory in `WriteAtomic` to ensure atomic rename across all filesystems
+
 ## [v2.6.1] - 2026-05-19
 
 ### Changed
