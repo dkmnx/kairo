@@ -10,7 +10,7 @@ import (
 
 // TestCompletionCommandBash generates bash completion script.
 func TestCompletionCommandBash(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
@@ -42,7 +42,7 @@ func min(a, b int) int {
 
 // TestCompletionCommandZsh generates zsh completion script.
 func TestCompletionCommandZsh(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
@@ -67,7 +67,7 @@ func TestCompletionCommandZsh(t *testing.T) {
 
 // TestCompletionCommandFish generates fish completion script.
 func TestCompletionCommandFish(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
@@ -92,7 +92,7 @@ func TestCompletionCommandFish(t *testing.T) {
 
 // TestCompletionCommandPowerShell generates PowerShell completion script.
 func TestCompletionCommandPowerShell(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
@@ -117,7 +117,7 @@ func TestCompletionCommandPowerShell(t *testing.T) {
 
 // TestCompletionCommandUnknownShell returns error for unknown shell.
 func TestCompletionCommandUnknownShell(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
@@ -135,7 +135,7 @@ func TestCompletionCommandUnknownShell(t *testing.T) {
 
 // TestCompletionCommandNoArgs shows error when run without shell argument.
 func TestCompletionCommandNoArgs(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	t.Cleanup(func() { setConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
@@ -153,7 +153,7 @@ func TestCompletionCommandNoArgs(t *testing.T) {
 
 // TestCompletionCommandWithOutputFlag saves completion to file.
 func TestCompletionCommandWithOutputFlag(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	t.Cleanup(func() {
 		setConfigDir(originalConfigDir)
 		completionOutput = ""
@@ -189,7 +189,7 @@ func TestCompletionCommandWithOutputFlag(t *testing.T) {
 
 // TestCompletionCommandWithShortOutputFlag saves to file using -o flag.
 func TestCompletionCommandWithShortOutputFlag(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	t.Cleanup(func() {
 		setConfigDir(originalConfigDir)
 		completionOutput = ""
@@ -215,7 +215,7 @@ func TestCompletionCommandWithShortOutputFlag(t *testing.T) {
 
 // TestCompletionCommandAutoSaveToDefaultLocation saves completion to default location with --save flag.
 func TestCompletionCommandAutoSaveToDefaultLocation(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	originalHome := os.Getenv("HOME")
 	originalUserProfile := os.Getenv("USERPROFILE")
 	t.Cleanup(func() {
@@ -376,7 +376,7 @@ func TestGetDefaultCompletionPathNoHomeDir(t *testing.T) {
 // TestCompletionPowerShellSaveWithRegisterArgumentCompleter verifies that PowerShell
 // --save flag writes the Register-ArgumentCompleter script instead of cobra's default
 func TestCompletionPowerShellSaveWithRegisterArgumentCompleter(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	originalHome := os.Getenv("HOME")
 	originalUserProfile := os.Getenv("USERPROFILE")
 	t.Cleanup(func() {

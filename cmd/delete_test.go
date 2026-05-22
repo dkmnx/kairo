@@ -22,7 +22,7 @@ func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	setConfigDir(tmpDir)
@@ -85,7 +85,7 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	setConfigDir(tmpDir)
