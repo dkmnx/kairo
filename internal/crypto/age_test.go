@@ -121,7 +121,7 @@ func TestEncryptDecrypt_LargeSecrets(t *testing.T) {
 	}
 
 	largeSecret := ""
-	for i := 0; i < 10000; i++ {
+	for range 10000 {
 		largeSecret += "API_KEY_XYZ=test_value_with_long_content_1234567890\n"
 	}
 

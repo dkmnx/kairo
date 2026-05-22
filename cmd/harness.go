@@ -102,7 +102,7 @@ func init() {
 	rootCmd.AddCommand(harnessCmd)
 }
 
-func getHarness(flagHarness, configHarness string) string {
+func resolveHarness(flagHarness, configHarness string) string {
 	harness := flagHarness
 	if harness == "" {
 		harness = configHarness
@@ -119,6 +119,6 @@ func getHarness(flagHarness, configHarness string) string {
 	return harness
 }
 
-func getHarnessBinary(harness string) string {
+func harnessBinary(harness string) string {
 	return harness
 }

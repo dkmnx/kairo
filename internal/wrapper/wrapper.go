@@ -191,9 +191,11 @@ func generateUnixScript(envVar string, cfg ScriptConfig) string {
 	sb.WriteString("# This script will be automatically deleted after execution\n")
 	fmt.Fprintf(&sb, "export %s=$(cat %q)\n", envVar, cfg.TokenPath)
 	fmt.Fprintf(&sb, "rm -f %q\n", cfg.TokenPath)
-	sb.WriteString("exec " + fmt.Sprintf("%q", cfg.CliPath))
+	sb.WriteString("exec ")
+	fmt.Fprintf(&sb, "%q", cfg.CliPath)
 	for _, arg := range cfg.CliArgs {
-		sb.WriteString(" " + fmt.Sprintf("%q", arg))
+		sb.WriteString(" ")
+		fmt.Fprintf(&sb, "%q", arg)
 	}
 	sb.WriteString("\n")
 

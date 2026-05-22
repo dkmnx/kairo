@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"gopkg.in/yaml.v3"
 )
 
 func TestExecute(t *testing.T) {
@@ -21,8 +23,8 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := getConfigDir()
-		originalVerbose := getVerbose()
+		originalConfigDir := configDir()
+		originalVerbose := verbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -52,8 +54,8 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetErr(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := getConfigDir()
-		originalVerbose := getVerbose()
+		originalConfigDir := configDir()
+		originalVerbose := verbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -82,8 +84,8 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := getConfigDir()
-		originalVerbose := getVerbose()
+		originalConfigDir := configDir()
+		originalVerbose := verbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -97,7 +99,7 @@ func TestExecute(t *testing.T) {
 			t.Errorf("Execute() with --verbose should succeed, got error: %v", err)
 		}
 
-		if !getVerbose() {
+		if !verbose() {
 			t.Error("verbose flag should be set")
 		}
 	})
@@ -113,8 +115,8 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := getConfigDir()
-		originalVerbose := getVerbose()
+		originalConfigDir := configDir()
+		originalVerbose := verbose()
 		setConfigDir("")
 		setVerbose(false)
 		defer func() {
@@ -151,8 +153,8 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetErr(output)
 		rootCmd.SetArgs(nil)
 
-		originalConfigDir := getConfigDir()
-		originalVerbose := getVerbose()
+		originalConfigDir := configDir()
+		originalVerbose := verbose()
 		setConfigDir(tmpDir) // Use tmpDir, not empty string
 		setVerbose(false)
 		defer func() {
@@ -178,9 +180,11 @@ func TestHandleConfigError(t *testing.T) {
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
 
-		err := fmt.Errorf("field default_harness not found in type config.Config (path=/home/user/.config/kairo/config.yaml)")
+		err := kairoerrors.WrapError(kairoerrors.ConfigError,
+			"configuration file contains field(s) not recognized by this version of kairo",
+			&yaml.TypeError{Errors: []string{"field default_harness not found in type config.Config"}})
 
-		originalVerbose := getVerbose()
+		originalVerbose := verbose()
 		setVerbose(false)
 		defer func() { setVerbose(originalVerbose) }()
 
@@ -211,9 +215,11 @@ func TestHandleConfigError(t *testing.T) {
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
 
-		err := fmt.Errorf("field default_harness not found in type config.Config")
+		err := kairoerrors.WrapError(kairoerrors.ConfigError,
+			"configuration file contains field(s) not recognized by this version of kairo",
+			&yaml.TypeError{Errors: []string{"field default_harness not found in type config.Config"}})
 
-		originalVerbose := getVerbose()
+		originalVerbose := verbose()
 		setVerbose(true)
 		defer func() { setVerbose(originalVerbose) }()
 
@@ -235,7 +241,7 @@ func TestHandleConfigError(t *testing.T) {
 
 		err := fmt.Errorf("some other config error")
 
-		originalVerbose := getVerbose()
+		originalVerbose := verbose()
 		setVerbose(false)
 		defer func() { setVerbose(originalVerbose) }()
 

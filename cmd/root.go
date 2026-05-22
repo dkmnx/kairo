@@ -1,3 +1,4 @@
+// Package cmd implements the kairo CLI command tree using Cobra.
 package cmd
 
 import (
@@ -22,7 +23,7 @@ func setConfigDir(dir string) {
 	defaultCLIContext.SetConfigDir(dir)
 }
 
-func getConfigDir() string {
+func configDir() string {
 	return defaultCLIContext.ConfigDir()
 }
 
@@ -30,7 +31,7 @@ func setVerbose(enabled bool) {
 	defaultCLIContext.SetVerbose(enabled)
 }
 
-func getVerbose() bool {
+func verbose() bool {
 	return defaultCLIContext.Verbose() || verboseFlag
 }
 
@@ -60,7 +61,7 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 			return
 		}
 
-		harnessToUse := getHarness(harnessFlag, cfg.DefaultHarness)
+		harnessToUse := resolveHarness(harnessFlag, cfg.DefaultHarness)
 
 		if harnessToUse == harnessPi {
 			runPiProvider(cmd, cliCtx, cfg, provider, providerName, harnessToUse, harnessArgs)
@@ -195,7 +196,7 @@ func runPiProvider(
 		Cmd:           cmd,
 		ProviderEnv:   providerEnv,
 		HarnessToUse:  harnessToUse,
-		HarnessBinary: getHarnessBinary(harnessToUse),
+		HarnessBinary: harnessBinary(harnessToUse),
 		Provider:      provider,
 		ProviderName:  providerName,
 		HarnessArgs:   harnessArgs,
@@ -232,7 +233,7 @@ func runStandardProvider(
 		Cmd:           cmd,
 		ProviderEnv:   envResult.ProviderEnv,
 		HarnessToUse:  harnessToUse,
-		HarnessBinary: getHarnessBinary(harnessToUse),
+		HarnessBinary: harnessBinary(harnessToUse),
 		Provider:      provider,
 		ProviderName:  providerName,
 		HarnessArgs:   harnessArgs,
@@ -291,7 +292,7 @@ func hasDoubleDash(args []string) bool {
 	return false
 }
 
-func getProviderFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
+func providerFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
 	kairoArgs, harnessArgs := splitArgs(args)
 
 	switch {
@@ -339,7 +340,7 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 		return []string{cfg.DefaultProvider}, args, cfg.DefaultProvider
 	}
 
-	providerName, harnessArgs := getProviderFromArgs(cmd, cfg, args)
+	providerName, harnessArgs := providerFromArgs(cmd, cfg, args)
 
 	return args, harnessArgs, providerName
 }
