@@ -1,3 +1,5 @@
+// Package providers defines the built-in provider registry with names, base URLs,
+// default models, environment variables, and API key requirements.
 package providers
 
 // builtInProviders maps provider short names to their definitions.

@@ -121,15 +121,25 @@ func mergeEnvVars(envs ...[]string) []string {
 	return deduped
 }
 
-func setupSignalHandler(cancel func()) {
+// setupSignalHandler registers a goroutine that calls cancel on SIGINT or
+// SIGTERM. It returns a stop function that should be called for cleanup when
+// the command completes before any signal is received.
+func setupSignalHandler(cancel func()) func() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
+	done := make(chan struct{})
 	go func() {
-		<-sigChan
-		signal.Stop(sigChan)
-		if cancel != nil {
-			cancel()
+		select {
+		case <-sigChan:
+			signal.Stop(sigChan)
+			if cancel != nil {
+				cancel()
+			}
+		case <-done:
+			signal.Stop(sigChan)
 		}
 	}()
+
+	return func() { close(done) }
 }

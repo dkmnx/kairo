@@ -51,7 +51,7 @@ func NewClient() *Client {
 	}
 }
 
-// Release holds the relevant fields from a GitHub release response.
+// Release holds the relevant fields from a GitHub release API response.
 type Release struct {
 	TagName string `json:"tag_name"`
 	HTMLURL string `json:"html_url"`
@@ -59,10 +59,7 @@ type Release struct {
 }
 
 // doHTTPGet performs an HTTP GET request and returns the response body.
-func (c *Client) doHTTPGet(url string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
-	defer cancel()
-
+func (c *Client) doHTTPGet(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
@@ -90,8 +87,8 @@ func (c *Client) doHTTPGet(url string) ([]byte, error) {
 	return body, nil
 }
 
-// GetLatestReleaseURL returns the URL to check for the latest release.
-func (c *Client) GetLatestReleaseURL() string {
+// LatestReleaseURL returns the URL to check for the latest release.
+func (c *Client) LatestReleaseURL() string {
 	if url, ok := c.EnvFunc("KAIRO_UPDATE_URL"); ok && url != "" {
 		return url
 	}
@@ -99,12 +96,9 @@ func (c *Client) GetLatestReleaseURL() string {
 	return constants.GitHubAPIReleasesLatest
 }
 
-// GetLatestRelease fetches the latest release information from GitHub.
-func (c *Client) GetLatestRelease() (*Release, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
-	defer cancel()
-
-	url := c.GetLatestReleaseURL()
+// FetchLatestRelease fetches the latest release information from GitHub.
+func (c *Client) FetchLatestRelease(ctx context.Context) (*Release, error) {
+	url := c.LatestReleaseURL()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
@@ -154,8 +148,8 @@ func VersionGreaterThan(current, latest string) bool {
 	return c.LessThan(l)
 }
 
-// GetInstallScriptURL returns the download URL for the install script at the given tag.
-func GetInstallScriptURL(goos, tag string) string {
+// InstallScriptURL returns the download URL for the install script at the given tag.
+func InstallScriptURL(goos, tag string) string {
 	if goos == constants.WindowsGOOS {
 		return constants.RawGitHubFileURL(tag, "scripts/install.ps1")
 	}
@@ -164,10 +158,7 @@ func GetInstallScriptURL(goos, tag string) string {
 }
 
 // DownloadToTempFile downloads a URL to a temporary file and returns its path.
-func (c *Client) DownloadToTempFile(url string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
-	defer cancel()
-
+func (c *Client) DownloadToTempFile(ctx context.Context, url string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return "", errors.WrapError(errors.NetworkError,
@@ -253,8 +244,8 @@ func RunInstallScript(scriptPath string) error {
 	return nil
 }
 
-// GetChecksumsURL returns the URL for the checksums file at the given tag.
-func GetChecksumsURL(tag string) string {
+// ChecksumsURL returns the URL for the checksums file at the given tag.
+func ChecksumsURL(tag string) string {
 	return constants.RawGitHubFileURL(tag, "scripts/"+checksumsFilename)
 }
 
@@ -282,8 +273,8 @@ func ParseChecksumLine(line string) (hash, filename string, ok bool) {
 }
 
 // DownloadAndParseChecksums downloads and parses a checksums file from the given URL.
-func (c *Client) DownloadAndParseChecksums(url string) (map[string]string, error) {
-	body, err := c.doHTTPGet(url)
+func (c *Client) DownloadAndParseChecksums(ctx context.Context, url string) (map[string]string, error) {
+	body, err := c.doHTTPGet(ctx, url)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to download checksums", err)
@@ -334,21 +325,26 @@ func VerifyChecksum(scriptPath, expectedHash string) error {
 	return nil
 }
 
-// GetChecksumsBundleURL returns the URL for the cosign sigstore bundle of the checksums file.
-func GetChecksumsBundleURL(tag string) string {
+// ChecksumsBundleURL returns the URL for the cosign sigstore bundle of the checksums file.
+func ChecksumsBundleURL(tag string) string {
 	return constants.RawGitHubFileURL(tag, "scripts/checksums.txt.sigstore.json")
 }
 
 // VerifyCosignBundle downloads the sigstore bundle for the checksums file and verifies
 // it using cosign. Returns nil if cosign is not installed (best-effort verification).
-func (c *Client) VerifyCosignBundle(tag string) error {
+func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
+	// Cosign subprocess uses a separate timeout so it can't hang
+	// even if the caller's context has no deadline.
+	cosignCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
 	cosignPath, err := c.LookPathFunc("cosign")
 	if err != nil {
 		return nil
 	}
 
-	bundleURL := GetChecksumsBundleURL(tag)
-	bundleData, err := c.doHTTPGet(bundleURL)
+	bundleURL := ChecksumsBundleURL(tag)
+	bundleData, err := c.doHTTPGet(ctx, bundleURL)
 	if err != nil {
 		return errors.WrapError(errors.NetworkError,
 			"failed to download cosign bundle", err)
@@ -369,8 +365,8 @@ func (c *Client) VerifyCosignBundle(tag string) error {
 	}
 	bundleFile.Close()
 
-	checksumsURL := GetChecksumsURL(tag)
-	checksumsData, err := c.doHTTPGet(checksumsURL)
+	checksumsURL := ChecksumsURL(tag)
+	checksumsData, err := c.doHTTPGet(ctx, checksumsURL)
 	if err != nil {
 		return errors.WrapError(errors.NetworkError,
 			"failed to download checksums for verification", err)
@@ -391,13 +387,10 @@ func (c *Client) VerifyCosignBundle(tag string) error {
 	}
 	checksumsFile.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
 	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml",
 		constants.GitHubRepo)
 
-	cmd := exec.CommandContext(ctx, cosignPath,
+	cmd := exec.CommandContext(cosignCtx, cosignPath,
 		"verify-blob",
 		"--bundle="+bundleFile.Name(),
 		"--certificate-identity-regexp="+certIdentityRegexp,
@@ -414,8 +407,8 @@ func (c *Client) VerifyCosignBundle(tag string) error {
 	return nil
 }
 
-// GetScriptNameForChecksums returns the script filename used in the checksums file.
-func GetScriptNameForChecksums(goos string) string {
+// ScriptNameForChecksums returns the script filename used in the checksums file.
+func ScriptNameForChecksums(goos string) string {
 	ext := installScriptExt
 	if goos == constants.WindowsGOOS {
 		ext = installScriptExtPS1

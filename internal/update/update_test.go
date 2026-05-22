@@ -1,6 +1,7 @@
 package update
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"net/http"
@@ -117,7 +118,7 @@ func TestEnvFunc(t *testing.T) {
 	})
 }
 
-func TestGetLatestRelease(t *testing.T) {
+func TestFetchLatestRelease(t *testing.T) {
 	t.Run("returns release on success", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -134,9 +135,9 @@ func TestGetLatestRelease(t *testing.T) {
 				return "", false
 			},
 		}
-		release, err := c.GetLatestRelease()
+		release, err := c.FetchLatestRelease(context.Background())
 		if err != nil {
-			t.Fatalf("GetLatestRelease() error = %v", err)
+			t.Fatalf("FetchLatestRelease() error = %v", err)
 		}
 		if release.TagName != "v2.0.0" {
 			t.Errorf("release.TagName = %q, want 'v2.0.0'", release.TagName)
@@ -156,9 +157,9 @@ func TestGetLatestRelease(t *testing.T) {
 				return "", false
 			},
 		}
-		_, err := c.GetLatestRelease()
+		_, err := c.FetchLatestRelease(context.Background())
 		if err == nil {
-			t.Error("GetLatestRelease() should return error for 500 status")
+			t.Error("FetchLatestRelease() should return error for 500 status")
 		}
 	})
 	t.Run("returns error on invalid JSON", func(t *testing.T) {
@@ -177,14 +178,14 @@ func TestGetLatestRelease(t *testing.T) {
 				return "", false
 			},
 		}
-		_, err := c.GetLatestRelease()
+		_, err := c.FetchLatestRelease(context.Background())
 		if err == nil {
-			t.Error("GetLatestRelease() should return error for invalid JSON")
+			t.Error("FetchLatestRelease() should return error for invalid JSON")
 		}
 	})
 }
 
-func TestGetLatestReleaseURL(t *testing.T) {
+func TestLatestReleaseURL(t *testing.T) {
 	t.Run("uses environment variable when set", func(t *testing.T) {
 		c := &Client{
 			EnvFunc: func(key string) (string, bool) {
@@ -194,23 +195,23 @@ func TestGetLatestReleaseURL(t *testing.T) {
 				return "", false
 			},
 		}
-		url := c.GetLatestReleaseURL()
+		url := c.LatestReleaseURL()
 		if url != "https://custom.example.com/releases/latest" {
-			t.Errorf("GetLatestReleaseURL() = %q, want %q", url, "https://custom.example.com/releases/latest")
+			t.Errorf("LatestReleaseURL() = %q, want %q", url, "https://custom.example.com/releases/latest")
 		}
 	})
 	t.Run("uses default URL when env var is not set", func(t *testing.T) {
 		c := &Client{
 			EnvFunc: func(string) (string, bool) { return "", false },
 		}
-		url := c.GetLatestReleaseURL()
+		url := c.LatestReleaseURL()
 		if url != constants.GitHubAPIReleasesLatest {
-			t.Errorf("GetLatestReleaseURL() = %q, want %q", url, constants.GitHubAPIReleasesLatest)
+			t.Errorf("LatestReleaseURL() = %q, want %q", url, constants.GitHubAPIReleasesLatest)
 		}
 	})
 }
 
-func TestGetInstallScriptURL(t *testing.T) {
+func TestInstallScriptURL(t *testing.T) {
 	tests := []struct {
 		name     string
 		goos     string
@@ -223,9 +224,9 @@ func TestGetInstallScriptURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetInstallScriptURL(tt.goos, tt.tag)
+			result := InstallScriptURL(tt.goos, tt.tag)
 			if result != tt.expected {
-				t.Errorf("GetInstallScriptURL(%q, %q) = %q, want %q", tt.goos, tt.tag, result, tt.expected)
+				t.Errorf("InstallScriptURL(%q, %q) = %q, want %q", tt.goos, tt.tag, result, tt.expected)
 			}
 		})
 	}
@@ -239,7 +240,7 @@ func TestDownloadToTempFile(t *testing.T) {
 	}))
 	defer server.Close()
 	c := NewClient()
-	tempFile, err := c.DownloadToTempFile(server.URL)
+	tempFile, err := c.DownloadToTempFile(context.Background(), server.URL)
 	if err != nil {
 		t.Fatalf("DownloadToTempFile() error = %v", err)
 	}
@@ -259,7 +260,7 @@ func TestDownloadToTempFileHTTPError(t *testing.T) {
 	}))
 	defer server.Close()
 	c := NewClient()
-	_, err := c.DownloadToTempFile(server.URL)
+	_, err := c.DownloadToTempFile(context.Background(), server.URL)
 	if err == nil {
 		t.Error("DownloadToTempFile() should return error on HTTP failure")
 	}
@@ -268,7 +269,7 @@ func TestDownloadToTempFileHTTPError(t *testing.T) {
 func TestDownloadToTempFileErrorHandling(t *testing.T) {
 	c := NewClient()
 	t.Run("returns error for invalid URL", func(t *testing.T) {
-		_, err := c.DownloadToTempFile("://invalid-url")
+		_, err := c.DownloadToTempFile(context.Background(), "://invalid-url")
 		if err == nil {
 			t.Error("should return error for invalid URL")
 		}
@@ -278,7 +279,7 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
 		defer server.Close()
-		_, err := c.DownloadToTempFile(server.URL)
+		_, err := c.DownloadToTempFile(context.Background(), server.URL)
 		if err == nil {
 			t.Error("should return error on 500 status")
 		}
@@ -294,7 +295,7 @@ func TestDownloadToTempFileErrorHandling(t *testing.T) {
 			_, _ = w.Write(largeData)
 		}))
 		defer server.Close()
-		tempFile, err := c.DownloadToTempFile(server.URL)
+		tempFile, err := c.DownloadToTempFile(context.Background(), server.URL)
 		if err != nil {
 			t.Errorf("failed with large download: %v", err)
 		}
@@ -317,7 +318,7 @@ func TestDownloadToTempFileExtension(t *testing.T) {
 	}))
 	defer server.Close()
 	c := NewClient()
-	tempFile, err := c.DownloadToTempFile(server.URL)
+	tempFile, err := c.DownloadToTempFile(context.Background(), server.URL)
 	if err != nil {
 		t.Fatalf("DownloadToTempFile() error = %v", err)
 	}
@@ -365,7 +366,7 @@ func TestRunInstallScript_ScriptNotFound(t *testing.T) {
 	}
 }
 
-func TestGetChecksumsURL(t *testing.T) {
+func TestChecksumsURL(t *testing.T) {
 	tests := []struct {
 		name     string
 		tag      string
@@ -376,9 +377,9 @@ func TestGetChecksumsURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetChecksumsURL(tt.tag)
+			result := ChecksumsURL(tt.tag)
 			if result != tt.expected {
-				t.Errorf("GetChecksumsURL(%q) = %q, want %q", tt.tag, result, tt.expected)
+				t.Errorf("ChecksumsURL(%q) = %q, want %q", tt.tag, result, tt.expected)
 			}
 		})
 	}
@@ -428,7 +429,7 @@ func TestDownloadAndParseChecksums(t *testing.T) {
 			_, _ = w.Write([]byte("# Comment\n\n07203eb32c914886d316468e4dedc18a1df65c3e84ad3bff63474b3ce1bb2790  scripts/install.sh\n"))
 		}))
 		defer server.Close()
-		checksums, err := c.DownloadAndParseChecksums(server.URL)
+		checksums, err := c.DownloadAndParseChecksums(context.Background(), server.URL)
 		if err != nil {
 			t.Fatalf("error = %v", err)
 		}
@@ -441,7 +442,7 @@ func TestDownloadAndParseChecksums(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 		}))
 		defer server.Close()
-		_, err := c.DownloadAndParseChecksums(server.URL)
+		_, err := c.DownloadAndParseChecksums(context.Background(), server.URL)
 		if err == nil {
 			t.Error("should return error on 404")
 		}
@@ -481,7 +482,7 @@ func TestVerifyChecksum(t *testing.T) {
 	})
 }
 
-func TestGetScriptNameForChecksums(t *testing.T) {
+func TestScriptNameForChecksums(t *testing.T) {
 	tests := []struct {
 		name     string
 		goos     string
@@ -493,9 +494,9 @@ func TestGetScriptNameForChecksums(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetScriptNameForChecksums(tt.goos)
+			result := ScriptNameForChecksums(tt.goos)
 			if result != tt.expected {
-				t.Errorf("GetScriptNameForChecksums(%q) = %q, want %q", tt.goos, result, tt.expected)
+				t.Errorf("ScriptNameForChecksums(%q) = %q, want %q", tt.goos, result, tt.expected)
 			}
 		})
 	}
@@ -503,7 +504,7 @@ func TestGetScriptNameForChecksums(t *testing.T) {
 
 func TestDoHTTPGet_InvalidURL(t *testing.T) {
 	c := NewClient()
-	_, err := c.doHTTPGet("://invalid-url")
+	_, err := c.doHTTPGet(context.Background(), "://invalid-url")
 	if err == nil {
 		t.Error("doHTTPGet() should return error for invalid URL")
 	}
@@ -515,7 +516,7 @@ func TestDoHTTPGet_ConnectionRefused(t *testing.T) {
 		EnvFunc:      func(string) (string, bool) { return "", false },
 		LookPathFunc: func(string) (string, error) { return "", fmt.Errorf("not found") },
 	}
-	_, err := c.doHTTPGet("http://127.0.0.1:1")
+	_, err := c.doHTTPGet(context.Background(), "http://127.0.0.1:1")
 	if err == nil {
 		t.Error("doHTTPGet() should return error when connection is refused")
 	}
@@ -528,7 +529,7 @@ func TestDoHTTPGet_NotFound(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient()
-	_, err := c.doHTTPGet(server.URL)
+	_, err := c.doHTTPGet(context.Background(), server.URL)
 	if err == nil {
 		t.Error("doHTTPGet() should return error for 404")
 	}
@@ -550,7 +551,7 @@ func TestDownloadToTempFile_WriteFails(t *testing.T) {
 	defer server.Close()
 
 	c := NewClient()
-	_, err := c.DownloadToTempFile(server.URL)
+	_, err := c.DownloadToTempFile(context.Background(), server.URL)
 	if err == nil {
 		t.Error("DownloadToTempFile() should return error when write fails")
 	}
@@ -582,20 +583,20 @@ func TestScriptNameMatchesChecksumFile(t *testing.T) {
 	}))
 	defer server.Close()
 	c := NewClient()
-	checksums, err := c.DownloadAndParseChecksums(server.URL)
+	checksums, err := c.DownloadAndParseChecksums(context.Background(), server.URL)
 	if err != nil {
 		t.Fatalf("error = %v", err)
 	}
 	for _, goos := range []string{"linux", "darwin", "windows"} {
-		scriptName := GetScriptNameForChecksums(goos)
+		scriptName := ScriptNameForChecksums(goos)
 		if _, ok := checksums[scriptName]; !ok {
-			t.Errorf("GetScriptNameForChecksums(%q) = %q not found in checksums map keys: %v",
+			t.Errorf("ScriptNameForChecksums(%q) = %q not found in checksums map keys: %v",
 				goos, scriptName, maps.Keys(checksums))
 		}
 	}
 }
 
-func TestGetChecksumsBundleURL(t *testing.T) {
+func TestChecksumsBundleURL(t *testing.T) {
 	tests := []struct {
 		name     string
 		tag      string
@@ -606,15 +607,15 @@ func TestGetChecksumsBundleURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetChecksumsBundleURL(tt.tag)
+			result := ChecksumsBundleURL(tt.tag)
 			if result != tt.expected {
-				t.Errorf("GetChecksumsBundleURL(%q) = %q, want %q", tt.tag, result, tt.expected)
+				t.Errorf("ChecksumsBundleURL(%q) = %q, want %q", tt.tag, result, tt.expected)
 			}
 		})
 	}
 }
 
-func TestGetLatestRelease_InvalidURL(t *testing.T) {
+func TestFetchLatestRelease_InvalidURL(t *testing.T) {
 	c := &Client{
 		HTTPClient: &http.Client{},
 		EnvFunc: func(key string) (string, bool) {
@@ -624,9 +625,9 @@ func TestGetLatestRelease_InvalidURL(t *testing.T) {
 			return "", false
 		},
 	}
-	_, err := c.GetLatestRelease()
+	_, err := c.FetchLatestRelease(context.Background())
 	if err == nil {
-		t.Error("GetLatestRelease() should return error for invalid URL")
+		t.Error("FetchLatestRelease() should return error for invalid URL")
 	}
 }
 
@@ -636,7 +637,7 @@ func TestVerifyCosignBundle_CosignNotInstalled(t *testing.T) {
 		EnvFunc:      func(string) (string, bool) { return "", false },
 		LookPathFunc: func(string) (string, error) { return "", fmt.Errorf("not found") },
 	}
-	err := c.VerifyCosignBundle("v1.0.0")
+	err := c.VerifyCosignBundle(context.Background(), "v1.0.0")
 	if err != nil {
 		t.Errorf("VerifyCosignBundle should return nil when cosign not installed, got: %v", err)
 	}
@@ -658,7 +659,7 @@ func TestVerifyCosignBundle_BundleDownloadFails(t *testing.T) {
 		},
 		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
 	}
-	err := c.VerifyCosignBundle("v1.0.0")
+	err := c.VerifyCosignBundle(context.Background(), "v1.0.0")
 	if err == nil {
 		t.Error("VerifyCosignBundle should return error when bundle download fails")
 	}
@@ -690,7 +691,7 @@ func TestVerifyCosignBundle_ChecksumsDownloadFails(t *testing.T) {
 		},
 		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
 	}
-	err := c.VerifyCosignBundle("v1.0.0")
+	err := c.VerifyCosignBundle(context.Background(), "v1.0.0")
 	if err == nil {
 		t.Error("VerifyCosignBundle should return error when checksums download fails")
 	}

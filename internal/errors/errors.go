@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-// ErrorType classifies a KairoError into a high-level category.
+// ErrorType classifies a KairoError into a high-level category such as
+// config, crypto, validation, or network errors.
 type ErrorType string
 
 // Error type constants for classifying KairoError instances.

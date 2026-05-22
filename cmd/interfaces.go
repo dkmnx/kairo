@@ -24,12 +24,12 @@ type WrapperService interface {
 
 // UpdateService provides version checking and self-update operations.
 type UpdateService interface {
-	GetLatestRelease() (*update.Release, error)
+	FetchLatestRelease(ctx context.Context) (*update.Release, error)
 	ConfirmUpdate(message string) (bool, error)
-	DownloadToTempFile(url string) (string, error)
-	DownloadAndParseChecksums(url string) (map[string]string, error)
+	DownloadToTempFile(ctx context.Context, url string) (string, error)
+	DownloadAndParseChecksums(ctx context.Context, url string) (map[string]string, error)
 	VerifyChecksum(scriptPath, expectedHash string) error
-	VerifyCosignBundle(tag string) error
+	VerifyCosignBundle(ctx context.Context, tag string) error
 	RunInstallScript(scriptPath string) error
 }
 
