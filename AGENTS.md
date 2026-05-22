@@ -21,39 +21,44 @@ Go CLI wrapper for Claude/Qwen Code API providers with X25519 encryption.
 ## HOW
 
 ```bash
-just build          # Binary to dist/
-just test           # All tests with race detector
-just test-coverage  # Coverage report
-just lint           # gofmt, go vet, golangci-lint
-just pre-release    # Format, lint, pre-commit hooks, test
-just release        # Create release (requires GITHUB_TOKEN)
+just build              # Binary to dist/
+just test               # All tests with race detector
+just fuzz               # Fuzzing tests (5s per func)
+just test-coverage      # Coverage report (threshold: 70%)
+just lint               # gofmt, go vet, golangci-lint
+just security           # govulncheck + lint
+just pre-release        # Format, lint, pre-commit, test, goreleaser dry-run
 ```
 
-## Style Guide
+Fuzz a specific func: `go test -fuzz=FuzzValidateAPIKey -fuzztime=5s ./internal/validate/`
 
-All Go code must follow the [Google Go Style Guide](https://google.github.io/styleguide/go).
+## Code Style
 
-Key rules enforced:
+Google Go Style Guide, plus these rules not enforced by linters:
 
-- **Doc comments** on all top-level exported names (types, funcs, consts, vars)
+- **Doc comments** on all top-level exported names (staticcheck ST1000 excluded in config)
 - **No `Get` prefix** on getter methods
-- **MixedCaps** identifiers, never snake_case
 - **Short receiver names** (1-2 letters), consistent per type
-- **Error strings** lowercase, no trailing punctuation
 - **Indent error flow** -- early returns, no `else` after errors
-- **Import grouping** -- stdlib first, then other packages
 - **Initialisms** consistent case (`URL`, `ID`, `HTTP`, `API`)
-- **No `Get` prefix** -- `ConfigDir()` not `GetConfigDir()`
 
-## Docs
+## Architecture
 
-Read these if relevant to your task:
+`cmd/` routes via Cobra, delegates to `internal/` with no CLI dependencies. `internal/providers/registry.go` defines 20 built-in providers. `internal/wrapper/wrapper.go` generates temp shell scripts for secure token passing. See `docs/architecture/README.md` for flow diagrams and ADRs in `docs/architecture/adr/`.
 
-- `docs/architecture/README.md` - System design
-- `docs/guides/development-guide.md` - Adding commands, CI workflows
+## Testing
 
-## Notes
+Table-driven, `t.TempDir()` for filesystem isolation. CI enforces 70% coverage. Fuzzing in `internal/validate/` and `cmd/`. Run `just test` for race-detected full suite.
 
-- Internal packages have no CLI dependencies - keep them pure
-- Use `just --list` to see all available commands
-- Run `just pre-release` before committing
+## Boundaries
+
+- **Internal purity**: `internal/` imports no Cobra or CLI packages
+- **Secrets**: API keys in `secrets.age` only, never in `config.yaml`
+- **Install scripts**: modify `scripts/install.{sh,ps1}`, run `just pre-commit` to update checksums
+- **Warnings = errors**: 25+ linters in `.golangci.yml` -- treat all as errors
+
+## Patterns
+
+- **Add a provider**: register in `internal/providers/registry.go` + `providerOrder`, add key validation in `internal/validate/api_key.go` if needed
+- **Releases**: goreleaser (`CGO_ENABLED=0`, `trimpath`, version vars from `internal/version/`)
+- **Config migration**: `internal/config/migration.go` handles provider default model updates across versions

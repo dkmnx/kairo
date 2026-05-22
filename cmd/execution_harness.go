@@ -61,7 +61,8 @@ func executePi(cfg ExecutionConfig) error {
 
 	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
-	setupSignalHandler(cancel)
+	stopSignalHandler := setupSignalHandler(cancel)
+	defer stopSignalHandler()
 
 	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, piPath, cliArgs...)
 	execCmd.Env = cfg.ProviderEnv
@@ -129,7 +130,8 @@ func executeWithAuth(cfg ExecutionConfig) {
 func executeWrapperWithAuth(cfg ExecutionConfig) {
 	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
-	setupSignalHandler(cancel)
+	stopSignalHandler := setupSignalHandler(cancel)
+	defer stopSignalHandler()
 
 	authDir, err := cfg.Deps.Wrapper.CreateTempAuthDir()
 	if err != nil {
@@ -226,7 +228,8 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 
 	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
-	setupSignalHandler(cancel)
+	stopSignalHandler := setupSignalHandler(cancel)
+	defer stopSignalHandler()
 
 	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, claudePath, cliArgs...)
 	execCmd.Env = cfg.ProviderEnv

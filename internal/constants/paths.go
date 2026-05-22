@@ -1,3 +1,5 @@
+// Package constants defines file names, permission modes, timeouts, environment
+// variable names, and GitHub repository URLs used throughout the kairo application.
 package constants
 
 import (

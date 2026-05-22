@@ -37,17 +37,17 @@ type prodUpdateService struct {
 	client *update.Client
 }
 
-func (s *prodUpdateService) GetLatestRelease() (*update.Release, error) {
-	return s.client.GetLatestRelease()
+func (s *prodUpdateService) FetchLatestRelease(ctx context.Context) (*update.Release, error) {
+	return s.client.FetchLatestRelease(ctx)
 }
 func (prodUpdateService) ConfirmUpdate(message string) (bool, error) {
 	return ui.Confirm(message)
 }
-func (s *prodUpdateService) DownloadToTempFile(url string) (string, error) {
-	return s.client.DownloadToTempFile(url)
+func (s *prodUpdateService) DownloadToTempFile(ctx context.Context, url string) (string, error) {
+	return s.client.DownloadToTempFile(ctx, url)
 }
-func (s *prodUpdateService) DownloadAndParseChecksums(url string) (map[string]string, error) {
-	return s.client.DownloadAndParseChecksums(url)
+func (s *prodUpdateService) DownloadAndParseChecksums(ctx context.Context, url string) (map[string]string, error) {
+	return s.client.DownloadAndParseChecksums(ctx, url)
 }
 func (prodUpdateService) VerifyChecksum(scriptPath, expectedHash string) error {
 	return update.VerifyChecksum(scriptPath, expectedHash)
@@ -55,8 +55,8 @@ func (prodUpdateService) VerifyChecksum(scriptPath, expectedHash string) error {
 func (prodUpdateService) RunInstallScript(scriptPath string) error {
 	return update.RunInstallScript(scriptPath)
 }
-func (s *prodUpdateService) VerifyCosignBundle(tag string) error {
-	return s.client.VerifyCosignBundle(tag)
+func (s *prodUpdateService) VerifyCosignBundle(ctx context.Context, tag string) error {
+	return s.client.VerifyCosignBundle(ctx, tag)
 }
 
 // NewDeps returns a Deps with production implementations.

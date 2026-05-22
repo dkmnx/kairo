@@ -50,17 +50,17 @@ providers:
 	}
 
 	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
-		mu.GetLatestReleaseFn = func() (*update.Release, error) {
+		mu.FetchLatestReleaseFn = func(ctx context.Context) (*update.Release, error) {
 			return &update.Release{TagName: "v2.3.5"}, nil
 		}
 		mu.ConfirmUpdateFn = func(string) (bool, error) {
 			return true, nil
 		}
-		mu.DownloadToTempFileFn = func(string) (string, error) {
+		mu.DownloadToTempFileFn = func(ctx context.Context, url string) (string, error) {
 			return tempScriptPath, nil
 		}
-		mu.DownloadAndParseChecksumsFn = func(string) (map[string]string, error) {
-			return map[string]string{update.GetScriptNameForChecksums(runtime.GOOS): "ignored"}, nil
+		mu.DownloadAndParseChecksumsFn = func(ctx context.Context, url string) (map[string]string, error) {
+			return map[string]string{update.ScriptNameForChecksums(runtime.GOOS): "ignored"}, nil
 		}
 		mu.VerifyChecksumFn = func(string, string) error {
 			return nil
@@ -115,9 +115,9 @@ func TestUpdateCommand(t *testing.T) {
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := c.GetLatestRelease()
+	latest, err := c.FetchLatestRelease(context.Background())
 	if err != nil {
-		t.Fatalf("GetLatestRelease() error = %v", err)
+		t.Fatalf("FetchLatestRelease() error = %v", err)
 	}
 
 	if latest.TagName != "v1.2.0" {
@@ -155,9 +155,9 @@ func TestUpdateCommandNoNewVersion(t *testing.T) {
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := c.GetLatestRelease()
+	latest, err := c.FetchLatestRelease(context.Background())
 	if err != nil {
-		t.Fatalf("GetLatestRelease() error = %v", err)
+		t.Fatalf("FetchLatestRelease() error = %v", err)
 	}
 
 	if update.VersionGreaterThan(version.Version, latest.TagName) {
@@ -181,9 +181,9 @@ func TestUpdateCommandAPIError(t *testing.T) {
 		},
 	}
 
-	_, err := c.GetLatestRelease()
+	_, err := c.FetchLatestRelease(context.Background())
 	if err == nil {
-		t.Error("GetLatestRelease() should return error on API failure")
+		t.Error("FetchLatestRelease() should return error on API failure")
 	}
 }
 
@@ -216,9 +216,9 @@ func TestVersionNotification(t *testing.T) {
 	version.Version = "v1.0.0"
 	defer func() { version.Version = originalVersion }()
 
-	latest, err := c.GetLatestRelease()
+	latest, err := c.FetchLatestRelease(context.Background())
 	if err != nil {
-		t.Fatalf("GetLatestRelease() error = %v", err)
+		t.Fatalf("FetchLatestRelease() error = %v", err)
 	}
 
 	if !update.VersionGreaterThan(version.Version, latest.TagName) {
@@ -238,7 +238,7 @@ func TestDownloadToTempFileErrorHandlingConnectionClose(t *testing.T) {
 		defer server.Close()
 
 		c := update.NewClient()
-		_, err := c.DownloadToTempFile(server.URL)
+		_, err := c.DownloadToTempFile(context.Background(), server.URL)
 		if err == nil {
 			t.Error("should return error when server closes early")
 		}

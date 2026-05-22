@@ -1,3 +1,4 @@
+// Package config loads, validates, and caches the kairo YAML configuration.
 package config
 
 import (
