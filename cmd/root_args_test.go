@@ -67,20 +67,20 @@ func TestGetProviderFromArgs(t *testing.T) {
 				DefaultProvider: tt.defaultProvider,
 			}
 
-			provider, args := getProviderFromArgs(cmd, cfg, tt.args)
+			provider, args := providerFromArgs(cmd, cfg, tt.args)
 
 			if provider != tt.wantProvider {
-				t.Errorf("getProviderFromArgs() provider = %q, want %q", provider, tt.wantProvider)
+				t.Errorf("providerFromArgs() provider = %q, want %q", provider, tt.wantProvider)
 			}
 
 			if len(args) != len(tt.wantArgs) {
-				t.Errorf("getProviderFromArgs() args length = %d, want %d", len(args), len(tt.wantArgs))
+				t.Errorf("providerFromArgs() args length = %d, want %d", len(args), len(tt.wantArgs))
 				return
 			}
 
 			for i, arg := range args {
 				if arg != tt.wantArgs[i] {
-					t.Errorf("getProviderFromArgs() args[%d] = %q, want %q", i, arg, tt.wantArgs[i])
+					t.Errorf("providerFromArgs() args[%d] = %q, want %q", i, arg, tt.wantArgs[i])
 				}
 			}
 		})
@@ -161,7 +161,7 @@ func TestHarnessFlagUsesDefaultProvider(t *testing.T) {
 	}
 	createConfigFile(t, tmpDir, cfg)
 
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	originalHarnessFlag := harnessFlag
 	setConfigDir(tmpDir)
 	harnessFlag = "claude"

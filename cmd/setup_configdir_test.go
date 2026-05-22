@@ -20,8 +20,8 @@ func TestGetConfigDirWithEnv(t *testing.T) {
 	os.Setenv("HOME", tmpDir)
 	os.Setenv("USERPROFILE", tmpDir)
 
-	// Reset configDir to empty so getConfigDir() falls back to env.GetConfigDir()
-	originalConfigDir := getConfigDir()
+	// Reset configDir to empty so configDir() falls back to env.GetConfigDir()
+	originalConfigDir := configDir()
 	defer setConfigDir(originalConfigDir)
 	setConfigDir("")
 
@@ -31,26 +31,26 @@ func TestGetConfigDirWithEnv(t *testing.T) {
 	} else {
 		expectedDir = filepath.Join(tmpDir, ".config", "kairo")
 	}
-	dir := getConfigDir()
+	dir := configDir()
 	if dir != expectedDir {
-		t.Errorf("getConfigDir() = %q, want %q", dir, expectedDir)
+		t.Errorf("configDir() = %q, want %q", dir, expectedDir)
 	}
 }
 
 func TestGetConfigDirWithFlag(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	setConfigDir("/custom/path")
 	defer setConfigDir(originalConfigDir)
 
-	dir := getConfigDir()
+	dir := configDir()
 	if dir != "/custom/path" {
-		t.Errorf("getConfigDir() = %q, want %q", dir, "/custom/path")
+		t.Errorf("configDir() = %q, want %q", dir, "/custom/path")
 	}
 }
 
 func TestGetConfigDirWithFlagAndEnv(t *testing.T) {
 	originalHome := os.Getenv("HOME")
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() {
 		os.Setenv("HOME", originalHome)
 		setConfigDir(originalConfigDir)
@@ -60,14 +60,14 @@ func TestGetConfigDirWithFlagAndEnv(t *testing.T) {
 	os.Setenv("HOME", tmpDir)
 	setConfigDir("/custom/path")
 
-	dir := getConfigDir()
+	dir := configDir()
 	if dir != "/custom/path" {
-		t.Errorf("getConfigDir() = %q, want %q (flag should take precedence)", dir, "/custom/path")
+		t.Errorf("configDir() = %q, want %q (flag should take precedence)", dir, "/custom/path")
 	}
 }
 
 func TestGetConfigDirEmptyConfigDir(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	setConfigDir("")
 	defer setConfigDir(originalConfigDir)
 
@@ -82,9 +82,9 @@ func TestGetConfigDirEmptyConfigDir(t *testing.T) {
 	} else {
 		expectedDir = filepath.Join(home, ".config", "kairo")
 	}
-	dir := getConfigDir()
+	dir := configDir()
 	if dir != expectedDir {
-		t.Errorf("getConfigDir() = %q, want %q", dir, expectedDir)
+		t.Errorf("configDir() = %q, want %q", dir, expectedDir)
 	}
 }
 

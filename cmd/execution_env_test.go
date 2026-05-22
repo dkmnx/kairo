@@ -35,7 +35,6 @@ func TestBuildProviderEnvironment_Success(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	provider := config.Provider{
-		Name:    "test-provider",
 		BaseURL: "https://api.test.com",
 		Model:   "test-model",
 		EnvVars: []string{"CUSTOM_VAR=custom_value"},
@@ -84,7 +83,6 @@ func TestBuildProviderEnvironment_NoAPIKeyRequired(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	provider := config.Provider{
-		Name:    "Test Provider",
 		BaseURL: "https://test.com",
 		Model:   "test-model",
 		EnvVars: []string{"CUSTOM_VAR=value"},
@@ -112,7 +110,6 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	provider := config.Provider{
-		Name:    "Test Provider",
 		BaseURL: "https://test.com",
 		Model:   "test-model",
 		EnvVars: []string{"PROVIDER_VAR=provider_value", "ANOTHER_VAR=another_value"},
@@ -146,7 +143,6 @@ func TestBuildProviderEnvironment_WithProviderEnvVars(t *testing.T) {
 func TestBuildBuiltInEnvVars_Extended(t *testing.T) {
 	t.Run("provider with special characters in values", func(t *testing.T) {
 		provider := config.Provider{
-			Name:    "Test Provider",
 			BaseURL: "https://api.test.com/path?query=value",
 			Model:   "test-model-v1.0-beta",
 		}

@@ -337,6 +337,14 @@ func TestSetup_ValidateModel(t *testing.T) {
 			model:       "glm-4.7-flash",
 			wantErr:     false,
 		},
+		{
+			name:        "invalid model for built-in provider with default",
+			provider:    "zai",
+			displayName: "Z.AI",
+			model:       "!!!invalid!!!",
+			wantErr:     true,
+			errContains: "invalid characters",
+		},
 	}
 
 	for _, tt := range tests {

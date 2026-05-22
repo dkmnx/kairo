@@ -8,7 +8,7 @@ import (
 )
 
 func TestListCommandNoConfig(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
