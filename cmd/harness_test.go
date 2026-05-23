@@ -9,7 +9,7 @@ import (
 )
 
 func TestHarnessGetNoConfig(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -23,7 +23,7 @@ func TestHarnessGetNoConfig(t *testing.T) {
 }
 
 func TestHarnessGetWithConfig(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -47,7 +47,7 @@ func TestHarnessGetWithConfig(t *testing.T) {
 }
 
 func TestHarnessSetClaude(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -69,7 +69,7 @@ func TestHarnessSetClaude(t *testing.T) {
 }
 
 func TestHarnessSetQwen(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -91,7 +91,7 @@ func TestHarnessSetQwen(t *testing.T) {
 }
 
 func TestHarnessSetInvalid(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -105,7 +105,7 @@ func TestHarnessSetInvalid(t *testing.T) {
 }
 
 func TestHarnessSetPi(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -126,6 +126,28 @@ func TestHarnessSetPi(t *testing.T) {
 	}
 }
 
+func TestHarnessSetCrush(t *testing.T) {
+	originalConfigDir := configDir()
+	defer func() { setConfigDir(originalConfigDir) }()
+
+	tmpDir := t.TempDir()
+	setConfigDir(tmpDir)
+
+	rootCmd.SetArgs([]string{"harness", "set", "crush"})
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	cfg, err := config.LoadConfig(context.Background(), tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
+	}
+	if cfg.DefaultHarness != "crush" {
+		t.Errorf("DefaultHarness = %q, want %q", cfg.DefaultHarness, "crush")
+	}
+}
+
 func TestGetHarnessWithPi(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -140,18 +162,18 @@ func TestGetHarnessWithPi(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getHarness(tt.flagHarness, tt.configHarness)
+			result := resolveHarness(tt.flagHarness, tt.configHarness)
 			if result != tt.expected {
-				t.Errorf("getHarness() = %q, want %q", result, tt.expected)
+				t.Errorf("resolveHarness() = %q, want %q", result, tt.expected)
 			}
 		})
 	}
 }
 
 func TestGetHarnessBinaryPi(t *testing.T) {
-	result := getHarnessBinary("pi")
+	result := harnessBinary("pi")
 	if result != "pi" {
-		t.Errorf("getHarnessBinary('pi') = %q, want %q", result, "pi")
+		t.Errorf("harnessBinary('pi') = %q, want %q", result, "pi")
 	}
 }
 
@@ -164,17 +186,20 @@ func TestHarnessSetCaseInsensitive(t *testing.T) {
 		{"uppercase CLAUDE", "CLAUDE", "claude"},
 		{"uppercase QWEN", "QWEN", "qwen"},
 		{"uppercase PI", "PI", "pi"},
+		{"uppercase CRUSH", "CRUSH", "crush"},
 		{"mixed case Claude", "Claude", "claude"},
 		{"mixed case Qwen", "Qwen", "qwen"},
 		{"mixed case Pi", "Pi", "pi"},
+		{"mixed case Crush", "Crush", "crush"},
 		{"lowercase claude", "claude", "claude"},
 		{"lowercase qwen", "qwen", "qwen"},
 		{"lowercase pi", "pi", "pi"},
+		{"lowercase crush", "crush", "crush"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			originalConfigDir := getConfigDir()
+			originalConfigDir := configDir()
 			defer func() { setConfigDir(originalConfigDir) }()
 
 			tmpDir := t.TempDir()
@@ -211,13 +236,15 @@ func TestGetHarness(t *testing.T) {
 		{"defaults to claude when flag invalid", "invalid", "", "claude"},
 		{"flag pi takes precedence", "pi", "claude", "pi"},
 		{"config pi used", "", "pi", "pi"},
+		{"flag crush takes precedence", "crush", "claude", "crush"},
+		{"config crush used", "", "crush", "crush"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getHarness(tt.flagHarness, tt.configHarness)
+			result := resolveHarness(tt.flagHarness, tt.configHarness)
 			if result != tt.expected {
-				t.Errorf("getHarness() = %q, want %q", result, tt.expected)
+				t.Errorf("resolveHarness() = %q, want %q", result, tt.expected)
 			}
 		})
 	}
@@ -232,20 +259,21 @@ func TestGetHarnessBinary(t *testing.T) {
 		{"claude returns claude", "claude", "claude"},
 		{"qwen returns qwen", "qwen", "qwen"},
 		{"pi returns pi", "pi", "pi"},
+		{"crush returns crush", "crush", "crush"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getHarnessBinary(tt.harness)
+			result := harnessBinary(tt.harness)
 			if result != tt.expected {
-				t.Errorf("getHarnessBinary() = %q, want %q", result, tt.expected)
+				t.Errorf("harnessBinary() = %q, want %q", result, tt.expected)
 			}
 		})
 	}
 }
 
 func TestGetHarnessWithExistingConfig(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -266,8 +294,8 @@ func TestGetHarnessWithExistingConfig(t *testing.T) {
 		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
 	}
 
-	result := getHarness("", loadedCfg.DefaultHarness)
+	result := resolveHarness("", loadedCfg.DefaultHarness)
 	if result != "qwen" {
-		t.Errorf("getHarness() = %q, want %q", result, "qwen")
+		t.Errorf("resolveHarness() = %q, want %q", result, "qwen")
 	}
 }

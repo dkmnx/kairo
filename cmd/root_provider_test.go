@@ -21,7 +21,7 @@ func TestLoadRootConfigEmptyProviders(t *testing.T) {
 	}
 	createConfigFile(t, tmpDir, cfg)
 
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	setConfigDir(tmpDir)
 	defer func() { setConfigDir(originalConfigDir) }()
 

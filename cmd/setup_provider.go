@@ -71,7 +71,7 @@ type modelValidationConfig struct {
 }
 
 func validateConfiguredModel(cfg modelValidationConfig) error {
-	if err := validate.ValidateProviderModel(cfg.Model, cfg.DisplayName); err != nil {
+	if err := validate.ValidateProviderModel(cfg.ProviderName, cfg.Model); err != nil {
 		return err
 	}
 	if providers.IsBuiltInProvider(cfg.ProviderName) || strings.TrimSpace(cfg.Model) != "" {

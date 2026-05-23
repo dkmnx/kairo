@@ -24,7 +24,7 @@ func TestRootCmd(t *testing.T) {
 	t.Run("no config file - shows setup message", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		originalConfigDir := getConfigDir()
+		originalConfigDir := configDir()
 		setConfigDir(tmpDir)
 		defer func() { setConfigDir(originalConfigDir) }()
 
@@ -50,7 +50,7 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := getConfigDir()
+		originalConfigDir := configDir()
 		setConfigDir(tmpDir)
 		defer func() {
 			setConfigDir(originalConfigDir)
@@ -89,7 +89,7 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := getConfigDir()
+		originalConfigDir := configDir()
 		setConfigDir(tmpDir)
 		defer func() {
 			setConfigDir(originalConfigDir)
@@ -140,7 +140,7 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := getConfigDir()
+		originalConfigDir := configDir()
 		setConfigDir(tmpDir)
 		defer func() {
 			setConfigDir(originalConfigDir)
@@ -170,7 +170,7 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := getConfigDir()
+		originalConfigDir := configDir()
 		setConfigDir(tmpDir)
 		defer func() {
 			setConfigDir(originalConfigDir)
@@ -212,22 +212,22 @@ func TestRootCmd(t *testing.T) {
 
 func TestRootCmdGetConfigDir(t *testing.T) {
 	t.Run("returns flag value when set", func(t *testing.T) {
-		originalConfigDir := getConfigDir()
+		originalConfigDir := configDir()
 		setConfigDir("/custom/config/dir")
 		defer func() { setConfigDir(originalConfigDir) }()
 
-		result := getConfigDir()
+		result := configDir()
 		if result != "/custom/config/dir" {
-			t.Errorf("getConfigDir() = %q, want %q", result, "/custom/config/dir")
+			t.Errorf("configDir() = %q, want %q", result, "/custom/config/dir")
 		}
 	})
 
 	t.Run("returns env default when flag is empty", func(t *testing.T) {
-		originalConfigDir := getConfigDir()
+		originalConfigDir := configDir()
 		setConfigDir("")
 		defer func() { setConfigDir(originalConfigDir) }()
 
-		result := getConfigDir()
+		result := configDir()
 		// We can't easily test the exact value without mocking env package
 		if result == "" {
 			t.Skip("Cannot test env.GetConfigDir() without mocking")
@@ -235,11 +235,11 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 	})
 
 	t.Run("empty flag value uses default", func(t *testing.T) {
-		originalConfigDir := getConfigDir()
+		originalConfigDir := configDir()
 		setConfigDir("")
 		defer func() { setConfigDir(originalConfigDir) }()
 
-		result := getConfigDir()
+		result := configDir()
 		if result == "" {
 			t.Skip("Cannot mock env.GetConfigDir() without dependency injection")
 		}
