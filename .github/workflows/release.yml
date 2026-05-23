@@ -35,7 +35,7 @@ jobs:
           awk '/^## \[Unreleased\]/{skip=1; next} /^## \[/{skip=0; c++; if(c>1)exit; if(c==1)next} !skip && c>0' CHANGELOG.md | tail -c +2 > /tmp/release-notes.txt
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: latest
