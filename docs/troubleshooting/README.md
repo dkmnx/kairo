@@ -113,6 +113,10 @@ Install Claude Code.
 
 Install Qwen Code.
 
+### `crush: command not found`
+
+Install Crush. See https://github.com/charmbracelet/crush#installation
+
 ### Execution Failed
 
 ```bash

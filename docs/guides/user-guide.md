@@ -36,6 +36,9 @@ npm install -g @qwen-code/qwen-code@latest
 
 # Pi
 npm install -g @earendil-works/pi-coding-agent
+
+# Crush
+# See https://github.com/charmbracelet/crush#installation
 ```
 
 Verify:
@@ -46,6 +49,8 @@ claude --version
 qwen --version
 # or
 pi --version
+# or
+crush --version
 ```
 
 ## Quick Start
@@ -76,7 +81,7 @@ kairo -- "Quick question"
 | `kairo <provider> [args]`     | Execute with a specific provider                    |
 | `kairo -- [args]`             | Execute with the default provider                   |
 | `kairo harness get`           | Get current harness                                 |
-| `kairo harness set <name>`    | Set default harness (`claude`, `qwen`, or `pi`)     |
+| `kairo harness set <name>`    | Set default harness (`claude`, `qwen`, `pi`, or `crush`)     |
 | `kairo update`                | Update to the latest version                        |
 | `kairo version`               | Show version                                        |
 | `kairo completion [shell]`    | Generate shell completion script                    |

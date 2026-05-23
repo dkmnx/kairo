@@ -1,21 +1,22 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
-	"strings"
 
 	"github.com/dkmnx/kairo/internal/constants"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 const claudeYoloFlag = "--dangerously-skip-permissions"
 const qwenYoloFlag = "--yolo"
 
 func yoloModeFlag(harness string) string {
-	if harness == harnessQwen {
+	if harness == harnessQwen || harness == harnessCrush {
 		return qwenYoloFlag
 	}
 	if harness == harnessPi {
@@ -35,21 +36,9 @@ func handleConfigError(cmd *cobra.Command, err error) {
 }
 
 func isBinaryOutdatedError(err error) bool {
-	errStr := err.Error()
+	var typeErr *yaml.TypeError
 
-	if strings.Contains(errStr, kairoerrors.ErrBinaryOutdated.Error()) {
-		return true
-	}
-
-	if strings.Contains(errStr, "field") && strings.Contains(errStr, "not found in type") {
-		return true
-	}
-
-	if strings.Contains(errStr, "configuration file contains field(s) not recognized") {
-		return true
-	}
-
-	return false
+	return errors.Is(err, kairoerrors.ErrBinaryOutdated) || errors.As(err, &typeErr)
 }
 
 func promptUpgrade(cmd *cobra.Command, err error) {
@@ -72,7 +61,7 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 	cmd.Println("  For manual installation, see:")
 	cmd.Printf("    %s#manual-installation\n", constants.GitHubBlobURL("main", "docs/guides/user-guide.md"))
 	cmd.Println()
-	if getVerbose() {
+	if verbose() {
 		cmd.Printf("Technical details: %v\n", err)
 	}
 }

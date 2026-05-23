@@ -127,7 +127,7 @@ func TestCustomProviderConfigPersistence(t *testing.T) {
 func TestE2ECompleteWorkflow(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	setConfigDir(tmpDir)

@@ -11,7 +11,7 @@ import (
 )
 
 func TestDefaultCommandNoArgs(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -38,7 +38,7 @@ providers:
 }
 
 func TestDefaultCommandSetProvider(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -77,7 +77,7 @@ providers:
 }
 
 func TestDefaultCommandProviderNotFound(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
@@ -104,7 +104,7 @@ providers:
 }
 
 func TestDefaultCommandUpdatesConfigFile(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer func() { setConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()

@@ -58,7 +58,7 @@ func TestProviderEnvVarSetup(t *testing.T) {
 }
 
 func TestSwitchCmdProviderNotFound(t *testing.T) {
-	originalConfigDir := getConfigDir()
+	originalConfigDir := configDir()
 	defer setConfigDir(originalConfigDir)
 
 	tmpDir := t.TempDir()
@@ -82,9 +82,9 @@ func TestSwitchCmdProviderNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dir := getConfigDir()
+	dir := configDir()
 	if dir != tmpDir {
-		t.Errorf("getConfigDir() = %q, want %q", dir, tmpDir)
+		t.Errorf("configDir() = %q, want %q", dir, tmpDir)
 	}
 }
 

@@ -154,9 +154,6 @@ func TestLoadSecrets(t *testing.T) {
 	secretsOut := result.SecretsPath
 	keyOut := result.KeyPath
 	secrets := result.Secrets
-	if err != nil {
-		t.Fatalf("LoadSecrets(context.Background(), ) error = %v", err)
-	}
 	if secretsOut != secretsPath {
 		t.Errorf("secretsPath = %q, want %q", secretsOut, secretsPath)
 	}
@@ -183,9 +180,6 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 	secretsPath := result.SecretsPath
 	keyPath := result.KeyPath
 	secrets := result.Secrets
-	if err != nil {
-		t.Fatalf("LoadSecrets(context.Background(), ) error = %v", err)
-	}
 	if len(secrets) != 0 {
 		t.Errorf("got %d secrets, want 0", len(secrets))
 	}

@@ -110,7 +110,7 @@ sequenceDiagram
     CLI->>Config: LoadConfig()
     CLI->>Crypto: DecryptSecrets()
     CLI->>Wrapper: write temp token file + wrapper script
-    Wrapper->>Harness: exec claude, qwen, or pi
+    Wrapper->>Harness: exec claude, qwen, pi, or crush
     Harness->>Wrapper: token file removed after read
 ```
 
@@ -156,7 +156,7 @@ providers:
 Notes:
 
 - API keys are stored in `secrets.age`, not `config.yaml`
-- `default_harness` is optional and defaults to `claude`
+- `default_harness` is optional and defaults to `claude`. Valid values: `claude`, `qwen`, `pi`, `crush`.
 - `default_models` is migration metadata for built-in providers
 
 ## Provider Registry
