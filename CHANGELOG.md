@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `crush` harness option (Charm's Crush CLI) alongside claude, qwen, and pi
+
+### Fixed
+
+- Validate model name against actual model ID for provider selection, not the display name
+
 ## [v2.6.2] - 2026-05-22
 
 ### Changed
