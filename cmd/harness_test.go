@@ -126,6 +126,28 @@ func TestHarnessSetPi(t *testing.T) {
 	}
 }
 
+func TestHarnessSetCrush(t *testing.T) {
+	originalConfigDir := configDir()
+	defer func() { setConfigDir(originalConfigDir) }()
+
+	tmpDir := t.TempDir()
+	setConfigDir(tmpDir)
+
+	rootCmd.SetArgs([]string{"harness", "set", "crush"})
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	cfg, err := config.LoadConfig(context.Background(), tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
+	}
+	if cfg.DefaultHarness != "crush" {
+		t.Errorf("DefaultHarness = %q, want %q", cfg.DefaultHarness, "crush")
+	}
+}
+
 func TestGetHarnessWithPi(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -164,12 +186,15 @@ func TestHarnessSetCaseInsensitive(t *testing.T) {
 		{"uppercase CLAUDE", "CLAUDE", "claude"},
 		{"uppercase QWEN", "QWEN", "qwen"},
 		{"uppercase PI", "PI", "pi"},
+		{"uppercase CRUSH", "CRUSH", "crush"},
 		{"mixed case Claude", "Claude", "claude"},
 		{"mixed case Qwen", "Qwen", "qwen"},
 		{"mixed case Pi", "Pi", "pi"},
+		{"mixed case Crush", "Crush", "crush"},
 		{"lowercase claude", "claude", "claude"},
 		{"lowercase qwen", "qwen", "qwen"},
 		{"lowercase pi", "pi", "pi"},
+		{"lowercase crush", "crush", "crush"},
 	}
 
 	for _, tt := range tests {
@@ -211,6 +236,8 @@ func TestGetHarness(t *testing.T) {
 		{"defaults to claude when flag invalid", "invalid", "", "claude"},
 		{"flag pi takes precedence", "pi", "claude", "pi"},
 		{"config pi used", "", "pi", "pi"},
+		{"flag crush takes precedence", "crush", "claude", "crush"},
+		{"config crush used", "", "crush", "crush"},
 	}
 
 	for _, tt := range tests {
@@ -232,6 +259,7 @@ func TestGetHarnessBinary(t *testing.T) {
 		{"claude returns claude", "claude", "claude"},
 		{"qwen returns qwen", "qwen", "qwen"},
 		{"pi returns pi", "pi", "pi"},
+		{"crush returns crush", "crush", "crush"},
 	}
 
 	for _, tt := range tests {

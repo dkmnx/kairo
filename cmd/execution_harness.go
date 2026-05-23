@@ -93,13 +93,16 @@ func runHarnessWithWrapper(ctx context.Context, deps *Deps, params HarnessRun) e
 			"generating wrapper script", err)
 	}
 
-	ui.ClearScreen()
-	ui.PrintBanner(ui.Banner{
-		Version:      version.Version,
-		ModelName:    params.Provider.Model,
-		ProviderName: params.Provider.Name,
-		Harness:      params.Harness,
-	})
+	// Crush displays its own banner on startup; suppress Kairo's to avoid duplication.
+	if params.Harness != harnessCrush {
+		ui.ClearScreen()
+		ui.PrintBanner(ui.Banner{
+			Version:      version.Version,
+			ModelName:    params.Provider.Model,
+			ProviderName: params.Provider.Name,
+			Harness:      params.Harness,
+		})
+	}
 
 	execCmd := buildWrapperCommand(deps, WrapperCmd{
 		Ctx:           ctx,
@@ -156,6 +159,13 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	}
 
 	cliArgs := cfg.HarnessArgs
+	if cfg.Yolo {
+		cliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, cliArgs...)
+	}
+
+	displayName, envVarName, extraArgs := harnessDispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
+	cliArgs = append(extraArgs, cliArgs...)
+
 	run := HarnessRun{
 		AuthDir:       authDir,
 		TokenPath:     tokenPath,
@@ -163,28 +173,28 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 		CliArgs:       cliArgs,
 		ProviderEnv:   cfg.ProviderEnv,
 		Provider:      cfg.Provider,
+		EnvVarName:    envVarName,
 		Harness:       cfg.HarnessToUse,
 	}
 
-	if cfg.Yolo {
-		run.CliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, run.CliArgs...)
-	}
-
-	if cfg.HarnessToUse == harnessQwen {
-		run.CliArgs = append(qwenAuthArgs(cfg.Provider.Model), run.CliArgs...)
-		run.EnvVarName = "ANTHROPIC_API_KEY"
-
-		if err := runHarnessWithWrapper(ctx, cfg.Deps, run); err != nil {
-			cfg.Cmd.Printf("Error running Qwen: %v\n", err)
-			cfg.Deps.Process.ExitProcess(1)
-		}
-
-		return
-	}
-
 	if err := runHarnessWithWrapper(ctx, cfg.Deps, run); err != nil {
-		cfg.Cmd.Printf("Error running Claude: %v\n", err)
+		cfg.Cmd.Printf("Error running %s: %v\n", displayName, err)
 		cfg.Deps.Process.ExitProcess(1)
+	}
+}
+
+// harnessDispatch returns the display name, environment variable name, and any
+// extra CLI arguments for the given harness.
+func harnessDispatch(harness, providerName, model string) (displayName, envVarName string, extraArgs []string) {
+	switch harness {
+	case harnessQwen:
+		return "Qwen", "ANTHROPIC_API_KEY", qwenAuthArgs(model)
+	case harnessCrush:
+		return "Crush", HarnessAPIKeyEnvVar(providerName), nil
+	case harnessPi:
+		return "Pi", "", nil
+	default:
+		return "Claude", "", nil
 	}
 }
 
@@ -210,35 +220,42 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 
 		return
 	}
+	// Crush prompts interactively for API keys when none are set, so it needs
+	// no early-exit guard here and falls through to direct execution.
 
-	claudePath, err := cfg.Deps.Process.LookPath(cfg.HarnessBinary)
+	harnessPath, err := cfg.Deps.Process.LookPath(cfg.HarnessBinary)
 	if err != nil {
 		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
 
 		return
 	}
 
-	ui.ClearScreen()
-	ui.PrintBanner(ui.Banner{
-		Version:      version.Version,
-		ModelName:    cfg.Provider.Model,
-		ProviderName: cfg.Provider.Name,
-		Harness:      cfg.HarnessToUse,
-	})
+	// Crush displays its own banner on startup; suppress Kairo's to avoid duplication.
+	if cfg.HarnessToUse != harnessCrush {
+		ui.ClearScreen()
+		ui.PrintBanner(ui.Banner{
+			Version:      version.Version,
+			ModelName:    cfg.Provider.Model,
+			ProviderName: cfg.Provider.Name,
+			Harness:      cfg.HarnessToUse,
+		})
+	}
 
 	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
 	stopSignalHandler := setupSignalHandler(cancel)
 	defer stopSignalHandler()
 
-	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, claudePath, cliArgs...)
+	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, harnessPath, cliArgs...)
 	execCmd.Env = cfg.ProviderEnv
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 
+	displayName, _, _ := harnessDispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
+
 	if err := execCmd.Run(); err != nil {
-		cfg.Cmd.Printf("Error running Claude: %v\n", err)
+		cfg.Cmd.Printf("Error running %s: %v\n", displayName, err)
 		cfg.Deps.Process.ExitProcess(1)
 	}
 }

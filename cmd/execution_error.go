@@ -16,7 +16,7 @@ const claudeYoloFlag = "--dangerously-skip-permissions"
 const qwenYoloFlag = "--yolo"
 
 func yoloModeFlag(harness string) string {
-	if harness == harnessQwen {
+	if harness == harnessQwen || harness == harnessCrush {
 		return qwenYoloFlag
 	}
 	if harness == harnessPi {

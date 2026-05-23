@@ -41,6 +41,8 @@ Passing tokens as command-line arguments would leave them in shell history:
 ANTHROPIC_AUTH_TOKEN=sk-ant-... claude
 # or for Qwen
 ANTHROPIC_API_KEY=sk-... qwen
+# or for Crush
+ANTHROPIC_API_KEY=sk-ant-... crush
 ```
 
 ## The Solution: Temporary Wrapper Scripts

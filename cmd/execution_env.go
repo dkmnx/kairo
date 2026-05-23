@@ -15,6 +15,18 @@ func PiAPIKeyEnvVar(providerName string) (string, bool) {
 	return providers.APIKeyEnvVarFor(providerName)
 }
 
+// HarnessAPIKeyEnvVar returns the environment variable name for a provider's
+// API key suitable for harness execution. It first checks the provider registry
+// for a specific env var name, falling back to the standard PROVIDERNAME_API_KEY
+// convention.
+func HarnessAPIKeyEnvVar(providerName string) string {
+	if envVar, ok := providers.APIKeyEnvVarFor(providerName); ok {
+		return envVar
+	}
+
+	return APIKeyEnvVarName(providerName)
+}
+
 // BuildPiEnvVars constructs the environment variables for the Pi harness.
 func BuildPiEnvVars(provider config.Provider, providerName string) []string {
 	return []string{
