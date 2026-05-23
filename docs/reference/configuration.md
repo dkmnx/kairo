@@ -27,7 +27,7 @@ Provider, model, and harness configuration in YAML format.
 
 ```yaml
 default_provider: string
-default_harness: claude | qwen
+default_harness: claude | qwen | pi | crush
 default_models:
   <provider-name>: string
 providers:
@@ -41,7 +41,7 @@ providers:
 
 Notes:
 
-- `default_harness` is optional. If omitted, Kairo uses `claude`.
+- `default_harness` is optional. If omitted, Kairo uses `claude`. Valid values: `claude`, `qwen`, `pi`, `crush`.
 - `default_models` is optional migration metadata maintained for built-in providers.
 - API keys are not stored in `config.yaml`.
 
