@@ -295,30 +295,20 @@ func hasDoubleDash(args []string) bool {
 func providerFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
 	kairoArgs, harnessArgs := splitArgs(args)
 
-	switch {
-	case len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "":
-		args = []string{cfg.DefaultProvider}
-		harnessArgs = kairoArgs
-	case len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0]:
-		args = append([]string{args[0]}, kairoArgs...)
-	case len(args) > 1:
-		harnessArgs = args[1:]
-		args = args[:1]
+	if len(kairoArgs) > 0 && !strings.HasPrefix(kairoArgs[0], "-") {
+		harnessArgs = append(kairoArgs[1:], harnessArgs...)
+
+		return kairoArgs[0], harnessArgs
 	}
 
-	providerName := args[0]
-
-	if strings.HasPrefix(providerName, "-") {
-		if cfg.DefaultProvider == "" {
-			cmd.Println("Error: No default provider set and first argument looks like a flag")
-			cmd.Println("Run 'kairo setup' to configure a provider")
-
-			return "", nil
-		}
-		providerName = cfg.DefaultProvider
+	if cfg.DefaultProvider != "" {
+		return cfg.DefaultProvider, kairoArgs
 	}
 
-	return providerName, harnessArgs
+	cmd.Println("Error: No default provider set and first argument looks like a flag")
+	cmd.Println("Run 'kairo setup' to configure a provider")
+
+	return "", nil
 }
 
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
