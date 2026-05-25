@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
-	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
@@ -66,17 +64,9 @@ var harnessSetCmd = &cobra.Command{
 
 		cliCtx := CLIContextFromCmd(cmd)
 
-		cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), dir)
-		if err != nil && !errors.Is(err, kairoerrors.ErrConfigNotFound) {
-			handleConfigError(cmd, err)
-
+		cfg := loadConfigOrEmpty(cmd)
+		if cfg == nil {
 			return
-		}
-		if err != nil {
-			cfg = &config.Config{
-				Providers:     make(map[string]config.Provider),
-				DefaultModels: make(map[string]string),
-			}
 		}
 
 		cfg.DefaultHarness = harnessName

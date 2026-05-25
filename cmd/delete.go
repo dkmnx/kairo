@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,22 +23,12 @@ var deleteCmd = &cobra.Command{
 	Long:  "Remove a provider from Kairo. If no provider is specified, shows an interactive list of configured providers.",
 	Run: func(cmd *cobra.Command, args []string) {
 		cliCtx := CLIContextFromCmd(cmd)
-		dir := requireConfigDir(cmd)
-		if dir == "" {
+
+		cfg, err := loadConfigOrExit(cmd)
+		if err != nil || cfg == nil {
 			return
 		}
-
-		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
-		if err != nil {
-			if stderrors.Is(err, fs.ErrNotExist) {
-				printNoProvidersMessage()
-
-				return
-			}
-			handleConfigError(cmd, err)
-
-			return
-		}
+		dir := cliCtx.ConfigDir()
 
 		var target string
 		if len(args) == 0 {

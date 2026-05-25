@@ -60,6 +60,18 @@ func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
 	return cfg, nil
 }
 
+func loadConfigOrEmpty(cmd *cobra.Command) *config.Config {
+	cfg, _ := loadConfigOrExit(cmd)
+	if cfg == nil {
+		return &config.Config{
+			Providers:     make(map[string]config.Provider),
+			DefaultModels: make(map[string]string),
+		}
+	}
+
+	return cfg
+}
+
 // printNoProvidersMessage prints a standard message indicating no providers
 // are configured and directs the user to run setup.
 func printNoProvidersMessage() {
