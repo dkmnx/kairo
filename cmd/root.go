@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	harnessFlag string
-	yoloFlag    bool
-	verboseFlag bool
+	harnessFlag         string
+	skipPermissionsFlag bool
+	verboseFlag         bool
 )
 
 func setConfigDir(dir string) {
@@ -90,7 +90,7 @@ func init() {
 	rootCmd.PersistentFlags().String("config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Verbose output")
 	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude, qwen, pi, or crush)")
-	rootCmd.Flags().BoolVarP(&yoloFlag, "yolo", "y", false,
+	rootCmd.Flags().BoolVarP(&skipPermissionsFlag, "yolo", "y", false,
 		"Skip permission prompts (--dangerously-skip-permissions for Claude, --yolo for Qwen)")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
@@ -196,11 +196,11 @@ func runPiProvider(
 		Cmd:           cmd,
 		ProviderEnv:   providerEnv,
 		HarnessToUse:  harnessToUse,
-		HarnessBinary: harnessBinary(harnessToUse),
+		HarnessBinary: harnessToUse,
 		Provider:      provider,
 		ProviderName:  providerName,
 		HarnessArgs:   harnessArgs,
-		Yolo:          yoloFlag,
+		Yolo:          skipPermissionsFlag,
 		Deps:          cliCtx.Deps(),
 	}
 
@@ -233,12 +233,12 @@ func runStandardProvider(
 		Cmd:           cmd,
 		ProviderEnv:   envResult.ProviderEnv,
 		HarnessToUse:  harnessToUse,
-		HarnessBinary: harnessBinary(harnessToUse),
+		HarnessBinary: harnessToUse,
 		Provider:      provider,
 		ProviderName:  providerName,
 		HarnessArgs:   harnessArgs,
 		APIKey:        apiKey,
-		Yolo:          yoloFlag,
+		Yolo:          skipPermissionsFlag,
 		Deps:          cliCtx.Deps(),
 	}
 

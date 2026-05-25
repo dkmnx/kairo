@@ -113,7 +113,7 @@ func TestRunPiProviderWithAuth(t *testing.T) {
 		}
 	})
 	cliCtx.SetDeps(d)
-	yoloFlag = false
+	skipPermissionsFlag = false
 	harnessFlag = ""
 
 	runPiProvider(rootCmd, cliCtx, cfg, cfg.Providers["zai"], "zai", "pi", []string{"hello"})
