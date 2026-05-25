@@ -79,7 +79,7 @@ func Execute() error {
 		rootCmd.SetArgs(nil)
 	}()
 
-	defaultCLIContext.SetDefaultProviderExplicit(hasDoubleDash(args))
+	defaultCLIContext.SetDefaultProviderExplicit(hasArgsSeparator(args))
 
 	rootCmd.SetArgs(args)
 
@@ -273,7 +273,7 @@ func splitArgs(args []string) ([]string, []string) {
 	return args, nil
 }
 
-func hasDoubleDash(args []string) bool {
+func hasArgsSeparator(args []string) bool {
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--" {
 			return true
