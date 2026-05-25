@@ -142,7 +142,9 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	var cleanupOnce sync.Once
 	cleanup := func() {
 		cleanupOnce.Do(func() {
-			_ = os.RemoveAll(authDir)
+			if err := os.RemoveAll(authDir); err != nil {
+				cfg.Cmd.Printf("Error cleaning up auth directory: %v\n", err)
+			}
 		})
 	}
 	defer cleanup()

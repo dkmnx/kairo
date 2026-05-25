@@ -185,7 +185,9 @@ PowerShell:
 
 		if closeOut {
 			if f, ok := out.(*os.File); ok {
-				f.Close()
+				if err := f.Close(); err != nil {
+					cmd.Printf("Error closing completion file: %v\n", err)
+				}
 			}
 		}
 	},
