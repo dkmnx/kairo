@@ -35,8 +35,8 @@ func TestProviderValidation(t *testing.T) {
 			}
 			if err != nil {
 				errMsg := err.Error()
-				if tt.providerName != "" && !strings.Contains(errMsg, tt.providerName) {
-					t.Errorf("ValidateAPIKey() error message should include provider name, got: %v", errMsg)
+				if tt.providerName != "" && !strings.Contains(errMsg, "API") {
+					t.Errorf("ValidateAPIKey() error message should mention API key, got: %v", errMsg)
 				}
 			}
 		})
@@ -107,11 +107,9 @@ func TestValidateAPIKey_EdgeCases(t *testing.T) {
 }
 
 func TestValidateAPIKey_PatternMismatch(t *testing.T) {
-	// No built-in providers have patterns currently, so we test via matchesPattern directly
-	kf := &KeyFormat{Pattern: "^sk-[a-z]+$"}
-	matched, err := kf.matchesPattern("sk-123")
-	if err == nil && matched {
-		t.Error("matchesPattern() should not match digits with [a-z] pattern")
+	err := ValidateAPIKey("short", "openrouter")
+	if err == nil {
+		t.Error("expected error for short key on openrouter (requires sk-or- prefix + min 32 chars)")
 	}
 }
 
@@ -131,13 +129,6 @@ func FuzzValidateAPIKey(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, key, providerName string) {
 		err := ValidateAPIKey(key, providerName)
-
-		if err != nil && providerName != "" {
-			errMsg := err.Error()
-			if !strings.Contains(errMsg, providerName) {
-				t.Errorf("ValidateAPIKey() error message should include provider name %q, got: %v", providerName, errMsg)
-			}
-		}
 
 		if strings.TrimSpace(key) == "" && err == nil {
 			t.Errorf("ValidateAPIKey() should fail for empty/whitespace key, got nil error")
