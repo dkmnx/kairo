@@ -9,8 +9,7 @@ import (
 	"github.com/dkmnx/kairo/internal/errors"
 )
 
-// DefaultConfigDir is the production resolver for the configuration directory.
-// Tests can replace it via CLIContext.SetConfigDirResolver.
+// DefaultConfigDir resolves the platform-specific default configuration directory.
 func DefaultConfigDir() (string, error) {
 	return ConfigDir()
 }
