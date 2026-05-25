@@ -71,10 +71,14 @@ Closes #42
 
 ## Code Style
 
-- Follow [Effective Go](https://go.dev/doc/effective_go)
-- Use `gofmt`
-- Add godoc comments
-- Return typed errors
+- Follow [Google Go Style Guide](https://google.github.io/styleguide/go)
+- Use `gofmt` for formatting
+- Use `golangci-lint` (see `.golangci.yml`)
+- MixedCaps naming, no `Get` prefix on getters
+- Short receiver names (1-2 letters), consistent per type
+- Doc comments on all top-level exported names
+- Indent error flow, early returns
+- Return typed errors from `internal/` packages
 
 ## Testing
 
