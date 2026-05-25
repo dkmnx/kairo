@@ -58,8 +58,7 @@ func (c *CLIContext) ConfigDir() string {
 	return dir
 }
 
-// SetConfigDirResolver overrides the function used to resolve the default config dir.
-// For use in tests.
+// SetConfigDirResolver overrides the default config directory lookup.
 func (c *CLIContext) SetConfigDirResolver(r ConfigDirResolver) {
 	c.configDirMu.Lock()
 	defer c.configDirMu.Unlock()
