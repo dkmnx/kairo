@@ -1,6 +1,62 @@
 // Package providers defines the built-in provider registry with names, base URLs,
-// default models, environment variables, and API key requirements.
+// default models, environment variables, API key requirements, and key format rules.
 package providers
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+
+	"github.com/dkmnx/kairo/internal/errors"
+)
+
+const (
+	MinAPIKeyLength     = 32
+	DefaultMinKeyLength = 20
+)
+
+// KeyFormat defines per-provider key validation rules.
+type KeyFormat struct {
+	MinLength int
+	Prefix    string
+	Pattern   string
+	compiled  *regexp.Regexp
+}
+
+func (kf *KeyFormat) validateForKey(key string) error {
+	if strings.TrimSpace(key) == "" {
+		return nil
+	}
+	if kf.MinLength > 0 && len(key) < kf.MinLength {
+		return fmt.Errorf("API key too short (minimum %d characters, got %d)", kf.MinLength, len(key))
+	}
+	if kf.Prefix != "" && !strings.HasPrefix(key, kf.Prefix) {
+		return fmt.Errorf("API key must start with '%s'", kf.Prefix)
+	}
+	if kf.Pattern != "" {
+		if kf.compiled == nil {
+			compiled, err := regexp.Compile(kf.Pattern)
+			if err != nil {
+				return fmt.Errorf("invalid key pattern for provider: %w", err)
+			}
+			kf.compiled = compiled
+		}
+		if !kf.compiled.MatchString(key) {
+			return fmt.Errorf("API key format is invalid")
+		}
+	}
+
+	return nil
+}
+
+var (
+	KeyFormatMin32      = KeyFormat{MinLength: MinAPIKeyLength}
+	KeyFormatAnthropic  = KeyFormat{MinLength: MinAPIKeyLength, Prefix: "sk-ant-"}
+	KeyFormatOpenAI     = KeyFormat{MinLength: MinAPIKeyLength, Prefix: "sk-"}
+	KeyFormatGroq       = KeyFormat{MinLength: MinAPIKeyLength, Prefix: "gsk_"}
+	KeyFormatOpenRouter = KeyFormat{MinLength: MinAPIKeyLength, Prefix: "sk-or-"}
+	DefaultKeyFormat    = KeyFormat{MinLength: DefaultMinKeyLength}
+)
 
 // builtInProviders maps provider short names to their definitions.
 var builtInProviders = map[string]ProviderDefinition{
@@ -11,6 +67,7 @@ var builtInProviders = map[string]ProviderDefinition{
 		RequiresAPIKey: true,
 		EnvVars:        []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash"},
 		APIKeyEnvVar:   "ZAI_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"minimax": {
 		Name:           "MiniMax",
@@ -22,6 +79,7 @@ var builtInProviders = map[string]ProviderDefinition{
 			"ANTHROPIC_SMALL_FAST_MAX_TOKENS=24576",
 		},
 		APIKeyEnvVar: "MINIMAX_API_KEY",
+		KeyFormat:    KeyFormatMin32,
 	},
 	"kimi": {
 		Name:           "Moonshot AI",
@@ -33,6 +91,7 @@ var builtInProviders = map[string]ProviderDefinition{
 			"ANTHROPIC_SMALL_FAST_MAX_TOKENS=200000",
 		},
 		APIKeyEnvVar: "KIMI_API_KEY",
+		KeyFormat:    KeyFormatMin32,
 	},
 	"deepseek": {
 		Name:           "DeepSeek AI",
@@ -47,92 +106,109 @@ var builtInProviders = map[string]ProviderDefinition{
 			"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
 		},
 		APIKeyEnvVar: "DEEPSEEK_API_KEY",
+		KeyFormat:    KeyFormatMin32,
 	},
 	"anthropic": {
 		Name:           "Anthropic",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "ANTHROPIC_API_KEY",
+		KeyFormat:      KeyFormatAnthropic,
 	},
 	"openai": {
 		Name:           "OpenAI",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "OPENAI_API_KEY",
+		KeyFormat:      KeyFormatOpenAI,
 	},
 	"google": {
 		Name:           "Google",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "GEMINI_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"mistral": {
 		Name:           "Mistral",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "MISTRAL_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"groq": {
 		Name:           "Groq",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "GROQ_API_KEY",
+		KeyFormat:      KeyFormatGroq,
 	},
 	"cerebras": {
 		Name:           "Cerebras",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "CEREBRAS_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"cloudflare-workers-ai": {
 		Name:           "Cloudflare Workers AI",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "CLOUDFLARE_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"xai": {
 		Name:           "xAI",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "XAI_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"openrouter": {
 		Name:           "OpenRouter",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "OPENROUTER_API_KEY",
+		KeyFormat:      KeyFormatOpenRouter,
 	},
 	"vercel-ai-gateway": {
 		Name:           "Vercel AI Gateway",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "AI_GATEWAY_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"opencode": {
 		Name:           "OpenCode",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "OPENCODE_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"huggingface": {
 		Name:           "Hugging Face",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "HF_TOKEN",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"fireworks": {
 		Name:           "Fireworks",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "FIREWORKS_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"azure-openai-responses": {
 		Name:           "Azure OpenAI",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "AZURE_OPENAI_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"minimax-cn": {
 		Name:           "MiniMax (CN)",
 		RequiresAPIKey: true,
 		APIKeyEnvVar:   "MINIMAX_CN_API_KEY",
+		KeyFormat:      KeyFormatMin32,
 	},
 	"custom": {
 		Name:           "Custom Provider",
 		BaseURL:        "",
 		Model:          "",
 		RequiresAPIKey: true,
+		KeyFormat:      DefaultKeyFormat,
 	},
 }
 
 // ProviderDefinition describes a built-in provider's display name, default
-// base URL, model, environment variables, and API key requirements.
+// base URL, model, environment variables, API key requirements, and key format.
 type ProviderDefinition struct {
 	Name           string
 	BaseURL        string
@@ -140,6 +216,22 @@ type ProviderDefinition struct {
 	EnvVars        []string
 	RequiresAPIKey bool
 	APIKeyEnvVar   string
+	KeyFormat      KeyFormat
+}
+
+// ValidateAPIKey checks the given key against this provider's key format rules.
+func (d ProviderDefinition) ValidateAPIKey(key string) error {
+	if strings.TrimSpace(key) == "" {
+		return errors.NewError(errors.ValidationError,
+			fmt.Sprintf("%s: API key cannot be empty or whitespace", d.Name))
+	}
+
+	if err := d.KeyFormat.validateForKey(key); err != nil {
+		return errors.NewError(errors.ValidationError,
+			fmt.Sprintf("%s: %s", d.Name, err))
+	}
+
+	return nil
 }
 
 // IsBuiltInProvider reports whether name is a recognized built-in provider.

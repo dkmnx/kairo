@@ -38,7 +38,7 @@ func configureProvider(params ProviderSetup) (string, error) {
 	}
 
 	apiKey := promptForAPIKey(promptCfg)
-	if err := validate.ValidateAPIKey(apiKey, definition.Name); err != nil {
+	if err := definition.ValidateAPIKey(apiKey); err != nil {
 		return "", err
 	}
 
