@@ -110,7 +110,7 @@ var builtInProviders = map[string]ProviderDefinition{
 go test ./internal/providers/... ./internal/validate/...
 ```
 
-3. Update user and reference docs.
+1. Update user and reference docs.
 
 ## Testing
 
