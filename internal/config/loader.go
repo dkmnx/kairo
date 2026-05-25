@@ -11,15 +11,17 @@ import (
 
 	"github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/fsutil"
+	"github.com/dkmnx/kairo/internal/providers"
 	"gopkg.in/yaml.v3"
 )
 
 // Config represents the top-level kairo configuration file.
 type Config struct {
-	DefaultProvider string              `yaml:"default_provider"`
-	Providers       map[string]Provider `yaml:"providers"`
-	DefaultModels   map[string]string   `yaml:"default_models"`
-	DefaultHarness  string              `yaml:"default_harness,omitempty"`
+	DefaultProvider string                                        `yaml:"default_provider"`
+	Providers       map[string]Provider                           `yaml:"providers"`
+	DefaultModels   map[string]string                             `yaml:"default_models"`
+	DefaultHarness  string                                        `yaml:"default_harness,omitempty"`
+	CustomProviders map[string]providers.CustomProviderDefinition `yaml:"custom_providers"`
 }
 
 // Provider represents a single provider's configuration entry.

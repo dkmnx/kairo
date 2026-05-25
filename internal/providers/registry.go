@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/dkmnx/kairo/internal/errors"
 )
@@ -234,22 +235,7 @@ func (d ProviderDefinition) ValidateAPIKey(key string) error {
 	return nil
 }
 
-// IsBuiltInProvider reports whether name is a recognized built-in provider.
-func IsBuiltInProvider(name string) bool {
-	_, ok := builtInProviders[name]
-
-	return ok
-}
-
-// BuiltInProvider returns the definition for the named built-in provider.
-func BuiltInProvider(name string) (ProviderDefinition, bool) {
-	def, ok := builtInProviders[name]
-
-	return def, ok
-}
-
 // providerOrder defines the canonical display order for providers.
-// It must contain exactly the same keys as builtInProviders.
 var providerOrder = []string{
 	"zai", "minimax", "deepseek", "kimi",
 	"anthropic", "openai", "google", "mistral",
@@ -259,12 +245,90 @@ var providerOrder = []string{
 	"custom",
 }
 
-// ProviderList returns the ordered list of built-in provider names.
-// Entries not present in builtInProviders are silently excluded.
-func ProviderList() []string {
-	result := make([]string, 0, len(providerOrder))
+// ProviderRegistry holds built-in and custom provider definitions.
+// Package-level functions delegate to DefaultRegistry.
+type ProviderRegistry struct {
+	mu      sync.RWMutex
+	builtIn map[string]ProviderDefinition
+	custom  map[string]ProviderDefinition
+}
+
+// NewRegistry creates a ProviderRegistry initialized with built-in providers.
+func NewRegistry() *ProviderRegistry {
+	r := &ProviderRegistry{
+		builtIn: make(map[string]ProviderDefinition, len(builtInProviders)),
+		custom:  make(map[string]ProviderDefinition),
+	}
+	for k := range builtInProviders {
+		r.builtIn[k] = builtInProviders[k]
+	}
+
+	return r
+}
+
+// RegisterCustom merges custom definitions into the registry.
+// Custom entries override built-in entries with the same name.
+func (r *ProviderRegistry) RegisterCustom(defs map[string]CustomProviderDefinition) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for k := range defs {
+		r.custom[k] = defs[k].ToProviderDefinition()
+	}
+}
+
+// ClearCustom removes all custom definitions from the registry.
+func (r *ProviderRegistry) ClearCustom() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.custom = make(map[string]ProviderDefinition)
+}
+
+// IsBuiltInProvider reports whether name is a recognized provider.
+func (r *ProviderRegistry) IsBuiltInProvider(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	_, ok := r.builtIn[name]
+	if ok {
+		return true
+	}
+	_, ok = r.custom[name]
+
+	return ok
+}
+
+// BuiltInProvider returns the definition for the named provider.
+func (r *ProviderRegistry) BuiltInProvider(name string) (ProviderDefinition, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if def, ok := r.custom[name]; ok {
+		return def, true
+	}
+	def, ok := r.builtIn[name]
+
+	return def, ok
+}
+
+// ProviderList returns all provider names, built-in first then custom.
+func (r *ProviderRegistry) ProviderList() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(r.builtIn)+len(r.custom))
+
 	for _, name := range providerOrder {
-		if _, ok := builtInProviders[name]; ok {
+		if _, ok := r.builtIn[name]; ok {
+			seen[name] = true
+			result = append(result, name)
+		}
+	}
+
+	for name := range r.custom {
+		if !seen[name] {
 			result = append(result, name)
 		}
 	}
@@ -273,8 +337,8 @@ func ProviderList() []string {
 }
 
 // RequiresAPIKey reports whether the named provider requires an API key.
-func RequiresAPIKey(name string) bool {
-	def, ok := builtInProviders[name]
+func (r *ProviderRegistry) RequiresAPIKey(name string) bool {
+	def, ok := r.BuiltInProvider(name)
 	if !ok {
 		return true
 	}
@@ -284,8 +348,8 @@ func RequiresAPIKey(name string) bool {
 
 // APIKeyEnvVarFor returns the environment variable name for the named
 // provider's API key, if one is defined.
-func APIKeyEnvVarFor(name string) (string, bool) {
-	def, ok := builtInProviders[name]
+func (r *ProviderRegistry) APIKeyEnvVarFor(name string) (string, bool) {
+	def, ok := r.BuiltInProvider(name)
 	if !ok {
 		return "", false
 	}
@@ -294,4 +358,33 @@ func APIKeyEnvVarFor(name string) (string, bool) {
 	}
 
 	return def.APIKeyEnvVar, true
+}
+
+// DefaultRegistry is the package-level singleton initialized with built-in providers.
+var DefaultRegistry = NewRegistry()
+
+// IsBuiltInProvider reports whether name is a recognized built-in provider.
+func IsBuiltInProvider(name string) bool {
+	return DefaultRegistry.IsBuiltInProvider(name)
+}
+
+// BuiltInProvider returns the definition for the named built-in provider.
+func BuiltInProvider(name string) (ProviderDefinition, bool) {
+	return DefaultRegistry.BuiltInProvider(name)
+}
+
+// ProviderList returns the ordered list of provider names.
+func ProviderList() []string {
+	return DefaultRegistry.ProviderList()
+}
+
+// RequiresAPIKey reports whether the named provider requires an API key.
+func RequiresAPIKey(name string) bool {
+	return DefaultRegistry.RequiresAPIKey(name)
+}
+
+// APIKeyEnvVarFor returns the environment variable name for the named
+// provider's API key, if one is defined.
+func APIKeyEnvVarFor(name string) (string, bool) {
+	return DefaultRegistry.APIKeyEnvVarFor(name)
 }
