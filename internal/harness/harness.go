@@ -18,7 +18,6 @@ func IsValid(name string) bool {
 }
 
 // Resolve returns the effective harness given a flag override and config default.
-// Falls back to "claude" when both are empty or the resolved value is unrecognized.
 func Resolve(flagHarness, configHarness string) string {
 	h := flagHarness
 	if h == "" {
@@ -61,7 +60,7 @@ func YoloFlag(h string) string {
 	}
 }
 
-// PiEnvVars constructs the environment variables for the Pi harness.
+// PiEnvVars returns environment variables for the Pi harness.
 func PiEnvVars(providerName, model string) []string {
 	return []string{
 		fmt.Sprintf("PI_PROVIDER=%s", providerName),
@@ -69,7 +68,7 @@ func PiEnvVars(providerName, model string) []string {
 	}
 }
 
-// BuiltInEnvVars constructs the standard Anthropic environment variables for a provider.
+// BuiltInEnvVars returns environment variables for Anthropic-compatible providers.
 func BuiltInEnvVars(baseURL, model string) []string {
 	return []string{
 		fmt.Sprintf("ANTHROPIC_BASE_URL=%s", baseURL),

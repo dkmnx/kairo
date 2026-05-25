@@ -15,7 +15,7 @@ const (
 	DefaultMinKeyLength = 20
 )
 
-// KeyFormat defines per-provider key validation rules.
+// KeyFormat holds minimum length, prefix, and pattern rules for API key validation.
 type KeyFormat struct {
 	MinLength int
 	Prefix    string

@@ -13,7 +13,6 @@ import (
 type cliContextKey struct{}
 
 // ConfigDirResolver resolves the default configuration directory.
-// Production code uses DefaultConfigDirResolver; tests can override.
 type ConfigDirResolver func() (string, error)
 
 // CLIContext holds shared CLI state: config directory, verbosity, config cache,
@@ -58,7 +57,7 @@ func (c *CLIContext) ConfigDir() string {
 	return dir
 }
 
-// SetConfigDirResolver overrides the default config directory lookup.
+// SetConfigDirResolver sets the function used to locate the config directory.
 func (c *CLIContext) SetConfigDirResolver(r ConfigDirResolver) {
 	c.configDirMu.Lock()
 	defer c.configDirMu.Unlock()
