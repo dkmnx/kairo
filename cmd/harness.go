@@ -102,7 +102,3 @@ func resolveHarness(flagHarness, configHarness string) string {
 
 	return h
 }
-
-func harnessBinary(harnessName string) string {
-	return harnessName
-}

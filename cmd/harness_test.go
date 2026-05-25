@@ -170,13 +170,6 @@ func TestGetHarnessWithPi(t *testing.T) {
 	}
 }
 
-func TestGetHarnessBinaryPi(t *testing.T) {
-	result := harnessBinary("pi")
-	if result != "pi" {
-		t.Errorf("harnessBinary('pi') = %q, want %q", result, "pi")
-	}
-}
-
 func TestHarnessSetCaseInsensitive(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -245,28 +238,6 @@ func TestGetHarness(t *testing.T) {
 			result := resolveHarness(tt.flagHarness, tt.configHarness)
 			if result != tt.expected {
 				t.Errorf("resolveHarness() = %q, want %q", result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestGetHarnessBinary(t *testing.T) {
-	tests := []struct {
-		name     string
-		harness  string
-		expected string
-	}{
-		{"claude returns claude", "claude", "claude"},
-		{"qwen returns qwen", "qwen", "qwen"},
-		{"pi returns pi", "pi", "pi"},
-		{"crush returns crush", "crush", "crush"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := harnessBinary(tt.harness)
-			if result != tt.expected {
-				t.Errorf("harnessBinary() = %q, want %q", result, tt.expected)
 			}
 		})
 	}
