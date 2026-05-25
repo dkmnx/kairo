@@ -94,6 +94,26 @@ kairo my-provider "Your query"
 
 ## Adding a New Provider
 
+### Custom Provider via config.yaml
+
+Define providers in `~/.config/kairo/config.yaml` under `custom_providers`:
+
+```yaml
+custom_providers:
+  my-llm:
+    name: My LLM
+    base_url: https://api.example.com/anthropic
+    model: custom-model
+    requires_api_key: true
+    api_key_env_var: MY_LLM_API_KEY
+    min_key_length: 32
+    key_prefix: sk-
+```
+
+Then run `kairo setup` — the custom provider appears in the dropdown. Custom providers override built-in providers with the same key, letting you patch defaults (e.g., model name) without recompiling.
+
+### Built-in Provider via code
+
 1. Define the provider in `internal/providers/registry.go`:
 
 ```go
@@ -104,6 +124,8 @@ var builtInProviders = map[string]ProviderDefinition{
         BaseURL:        "https://api.newprovider.com/anthropic",
         Model:          "new-model",
         RequiresAPIKey: true,
+        APIKeyEnvVar:   "NEWPROVIDER_API_KEY",
+        KeyFormat:      KeyFormatMin32,
     },
 }
 ```
