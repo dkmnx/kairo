@@ -112,7 +112,7 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
 
-	result, err := LoadSecrets(context.Background(), tmpDir)
+	result, err := LoadSecrets(NewCLIContext(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadSecrets() error = %v", err)
 	}
@@ -134,7 +134,7 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
 
-	result, err = LoadSecrets(context.Background(), tmpDir)
+	result, err = LoadSecrets(NewCLIContext(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadSecrets() error = %v", err)
 	}
@@ -189,7 +189,7 @@ func TestDeleteProviderSecretsReturnsErrorOnBadKey(t *testing.T) {
 	secretsPath := filepath.Join(tmpDir, constants.SecretsFileName)
 	keyPath := filepath.Join(tmpDir, "nonexistent.key")
 
-	err := deleteProviderSecrets(context.Background(), secretsPath, keyPath, "testprovider")
+	err := deleteProviderSecrets(context.Background(), NewCLIContext().Crypto(), secretsPath, keyPath, "testprovider")
 	if err == nil {
 		t.Fatal("deleteProviderSecrets should return error when decryption fails")
 	}
@@ -217,7 +217,7 @@ func TestDeleteProviderSecretsPreservesMalformedLines(t *testing.T) {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
 
-	if err := deleteProviderSecrets(context.Background(), secretsPath, keyPath, "PROVIDER_TO_DELETE"); err != nil {
+	if err := deleteProviderSecrets(context.Background(), NewCLIContext().Crypto(), secretsPath, keyPath, "PROVIDER_TO_DELETE"); err != nil {
 		t.Fatalf("deleteProviderSecrets() error = %v", err)
 	}
 

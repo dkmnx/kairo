@@ -9,6 +9,12 @@ import (
 	"github.com/dkmnx/kairo/internal/errors"
 )
 
+// DefaultConfigDir is the production resolver for the configuration directory.
+// Tests can replace it via CLIContext.SetConfigDirResolver.
+func DefaultConfigDir() (string, error) {
+	return ConfigDir()
+}
+
 // ConfigDir returns the platform-specific default kairo configuration directory.
 func ConfigDir() (string, error) {
 	home, err := os.UserHomeDir()

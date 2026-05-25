@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"bytes"
+	stderrors "errors"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/providers"
+	"github.com/spf13/cobra"
 )
 
 func TestHandleSecretsError(t *testing.T) {
@@ -233,5 +236,19 @@ func TestProviderDefinition(t *testing.T) {
 	def = ProviderDefinition("custom-provider")
 	if def.Name != "custom-provider" {
 		t.Errorf("expected 'custom-provider', got %q", def.Name)
+	}
+}
+
+func TestHandleConfigErrorNonBinary(t *testing.T) {
+	cmd := &cobra.Command{}
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	handleConfigError(cmd, stderrors.New("test error"))
+
+	out := buf.String()
+	if !strings.Contains(out, "Error loading config") {
+		t.Errorf("expected error message, got: %s", out)
 	}
 }
