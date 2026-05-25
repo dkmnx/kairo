@@ -66,6 +66,26 @@ kairo/
 
 ## Adding a Provider
 
+### Custom providers (config only)
+
+Define providers in `config.yaml` under `custom_providers` — no code changes needed:
+
+```yaml
+custom_providers:
+  my-llm:
+    name: My LLM
+    base_url: https://api.example.com/anthropic
+    model: custom-model
+    requires_api_key: true
+    api_key_env_var: MY_LLM_API_KEY
+    min_key_length: 32
+    key_prefix: sk-
+```
+
+Custom providers override built-in providers with the same key.
+
+### Built-in providers (code)
+
 1. Add the provider definition in `internal/providers/registry.go`:
 
 ```go
@@ -76,21 +96,21 @@ var builtInProviders = map[string]ProviderDefinition{
         BaseURL:        "https://api.newprovider.com/anthropic",
         Model:          "new-model",
         RequiresAPIKey: true,
+        APIKeyEnvVar:   "NEWPROVIDER_API_KEY",
+        KeyFormat:      KeyFormatMin32,
     },
 }
 ```
 
 1. Add the provider key to `providerOrder` in the same file so it appears in setup menus.
 
-2. If needed, add provider-specific API key validation in `internal/validate/api_key.go`.
-
-3. Update user and reference docs.
-
-4. Run targeted tests:
+2. Run targeted tests:
 
 ```bash
 go test ./internal/providers/... ./internal/validate/...
 ```
+
+3. Update user and reference docs.
 
 ## Testing
 
