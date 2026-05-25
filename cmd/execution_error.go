@@ -7,25 +7,15 @@ import (
 
 	"github.com/dkmnx/kairo/internal/constants"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-const claudeYoloFlag = "--dangerously-skip-permissions"
-const qwenYoloFlag = "--yolo"
-
-func yoloModeFlag(harness string) string {
-	if harness == harnessQwen || harness == harnessCrush {
-		return qwenYoloFlag
-	}
-	if harness == harnessPi {
-		return ""
-	}
-
-	return claudeYoloFlag
+func yoloModeFlag(h string) string {
+	return harness.YoloFlag(h)
 }
-
 func handleConfigError(cmd *cobra.Command, err error) {
 	if isBinaryOutdatedError(err) {
 		promptUpgrade(cmd, err)

@@ -7,19 +7,20 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
 
 const (
-	harnessClaude = "claude"
-	harnessQwen   = "qwen"
-	harnessPi     = "pi"
-	harnessCrush  = "crush"
+	harnessClaude = harness.Claude
+	harnessQwen   = harness.Qwen
+	harnessPi     = harness.Pi
+	harnessCrush  = harness.Crush
 )
 
 func isValidHarness(name string) bool {
-	return name == harnessClaude || name == harnessQwen || name == harnessPi || name == harnessCrush
+	return harness.IsValid(name)
 }
 
 var harnessGetCmd = &cobra.Command{
@@ -104,22 +105,14 @@ func init() {
 }
 
 func resolveHarness(flagHarness, configHarness string) string {
-	harness := flagHarness
-	if harness == "" {
-		harness = configHarness
-	}
-	if harness == "" {
-		return harnessClaude
-	}
-	if !isValidHarness(harness) {
-		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", harness))
-
-		return harnessClaude
+	h := harness.Resolve(flagHarness, configHarness)
+	if h != flagHarness && h != configHarness && h == harnessClaude && (flagHarness != "" || configHarness != "") {
+		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", flagHarness))
 	}
 
-	return harness
+	return h
 }
 
-func harnessBinary(harness string) string {
-	return harness
+func harnessBinary(harnessName string) string {
+	return harnessName
 }

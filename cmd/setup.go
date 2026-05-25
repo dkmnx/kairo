@@ -78,7 +78,7 @@ func configureProvider(params ProviderSetup) (string, error) {
 	}
 
 	params.Secrets[APIKeyEnvVarName(validatedName)] = apiKey
-	if err := SaveSecrets(params.CLIContext.RootCtx(), params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
+	if err := SaveSecrets(params.CLIContext, params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
 		return "", err
 	}
 
@@ -100,7 +100,7 @@ func runResetSecrets(cliCtx *CLIContext, configDir string, secretsResult Secrets
 	}
 
 	if err := ResetSecretsFiles(
-		cliCtx.RootCtx(), configDir, secretsResult.SecretsPath, secretsResult.KeyPath,
+		cliCtx.RootCtx(), cliCtx, configDir, secretsResult.SecretsPath, secretsResult.KeyPath,
 	); err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		secretsResult, err := LoadSecrets(cliCtx.RootCtx(), configDir)
+		secretsResult, err := LoadSecrets(cliCtx, configDir)
 		if err != nil {
 			if setupResetSecrets {
 				if err := runResetSecrets(cliCtx, configDir, secretsResult); err != nil {

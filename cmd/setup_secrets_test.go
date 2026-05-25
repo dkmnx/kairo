@@ -147,7 +147,7 @@ func TestLoadSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := LoadSecrets(context.Background(), tmpDir)
+	result, err := LoadSecrets(NewCLIContext(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadSecrets() error = %v", err)
 	}
@@ -173,7 +173,7 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := LoadSecrets(context.Background(), tmpDir)
+	result, err := LoadSecrets(NewCLIContext(), tmpDir)
 	if err != nil {
 		t.Fatalf("LoadSecrets() error = %v", err)
 	}
@@ -205,7 +205,7 @@ func TestLoadSecretsWithCorruptedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := LoadSecrets(context.Background(), tmpDir)
+	_, err := LoadSecrets(NewCLIContext(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted secrets file, got nil")
 	}
@@ -229,7 +229,7 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := LoadSecrets(context.Background(), tmpDir)
+	_, err := LoadSecrets(NewCLIContext(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted key file, got nil")
 	}

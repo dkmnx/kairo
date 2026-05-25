@@ -10,19 +10,20 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
 
 func TestQwenAuthArgs(t *testing.T) {
-	args := qwenAuthArgs("qwen-plus")
-	if len(args) != 4 {
-		t.Fatalf("qwenAuthArgs should return 4 elements, got %d", len(args))
+	_, _, extraArgs := harness.Dispatch(harness.Qwen, "test", "qwen-plus")
+	if len(extraArgs) != 4 {
+		t.Fatalf("Dispatch should return 4 elements, got %d", len(extraArgs))
 	}
-	if args[0] != "--auth-type" || args[1] != "anthropic" {
-		t.Errorf("first two args should be --auth-type anthropic, got %v", args[:2])
+	if extraArgs[0] != "--auth-type" || extraArgs[1] != "anthropic" {
+		t.Errorf("first two args should be --auth-type anthropic, got %v", extraArgs[:2])
 	}
-	if args[2] != "--model" || args[3] != "qwen-plus" {
-		t.Errorf("last two args should be --model qwen-plus, got %v", args[2:])
+	if extraArgs[2] != "--model" || extraArgs[3] != "qwen-plus" {
+		t.Errorf("last two args should be --model qwen-plus, got %v", extraArgs[2:])
 	}
 }
 
