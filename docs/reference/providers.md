@@ -5,7 +5,7 @@ Built-in and custom provider configurations.
 ## Built-in Providers
 
 | Provider                 | API Key Env Var        | Default Model         | API Key |
-| :----------------------- | :--------------------- | :-------------------- | :------ |
+| ------------------------ | ---------------------- | --------------------- | ------- |
 | `zai`                    | `ZAI_API_KEY`          | `glm-5.1`             | Yes     |
 | `minimax`                | `MINIMAX_API_KEY`      | `MiniMax-M2.7`        | Yes     |
 | `kimi`                   | `KIMI_API_KEY`         | `kimi-for-coding`     | Yes     |
@@ -26,6 +26,7 @@ Built-in and custom provider configurations.
 | `azure-openai-responses` | `AZURE_OPENAI_API_KEY` | (provider-managed)    | Yes     |
 | `minimax-cn`             | `MINIMAX_CN_API_KEY`   | (provider-managed)    | Yes     |
 | `custom`                 | user-defined           | user-defined          | Yes     |
+
 Providers without default base URLs and models (marked "provider-managed") are passed through to the harness CLI directly. The harness manages its own endpoint and model selection for these providers.
 
 ## Provider Details
