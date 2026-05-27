@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"slices"
 	"sort"
 	"testing"
 )
@@ -44,14 +45,7 @@ func TestProviderListContainsAllBuiltIns(t *testing.T) {
 	}
 
 	for _, name := range allBuiltins {
-		found := false
-		for _, p := range providers {
-			if p == name {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(providers, name) {
 			t.Errorf("ProviderList() should contain %q", name)
 		}
 	}
@@ -421,6 +415,53 @@ func TestAPIKeyEnvVarFor(t *testing.T) {
 				t.Errorf("APIKeyEnvVarFor(%q) var = %q, want %q", tt.provider, gotVar, tt.wantVar)
 			}
 		})
+	}
+}
+
+func TestComputeProviderOrder_ContainsAllBuiltIns(t *testing.T) {
+	order := computeProviderOrder()
+
+	if len(order) != len(builtInProviders) {
+		t.Errorf("providerOrder has %d entries, builtInProviders has %d", len(order), len(builtInProviders))
+	}
+
+	seen := make(map[string]bool, len(order))
+	for _, name := range order {
+		if seen[name] {
+			t.Errorf("providerOrder contains duplicate: %q", name)
+		}
+		seen[name] = true
+
+		if _, ok := builtInProviders[name]; !ok {
+			t.Errorf("providerOrder contains %q which is not in builtInProviders", name)
+		}
+	}
+
+	for name := range builtInProviders {
+		if !seen[name] {
+			t.Errorf("builtInProviders contains %q which is missing from providerOrder", name)
+		}
+	}
+}
+
+func TestProviderPriority_AllEntriesExistInBuiltInProviders(t *testing.T) {
+	for _, name := range providerPriority {
+		if _, ok := builtInProviders[name]; !ok {
+			t.Errorf("providerPriority contains %q which is not in builtInProviders — remove stale entry or add the provider", name)
+		}
+	}
+}
+
+func TestComputeProviderOrder_PriorityFirst(t *testing.T) {
+	order := computeProviderOrder()
+
+	for i, prioName := range providerPriority {
+		if i >= len(order) {
+			break
+		}
+		if order[i] != prioName {
+			t.Errorf("providerOrder[%d] = %q, want priority entry %q", i, order[i], prioName)
+		}
 	}
 }
 
