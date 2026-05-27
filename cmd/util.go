@@ -2,7 +2,6 @@ package cmd
 
 import (
 	stderrors "errors"
-	"io/fs"
 	"os"
 	"os/signal"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
+	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +46,7 @@ func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
 	cliCtx := CLIContextFromCmd(cmd)
 	cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), dir)
 	if err != nil {
-		if stderrors.Is(err, fs.ErrNotExist) {
+		if stderrors.Is(err, kairoerrors.ErrConfigNotFound) {
 			printNoProvidersMessage()
 
 			return nil, nil
@@ -60,16 +60,19 @@ func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
 	return cfg, nil
 }
 
-func loadConfigOrEmpty(cmd *cobra.Command) *config.Config {
-	cfg, _ := loadConfigOrExit(cmd)
+func loadConfigOrEmpty(cmd *cobra.Command) (*config.Config, error) {
+	cfg, err := loadConfigOrExit(cmd)
+	if err != nil {
+		return nil, err
+	}
 	if cfg == nil {
 		return &config.Config{
 			Providers:     make(map[string]config.Provider),
 			DefaultModels: make(map[string]string),
-		}
+		}, nil
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 // printNoProvidersMessage prints a standard message indicating no providers
