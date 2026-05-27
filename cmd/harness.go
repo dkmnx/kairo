@@ -64,7 +64,12 @@ var harnessSetCmd = &cobra.Command{
 
 		cliCtx := CLIContextFromCmd(cmd)
 
-		cfg := loadConfigOrEmpty(cmd)
+		cfg, err := loadConfigOrEmpty(cmd)
+		if err != nil {
+			ui.PrintError(fmt.Sprintf("Error loading config: %v", err))
+
+			return
+		}
 		if cfg == nil {
 			return
 		}
