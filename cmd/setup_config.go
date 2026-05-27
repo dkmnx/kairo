@@ -20,7 +20,7 @@ func EnsureConfigDir(cliCtx *CLIContext, configDir string) error {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"creating config directory", err)
 	}
-	if err := crypto.EnsureKeyExists(cliCtx.RootCtx(), configDir); err != nil {
+	if err := cliCtx.Crypto().EnsureKeyExists(cliCtx.RootCtx(), configDir); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"creating encryption key", err)
 	}
@@ -79,7 +79,8 @@ type SecretsResult struct {
 }
 
 // LoadSecrets loads and decrypts secrets from the config directory.
-func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
+func LoadSecrets(cliCtx *CLIContext, configDir string) (SecretsResult, error) {
+	ctx := cliCtx.RootCtx()
 	result := SecretsResult{
 		Secrets: make(map[string]string),
 	}
@@ -91,7 +92,7 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 		return result, nil
 	}
 
-	existingSecrets, err := crypto.DecryptSecretsBytes(ctx, result.SecretsPath, result.KeyPath)
+	existingSecrets, err := cliCtx.Crypto().DecryptSecretsBytes(ctx, result.SecretsPath, result.KeyPath)
 	if err != nil {
 		return SecretsResult{}, err
 	}
@@ -106,7 +107,7 @@ func LoadSecrets(ctx context.Context, configDir string) (SecretsResult, error) {
 }
 
 // ResetSecretsFiles deletes and regenerates the encryption key and secrets files.
-func ResetSecretsFiles(ctx context.Context, configDir, secretsPath, keyPath string) error {
+func ResetSecretsFiles(ctx context.Context, cliCtx *CLIContext, configDir, secretsPath, keyPath string) error {
 	if err := os.Remove(keyPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
 			"failed to remove old key file", err)
@@ -117,7 +118,7 @@ func ResetSecretsFiles(ctx context.Context, configDir, secretsPath, keyPath stri
 			"failed to remove old secrets file", err)
 	}
 
-	if err := crypto.EnsureKeyExists(ctx, configDir); err != nil {
+	if err := cliCtx.Crypto().EnsureKeyExists(ctx, configDir); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"failed to generate new encryption key", err)
 	}
@@ -126,9 +127,9 @@ func ResetSecretsFiles(ctx context.Context, configDir, secretsPath, keyPath stri
 }
 
 // SaveSecrets encrypts and writes the secrets map to the secrets file.
-func SaveSecrets(ctx context.Context, secretsPath, keyPath string, secretsMap map[string]string) error {
+func SaveSecrets(cliCtx *CLIContext, secretsPath, keyPath string, secretsMap map[string]string) error {
 	secretsContent := secrets.Format(secretsMap)
-	if err := crypto.EncryptSecrets(ctx, secretsPath, keyPath, secretsContent); err != nil {
+	if err := cliCtx.Crypto().EncryptSecrets(cliCtx.RootCtx(), secretsPath, keyPath, secretsContent); err != nil {
 		return kairoerrors.WrapError(kairoerrors.CryptoError,
 			"saving secrets", err)
 	}

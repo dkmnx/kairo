@@ -84,7 +84,7 @@ func BuildProviderEnv(
 ) (EnvBuildResult, error) {
 	builtIn := BuildBuiltInEnvVars(provider)
 
-	secretsResult, err := LoadSecrets(cliCtx.RootCtx(), configDir)
+	secretsResult, err := LoadSecrets(cliCtx, configDir)
 	if err != nil {
 		if RequiresAPIKey(providerName) {
 			return EnvBuildResult{}, err

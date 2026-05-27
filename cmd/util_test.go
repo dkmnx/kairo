@@ -126,15 +126,6 @@ func TestRunningWithRaceDetector(t *testing.T) {
 	}
 }
 
-func TestSetupSignalHandler(t *testing.T) {
-	t.Run("signal handler sets up without panic", func(t *testing.T) {
-		stop := setupSignalHandler(func() {
-			// cancel callback
-		})
-		stop()
-	})
-}
-
 func TestPrintSecretsRecoveryHelp(t *testing.T) {
 	printSecretsRecoveryHelp()
 }

@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"slices"
 	"sort"
 	"testing"
 )
@@ -44,14 +45,7 @@ func TestProviderListContainsAllBuiltIns(t *testing.T) {
 	}
 
 	for _, name := range allBuiltins {
-		found := false
-		for _, p := range providers {
-			if p == name {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(providers, name) {
 			t.Errorf("ProviderList() should contain %q", name)
 		}
 	}
@@ -92,6 +86,144 @@ func TestRequiresAPIKey(t *testing.T) {
 				t.Errorf("RequiresAPIKey(%q) = %v, want %v", tt.provider, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestProviderRegistry_BuiltInProvider(t *testing.T) {
+	r := NewRegistry()
+
+	def, ok := r.BuiltInProvider("zai")
+	if !ok {
+		t.Fatal("expected zai in registry")
+	}
+	if def.Name != "Z.AI" {
+		t.Errorf("Z.AI name = %q", def.Name)
+	}
+}
+
+func TestProviderRegistry_IsBuiltInProvider(t *testing.T) {
+	r := NewRegistry()
+
+	if !r.IsBuiltInProvider("anthropic") {
+		t.Error("anthropic should be built-in")
+	}
+	if r.IsBuiltInProvider("nonexistent") {
+		t.Error("nonexistent should not be built-in")
+	}
+}
+
+func TestProviderRegistry_RegisterCustom(t *testing.T) {
+	r := NewRegistry()
+
+	custom := map[string]CustomProviderDefinition{
+		"my-llm": {
+			Name:           "My LLM",
+			BaseURL:        "https://api.example.com",
+			Model:          "custom-model",
+			RequiresAPIKey: true,
+			APIKeyEnvVar:   "MY_LLM_API_KEY",
+			MinKeyLength:   32,
+		},
+	}
+	r.RegisterCustom(custom)
+
+	def, ok := r.BuiltInProvider("my-llm")
+	if !ok {
+		t.Fatal("expected my-llm in registry")
+	}
+	if def.Name != "My LLM" {
+		t.Errorf("Name = %q", def.Name)
+	}
+	if !r.IsBuiltInProvider("my-llm") {
+		t.Error("my-llm should be recognized as built-in")
+	}
+}
+
+func TestProviderRegistry_RegisterCustomOverridesBuiltIn(t *testing.T) {
+	r := NewRegistry()
+
+	custom := map[string]CustomProviderDefinition{
+		"zai": {
+			Name:    "Custom ZAI",
+			BaseURL: "https://custom.z.ai",
+			Model:   "custom-model",
+		},
+	}
+	r.RegisterCustom(custom)
+
+	def, ok := r.BuiltInProvider("zai")
+	if !ok {
+		t.Fatal("expected zai in registry")
+	}
+	if def.Name != "Custom ZAI" {
+		t.Errorf("Name = %q, want Custom ZAI", def.Name)
+	}
+	if def.BaseURL != "https://custom.z.ai" {
+		t.Errorf("BaseURL = %q", def.BaseURL)
+	}
+}
+
+func TestProviderRegistry_ProviderList(t *testing.T) {
+	r := NewRegistry()
+
+	custom := map[string]CustomProviderDefinition{
+		"my-llm": {Name: "My LLM"},
+	}
+	r.RegisterCustom(custom)
+
+	names := r.ProviderList()
+	foundCustom := false
+	for _, n := range names {
+		if n == "my-llm" {
+			foundCustom = true
+		}
+	}
+	if !foundCustom {
+		t.Error("ProviderList missing custom provider")
+	}
+}
+
+func TestProviderRegistry_ClearCustom(t *testing.T) {
+	r := NewRegistry()
+
+	r.RegisterCustom(map[string]CustomProviderDefinition{
+		"temp": {Name: "Temp"},
+	})
+	if !r.IsBuiltInProvider("temp") {
+		t.Fatal("temp should be registered")
+	}
+
+	r.ClearCustom()
+	if r.IsBuiltInProvider("temp") {
+		t.Error("temp should be removed after ClearCustom")
+	}
+}
+
+func TestProviderRegistry_RequiresAPIKeyCustom(t *testing.T) {
+	r := NewRegistry()
+
+	r.RegisterCustom(map[string]CustomProviderDefinition{
+		"no-key": {
+			Name:           "No Key",
+			RequiresAPIKey: false,
+		},
+	})
+
+	if r.RequiresAPIKey("no-key") {
+		t.Error("no-key should not require API key")
+	}
+	if !r.RequiresAPIKey("unknown") {
+		t.Error("unknown providers should require API key by default")
+	}
+}
+
+func TestProviderRegistry_DefaultRegistry(t *testing.T) {
+	def, ok := DefaultRegistry.BuiltInProvider("zai")
+	if !ok {
+		t.Fatal("zai should exist in DefaultRegistry")
+	}
+	if def.Name != "Z.AI" {
+		t.Errorf("Name = %q", def.Name)
 	}
 }
 
@@ -283,6 +415,53 @@ func TestAPIKeyEnvVarFor(t *testing.T) {
 				t.Errorf("APIKeyEnvVarFor(%q) var = %q, want %q", tt.provider, gotVar, tt.wantVar)
 			}
 		})
+	}
+}
+
+func TestComputeProviderOrder_ContainsAllBuiltIns(t *testing.T) {
+	order := computeProviderOrder()
+
+	if len(order) != len(builtInProviders) {
+		t.Errorf("providerOrder has %d entries, builtInProviders has %d", len(order), len(builtInProviders))
+	}
+
+	seen := make(map[string]bool, len(order))
+	for _, name := range order {
+		if seen[name] {
+			t.Errorf("providerOrder contains duplicate: %q", name)
+		}
+		seen[name] = true
+
+		if _, ok := builtInProviders[name]; !ok {
+			t.Errorf("providerOrder contains %q which is not in builtInProviders", name)
+		}
+	}
+
+	for name := range builtInProviders {
+		if !seen[name] {
+			t.Errorf("builtInProviders contains %q which is missing from providerOrder", name)
+		}
+	}
+}
+
+func TestProviderPriority_AllEntriesExistInBuiltInProviders(t *testing.T) {
+	for _, name := range providerPriority {
+		if _, ok := builtInProviders[name]; !ok {
+			t.Errorf("providerPriority contains %q which is not in builtInProviders — remove stale entry or add the provider", name)
+		}
+	}
+}
+
+func TestComputeProviderOrder_PriorityFirst(t *testing.T) {
+	order := computeProviderOrder()
+
+	for i, prioName := range providerPriority {
+		if i >= len(order) {
+			break
+		}
+		if order[i] != prioName {
+			t.Errorf("providerOrder[%d] = %q, want priority entry %q", i, order[i], prioName)
+		}
 	}
 }
 

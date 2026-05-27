@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/exec"
 
+	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
@@ -39,4 +40,5 @@ type Deps struct {
 	Process ProcessRunner
 	Wrapper WrapperService
 	Update  UpdateService
+	Crypto  crypto.Service
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
-	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/providers"
 	secretspkg "github.com/dkmnx/kairo/internal/secrets"
 	"github.com/dkmnx/kairo/internal/validate"
@@ -290,7 +289,8 @@ func TestSaveProviderConfiguration(t *testing.T) {
 	t.Run("saves new provider and becomes default", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
+		cliCtx := NewCLIContext()
+		if err := cliCtx.Crypto().EnsureKeyExists(context.Background(), tmpDir); err != nil {
 			t.Fatalf("EnsureKeyExists() error = %v", err)
 		}
 
@@ -320,7 +320,7 @@ func TestSaveProviderConfiguration(t *testing.T) {
 
 		secrets := make(map[string]string)
 		secrets["TESTPROVIDER_API_KEY"] = "test-api-key"
-		err = SaveSecrets(context.Background(), secretsPath, keyPath, secrets)
+		err = SaveSecrets(cliCtx, secretsPath, keyPath, secrets)
 		if err != nil {
 			t.Fatalf("SaveSecrets() error = %v", err)
 		}
@@ -329,7 +329,7 @@ func TestSaveProviderConfiguration(t *testing.T) {
 			t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "testprovider")
 		}
 
-		result, err := LoadSecrets(context.Background(), tmpDir)
+		result, err := LoadSecrets(cliCtx, tmpDir)
 		if err != nil {
 			t.Fatalf("LoadSecrets() error = %v", err)
 		}
@@ -342,7 +342,8 @@ func TestSaveProviderConfiguration(t *testing.T) {
 	t.Run("saves provider without becoming default when default exists", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
+		cliCtx := NewCLIContext()
+		if err := cliCtx.Crypto().EnsureKeyExists(context.Background(), tmpDir); err != nil {
 			t.Fatalf("EnsureKeyExists() error = %v", err)
 		}
 
@@ -374,7 +375,7 @@ func TestSaveProviderConfiguration(t *testing.T) {
 
 		secrets := make(map[string]string)
 		secrets["NEWPROVIDER_API_KEY"] = "new-api-key"
-		err = SaveSecrets(context.Background(), secretsPath, keyPath, secrets)
+		err = SaveSecrets(cliCtx, secretsPath, keyPath, secrets)
 		if err != nil {
 			t.Fatalf("SaveSecrets() error = %v", err)
 		}

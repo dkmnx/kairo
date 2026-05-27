@@ -6,78 +6,25 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"regexp"
 	"slices"
-	"strings"
 
 	"github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/providers"
 )
 
-const (
-	minAPIKeyLength     = 32
-	defaultMinKeyLength = 20
-)
-
-// KeyFormat defines validation rules for an API key: minimum length, required
-// prefix, and optional regex pattern.
-type KeyFormat struct {
-	MinLength int
-	Prefix    string
-	Pattern   string
-	compiled  *regexp.Regexp
-}
-
-func (kf *KeyFormat) compilePattern() error {
-	if kf.Pattern == "" {
-		return nil
-	}
-	if kf.compiled != nil {
-		return nil
-	}
-	compiled, err := regexp.Compile(kf.Pattern)
-	if err != nil {
-		return err
-	}
-	kf.compiled = compiled
-
-	return nil
-}
-
-func (kf *KeyFormat) matchesPattern(key string) (bool, error) {
-	if kf.Pattern == "" {
-		return true, nil
-	}
-	if err := kf.compilePattern(); err != nil {
-		return false, err
+// ValidateAPIKey checks that the given key meets the format requirements for the provider.
+func ValidateAPIKey(key, providerName string) error {
+	def, ok := providers.BuiltInProvider(providerName)
+	if !ok {
+		def = providers.ProviderDefinition{Name: providerName, KeyFormat: providers.DefaultKeyFormat}
 	}
 
-	return kf.compiled.MatchString(key), nil
-}
-
-var providerKeyFormats = map[string]KeyFormat{
-	"zai":                    {MinLength: minAPIKeyLength},
-	"minimax":                {MinLength: minAPIKeyLength},
-	"kimi":                   {MinLength: minAPIKeyLength},
-	"deepseek":               {MinLength: minAPIKeyLength},
-	"anthropic":              {Prefix: "sk-ant-", MinLength: minAPIKeyLength},
-	"openai":                 {Prefix: "sk-", MinLength: minAPIKeyLength},
-	"google":                 {MinLength: minAPIKeyLength},
-	"mistral":                {MinLength: minAPIKeyLength},
-	"groq":                   {Prefix: "gsk_", MinLength: minAPIKeyLength},
-	"cerebras":               {MinLength: minAPIKeyLength},
-	"cloudflare-workers-ai":  {MinLength: minAPIKeyLength},
-	"xai":                    {MinLength: minAPIKeyLength},
-	"openrouter":             {Prefix: "sk-or-", MinLength: minAPIKeyLength},
-	"vercel-ai-gateway":      {MinLength: minAPIKeyLength},
-	"opencode":               {MinLength: minAPIKeyLength},
-	"huggingface":            {MinLength: minAPIKeyLength},
-	"fireworks":              {MinLength: minAPIKeyLength},
-	"azure-openai-responses": {MinLength: minAPIKeyLength},
-	"minimax-cn":             {MinLength: minAPIKeyLength},
-	"custom":                 {MinLength: defaultMinKeyLength},
+	return def.ValidateAPIKey(key)
 }
 
 var (
+	msgInvalidCIDR = "kairo: invalid hardcoded CIDR %q: %v\n"
+
 	private10   = mustParseCIDR("10.0.0.0/8")
 	private172  = mustParseCIDR("172.16.0.0/12")
 	private192  = mustParseCIDR("192.168.0.0/16")
@@ -89,44 +36,11 @@ var (
 func mustParseCIDR(s string) net.IPNet {
 	_, ipnet, err := net.ParseCIDR(s)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kairo: invalid hardcoded CIDR %q: %v\n", s, err)
+		fmt.Fprintf(os.Stderr, msgInvalidCIDR, s, err)
 		os.Exit(1)
 	}
 
 	return *ipnet
-}
-
-// ValidateAPIKey checks that the given key meets the format requirements for the provider.
-func ValidateAPIKey(key, providerName string) error {
-	if strings.TrimSpace(key) == "" {
-		return errors.NewError(errors.ValidationError,
-			fmt.Sprintf("%s: API key cannot be empty or whitespace", providerName))
-	}
-
-	format, knownProvider := providerKeyFormats[providerName]
-	if !knownProvider {
-		format = KeyFormat{MinLength: defaultMinKeyLength}
-	}
-
-	if len(key) < format.MinLength {
-		return errors.NewError(errors.ValidationError,
-			fmt.Sprintf("%s: API key too short (minimum %d characters, got %d)", providerName, format.MinLength, len(key)))
-	}
-
-	if format.Prefix != "" && !strings.HasPrefix(key, format.Prefix) {
-		return errors.NewError(errors.ValidationError,
-			fmt.Sprintf("%s: API key must start with '%s'", providerName, format.Prefix))
-	}
-
-	if format.Pattern != "" {
-		matched, err := format.matchesPattern(key)
-		if err != nil || !matched {
-			return errors.NewError(errors.ValidationError,
-				fmt.Sprintf("%s: API key format is invalid", providerName))
-		}
-	}
-
-	return nil
 }
 
 // ValidateURL checks that the given URL is a valid HTTPS URL without blocked hosts.

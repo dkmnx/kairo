@@ -81,11 +81,10 @@ kairo -- "Quick question"
 | `kairo <provider> [args]`     | Execute with a specific provider                    |
 | `kairo -- [args]`             | Execute with the default provider                   |
 | `kairo harness get`           | Get current harness                                 |
-| `kairo harness set <name>`    | Set default harness (`claude`, `qwen`, `pi`, or `crush`)     |
+| `kairo harness set <name>`    | Set default harness (claude, qwen, pi, or crush)    |
 | `kairo update`                | Update to the latest version                        |
 | `kairo version`               | Show version                                        |
 | `kairo completion [shell]`    | Generate shell completion script                    |
-
 ## Supported Providers
 
 | Provider                 | API Key Env Var        | API Key Required |
@@ -109,9 +108,7 @@ kairo -- "Quick question"
 | `fireworks`              | `FIREWORKS_API_KEY`    | Yes              |
 | `azure-openai-responses` | `AZURE_OPENAI_API_KEY` | Yes              |
 | `minimax-cn`             | `MINIMAX_CN_API_KEY`   | Yes              |
-
 | `custom`                 | user-defined           | Yes              |
-
 Details: [Provider Reference](../reference/providers.md)
 
 ## Configuration
@@ -122,7 +119,6 @@ Details: [Provider Reference](../reference/providers.md)
 | ----------- | ---------------------------------------- |
 | Linux/macOS | `~/.config/kairo/`                       |
 | Windows     | `%USERPROFILE%\AppData\Roaming\kairo\`   |
-
 ### Files
 
 | File          | Purpose                        |
@@ -130,7 +126,6 @@ Details: [Provider Reference](../reference/providers.md)
 | `config.yaml` | Provider and harness settings  |
 | `secrets.age` | Encrypted API keys             |
 | `age.key`     | Encryption private key         |
-
 Details: [Configuration Reference](../reference/configuration.md)
 
 ## Security
@@ -168,7 +163,6 @@ Common issues:
 | `provider not found` | Run `kairo setup`                                   |
 | `invalid API key`    | Reconfigure with `kairo setup`                      |
 | `failed to decrypt`  | Restore backup or run `kairo setup --reset-secrets` |
-
 Full guide: [Troubleshooting](../troubleshooting/README.md)
 
 ## Next Steps

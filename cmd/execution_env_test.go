@@ -223,3 +223,45 @@ func TestPiAPIKeyEnvVarMapping(t *testing.T) {
 		})
 	}
 }
+
+func TestHarnessAPIKeyEnvVar(t *testing.T) {
+	tests := []struct {
+		provider string
+		want     string
+	}{
+		{"zai", "ZAI_API_KEY"},
+		{"minimax", "MINIMAX_API_KEY"},
+		{"anthropic", "ANTHROPIC_API_KEY"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.provider, func(t *testing.T) {
+			got := HarnessAPIKeyEnvVar(tt.provider)
+			if got != tt.want {
+				t.Errorf("HarnessAPIKeyEnvVar(%q) = %q, want %q", tt.provider, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestYoloModeFlag(t *testing.T) {
+	tests := []struct {
+		name    string
+		harness string
+		want    string
+	}{
+		{"claude", harnessClaude, "--dangerously-skip-permissions"},
+		{"qwen", harnessQwen, "--yolo"},
+		{"pi", harnessPi, ""},
+		{"crush", harnessCrush, "--yolo"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := yoloModeFlag(tt.harness)
+			if got != tt.want {
+				t.Errorf("yoloModeFlag(%q) = %q, want %q", tt.harness, got, tt.want)
+			}
+		})
+	}
+}

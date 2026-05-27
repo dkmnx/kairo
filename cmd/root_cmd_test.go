@@ -212,9 +212,9 @@ func TestRootCmd(t *testing.T) {
 
 func TestRootCmdGetConfigDir(t *testing.T) {
 	t.Run("returns flag value when set", func(t *testing.T) {
-		originalConfigDir := configDir()
+		originalDir := configDir()
 		setConfigDir("/custom/config/dir")
-		defer func() { setConfigDir(originalConfigDir) }()
+		defer func() { setConfigDir(originalDir) }()
 
 		result := configDir()
 		if result != "/custom/config/dir" {
@@ -222,26 +222,44 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 		}
 	})
 
-	t.Run("returns env default when flag is empty", func(t *testing.T) {
-		originalConfigDir := configDir()
+	t.Run("returns resolver default when flag is empty", func(t *testing.T) {
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDirResolver(func() (string, error) {
+			return "/from/resolver", nil
+		})
+
+		// Override the global context to use our injected resolver
+		prevCtx := defaultCLIContext
+		defaultCLIContext = cliCtx
 		setConfigDir("")
-		defer func() { setConfigDir(originalConfigDir) }()
+		defer func() {
+			defaultCLIContext = prevCtx
+			setConfigDir("")
+		}()
 
 		result := configDir()
-		// We can't easily test the exact value without mocking env package
-		if result == "" {
-			t.Skip("Cannot test env.GetConfigDir() without mocking")
+		if result != "/from/resolver" {
+			t.Errorf("configDir() = %q, want %q", result, "/from/resolver")
 		}
 	})
 
-	t.Run("empty flag value uses default", func(t *testing.T) {
-		originalConfigDir := configDir()
+	t.Run("empty resolver returns empty string", func(t *testing.T) {
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDirResolver(func() (string, error) {
+			return "", nil
+		})
+
+		prevCtx := defaultCLIContext
+		defaultCLIContext = cliCtx
 		setConfigDir("")
-		defer func() { setConfigDir(originalConfigDir) }()
+		defer func() {
+			defaultCLIContext = prevCtx
+			setConfigDir("")
+		}()
 
 		result := configDir()
-		if result == "" {
-			t.Skip("Cannot mock env.GetConfigDir() without dependency injection")
+		if result != "" {
+			t.Errorf("configDir() = %q, want empty with nil resolver", result)
 		}
 	})
 }

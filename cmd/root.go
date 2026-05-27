@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	harnessFlag string
-	yoloFlag    bool
-	verboseFlag bool
+	harnessFlag         string
+	skipPermissionsFlag bool
+	verboseFlag         bool
 )
 
 func setConfigDir(dir string) {
@@ -79,7 +79,7 @@ func Execute() error {
 		rootCmd.SetArgs(nil)
 	}()
 
-	defaultCLIContext.SetDefaultProviderExplicit(hasDoubleDash(args))
+	defaultCLIContext.SetDefaultProviderExplicit(hasArgsSeparator(args))
 
 	rootCmd.SetArgs(args)
 
@@ -90,7 +90,7 @@ func init() {
 	rootCmd.PersistentFlags().String("config", "", "Config directory (default is platform-specific)")
 	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Verbose output")
 	rootCmd.Flags().StringVar(&harnessFlag, "harness", "", "CLI harness to use (claude, qwen, pi, or crush)")
-	rootCmd.Flags().BoolVarP(&yoloFlag, "yolo", "y", false,
+	rootCmd.Flags().BoolVarP(&skipPermissionsFlag, "yolo", "y", false,
 		"Skip permission prompts (--dangerously-skip-permissions for Claude, --yolo for Qwen)")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
@@ -196,11 +196,11 @@ func runPiProvider(
 		Cmd:           cmd,
 		ProviderEnv:   providerEnv,
 		HarnessToUse:  harnessToUse,
-		HarnessBinary: harnessBinary(harnessToUse),
+		HarnessBinary: harnessToUse,
 		Provider:      provider,
 		ProviderName:  providerName,
 		HarnessArgs:   harnessArgs,
-		Yolo:          yoloFlag,
+		Yolo:          skipPermissionsFlag,
 		Deps:          cliCtx.Deps(),
 	}
 
@@ -233,12 +233,12 @@ func runStandardProvider(
 		Cmd:           cmd,
 		ProviderEnv:   envResult.ProviderEnv,
 		HarnessToUse:  harnessToUse,
-		HarnessBinary: harnessBinary(harnessToUse),
+		HarnessBinary: harnessToUse,
 		Provider:      provider,
 		ProviderName:  providerName,
 		HarnessArgs:   harnessArgs,
 		APIKey:        apiKey,
-		Yolo:          yoloFlag,
+		Yolo:          skipPermissionsFlag,
 		Deps:          cliCtx.Deps(),
 	}
 
@@ -273,7 +273,7 @@ func splitArgs(args []string) ([]string, []string) {
 	return args, nil
 }
 
-func hasDoubleDash(args []string) bool {
+func hasArgsSeparator(args []string) bool {
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--" {
 			return true
@@ -295,30 +295,20 @@ func hasDoubleDash(args []string) bool {
 func providerFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
 	kairoArgs, harnessArgs := splitArgs(args)
 
-	switch {
-	case len(args) > 0 && strings.HasPrefix(args[0], "-") && cfg.DefaultProvider != "":
-		args = []string{cfg.DefaultProvider}
-		harnessArgs = kairoArgs
-	case len(kairoArgs) > 0 && len(args) > 1 && kairoArgs[0] != args[0]:
-		args = append([]string{args[0]}, kairoArgs...)
-	case len(args) > 1:
-		harnessArgs = args[1:]
-		args = args[:1]
+	if len(kairoArgs) > 0 && !strings.HasPrefix(kairoArgs[0], "-") {
+		harnessArgs = append(kairoArgs[1:], harnessArgs...)
+
+		return kairoArgs[0], harnessArgs
 	}
 
-	providerName := args[0]
-
-	if strings.HasPrefix(providerName, "-") {
-		if cfg.DefaultProvider == "" {
-			cmd.Println("Error: No default provider set and first argument looks like a flag")
-			cmd.Println("Run 'kairo setup' to configure a provider")
-
-			return "", nil
-		}
-		providerName = cfg.DefaultProvider
+	if cfg.DefaultProvider != "" {
+		return cfg.DefaultProvider, kairoArgs
 	}
 
-	return providerName, harnessArgs
+	cmd.Println("Error: No default provider set and first argument looks like a flag")
+	cmd.Println("Run 'kairo setup' to configure a provider")
+
+	return "", nil
 }
 
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {

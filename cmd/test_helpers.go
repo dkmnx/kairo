@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/exec"
 
+	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
@@ -93,5 +94,5 @@ func testDeps(overrides ...func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate
 		fn(mp, mw, mu)
 	}
 
-	return &Deps{Process: mp, Wrapper: mw, Update: mu}
+	return &Deps{Process: mp, Wrapper: mw, Update: mu, Crypto: crypto.DefaultService{}}
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/wrapper"
@@ -65,5 +66,6 @@ func NewDeps() *Deps {
 		Process: osProcessRunner{},
 		Wrapper: prodWrapperService{},
 		Update:  &prodUpdateService{client: update.NewClient()},
+		Crypto:  crypto.DefaultService{},
 	}
 }

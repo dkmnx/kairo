@@ -40,7 +40,6 @@ func ClearScreen() {
 		cmd = exec.CommandContext(ctx, "clear")
 	}
 	cmd.Stdout = os.Stdout
-	// Best-effort clear; ignore terminal errors
 	_ = cmd.Run()
 }
 

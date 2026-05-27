@@ -9,6 +9,11 @@ import (
 	"github.com/dkmnx/kairo/internal/errors"
 )
 
+// DefaultConfigDir resolves the platform-specific default configuration directory.
+func DefaultConfigDir() (string, error) {
+	return ConfigDir()
+}
+
 // ConfigDir returns the platform-specific default kairo configuration directory.
 func ConfigDir() (string, error) {
 	home, err := os.UserHomeDir()

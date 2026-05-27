@@ -6,21 +6,26 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
+	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/spf13/cobra"
 )
 
 type cliContextKey struct{}
 
+// ConfigDirResolver resolves the default configuration directory.
+type ConfigDirResolver func() (string, error)
+
 // CLIContext holds shared CLI state: config directory, verbosity, config cache,
 // root context, and external dependencies. It is safe for concurrent use.
 type CLIContext struct {
-	configDir   string
-	configDirMu sync.RWMutex
-	verbose     bool
-	verboseMu   sync.RWMutex
-	configCache *config.ConfigCache
-	rootCtx     context.Context
-	deps        *Deps
+	configDir         string
+	configDirMu       sync.RWMutex
+	configDirResolver ConfigDirResolver
+	verbose           bool
+	verboseMu         sync.RWMutex
+	configCache       *config.ConfigCache
+	rootCtx           context.Context
+	deps              *Deps
 
 	defaultProviderExplicit bool
 }
@@ -28,9 +33,10 @@ type CLIContext struct {
 // NewCLIContext creates a CLIContext with default settings.
 func NewCLIContext() *CLIContext {
 	return &CLIContext{
-		configCache: config.NewConfigCache(constants.ConfigCacheTTL),
-		rootCtx:     context.Background(),
-		deps:        NewDeps(),
+		configDirResolver: config.DefaultConfigDir,
+		configCache:       config.NewConfigCache(constants.ConfigCacheTTL),
+		rootCtx:           context.Background(),
+		deps:              NewDeps(),
 	}
 }
 
@@ -43,12 +49,20 @@ func (c *CLIContext) ConfigDir() string {
 		return c.configDir
 	}
 
-	dir, err := config.ConfigDir()
+	dir, err := c.configDirResolver()
 	if err != nil {
 		return ""
 	}
 
 	return dir
+}
+
+// SetConfigDirResolver sets the function used to locate the config directory.
+func (c *CLIContext) SetConfigDirResolver(r ConfigDirResolver) {
+	c.configDirMu.Lock()
+	defer c.configDirMu.Unlock()
+
+	c.configDirResolver = r
 }
 
 // SetConfigDir overrides the configuration directory.
@@ -88,6 +102,11 @@ func (c *CLIContext) RootCtx() context.Context {
 // Deps returns the external dependencies for this CLI session.
 func (c *CLIContext) Deps() *Deps {
 	return c.deps
+}
+
+// Crypto returns the crypto service for this CLI session.
+func (c *CLIContext) Crypto() crypto.Service {
+	return c.deps.Crypto
 }
 
 // SetDeps replaces the external dependencies. For use in tests.

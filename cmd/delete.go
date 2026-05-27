@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,22 +23,12 @@ var deleteCmd = &cobra.Command{
 	Long:  "Remove a provider from Kairo. If no provider is specified, shows an interactive list of configured providers.",
 	Run: func(cmd *cobra.Command, args []string) {
 		cliCtx := CLIContextFromCmd(cmd)
-		dir := requireConfigDir(cmd)
-		if dir == "" {
+
+		cfg, err := loadConfigOrExit(cmd)
+		if err != nil || cfg == nil {
 			return
 		}
-
-		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
-		if err != nil {
-			if stderrors.Is(err, fs.ErrNotExist) {
-				printNoProvidersMessage()
-
-				return
-			}
-			handleConfigError(cmd, err)
-
-			return
-		}
+		dir := cliCtx.ConfigDir()
 
 		var target string
 		if len(args) == 0 {
@@ -113,7 +101,7 @@ var deleteCmd = &cobra.Command{
 		secretsPath := filepath.Join(dir, constants.SecretsFileName)
 		keyPath := filepath.Join(dir, constants.KeyFileName)
 
-		if err := deleteProviderSecrets(cliCtx.RootCtx(), secretsPath, keyPath, target); err != nil {
+		if err := deleteProviderSecrets(cliCtx.RootCtx(), cliCtx.Crypto(), secretsPath, keyPath, target); err != nil {
 			tap.Cancel(fmt.Sprintf("Failed to clean up secrets for '%s': %v", target, err))
 
 			return
@@ -123,8 +111,8 @@ var deleteCmd = &cobra.Command{
 	},
 }
 
-func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerName string) error {
-	existingSecrets, err := crypto.DecryptSecretsBytes(ctx, secretsPath, keyPath)
+func deleteProviderSecrets(ctx context.Context, svc crypto.Service, secretsPath, keyPath, providerName string) error {
+	existingSecrets, err := svc.DecryptSecretsBytes(ctx, secretsPath, keyPath)
 	if err != nil {
 		return errors.WrapError(errors.CryptoError,
 			"failed to decrypt secrets for cleanup", err).
@@ -157,7 +145,7 @@ func deleteProviderSecrets(ctx context.Context, secretsPath, keyPath, providerNa
 		return nil
 	}
 
-	if err := crypto.EncryptSecrets(ctx, secretsPath, keyPath, secretsContent); err != nil {
+	if err := svc.EncryptSecrets(ctx, secretsPath, keyPath, secretsContent); err != nil {
 		return errors.WrapError(errors.CryptoError,
 			"could not update secrets", err).
 			WithContext("path", secretsPath)
