@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	stderrors "errors"
 	"fmt"
-	"io/fs"
 	"sort"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -17,23 +15,8 @@ var listCmd = &cobra.Command{
 	Short: "List configured providers",
 	Long:  "Display all configured providers and their status",
 	Run: func(cmd *cobra.Command, args []string) {
-		cliCtx := CLIContextFromCmd(cmd)
-		dir := requireConfigDir(cmd)
-		if dir == "" {
-			ui.PrintInfo("Run 'kairo setup' to configure providers")
-
-			return
-		}
-
-		cfg, err := config.LoadConfig(cliCtx.RootCtx(), dir)
-		if err != nil {
-			if stderrors.Is(err, fs.ErrNotExist) {
-				printNoProvidersMessage()
-
-				return
-			}
-			handleConfigError(cmd, err)
-
+		cfg, err := loadConfigOrExit(cmd)
+		if err != nil || cfg == nil {
 			return
 		}
 

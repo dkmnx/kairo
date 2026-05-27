@@ -87,7 +87,7 @@ func TestGetProviderFromArgs(t *testing.T) {
 	}
 }
 
-func TestHasDoubleDash(t *testing.T) {
+func TestHasArgsSeparator(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -106,9 +106,9 @@ func TestHasDoubleDash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := hasDoubleDash(tt.args)
+			got := hasArgsSeparator(tt.args)
 			if got != tt.want {
-				t.Errorf("hasDoubleDash(%v) = %v, want %v", tt.args, got, tt.want)
+				t.Errorf("hasArgsSeparator(%v) = %v, want %v", tt.args, got, tt.want)
 			}
 		})
 	}

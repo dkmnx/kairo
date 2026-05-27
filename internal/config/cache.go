@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/providers"
 )
 
 // cachedConfig holds a single cached configuration entry.
@@ -36,9 +37,9 @@ func deepCopyConfig(cfg *Config) *Config {
 	if cfg == nil {
 		return nil
 	}
-	providers := make(map[string]Provider, len(cfg.Providers))
+	provs := make(map[string]Provider, len(cfg.Providers))
 	for k, v := range cfg.Providers {
-		providers[k] = Provider{
+		provs[k] = Provider{
 			Name:    v.Name,
 			BaseURL: v.BaseURL,
 			Model:   v.Model,
@@ -49,11 +50,17 @@ func deepCopyConfig(cfg *Config) *Config {
 	defaultModels := make(map[string]string, len(cfg.DefaultModels))
 	maps.Copy(defaultModels, cfg.DefaultModels)
 
+	customProvs := make(map[string]providers.CustomProviderDefinition, len(cfg.CustomProviders))
+	for k := range cfg.CustomProviders {
+		customProvs[k] = cfg.CustomProviders[k]
+	}
+
 	return &Config{
 		DefaultProvider: cfg.DefaultProvider,
-		Providers:       providers,
+		Providers:       provs,
 		DefaultModels:   defaultModels,
 		DefaultHarness:  cfg.DefaultHarness,
+		CustomProviders: customProvs,
 	}
 }
 
@@ -77,6 +84,10 @@ func (c *ConfigCache) Get(ctx context.Context, configDir string) (*Config, error
 			WithContext("config_dir", configDir)
 	}
 
+	if len(cfg.CustomProviders) > 0 {
+		providers.DefaultRegistry.RegisterCustom(cfg.CustomProviders)
+	}
+
 	c.mu.Lock()
 	c.entries[configDir] = &cachedConfig{
 		config:     cfg,
@@ -93,4 +104,6 @@ func (c *ConfigCache) Invalidate(configDir string) {
 	c.mu.Lock()
 	delete(c.entries, configDir)
 	c.mu.Unlock()
+
+	providers.DefaultRegistry.ClearCustom()
 }

@@ -8,6 +8,8 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/execution"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/dkmnx/kairo/internal/wrapper"
@@ -25,15 +27,11 @@ type HarnessRun struct {
 	Harness       string
 }
 
-func qwenAuthArgs(model string) []string {
-	return []string{"--auth-type", "anthropic", "--model", model}
-}
-
 func executePi(cfg ExecutionConfig) error {
 	cliArgs := cfg.HarnessArgs
 
 	if cfg.Yolo {
-		flag := yoloModeFlag(cfg.HarnessToUse)
+		flag := harness.YoloFlag(cfg.HarnessToUse)
 		if flag != "" {
 			cliArgs = append([]string{flag}, cliArgs...)
 		}
@@ -59,10 +57,9 @@ func executePi(cfg ExecutionConfig) error {
 		Harness:      cfg.HarnessToUse,
 	})
 
-	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
+	ctx, cancel, stopSig := execution.StartSession(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
-	stopSignalHandler := setupSignalHandler(cancel)
-	defer stopSignalHandler()
+	defer stopSig()
 
 	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, piPath, cliArgs...)
 	execCmd.Env = cfg.ProviderEnv
@@ -131,10 +128,9 @@ func executeWithAuth(cfg ExecutionConfig) {
 }
 
 func executeWrapperWithAuth(cfg ExecutionConfig) {
-	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
+	ctx, cancel, stopSig := execution.StartSession(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
-	stopSignalHandler := setupSignalHandler(cancel)
-	defer stopSignalHandler()
+	defer stopSig()
 
 	authDir, err := cfg.Deps.Wrapper.CreateTempAuthDir()
 	if err != nil {
@@ -146,7 +142,9 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	var cleanupOnce sync.Once
 	cleanup := func() {
 		cleanupOnce.Do(func() {
-			_ = os.RemoveAll(authDir)
+			if err := os.RemoveAll(authDir); err != nil {
+				cfg.Cmd.Printf("Error cleaning up auth directory: %v\n", err)
+			}
 		})
 	}
 	defer cleanup()
@@ -160,10 +158,10 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 
 	cliArgs := cfg.HarnessArgs
 	if cfg.Yolo {
-		cliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, cliArgs...)
+		cliArgs = append([]string{harness.YoloFlag(cfg.HarnessToUse)}, cliArgs...)
 	}
 
-	displayName, envVarName, extraArgs := harnessDispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
+	displayName, envVarName, extraArgs := harness.Dispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
 	cliArgs = append(extraArgs, cliArgs...)
 
 	run := HarnessRun{
@@ -183,21 +181,6 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	}
 }
 
-// harnessDispatch returns the display name, environment variable name, and any
-// extra CLI arguments for the given harness.
-func harnessDispatch(harness, providerName, model string) (displayName, envVarName string, extraArgs []string) {
-	switch harness {
-	case harnessQwen:
-		return "Qwen", "ANTHROPIC_API_KEY", qwenAuthArgs(model)
-	case harnessCrush:
-		return "Crush", HarnessAPIKeyEnvVar(providerName), nil
-	case harnessPi:
-		return "Pi", "", nil
-	default:
-		return "Claude", "", nil
-	}
-}
-
 func executeWithoutAuth(cfg ExecutionConfig) {
 	if cfg.HarnessToUse == harnessPi {
 		if err := executePi(cfg); err != nil {
@@ -211,7 +194,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	cliArgs := cfg.HarnessArgs
 
 	if cfg.Yolo {
-		cliArgs = append([]string{yoloModeFlag(cfg.HarnessToUse)}, cliArgs...)
+		cliArgs = append([]string{harness.YoloFlag(cfg.HarnessToUse)}, cliArgs...)
 	}
 
 	if cfg.HarnessToUse == harnessQwen {
@@ -241,10 +224,9 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 		})
 	}
 
-	ctx, cancel := context.WithCancel(CLIContextFromCmd(cfg.Cmd).RootCtx())
+	ctx, cancel, stopSig := execution.StartSession(CLIContextFromCmd(cfg.Cmd).RootCtx())
 	defer cancel()
-	stopSignalHandler := setupSignalHandler(cancel)
-	defer stopSignalHandler()
+	defer stopSig()
 
 	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, harnessPath, cliArgs...)
 	execCmd.Env = cfg.ProviderEnv
@@ -252,7 +234,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 
-	displayName, _, _ := harnessDispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
+	displayName, _, _ := harness.Dispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
 
 	if err := execCmd.Run(); err != nil {
 		cfg.Cmd.Printf("Error running %s: %v\n", displayName, err)
