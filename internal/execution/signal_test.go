@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"os"
+	"runtime"
 	"syscall"
 	"testing"
 	"time"
@@ -44,6 +45,9 @@ func TestStartSession_StopCleansUp(t *testing.T) {
 }
 
 func TestStartSession_SignalCancelsContext(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("sending signals to self is not supported on Windows")
+	}
 	parent := context.Background()
 	ctx, cancel, stop := StartSession(parent)
 	defer cancel()
