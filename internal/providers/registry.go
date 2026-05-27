@@ -5,6 +5,7 @@ package providers
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -235,14 +236,46 @@ func (d ProviderDefinition) ValidateAPIKey(key string) error {
 	return nil
 }
 
-// providerOrder defines the canonical display order for providers.
-var providerOrder = []string{
+// providerPriority defines the preferred display order for providers.
+// Providers not listed here appear after these, in alphabetical order.
+var providerPriority = []string{
 	"zai", "minimax", "deepseek", "kimi",
 	"anthropic", "openai", "google", "mistral",
 	"groq", "cerebras", "cloudflare-workers-ai", "xai",
 	"openrouter", "vercel-ai-gateway", "opencode", "huggingface",
 	"fireworks", "azure-openai-responses", "minimax-cn",
 	"custom",
+}
+
+// providerOrder is the computed display order for all built-in providers.
+// Priority providers appear first in the order defined above; remaining
+// providers are sorted alphabetically. Computed once at init time.
+var providerOrder []string
+
+func init() {
+	providerOrder = computeProviderOrder()
+}
+
+func computeProviderOrder() []string {
+	seen := make(map[string]bool, len(builtInProviders))
+	result := make([]string, 0, len(builtInProviders))
+
+	for _, name := range providerPriority {
+		if _, ok := builtInProviders[name]; ok {
+			seen[name] = true
+			result = append(result, name)
+		}
+	}
+
+	remaining := make([]string, 0, len(builtInProviders)-len(seen))
+	for name := range builtInProviders {
+		if !seen[name] {
+			remaining = append(remaining, name)
+		}
+	}
+	slices.Sort(remaining)
+
+	return append(result, remaining...)
 }
 
 // ProviderRegistry holds built-in and custom provider definitions.
