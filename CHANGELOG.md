@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.8.0] - 2026-05-27
+
+### Added
+
+- Support custom provider definitions in `config.yaml` with `custom_providers` field
+
+### Changed
+
+- Compute provider display order from priority list instead of hardcoded slice
+- Deduplicate config loading with `loadConfigOrExit` and `loadConfigOrEmpty`
+- Consolidate harness logic and introduce crypto interface
+- Move key format validation into provider definitions
+- Simplify `providerFromArgs` with inline branching
+- Rename `hasDoubleDash` to `hasArgsSeparator`, `yoloFlag` to `skipPermissionsFlag`
+- Remove `harnessBinary` identity function and `setupSignalHandler` dead code
+- Document custom_providers in config, provider, and dev guides
+- Switch contributing guide to Google Go Style
+- Fix markdown formatting in config and providers docs
+
+### Fixed
+
+- Surface `loadConfigOrEmpty` errors instead of swallowing them
+- Report errors from config and secret operations instead of silently discarding them
+
 ## [v2.7.0] - 2026-05-23
 
 ### Added
@@ -1289,7 +1313,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.8.0...HEAD
+[v2.8.0]: https://github.com/dkmnx/kairo/compare/v2.7.0...v2.8.0
 [v2.7.0]: https://github.com/dkmnx/kairo/compare/v2.6.2...v2.7.0
 [v2.6.2]: https://github.com/dkmnx/kairo/compare/v2.6.1...v2.6.2
 [v2.6.1]: https://github.com/dkmnx/kairo/compare/v2.6.0...v2.6.1
