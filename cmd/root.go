@@ -73,7 +73,13 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 
 // Execute runs the root command.
 func Execute() error {
-	args := os.Args[1:]
+	var args []string
+	if testArgs != nil {
+		args = testArgs
+		testArgs = nil
+	} else {
+		args = os.Args[1:]
+	}
 
 	defer func() {
 		rootCmd.SetArgs(nil)
@@ -85,6 +91,15 @@ func Execute() error {
 
 	return rootCmd.Execute()
 }
+
+// SetTestArgs sets the arguments for the root command in tests.
+// It configures the root command to use the provided args when Execute is called,
+// bypassing os.Args to allow direct testing of subcommands.
+func SetTestArgs(args ...string) {
+	testArgs = args
+}
+
+var testArgs []string
 
 func init() {
 	rootCmd.PersistentFlags().String("config", "", "Config directory (default is platform-specific)")
