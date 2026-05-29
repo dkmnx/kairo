@@ -97,10 +97,29 @@ func TestHarnessSetInvalid(t *testing.T) {
 	tmpDir := t.TempDir()
 	setConfigDir(tmpDir)
 
+	// Pre-create a config so we can verify it wasn't modified
+	initialCfg := &config.Config{
+		Providers:      map[string]config.Provider{},
+		DefaultModels:  map[string]string{},
+		DefaultHarness: "claude",
+	}
+	if err := config.SaveConfig(context.Background(), tmpDir, initialCfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
 	rootCmd.SetArgs([]string{"harness", "set", "invalid"})
 	err := rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
+	}
+
+	// Verify invalid harness name was not persisted
+	cfg, err := config.LoadConfig(context.Background(), tmpDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.DefaultHarness == "invalid" {
+		t.Error("DefaultHarness should not be set to 'invalid'")
 	}
 }
 
