@@ -100,15 +100,6 @@ func TestWriteTempTokenFile_EmptyToken(t *testing.T) {
 	}
 }
 
-func TestCreateTempAuthDir_Failure(t *testing.T) {
-	// Note: os.MkdirTemp creates both the temp dir and any necessary parents,
-	// so testing error conditions is difficult without modifying system state.
-	// We verify the basic functionality works via other tests.
-	_, err := CreateTempAuthDir()
-	// The error for invalid paths would be OS-specific
-	_ = err
-}
-
 func TestWriteTempTokenFile_NonExistentDir(t *testing.T) {
 	_, err := WriteTempTokenFile("/nonexistent/path", "test-token")
 	if err == nil {

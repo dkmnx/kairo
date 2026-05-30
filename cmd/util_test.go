@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/dkmnx/kairo/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -184,6 +185,82 @@ func TestRequireConfigDir(t *testing.T) {
 func TestPrintNoProvidersMessage(t *testing.T) {
 	// Simply verify no panic - output goes to stderr
 	printNoProvidersMessage()
+}
+
+func TestLoadConfigOrEmpty(t *testing.T) {
+	t.Run("returns empty config when no config file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDir(tmpDir)
+
+		cmd := &cobra.Command{}
+		cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
+
+		cfg, err := loadConfigOrEmpty(cmd)
+		if err != nil {
+			t.Fatalf("loadConfigOrEmpty() error = %v", err)
+		}
+		if cfg == nil {
+			t.Fatal("loadConfigOrEmpty() returned nil config")
+		}
+		if len(cfg.Providers) != 0 {
+			t.Errorf("expected empty providers, got %d", len(cfg.Providers))
+		}
+		if len(cfg.DefaultModels) != 0 {
+			t.Errorf("expected empty default models, got %d", len(cfg.DefaultModels))
+		}
+	})
+
+	t.Run("loads existing config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &config.Config{
+			Providers: map[string]config.Provider{
+				"zai": {Name: "Z.AI", BaseURL: "https://test.example.com", Model: "test-model"},
+			},
+			DefaultProvider: "zai",
+			DefaultModels:   map[string]string{"zai": "test-model"},
+		}
+		if err := config.SaveConfig(context.Background(), tmpDir, cfg); err != nil {
+			t.Fatal(err)
+		}
+
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDir(tmpDir)
+
+		cmd := &cobra.Command{}
+		cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
+
+		got, err := loadConfigOrEmpty(cmd)
+		if err != nil {
+			t.Fatalf("loadConfigOrEmpty() error = %v", err)
+		}
+		if got == nil {
+			t.Fatal("loadConfigOrEmpty() returned nil")
+		}
+		if got.DefaultProvider != "zai" {
+			t.Errorf("DefaultProvider = %q, want zai", got.DefaultProvider)
+		}
+		if _, ok := got.Providers["zai"]; !ok {
+			t.Error("expected zai provider in config")
+		}
+	})
+
+	t.Run("errors when config dir is empty", func(t *testing.T) {
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDirResolver(func() (string, error) {
+			return "", nil
+		})
+
+		cmd := &cobra.Command{}
+		cmd.SetContext(WithCLIContext(context.Background(), cliCtx))
+
+		_, err := loadConfigOrEmpty(cmd)
+		if err == nil {
+			t.Error("loadConfigOrEmpty() should error when resolver returns empty")
+		}
+	})
 }
 
 func TestRequireConfigDirWritable_MkdirFails(t *testing.T) {

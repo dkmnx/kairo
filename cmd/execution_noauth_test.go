@@ -107,7 +107,7 @@ func TestExecuteWithoutAuth_YoloModeClaude(t *testing.T) {
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			capturedArgs = arg
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			return cmd
 		}
 		mp.ExitProcessFn = func(int) {}
@@ -172,7 +172,7 @@ func TestExecuteWithoutAuth_PiHarness(t *testing.T) {
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			capturedArgs = arg
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
