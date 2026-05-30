@@ -103,17 +103,18 @@ custom_providers:
 
 Fields:
 
-| Field              | Required | Default | Description                                       |
-| ------------------ | -------- | ------- | ------------------------------------------------- |
-| `name`             | Yes      | —       | Display name shown in setup and list commands     |
-| `base_url`         | No       | `""`    | Anthropic-compatible endpoint (HTTPS only)        |
-| `model`            | No       | `""`    | Default model (user can override during setup)    |
-| `requires_api_key` | No       | `true`  | Whether an API key is required                    |
-| `api_key_env_var`  | No       | `""`    | Environment variable name for the API key         |
-| `min_key_length`   | No       | `20`    | Minimum API key length                            |
-| `key_prefix`       | No       | `""`    | Required API key prefix (e.g. `sk-`)              |
-| `key_pattern`      | No       | `""`    | Regex pattern the API key must match              |
-| `env_vars`         | No       | `[]`    | Extra environment variables passed to the harness |
+| Field              | Required | Default | Description                                                            |
+| ------------------ | -------- | ------- | ---------------------------------------------------------------------- |
+| `name`             | Yes      | —       | Display name shown in setup and list commands                          |
+| `base_url`         | No       | `""`    | Anthropic-compatible endpoint (HTTPS only)                             |
+| `model`            | No       | `""`    | Default model (user can override during setup)                         |
+| `requires_api_key` | No       | `true`  | Whether an API key is required                                         |
+| `api_key_env_var`  | No       | `""`    | Environment variable name for the API key                              |
+| `env_key`          | No       | `""`    | Override the auto-derived API key env var name passed to the harness   |
+| `min_key_length`   | No       | `20`    | Minimum API key length                                                 |
+| `key_prefix`       | No       | `""`    | Required API key prefix (e.g. `sk-`)                                   |
+| `key_pattern`      | No       | `""`    | Regex pattern the API key must match                                   |
+| `env_vars`         | No       | `[]`    | Extra environment variables passed to the harness                      |
 
 ## `secrets.age`
 

@@ -44,7 +44,7 @@ Configuration loading, caching, migration, and config-directory resolution.
 Key types:
 
 - `Config` - root configuration with `default_provider`, `default_harness`, `default_models`, and `providers`
-- `Provider` - provider configuration with `name`, `base_url`, `model`, and `env_vars`
+- `Provider` - provider configuration with `name`, `base_url`, `model`, `env_vars`, and `env_key`
 
 Key functions:
 
@@ -65,6 +65,7 @@ providers:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
     model: glm-5.1
+    env_key: ZAI_API_KEY
 ```
 
 ### `crypto/`
@@ -123,6 +124,7 @@ Built-in providers:
 | `azure-openai-responses` | (provider-managed)                   | (provider-managed)    | Yes     |
 | `minimax-cn`             | (provider-managed)                   | (provider-managed)    | Yes     |
 | `custom`                 | user-defined                         | user-defined          | Yes     |
+
 ### `validate/`
 
 Validation for API keys, URLs, models, and cross-provider env-var conflicts.

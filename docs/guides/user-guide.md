@@ -71,20 +71,30 @@ kairo -- "Quick question"
 
 ## Commands
 
-| Command                       | Description                                         |
-| ----------------------------- | --------------------------------------------------- |
-| `kairo setup`                 | Interactive setup wizard                            |
-| `kairo setup --reset-secrets` | Regenerate encryption key and re-enter API keys     |
-| `kairo list`                  | List configured providers                           |
-| `kairo default [provider]`    | Get or set the default provider                     |
-| `kairo delete <provider>`     | Delete a provider                                   |
-| `kairo <provider> [args]`     | Execute with a specific provider                    |
-| `kairo -- [args]`             | Execute with the default provider                   |
-| `kairo harness get`           | Get current harness                                 |
-| `kairo harness set <name>`    | Set default harness (claude, qwen, pi, or crush)    |
-| `kairo update`                | Update to the latest version                        |
-| `kairo version`               | Show version                                        |
-| `kairo completion [shell]`    | Generate shell completion script                    |
+| Command                              | Description                                       |
+| ------------------------------------ | ------------------------------------------------- |
+| `kairo setup`                        | Interactive setup wizard                          |
+| `kairo setup --reset-secrets`        | Regenerate encryption key and re-enter API keys   |
+| `kairo list`                         | List configured providers                         |
+| `kairo default [provider]`           | Get or set the default provider                   |
+| `kairo delete <provider>`            | Delete a provider                                 |
+| `kairo <provider> [args]`            | Execute with a specific provider                  |
+| `kairo -- [args]`                    | Execute with the default provider                 |
+| `kairo harness get`                  | Get current harness                               |
+| `kairo harness set <name>`           | Set default harness (claude, qwen, pi, or crush)  |
+| `kairo update`                       | Update to the latest version                      |
+| `kairo version`                      | Show version                                      |
+| `kairo completion [shell]`           | Generate shell completion script                  |
+
+### Global Flags
+
+| Flag            | Purpose                                                            |
+| --------------- | ------------------------------------------------------------------ |
+| `--config`      | Config directory (default is platform-specific)                    |
+| `-v, --verbose` | Enable verbose output                                              |
+| `--harness`     | Harness to use (`claude`, `qwen`, `pi`, or `crush`)                |
+| `-y, --yolo`    | Skip permission prompts (see [Harnesses](cmd/README.md#harnesses)) |
+
 ## Supported Providers
 
 | Provider                 | API Key Env Var        | API Key Required |
@@ -109,6 +119,7 @@ kairo -- "Quick question"
 | `azure-openai-responses` | `AZURE_OPENAI_API_KEY` | Yes              |
 | `minimax-cn`             | `MINIMAX_CN_API_KEY`   | Yes              |
 | `custom`                 | user-defined           | Yes              |
+
 Details: [Provider Reference](../reference/providers.md)
 
 ## Configuration
@@ -119,6 +130,7 @@ Details: [Provider Reference](../reference/providers.md)
 | ----------- | ---------------------------------------- |
 | Linux/macOS | `~/.config/kairo/`                       |
 | Windows     | `%USERPROFILE%\AppData\Roaming\kairo\`   |
+
 ### Files
 
 | File          | Purpose                        |
@@ -126,6 +138,7 @@ Details: [Provider Reference](../reference/providers.md)
 | `config.yaml` | Provider and harness settings  |
 | `secrets.age` | Encrypted API keys             |
 | `age.key`     | Encryption private key         |
+
 Details: [Configuration Reference](../reference/configuration.md)
 
 ## Security
@@ -163,6 +176,7 @@ Common issues:
 | `provider not found` | Run `kairo setup`                                   |
 | `invalid API key`    | Reconfigure with `kairo setup`                      |
 | `failed to decrypt`  | Restore backup or run `kairo setup --reset-secrets` |
+
 Full guide: [Troubleshooting](../troubleshooting/README.md)
 
 ## Next Steps
