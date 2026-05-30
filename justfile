@@ -9,20 +9,23 @@
 # - @ prefix suppresses command echoing (same as Make)
 # - - prefix ignores errors (same as Make)
 
-# Use bash for consistent shell behavior across platforms
-set shell := ["bash", "-c"]
+# Use PowerShell on Windows, sh on Unix
+set windows-shell := ["powershell", "-NoProfile", "-Command"]
+set shell := ["sh", "-c"]
 
-# Detect Go binary - try common paths on Windows and Unix
-GO := `which go || which /c/Program\ Files/Go/bin/go.exe || which /usr/local/go/bin/go || echo go`
+# Detect Go binary
+GO := "go"
 
 # Variables
 BINARY_NAME := "kairo"
 DIST_DIR := "dist"
-VERSION := `git describe --tags --always --dirty 2>/dev/null || echo "dev"`
-COMMIT := `git rev-parse --short HEAD 2>/dev/null || echo "unknown"`
-DATE := `date -u +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d`
+VERSION := `git describe --tags --always --dirty`
+COMMIT := `git rev-parse --short HEAD`
+DATE := `date -u +%Y-%m-%d`
 LDFLAGS := "-X github.com/dkmnx/kairo/internal/version.Version=" + VERSION + " -X github.com/dkmnx/kairo/internal/version.Commit=" + COMMIT + " -X github.com/dkmnx/kairo/internal/version.Date=" + DATE
-LOCAL_BIN := `echo "$HOME/.local/bin" 2>/dev/null || echo "$USERPROFILE/.local/bin"`
+
+# Race detector flag: disabled on Windows (requires cgo/C compiler)
+RACE_FLAG := if os() == "windows" { "" } else { "-race" }
 
 # Default recipe: show list of recipes
 [default]
@@ -32,13 +35,12 @@ _:
 # Build the binary
 build:
     @echo "Building {{BINARY_NAME}} {{VERSION}}..."
-    @mkdir -p {{DIST_DIR}}
     {{GO}} build -ldflags "{{LDFLAGS}}" -o {{DIST_DIR}}/{{BINARY_NAME}} .
 
-# Run all tests with race detector
+# Run all tests (with race detector on platforms that support it)
 test:
     @echo "Running tests..."
-    {{GO}} test -v -race ./...
+    {{GO}} test -v {{RACE_FLAG}} ./...
 
 # Run fuzzing tests with timeout
 fuzz:
@@ -58,47 +60,30 @@ fuzz:
 # Run tests with coverage report
 test-coverage:
     @echo "Running tests with coverage..."
-    @mkdir -p {{DIST_DIR}}
-    {{GO}} test -coverprofile={{DIST_DIR}}/coverage.out ./...
+    {{GO}} test -coverprofile={{DIST_DIR}}/coverage.out {{RACE_FLAG}} ./...
     {{GO}} tool cover -html={{DIST_DIR}}/coverage.out -o {{DIST_DIR}}/coverage.html
     @echo "Coverage report: {{DIST_DIR}}/coverage.html"
 
 # Run linters
 lint:
     @echo "Running linters..."
-    @TMPFILE=$(mktemp -t gofmt_issues.XXXXXX) && \
-        gofmt -l . > "$$TMPFILE" && \
-        if [ -s "$$TMPFILE" ]; then \
-            echo "Formatting issues found (cannot be auto-fixed):"; \
-            cat "$$TMPFILE"; \
-            rm -f "$$TMPFILE"; \
-            exit 1; \
-        fi && \
-        rm -f "$$TMPFILE"
     {{GO}} vet ./...
-    @if command -v golangci-lint >/dev/null 2>&1; then \
-        golangci-lint run ./...; \
-    else \
-        echo "golangci-lint not installed, skipping"; \
-    fi
+    golangci-lint run ./...
+
+# Format code
+format:
+    @echo "Formatting code..."
+    gofmt -w .
 
 # Run pre-commit hooks
 pre-commit:
     @echo "Running pre-commit hooks..."
-    @if command -v pre-commit >/dev/null 2>&1; then \
-        pre-commit run --all-files; \
-    else \
-        echo "pre-commit not installed. Install with: pip install pre-commit"; \
-    fi
+    pre-commit run --all-files
 
 # Install pre-commit hooks
 pre-commit-install:
     @echo "Installing pre-commit hooks..."
-    @if command -v pre-commit >/dev/null 2>&1; then \
-        pre-commit install; \
-    else \
-        echo "pre-commit not installed. Install with: pip install pre-commit"; \
-    fi
+    pre-commit install
 
 # Pre-release checks: format, lint, pre-commit, test, goreleaser dry-run
 pre-release:
@@ -113,99 +98,61 @@ pre-release:
     just test
     @echo ""
     @echo "Running goreleaser dry-run..."
-    @if command -v goreleaser >/dev/null 2>&1; then \
-        goreleaser release --clean --snapshot --release-notes "$$(awk '/^## \\[/{c++; if(c>1)exit; if(c==1){next}} c>0' CHANGELOG.md | tail -c +2)"; \
-    else \
-        echo "goreleaser not installed, skipping dry-run"; \
-    fi
+    goreleaser release --clean --snapshot
     @echo ""
     @echo "Pre-release checks passed!"
 
-# Format code
-format:
-    @echo "Formatting code..."
-    gofmt -w .
-
 # Clean build artifacts
+[unix]
 clean:
     @echo "Cleaning..."
     rm -rf {{DIST_DIR}}
 
-# Install binary to local bin directory
+[windows]
+clean:
+    @echo "Cleaning..."
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue {{DIST_DIR}}
+
+# Install binary to GOBIN or GOPATH/bin
 install: build
-    @echo "Installing {{BINARY_NAME}} to {{LOCAL_BIN}}..."
-    @if [ -f scripts/install.sh ]; then \
-        ./scripts/install.sh -b {{LOCAL_BIN}}; \
-    else \
-        mkdir -p {{LOCAL_BIN}}; \
-        install -m 755 {{DIST_DIR}}/{{BINARY_NAME}} {{LOCAL_BIN}}/{{BINARY_NAME}}; \
-        echo "Installed {{BINARY_NAME}} to {{LOCAL_BIN}}/"; \
-    fi
+    @echo "Installing {{BINARY_NAME}}..."
+    {{GO}} install {{DIST_DIR}}/{{BINARY_NAME}}
 
 # Uninstall binary
+[unix]
 uninstall:
-    @echo "Removing {{BINARY_NAME}} from ~/.local/bin..."
-    rm -f {{LOCAL_BIN}}/{{BINARY_NAME}}
-    @echo "Uninstalled {{BINARY_NAME}} from {{LOCAL_BIN}}/"
+    @echo "Removing {{BINARY_NAME}}..."
+    rm -f "$(go env GOPATH)/bin/{{BINARY_NAME}}"
+    @echo "Uninstalled {{BINARY_NAME}}"
+
+[windows]
+uninstall:
+    @echo "Removing {{BINARY_NAME}}..."
+    Remove-Item -Force -ErrorAction SilentlyContinue "$(go env GOPATH)\bin\{{BINARY_NAME}}.exe"
+    @echo "Uninstalled {{BINARY_NAME}}"
 
 # Build and run with arguments
 run args="": build
     @echo "Running {{BINARY_NAME}}..."
     {{DIST_DIR}}/{{BINARY_NAME}} {{args}}
 
-# Download and tidy dependencies
+# Download and tidy dependencies + install dev tools
 deps:
     @echo "Installing dependencies..."
     {{GO}} mod download
     {{GO}} mod tidy
-
+    @echo ""
     @echo "Installing development tools..."
-    @if command -v golangci-lint >/dev/null 2>&1; then \
-        echo "golangci-lint already installed"; \
-    else \
-        echo "Installing golangci-lint v1.64.8..."; \
-        {{GO}} install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
-    fi
-
-    @if command -v pre-commit >/dev/null 2>&1; then \
-        echo "pre-commit already installed"; \
-    else \
-        echo "Installing pre-commit..."; \
-        pip install pre-commit; \
-    fi
-
-    @if command -v govulncheck >/dev/null 2>&1; then \
-        echo "govulncheck already installed"; \
-    else \
-        echo "Installing govulncheck..."; \
-        {{GO}} install golang.org/x/vuln/cmd/govulncheck@latest; \
-    fi
-
-    @if command -v goreleaser >/dev/null 2>&1; then \
-        echo "goreleaser already installed"; \
-    else \
-        echo "Installing goreleaser..."; \
-        {{GO}} install github.com/goreleaser/goreleaser/v2@latest 2>&1 || \
-        echo "⚠️  goreleaser installation failed (requires Go 1.26+ for full installation)"; \
-        echo "   goreleaser is only needed for releases. Skipping for now."; \
-    fi
-
-    @if command -v act >/dev/null 2>&1; then \
-        echo "act already installed"; \
-    else \
-        echo "Installing act..."; \
-        curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sh; \
-    fi
-
-    @if command -v staticcheck >/dev/null 2>&1; then \
-        echo "staticcheck already installed"; \
-    else \
-        echo "Installing staticcheck..."; \
-        {{GO}} install honnef.co/go/tools/cmd/staticcheck@latest; \
-    fi
-
-    @echo "Installing pre-commit hooks..."
+    {{GO}} install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+    {{GO}} install golang.org/x/vuln/cmd/govulncheck@latest
+    {{GO}} install honnef.co/go/tools/cmd/staticcheck@latest
+    {{GO}} install github.com/goreleaser/goreleaser/v2@latest
+    @echo ""
+    @echo "Installing pre-commit..."
+    pip install pre-commit
     pre-commit install
+    @echo ""
+    @echo "Dependencies installed!"
 
 # Verify dependencies
 verify-deps:
@@ -215,13 +162,7 @@ verify-deps:
 # Run vulnerability scan
 vuln-scan:
     @echo "Running vulnerability scan..."
-    @if command -v govulncheck >/dev/null 2>&1; then \
-        govulncheck ./...; \
-    else \
-        echo "govulncheck not installed. Install with:"; \
-        echo "  go install golang.org/x/vuln/cmd/govulncheck@latest"; \
-        exit 1; \
-    fi
+    govulncheck ./...
 
 # Run comprehensive security checks (vuln scan + lint)
 security: vuln-scan lint
@@ -230,54 +171,36 @@ security: vuln-scan lint
 # Create release builds with goreleaser
 release:
     @echo "Running goreleaser..."
-    @if command -v goreleaser >/dev/null 2>&1; then \
-        if [ -z "$GITHUB_TOKEN" ]; then \
-            echo "GITHUB_TOKEN not set."; \
-        else \
-            goreleaser release --clean; \
-        fi; \
-    else \
-        echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser/v2@latest"; \
-    fi
+    goreleaser release --clean
 
 # Create local snapshot build
 release-local:
     @echo "Running goreleaser (snapshot build)..."
-    @if command -v goreleaser >/dev/null 2>&1; then \
-        goreleaser release --clean --snapshot; \
-    else \
-        echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser/v2@latest"; \
-    fi
+    goreleaser release --clean --snapshot
 
 # Build without publishing (dry-run)
 release-dry-run:
     @echo "Running goreleaser (dry-run, no publish)..."
-    @if command -v goreleaser >/dev/null 2>&1; then \
-        goreleaser release --clean --snapshot --skip=publish; \
-    else \
-        echo "goreleaser not installed. Install with: go install github.com/goreleaser/goreleaser/v2@latest"; \
-    fi
+    goreleaser release --clean --snapshot --skip=publish
 
 # Display help message
 help:
     @echo "Kairo Justfile"
     @echo ""
     @echo "Output directory: {{DIST_DIR}}/"
-    @echo "Install location: {{LOCAL_BIN}}/"
     @echo ""
     @echo "Recipes:"
-    @echo "  default         - Build the binary (default)"
     @echo "  build           - Build the binary to {{DIST_DIR}}/"
     @echo "  test            - Run all tests"
-    @echo "  fuzz            - Run fuzzing tests (10s per package)"
+    @echo "  fuzz            - Run fuzzing tests (5s per package)"
     @echo "  test-coverage   - Run tests with coverage report"
-    @echo "  lint            - Run linters (gofmt, govet)"
+    @echo "  lint            - Run linters (go vet, golangci-lint)"
     @echo "  format          - Format code with gofmt"
     @echo "  pre-commit      - Run pre-commit hooks"
     @echo "  pre-release     - Run all pre-release checks (format, lint, pre-commit, test)"
     @echo "  clean           - Remove {{DIST_DIR}}/ directory"
-    @echo "  install         - Install to {{LOCAL_BIN}}/"
-    @echo "  uninstall       - Remove from {{LOCAL_BIN}}/"
+    @echo "  install         - Install to GOBIN"
+    @echo "  uninstall       - Remove from GOBIN"
     @echo "  run             - Build and run with ARGS"
     @echo "  release         - Create release builds with goreleaser"
     @echo "  release-local   - Create local snapshot build"
@@ -297,21 +220,9 @@ help:
 # List all CI jobs
 ci-local-list:
     @echo "Listing GitHub Actions jobs..."
-    @if command -v act >/dev/null 2>&1; then \
-        act -l; \
-    else \
-        echo "act not installed. Install with:"; \
-        echo "  curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sh"; \
-        echo "  or: brew install act"; \
-    fi
+    act -l
 
 # Run GitHub Actions locally
 ci-local ci_args="":
     @echo "Running GitHub Actions locally with act..."
-    @if command -v act >/dev/null 2>&1; then \
-        act {{ci_args}}; \
-    else \
-        echo "act not installed. Install with:"; \
-        echo "  curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sh"; \
-        echo "  or: brew install act"; \
-    fi
+    act {{ci_args}}
