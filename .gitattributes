@@ -4,8 +4,8 @@
 # Shell scripts must use LF
 *.sh text eol=lf
 
-# PowerShell scripts can use CRLF (native on Windows)
-*.ps1 text eol=crlf
+# PowerShell scripts — LF works fine, keeps checksums portable
+*.ps1 text eol=lf
 
 # Windows install script
 *.cmd text eol=crlf

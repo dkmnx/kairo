@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Install script checksum verification failure in `kairo update` caused by CRLF/LF line ending mismatch between `.gitattributes` and GitHub raw content delivery
+
 ## [v2.8.1] - 2026-05-30
 
 ### Fixed
