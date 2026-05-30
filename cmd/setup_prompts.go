@@ -38,7 +38,7 @@ func promptContext() context.Context {
 }
 
 func promptForNewProvider(ctx context.Context) string {
-	allProviders := append(providers.ProviderList(), customProviderName)
+	allProviders := providers.ProviderList()
 	options := buildProviderListOptions(allProviders)
 
 	return tap.Select(ctx, tap.SelectOptions[string]{
