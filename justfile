@@ -17,7 +17,7 @@ set shell := ["sh", "-c"]
 GO := "go"
 
 # Variables
-BINARY_NAME := "kairo"
+BINARY_NAME := if os() == "windows" { "kairo.exe" } else { "kairo" }
 DIST_DIR := "dist"
 VERSION := `git describe --tags --always --dirty`
 COMMIT := `git rev-parse --short HEAD`
@@ -128,7 +128,7 @@ uninstall:
 [windows]
 uninstall:
     @echo "Removing {{BINARY_NAME}}..."
-    Remove-Item -Force -ErrorAction SilentlyContinue "$(go env GOPATH)\bin\{{BINARY_NAME}}.exe"
+    Remove-Item -Force -ErrorAction SilentlyContinue "$(go env GOPATH)\bin\{{BINARY_NAME}}"
     @echo "Uninstalled {{BINARY_NAME}}"
 
 # Build and run with arguments
