@@ -3,6 +3,7 @@ package providers
 import (
 	"slices"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -512,3 +513,248 @@ func TestBuiltInProviderEnvVars(t *testing.T) {
 		})
 	}
 }
+
+func TestKeyFormat_validateForKey(t *testing.T) {
+	t.Run("empty key passes", func(t *testing.T) {
+		err := KeyFormatMin32.validateForKey("")
+		if err != nil {
+			t.Errorf("empty key should pass: %v", err)
+		}
+	})
+
+	t.Run("whitespace only passes", func(t *testing.T) {
+		err := KeyFormatMin32.validateForKey("   ")
+		if err != nil {
+			t.Errorf("whitespace key should pass: %v", err)
+		}
+	})
+
+	t.Run("too short", func(t *testing.T) {
+		err := KeyFormatMin32.validateForKey("short")
+		if err == nil {
+			t.Error("expected error for short key")
+		}
+	})
+
+	t.Run("at minimum length", func(t *testing.T) {
+		err := KeyFormatMin32.validateForKey(validKey)
+		if err != nil {
+			t.Errorf("key at minimum length should pass: %v", err)
+		}
+
+		err2 := KeyFormatMin32.validateForKey(tooShortKey)
+		if err2 == nil {
+			t.Error("key below minimum length should fail")
+		}
+	})
+
+	t.Run("prefix mismatch", func(t *testing.T) {
+		err := KeyFormatAnthropic.validateForKey(validKey)
+		if err == nil {
+			t.Error("expected error for key without sk-ant- prefix")
+		}
+	})
+
+	t.Run("prefix match passes", func(t *testing.T) {
+		err := KeyFormatAnthropic.validateForKey(validAnthropicKey)
+		if err != nil {
+			t.Errorf("key with correct prefix should pass: %v", err)
+		}
+	})
+
+	t.Run("pattern mismatch", func(t *testing.T) {
+		kf := KeyFormat{Pattern: `^[a-f0-9]+$`, compiled: nil}
+		// trigger regex compilation
+		err := kf.validateForKey("contains-upper-and-dashes")
+		if err == nil {
+			t.Error("expected error for key not matching hex pattern")
+		}
+		if !strings.Contains(err.Error(), "API key format") {
+			t.Errorf("error should mention format: %v", err)
+		}
+	})
+
+	t.Run("pattern match passes", func(t *testing.T) {
+		kf := KeyFormat{Pattern: `^[a-f0-9]{32,}$`, compiled: nil}
+		hexKey := strings.Repeat("a", 32)
+		err := kf.validateForKey(hexKey)
+		if err != nil {
+			t.Errorf("key matching hex pattern should pass: %v", err)
+		}
+	})
+
+	t.Run("invalid pattern causes error", func(t *testing.T) {
+		kf := KeyFormat{Pattern: `[invalid(regex`}
+		err := kf.validateForKey(validKey)
+		if err == nil {
+			t.Error("expected error for invalid pattern")
+		}
+		// the compiled pattern stays nil since regexp.Compile failed
+		// running validateForKey again should re-attempt compilation and fail again
+		err2 := kf.validateForKey(validKey)
+		if err2 == nil {
+			t.Error("expected same error on second attempt")
+		}
+	})
+
+	t.Run("compiled regex reused on second call", func(t *testing.T) {
+		kf := KeyFormat{Pattern: `^[a-z]+$`, compiled: nil}
+		err := kf.validateForKey("validlowercase")
+		if err != nil {
+			t.Fatalf("first call should pass: %v", err)
+		}
+		if kf.compiled == nil {
+			t.Fatal("regex should be compiled after first call")
+		}
+		err2 := kf.validateForKey("validlowercase")
+		if err2 != nil {
+			t.Errorf("second call should also pass: %v", err2)
+		}
+	})
+
+	t.Run("prefix satisfied but too short", func(t *testing.T) {
+		err := KeyFormatAnthropic.validateForKey("sk-ant-short")
+		if err == nil {
+			t.Error("expected error for anthropic-prefixed short key")
+		}
+		if !strings.Contains(err.Error(), "minimum") {
+			t.Errorf("error should mention minimum length: %v", err)
+		}
+	})
+}
+
+func TestProviderDefinition_ValidateAPIKey(t *testing.T) {
+	t.Run("empty key", func(t *testing.T) {
+		def := BuiltInProviderNoMap("test")
+		err := def.ValidateAPIKey("")
+		if err == nil {
+			t.Error("expected error for empty API key")
+		}
+	})
+
+	t.Run("whitespace only", func(t *testing.T) {
+		def := BuiltInProviderNoMap("test")
+		err := def.ValidateAPIKey("  ")
+		if err == nil {
+			t.Error("expected error for whitespace-only API key")
+		}
+	})
+
+	t.Run("valid key passes", func(t *testing.T) {
+		def := BuiltInProviderNoMap("test")
+		err := def.ValidateAPIKey(validKey)
+		if err != nil {
+			t.Errorf("valid key should pass: %v", err)
+		}
+	})
+
+	t.Run("anthropic valid", func(t *testing.T) {
+		def, ok := BuiltInProvider("anthropic")
+		if !ok {
+			t.Fatal("anthropic provider not found")
+		}
+		err := def.ValidateAPIKey(validAnthropicKey)
+		if err != nil {
+			t.Errorf("valid anthropic key should pass: %v", err)
+		}
+	})
+
+	t.Run("anthropic wrong prefix", func(t *testing.T) {
+		def, ok := BuiltInProvider("anthropic")
+		if !ok {
+			t.Fatal("anthropic provider not found")
+		}
+		err := def.ValidateAPIKey(validKey)
+		if err == nil {
+			t.Error("expected error for non-anthropic prefixed key")
+		}
+	})
+
+	t.Run("anthropic too short", func(t *testing.T) {
+		def, ok := BuiltInProvider("anthropic")
+		if !ok {
+			t.Fatal("anthropic provider not found")
+		}
+		err := def.ValidateAPIKey("sk-ant-short")
+		if err == nil {
+			t.Error("expected error for short anthropic key")
+		}
+	})
+
+	t.Run("openai valid", func(t *testing.T) {
+		def, ok := BuiltInProvider("openai")
+		if !ok {
+			t.Fatal("openai provider not found")
+		}
+		err := def.ValidateAPIKey(validOpenAIKey)
+		if err != nil {
+			t.Errorf("valid openai key should pass: %v", err)
+		}
+	})
+
+	t.Run("groq valid", func(t *testing.T) {
+		def, ok := BuiltInProvider("groq")
+		if !ok {
+			t.Fatal("groq provider not found")
+		}
+		err := def.ValidateAPIKey(validGroqKey)
+		if err != nil {
+			t.Errorf("valid groq key should pass: %v", err)
+		}
+	})
+
+	t.Run("openrouter valid", func(t *testing.T) {
+		def, ok := BuiltInProvider("openrouter")
+		if !ok {
+			t.Fatal("openrouter provider not found")
+		}
+		err := def.ValidateAPIKey(validOpenRouterKey)
+		if err != nil {
+			t.Errorf("valid openrouter key should pass: %v", err)
+		}
+	})
+
+	t.Run("custom with default key format", func(t *testing.T) {
+		def, ok := BuiltInProvider("custom")
+		if !ok {
+			t.Fatal("custom provider not found")
+		}
+		err := def.ValidateAPIKey(tooShortKey)
+		if err == nil {
+			t.Error("expected error for short key on custom (min 20)")
+		}
+		validCustomKey := strings.Repeat("x", 20)
+		err = def.ValidateAPIKey(validCustomKey)
+		if err != nil {
+			t.Errorf("valid custom key should pass: %v", err)
+		}
+	})
+
+	t.Run("zai valid", func(t *testing.T) {
+		def, ok := BuiltInProvider("zai")
+		if !ok {
+			t.Fatal("zai provider not found")
+		}
+		err := def.ValidateAPIKey(validZAIKey)
+		if err != nil {
+			t.Errorf("zai key %q: %v", validZAIKey, err)
+		}
+	})
+}
+
+func BuiltInProviderNoMap(name string) ProviderDefinition {
+	return ProviderDefinition{
+		Name:      name,
+		KeyFormat: KeyFormatMin32,
+	}
+}
+
+var (
+	validKey           = strings.Repeat("x", 32)
+	tooShortKey        = strings.Repeat("x", 15)
+	validAnthropicKey  = "sk-ant-" + strings.Repeat("x", 26)
+	validOpenAIKey     = "sk-" + strings.Repeat("x", 30)
+	validGroqKey       = "gsk_" + strings.Repeat("x", 29)
+	validOpenRouterKey = "sk-or-" + strings.Repeat("x", 27)
+	validZAIKey        = strings.Repeat("y", 32)
+)
