@@ -35,6 +35,7 @@ providers:
     name: string
     base_url: string
     model: string
+    env_key: string
     env_vars:
       - KEY=value
 custom_providers:
@@ -54,6 +55,7 @@ custom_providers:
 Notes:
 
 - `default_harness` is optional. If omitted, Kairo uses `claude`. Valid values: `claude`, `qwen`, `pi`, `crush`.
+- `env_key` is optional. When set, it overrides the auto-derived `<PROVIDER>_API_KEY` environment variable name used to pass the API key to the harness.
 - `default_models` is optional migration metadata maintained for built-in providers.
 - `custom_providers` is optional. Custom provider definitions are validated at startup and merged into the provider registry. Custom entries with the same key as a built-in provider override the built-in definition.
 
