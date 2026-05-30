@@ -106,7 +106,7 @@ func TestRunHarnessWithWrapper_Success(t *testing.T) {
 			return "/usr/bin/" + file, nil
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}

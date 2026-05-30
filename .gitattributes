@@ -1,0 +1,26 @@
+# Go source always uses LF line endings
+*.go text eol=lf
+
+# Shell scripts must use LF
+*.sh text eol=lf
+
+# PowerShell scripts can use CRLF (native on Windows)
+*.ps1 text eol=crlf
+
+# Windows install script
+*.cmd text eol=crlf
+
+# Plain text files
+*.md text
+*.yaml text
+*.yml text
+*.json text
+*.toml text
+*.mod text
+*.sum text
+LICENSE text
+
+# Binary files
+*.exe binary
+*.zip binary
+*.tar.gz binary

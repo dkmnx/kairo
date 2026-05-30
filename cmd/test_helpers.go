@@ -3,11 +3,22 @@ package cmd
 import (
 	"context"
 	"os/exec"
+	"runtime"
 
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
+
+// testEchoCmd returns a command that prints "mocked" to stdout. It uses
+// "cmd /c echo" on Windows because echo is a shell built-in there.
+func testEchoCmd() *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		return exec.CommandContext(context.Background(), "cmd", "/c", "echo", "mocked")
+	}
+
+	return exec.CommandContext(context.Background(), "echo", "mocked")
+}
 
 // mockProcess is a test double for ProcessRunner with configurable function fields.
 type mockProcess struct {
