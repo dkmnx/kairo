@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.8.1] - 2026-05-30
+
 ### Fixed
 
 - Resolve named provider when `--harness` flag is set
@@ -1318,7 +1320,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.8.0...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.8.1...HEAD
+[v2.8.1]: https://github.com/dkmnx/kairo/compare/v2.8.0...v2.8.1
 [v2.8.0]: https://github.com/dkmnx/kairo/compare/v2.7.0...v2.8.0
 [v2.7.0]: https://github.com/dkmnx/kairo/compare/v2.6.2...v2.7.0
 [v2.6.2]: https://github.com/dkmnx/kairo/compare/v2.6.1...v2.6.2
