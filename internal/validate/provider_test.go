@@ -207,6 +207,18 @@ func TestValidateProviderModel(t *testing.T) {
 			model:    "claude-3-5-sonnet-20241022",
 			wantErr:  false,
 		},
+		{
+			name:     "valid model with context window brackets",
+			provider: "zai",
+			model:    "deepseek-v4-pro[1m]",
+			wantErr:  false,
+		},
+		{
+			name:     "valid model with bracket suffix",
+			provider: "zai",
+			model:    "model[128k]",
+			wantErr:  false,
+		},
 
 		// Invalid model names
 		{
@@ -303,6 +315,8 @@ func TestIsValidModelRune(t *testing.T) {
 		{'-', true},
 		{'_', true},
 		{'.', true},
+		{'[', true},
+		{']', true},
 		{'@', false},
 		{'#', false},
 		{'!', false},

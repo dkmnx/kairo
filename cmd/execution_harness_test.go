@@ -208,7 +208,7 @@ func TestExecuteWrapperWithAuth_QwenPassesAuthArgs(t *testing.T) {
 			return scriptPath, false, nil
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-			return exec.Command("echo", "mocked")
+			return testEchoCmd()
 		}
 		mp.ExitProcessFn = func(int) {}
 	})
@@ -386,7 +386,7 @@ func TestExecuteWithAuth_AuthDirCleanup(t *testing.T) {
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			execCalled.Store(true)
-			return exec.Command("echo", "mocked")
+			return testEchoCmd()
 		}
 		mp.ExitProcessFn = func(int) {}
 	})
@@ -418,7 +418,7 @@ func TestExecuteWithoutAuth_ClaudeSuccess(t *testing.T) {
 			return "/usr/bin/" + file, nil
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
