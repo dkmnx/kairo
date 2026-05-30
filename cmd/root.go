@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -329,7 +330,7 @@ func providerFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (st
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
 	cliCtx := CLIContextFromCmd(cmd)
 
-	if len(args) == 0 || cliCtx.DefaultProviderExplicit() || harnessFlag != "" {
+	if len(args) == 0 || cliCtx.DefaultProviderExplicit() {
 		if cfg.DefaultProvider == "" {
 			cmd.Println("No default provider set.")
 			cmd.Println()
@@ -347,5 +348,20 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 
 	providerName, harnessArgs := providerFromArgs(cmd, cfg, args)
 
+	// When --harness is set and the first arg is not a known provider,
+	// treat all args as harness args and use the default provider.
+	if harnessFlag != "" && !isKnownProvider(providerName, cfg) && cfg.DefaultProvider != "" {
+		return []string{cfg.DefaultProvider}, args, cfg.DefaultProvider
+	}
+
 	return args, harnessArgs, providerName
+}
+
+// isKnownProvider reports whether name matches a configured or built-in provider.
+func isKnownProvider(name string, cfg *config.Config) bool {
+	if _, ok := cfg.Providers[name]; ok {
+		return true
+	}
+
+	return providers.IsBuiltInProvider(name)
 }
