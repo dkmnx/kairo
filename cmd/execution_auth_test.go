@@ -65,7 +65,7 @@ func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			execCalled.Store(true)
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
@@ -112,7 +112,7 @@ func TestExecuteWithAuth_ClaudeHarness(t *testing.T) {
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			execCalled.Store(true)
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
@@ -163,7 +163,7 @@ func TestExecuteWithAuth_YoloModeClaude(t *testing.T) {
 			return scriptPath, true, nil
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
@@ -222,7 +222,7 @@ func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
 			return scriptPath, true, nil
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
@@ -269,7 +269,7 @@ func TestExecuteWithAuth_PiHarness(t *testing.T) {
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			capturedArgs = arg
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}
@@ -315,7 +315,7 @@ func TestExecuteWithAuth_PiYoloMode(t *testing.T) {
 		}
 		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 			capturedArgs = arg
-			cmd := exec.Command("echo", "mocked")
+			cmd := testEchoCmd()
 			cmd.Env = []string{"TEST=value"}
 			return cmd
 		}

@@ -162,7 +162,7 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 
 	// (In real workflow, user would run 'kairo setup')
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
-	secretsContent := "ZAI_API_KEY=sk-zai-test-key-12345\n"
+	secretsContent := "ANTHROPIC_API_KEY=TEST-KEY-DO-NOT-USE-anthropic-e2e\n"
 	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
 		t.Fatal(err)
 	}
@@ -191,11 +191,11 @@ func TestE2ECompleteWorkflow(t *testing.T) {
 		t.Fatalf("DecryptSecrets(context.Background(), ) error = %v", err)
 	}
 
-	if !strings.Contains(decrypted, "ZAI_API_KEY") {
-		t.Error("secrets should contain ZAI_API_KEY")
+	if !strings.Contains(decrypted, "ANTHROPIC_API_KEY") {
+		t.Error("secrets should contain ANTHROPIC_API_KEY")
 	}
 
-	if !strings.Contains(decrypted, "sk-zai-test-key-12345") {
+	if !strings.Contains(decrypted, "TEST-KEY-DO-NOT-USE-anthropic-e2e") {
 		t.Error("secrets should contain the API key")
 	}
 

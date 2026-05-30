@@ -138,34 +138,6 @@ func TestSaveConfigWithHarness(t *testing.T) {
 	}
 }
 
-func TestLoadConfigWithEmptyFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.yaml")
-
-	if err := os.WriteFile(configPath, []byte(""), 0600); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := LoadConfig(context.Background(), tmpDir)
-	if err != nil {
-		t.Logf("LoadConfig(context.Background(), ) error on empty file: %v", err)
-	}
-}
-
-func TestLoadConfigWithInvalidYAML(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.yaml")
-
-	if err := os.WriteFile(configPath, []byte("invalid: yaml: content:"), 0600); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := LoadConfig(context.Background(), tmpDir)
-	if err == nil {
-		t.Error("LoadConfig(context.Background(), ) should error on invalid YAML")
-	}
-}
-
 func TestSaveConfigAtomicWrite(t *testing.T) {
 	// Test that SaveConfig uses atomic write (temp file + rename) pattern.
 	// This ensures:

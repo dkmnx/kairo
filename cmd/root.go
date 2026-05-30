@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -73,7 +74,13 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 
 // Execute runs the root command.
 func Execute() error {
-	args := os.Args[1:]
+	var args []string
+	if testArgs != nil {
+		args = testArgs
+		testArgs = nil
+	} else {
+		args = os.Args[1:]
+	}
 
 	defer func() {
 		rootCmd.SetArgs(nil)
@@ -85,6 +92,15 @@ func Execute() error {
 
 	return rootCmd.Execute()
 }
+
+// SetTestArgs sets the arguments for the root command in tests.
+// It configures the root command to use the provided args when Execute is called,
+// bypassing os.Args to allow direct testing of subcommands.
+func SetTestArgs(args ...string) {
+	testArgs = args
+}
+
+var testArgs []string
 
 func init() {
 	rootCmd.PersistentFlags().String("config", "", "Config directory (default is platform-specific)")
@@ -314,7 +330,7 @@ func providerFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (st
 func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
 	cliCtx := CLIContextFromCmd(cmd)
 
-	if len(args) == 0 || cliCtx.DefaultProviderExplicit() || harnessFlag != "" {
+	if len(args) == 0 || cliCtx.DefaultProviderExplicit() {
 		if cfg.DefaultProvider == "" {
 			cmd.Println("No default provider set.")
 			cmd.Println()
@@ -332,5 +348,20 @@ func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []strin
 
 	providerName, harnessArgs := providerFromArgs(cmd, cfg, args)
 
+	// When --harness is set and the first arg is not a known provider,
+	// treat all args as harness args and use the default provider.
+	if harnessFlag != "" && !isKnownProvider(providerName, cfg) && cfg.DefaultProvider != "" {
+		return []string{cfg.DefaultProvider}, args, cfg.DefaultProvider
+	}
+
 	return args, harnessArgs, providerName
+}
+
+// isKnownProvider reports whether name matches a configured or built-in provider.
+func isKnownProvider(name string, cfg *config.Config) bool {
+	if _, ok := cfg.Providers[name]; ok {
+		return true
+	}
+
+	return providers.IsBuiltInProvider(name)
 }

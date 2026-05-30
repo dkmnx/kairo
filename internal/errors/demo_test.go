@@ -3,57 +3,13 @@ package errors_test
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"strings"
+	"testing"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
-	"gopkg.in/yaml.v3"
 )
 
-func Demo_KairoError_with_context() {
-	err := kairoerrors.WrapError(kairoerrors.FileSystemError,
-		"failed to write file", errors.New("permission denied")).
-		WithContext("path", "/config/kairo/config").
-		WithContext("permissions", "0600")
-
-	fmt.Println(err.Error())
-	// Output: failed to write file: permission denied (path=/config/kairo/config, permissions=0600)
-}
-
-func Demo_KairoError_with_hint() {
-	err := kairoerrors.WrapError(kairoerrors.CryptoError,
-		"failed to decrypt secrets file", errors.New("authentication failed")).
-		WithContext("path", "~/.config/kairo/secrets.age").
-		WithContext("hint", "ensure key file matches the one used for encryption")
-
-	fmt.Println(err.Error())
-	// Output: failed to decrypt secrets file: authentication failed (path=~/.config/kairo/secrets.age, hint=ensure key file matches the one used for encryption)
-}
-
-func Demo_KairoError_crypto_key_rotation() {
-	err := kairoerrors.WrapError(kairoerrors.CryptoError,
-		"failed to decrypt secrets with old key during rotation", errors.New("no identity matched for decryption")).
-		WithContext("secrets_path", "/tmp/test/secrets.age").
-		WithContext("hint", "old key may be corrupted or invalid")
-
-	fmt.Println(err.Error())
-	// Output: failed to decrypt secrets with old key during rotation: no identity matched for decryption (secrets_path=/tmp/test/secrets.age, hint=old key may be corrupted or invalid)
-}
-
-func Demo_KairoError_multiple_context() {
-	err := kairoerrors.WrapError(kairoerrors.ProviderError,
-		"provider not available", errors.New("connection timeout")).
-		WithContext("provider", "anthropic").
-		WithContext("host", "api.anthropic.com").
-		WithContext("port", "443").
-		WithContext("attempt", "3").
-		WithContext("hint", "check network connectivity and firewall settings")
-
-	fmt.Println(err.Error())
-	// Output: provider not available: connection timeout (provider=anthropic, host=api.anthropic.com, port=443, attempt=3, hint=check network connectivity and firewall settings)
-}
-
-func Demo_KairoError_error_type_checking() {
+func ExampleKairoError_errorTypeChecking() {
 	err := kairoerrors.WrapError(kairoerrors.ConfigError,
 		"invalid configuration", errors.New("missing field"))
 
@@ -67,35 +23,78 @@ func Demo_KairoError_error_type_checking() {
 	// Message: invalid configuration
 }
 
-func Demo_structured_error_handling() error {
-	tmpDir := os.TempDir()
-	configPath := filepath.Join(tmpDir, "config.yml")
+func TestErrorExamples(t *testing.T) {
+	t.Run("with context", func(t *testing.T) {
+		err := kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to write file", errors.New("permission denied")).
+			WithContext("path", "/config/kairo/config").
+			WithContext("permissions", "0600")
 
-	invalidYAML := `
-default_provider: "zai"
-providers:
-  - invalid: [yaml
-`
+		msg := err.Error()
+		if !strings.Contains(msg, "failed to write file: permission denied") {
+			t.Errorf("expected message with cause, got: %s", msg)
+		}
+		if !strings.Contains(msg, "path=/config/kairo/config") {
+			t.Errorf("expected path context, got: %s", msg)
+		}
+		if !strings.Contains(msg, "permissions=0600") {
+			t.Errorf("expected permissions context, got: %s", msg)
+		}
+	})
 
-	if err := os.WriteFile(configPath, []byte(invalidYAML), 0600); err != nil {
-		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to write test config", err).
-			WithContext("path", configPath)
-	}
+	t.Run("with hint", func(t *testing.T) {
+		err := kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to decrypt secrets file", errors.New("authentication failed")).
+			WithContext("path", "~/.config/kairo/secrets.age").
+			WithContext("hint", "ensure key file matches the one used for encryption")
 
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return err
-	}
+		msg := err.Error()
+		if !strings.Contains(msg, "failed to decrypt secrets file: authentication failed") {
+			t.Errorf("expected message with cause, got: %s", msg)
+		}
+		if !strings.Contains(msg, "hint=ensure key file matches the one used for encryption") {
+			t.Errorf("expected hint context, got: %s", msg)
+		}
+	})
 
-	var cfg any
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return kairoerrors.WrapError(kairoerrors.ConfigError,
-			"failed to parse configuration file (invalid YAML)", err).
-			WithContext("path", configPath).
-			WithContext("hint", "check YAML syntax and indentation")
-	}
+	t.Run("crypto key rotation", func(t *testing.T) {
+		err := kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to decrypt secrets with old key during rotation", errors.New("no identity matched for decryption")).
+			WithContext("secrets_path", "/tmp/test/secrets.age").
+			WithContext("hint", "old key may be corrupted or invalid")
 
-	_ = cfg
-	return nil
+		msg := err.Error()
+		if !strings.Contains(msg, "no identity matched for decryption") {
+			t.Errorf("expected cause in message, got: %s", msg)
+		}
+		if !strings.Contains(msg, "secrets_path=/tmp/test/secrets.age") {
+			t.Errorf("expected secrets_path context, got: %s", msg)
+		}
+	})
+
+	t.Run("multiple context values", func(t *testing.T) {
+		err := kairoerrors.WrapError(kairoerrors.ProviderError,
+			"provider not available", errors.New("connection timeout")).
+			WithContext("provider", "anthropic").
+			WithContext("host", "api.anthropic.com").
+			WithContext("port", "443").
+			WithContext("attempt", "3").
+			WithContext("hint", "check network connectivity and firewall settings")
+
+		msg := err.Error()
+		if !strings.Contains(msg, "provider not available: connection timeout") {
+			t.Errorf("expected message with cause, got: %s", msg)
+		}
+		for _, ctx := range []string{
+			"provider=anthropic",
+			"host=api.anthropic.com",
+			"port=443",
+			"attempt=3",
+			"hint=check network connectivity and firewall settings",
+		} {
+			if !strings.Contains(msg, ctx) {
+				t.Errorf("expected context %q in message, got: %s", ctx, msg)
+			}
+		}
+	})
 }
