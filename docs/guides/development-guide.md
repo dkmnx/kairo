@@ -23,10 +23,18 @@ just build          # Build binary to dist/
 just test           # Run tests, then race-enabled tests
 just test-coverage  # Generate coverage report in dist/
 just lint           # Run gofmt checks, go vet, golangci-lint
+just fuzz           # Run fuzzing tests (5s per func)
+just security       # Run govulncheck + lint
 just format         # Format code with gofmt
+just deps           # Install dependencies and dev tools
+just verify-deps    # Verify Go module dependencies
 just pre-release    # Format, lint, pre-commit, test
 just install        # Install to ~/.local/bin/
+just clean          # Remove build artifacts
+just run            # Build and run with arguments
 ```
+
+Run `just --list` for all available recipes.
 
 Manual commands:
 
@@ -50,7 +58,9 @@ kairo/
 │   ├── constants/      # Shared constants (paths, defaults)
 │   ├── crypto/         # age/X25519 key management and encryption
 │   ├── errors/         # Typed errors
+│   ├── execution/      # Harness execution dispatch
 │   ├── fsutil/         # Atomic file write utility
+│   ├── harness/        # Harness dispatch (Claude, Qwen, Pi, Crush)
 │   ├── providers/      # Built-in provider registry
 │   ├── secrets/        # Secrets loading and saving
 │   ├── ui/             # Terminal output and prompts
