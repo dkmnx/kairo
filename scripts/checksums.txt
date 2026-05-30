@@ -2,4 +2,4 @@
 # DO NOT EDIT - This file is auto-generated during release
 
 52d122cee63c17656cc8d1c5224d1442a9cc879e0fa57238a01f0dfc7ace4b11  scripts/install.sh
-b632be0d3892e8089759c57b7d4769b226249b9ff52ff167c710c26f3e87796d  scripts/install.ps1
+67267b5be2055163dd8cb9f86566d56fbd4ac8101c151ffd1742e8622e46c955  scripts/install.ps1

@@ -5,7 +5,7 @@ repos:
         name: Update install script checksums
         entry: bash -c 'for f in "$@"; do dir=$(dirname "$f"); printf "# Kairo release checksums\n# DO NOT EDIT - This file is auto-generated during release\n\n" > "$dir/checksums.txt"; for s in "$dir"/install.{sh,ps1}; do [ -f "$s" ] && sha256sum "$s" >> "$dir/checksums.txt"; done; git add "$dir/checksums.txt"; done'
         language: system
-        files: scripts/install\.(sh|ps1)$
+        files: (scripts/install\.(sh|ps1)$|\.gitattributes$)
         pass_filenames: true
         stages: [pre-commit]
 
