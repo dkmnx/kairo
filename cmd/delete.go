@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/secrets"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
@@ -122,16 +122,13 @@ func deleteProviderSecrets(ctx context.Context, svc crypto.Service, secretsPath,
 
 	parsed := secrets.ParseWithStats(string(existingSecrets))
 
-	apiKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
+	apiKey := harness.APIKeyEnvVar(providerName)
 	delete(parsed.Secrets, apiKey)
 
 	secretsContent := secrets.Format(parsed.Secrets)
-	if len(parsed.RawLines) > 0 {
-		secretsContent += strings.Join(parsed.RawLines, "\n") + "\n"
+	if parsed.SkippedCount > 0 {
 		ui.PrintWarn(
-			fmt.Sprintf("%d malformed entries preserved (unparseable)",
-				len(parsed.RawLines),
-			),
+			fmt.Sprintf("%d malformed entries dropped (unparseable)", parsed.SkippedCount),
 		)
 	}
 
