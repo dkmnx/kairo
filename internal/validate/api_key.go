@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"os"
 	"slices"
 
 	"github.com/dkmnx/kairo/internal/errors"
@@ -23,24 +22,21 @@ func ValidateAPIKey(key, providerName string) error {
 }
 
 var (
-	msgInvalidCIDR = "kairo: invalid hardcoded CIDR %q: %v\n"
-
-	private10   = mustParseCIDR("10.0.0.0/8")
-	private172  = mustParseCIDR("172.16.0.0/12")
-	private192  = mustParseCIDR("192.168.0.0/16")
-	linkLocal   = mustParseCIDR("169.254.0.0/16")
-	ulaIPv6     = mustParseCIDR("fc00::/7")
-	linkLocalV6 = mustParseCIDR("fe80::/10")
+	private10   = parseCIDROrPanic("10.0.0.0/8")
+	private172  = parseCIDROrPanic("172.16.0.0/12")
+	private192  = parseCIDROrPanic("192.168.0.0/16")
+	linkLocal   = parseCIDROrPanic("169.254.0.0/16")
+	ulaIPv6     = parseCIDROrPanic("fc00::/7")
+	linkLocalV6 = parseCIDROrPanic("fe80::/10")
 )
 
-func mustParseCIDR(s string) net.IPNet {
+func parseCIDROrPanic(s string) *net.IPNet {
 	_, ipnet, err := net.ParseCIDR(s)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, msgInvalidCIDR, s, err)
-		os.Exit(1)
+		panic("kairo: invalid hardcoded CIDR " + s + ": " + err.Error())
 	}
 
-	return *ipnet
+	return ipnet
 }
 
 // ValidateURL checks that the given URL is a valid HTTPS URL without blocked hosts.
