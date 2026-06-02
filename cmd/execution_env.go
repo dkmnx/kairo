@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
@@ -60,7 +60,7 @@ func BuildSecretsEnvVars(secrets map[string]string) []string {
 
 // APIKeyEnvVarName returns the conventional environment variable name for a provider's API key.
 func APIKeyEnvVarName(providerName string) string {
-	return fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
+	return harness.APIKeyEnvVar(providerName)
 }
 
 // RequiresAPIKey reports whether the named provider requires an API key.
