@@ -1,128 +1,71 @@
-# Command Package (`cmd/`)
+# `cmd/` package
 
-CLI command implementations using Cobra.
+The `cmd/` package implements the kairo CLI command tree using
+[spf13/cobra](https://github.com/spf13/cobra). It is the only package
+allowed to import `cmd/`'s siblings plus `spf13/cobra`; all business
+logic lives in `internal/`.
 
-## Structure
+## File map
 
-| File                 | Purpose                                                         |
-| -------------------- | --------------------------------------------------------------- |
-| `root.go`            | Root command, flag wiring, provider resolution                  |
-| `setup.go`           | Interactive setup and reset-secrets flow                        |
-| `setup_prompts.go`   | Prompt helpers for provider setup                               |
-| `list.go`            | List configured providers                                       |
-| `default.go`         | Get or set default provider                                     |
-| `delete.go`          | Remove provider configurations                                  |
-| `harness.go`         | Manage default harness (`claude`, `qwen`, `pi`, or `crush`)     |
-| `execution.go`       | Execute Claude/Qwen with provider configuration                 |
-| `update.go`          | Update to latest version                                        |
-| `version.go`         | Version command                                                 |
-| `completion.go`      | Shell completion script generation                              |
-| `context.go`         | `CLIContext` state and config cache access                      |
-| `util.go`            | Shared helpers and process utilities                            |
+| File                      | Concern                                                                                                               |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `root.go`                 | Root command, `Execute()`, `loadRootConfig`, `runPiProvider` / `runStandardProvider`                                  |
+| `interfaces.go`           | Service interfaces (Process, Wrapper, Update, Crypto)                                                                 |
+| `deps.go`                 | Production adapters that satisfy the interfaces                                                                       |
+| `context.go`              | `CLIContext`, `defaultCLIContext`, `WithCLIContext`                                                                   |
+| `setup.go`                | Interactive setup wizard entry point                                                                                  |
+| `setup_config.go`         | `EnsureConfigDir`, `LoadConfig`, `AddAndSaveProvider`, `LoadSecrets`, `SaveSecrets`, `ResetSecretsFiles`              |
+| `setup_configdir_test.go` | Tests for config-dir resolution                                                                                       |
+| `setup_provider.go`       | `ProviderDefinition`, `ResolveProviderName`, `BuildProviderConfig`                                                    |
+| `setup_prompts.go`        | Interactive prompts (`promptForAPIKey`, `promptForBaseURL`, `promptForModel`, `promptForEnvKey`, `promptForProvider`) |
+| `execution.go`            | `ExecutionConfig`, `WrapperCmd`, `buildWrapperCommand`                                                                |
+| `execution_env.go`        | `BuildProviderEnv`, `HarnessAPIKeyEnvVar`, `PiAPIKeyEnvVar`, env-var merge logic                                      |
+| `execution_harness.go`    | `executePi`, `runHarnessExec`, `executeWithAuth`, `executeWithoutAuth`, `lookUpHarnessBinary`, `reportHarnessError`   |
+| `execution_error.go`      | `handleConfigError`, `isBinaryOutdatedError`, `promptUpgrade`, `handleSecretsError`                                   |
+| `util.go`                 | `requireConfigDir`, `loadConfigOrExit`, `loadConfigOrEmpty`, `mergeEnvVars` (delegates to `internal/envutil`)         |
+| `default.go`              | `kairo default [provider]` command                                                                                    |
+| `list.go`                 | `kairo list` command                                                                                                  |
+| `delete.go`               | `kairo delete [provider]` command, `deleteProviderSecrets`                                                            |
+| `harness.go`              | `kairo harness get                                                                                                    | set` subcommands, `resolveHarness` |
+| `version.go`              | `kairo version`, `checkForUpdates`                                                                                    |
+| `update.go`               | `kairo update` command, cosign/checksum verification                                                                  |
+| `completion.go`           | `kairo completion` command and shell scripts                                                                          |
+| `test_helpers.go`         | `testCmd`, `testEchoCmd`, `mockProcess`, `mockWrapper`, `mockUpdate`, `testDeps`                                      |
+| `deps_test.go`            | `NewDeps` smoke test and interface conformance                                                                        |
 
-## Command Architecture
+## Lifecycle of `CLIContext`
 
-```mermaid
-flowchart TB
-    Main[main.go] --> Root[rootCmd]
-    Root --> Setup[setup]
-    Root --> List[list]
-    Root --> Default[default]
-    Root --> Delete[delete]
-    Root --> Harness[harness]
-    Root --> Update[update]
-    Root --> Version[version]
-    Root --> Exec[provider execution]
-```
+A single package-level `defaultCLIContext` is the only `*CLIContext` used
+in production. It holds:
 
-## Command Reference
+- The resolved config directory (lazily via `ConfigDirResolver`).
+- The verbosity flag.
+- A `*config.ConfigCache` keyed by config directory.
+- A `context.Context` for the lifetime of the CLI.
+- A `*Deps` containing the four service interfaces.
 
-### Setup and Configuration
+The context is attached to each `cobra.Command` via `cmd.SetContext`
+inside `rootCmd.PersistentPreRun`. `CLIContextFromCmd` retrieves it.
 
-| Command                       | Description                                      |
-| ----------------------------- | ------------------------------------------------ |
-| `kairo setup`                 | Interactive setup and edit wizard                |
-| `kairo setup --reset-secrets` | Regenerate encryption key and re-enter API keys  |
-| `kairo list`                  | List all configured providers                    |
-| `kairo default [provider]`    | Get or set the default provider                  |
-| `kairo delete <provider>`     | Remove a provider configuration                  |
+Tests should not rely on the global; use `NewCLIContext()` to construct
+isolated contexts and inject them with `cliCtx.SetDeps(...)`.
 
-### Harness Management
+## Dependency injection
 
-| Command                     | Description                                             |
-| --------------------------- | ------------------------------------------------------- |
-| `kairo harness get`         | Get current default harness                             |
-| `kairo harness set <name>`  | Set default harness (`claude`, `qwen`, `pi`, `crush`)   |
+External boundaries (process exec, wrapper script gen, self-update,
+crypto) are behind four interfaces in `interfaces.go`. Production uses
+`NewDeps()` to wire the real implementations. Tests use `testDeps` to
+provide `*mockProcess` / `*mockWrapper` / `*mockUpdate` that record calls
+or return canned values. The pattern lets us unit-test the full CLI
+flow without spawning real processes.
 
-### Execution
+## Conventions
 
-| Command                                  | Description                             |
-| ---------------------------------------- | --------------------------------------- |
-| `kairo <provider> [args]`                | Execute with a specific provider        |
-| `kairo -- [args]`                        | Execute with the default provider       |
-| `kairo --harness qwen <provider> [args]` | Execute with a specific harness         |
-| `kairo --yolo <provider> [args]`         | Skip harness permission prompts         |
-
-### Maintenance
-
-| Command                           | Description                             |
-| --------------------------------- | --------------------------------------- |
-| `kairo update`                    | Update to latest version                |
-| `kairo version`                   | Display version info                    |
-
-| `kairo completion [shell]`        | Generate shell completion script        |
-
-## Flags
-
-### Persistent Flags
-
-| Flag            | Purpose                                         |
-| --------------- | ----------------------------------------------- |
-| `--config`      | Config directory (default is platform-specific) |
-| `-v, --verbose` | Enable verbose output                           |
-
-### Root Execution Flags
-
-| Flag         | Purpose                                                                                                                     |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `--harness`  | Harness to use for execution (`claude`, `qwen`, `pi`, or `crush`)                                                           |
-| `-y, --yolo` | Skip permission prompts. Maps to `--dangerously-skip-permissions` for Claude, `--yolo` for Qwen and Crush. No effect on Pi. |
-
-## CLIContext
-
-`CLIContext` centralizes runtime state for the command layer:
-
-- config directory override
-- verbose mode
-- config cache
-- root context for cancellation-aware operations
-
-This keeps command handlers thin while avoiding direct business logic in `cmd/`.
-
-## Harnesses
-
-| Harness  | CLI Binary | Notes                                         |
-| -------- | ---------- | --------------------------------------------- |
-| `claude` | `claude`   | Default harness                               |
-| `qwen`   | `qwen`     | Uses `ANTHROPIC_API_KEY`                      |
-| `pi`     | `pi`       | Passes all provider keys                      |
-| `crush`  | `crush`    | Uses provider-specific `API_KEY` env variable |
-
-Kairo selects the harness in this order:
-
-1. `--harness` flag
-2. `default_harness` from `config.yaml`
-3. fallback to `claude`
-
-## Testing
-
-```bash
-go test ./cmd/...
-go test -race ./cmd/...
-go test -v ./cmd/... -run TestSetup
-```
-
-## Dependencies
-
-- `github.com/spf13/cobra`
-- Internal packages: `config`, `crypto`, `providers`, `ui`, `validate`, `version`, `wrapper`
+- Run methods on Cobra commands `cmd *cobra.Command` and accept
+  `*cobra.Command` for output. The `ExecutionConfig` struct aggregates
+  everything a downstream `execute*` function needs.
+- For test isolation, every test file uses `t.TempDir()` and
+  `t.Cleanup(...)` to restore the global `defaultCLIContext`.
+- Doc comments on every exported identifier (Google Go Style Guide).
+- The `cmd/` package imports no `internal/cmd` (there is none) and is
+  the only place `spf13/cobra` is imported.
