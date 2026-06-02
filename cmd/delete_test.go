@@ -22,10 +22,10 @@ func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	originalConfigDir := configDir()
-	defer func() { setConfigDir(originalConfigDir) }()
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
-	setConfigDir(tmpDir)
+	defaultCLIContext.SetConfigDir(tmpDir)
 
 	cfg := &config.Config{
 		DefaultProvider: "testprovider",
@@ -85,10 +85,10 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	originalConfigDir := configDir()
-	defer func() { setConfigDir(originalConfigDir) }()
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
-	setConfigDir(tmpDir)
+	defaultCLIContext.SetConfigDir(tmpDir)
 
 	cfg := &config.Config{
 		DefaultProvider: "provider1",
@@ -202,7 +202,33 @@ func TestDeleteProviderSecretsReturnsErrorOnBadKey(t *testing.T) {
 	}
 }
 
-func TestDeleteProviderSecretsPreservesMalformedLines(t *testing.T) {
+func TestDeleteProviderSecretsRemovesEmptyFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
+		t.Fatalf("EnsureKeyExists() error = %v", err)
+	}
+
+	secretsPath := filepath.Join(tmpDir, constants.SecretsFileName)
+	keyPath := filepath.Join(tmpDir, constants.KeyFileName)
+
+	// File contains only the entry we want to delete; afterwards it should
+	// be removed entirely.
+	secretsContent := "ONLY_PROVIDER_API_KEY=secret\n"
+	if err := crypto.EncryptSecrets(context.Background(), secretsPath, keyPath, secretsContent); err != nil {
+		t.Fatalf("EncryptSecrets() error = %v", err)
+	}
+
+	if err := deleteProviderSecrets(context.Background(), NewCLIContext().Crypto(), secretsPath, keyPath, "ONLY_PROVIDER"); err != nil {
+		t.Fatalf("deleteProviderSecrets() error = %v", err)
+	}
+
+	if _, err := os.Stat(secretsPath); !os.IsNotExist(err) {
+		t.Errorf("secrets file should be removed, got err=%v", err)
+	}
+}
+
+func TestDeleteProviderSecretsDropsMalformedLines(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	if err := crypto.EnsureKeyExists(context.Background(), tmpDir); err != nil {
@@ -229,8 +255,8 @@ func TestDeleteProviderSecretsPreservesMalformedLines(t *testing.T) {
 	if !strings.Contains(decrypted, "VALID_KEY=valid_value") {
 		t.Error("decrypted content should still contain VALID_KEY=valid_value")
 	}
-	if !strings.Contains(decrypted, "malformed_without_equals") {
-		t.Error("decrypted content should still contain malformed_without_equals")
+	if strings.Contains(decrypted, "malformed_without_equals") {
+		t.Error("decrypted content should NOT contain malformed_without_equals (malformed entries are dropped)")
 	}
 	if strings.Contains(decrypted, "PROVIDER_TO_DELETE_API_KEY=secret") {
 		t.Error("decrypted content should NOT contain PROVIDER_TO_DELETE_API_KEY")
