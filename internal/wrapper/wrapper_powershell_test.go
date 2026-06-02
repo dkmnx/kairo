@@ -70,6 +70,38 @@ func TestEscapePowerShellArg_EdgeCases(t *testing.T) {
 	}
 }
 
+func TestEscapePowerShellArg_InjectionDefense(t *testing.T) {
+	// Adversarial payloads that target command-substitution, backtick
+	// chaining, and the single-quote escape hatch in PowerShell.
+	injections := []string{
+		"'; Start-Process calc; '",
+		"`$(Get-Process)",
+		"$(rm -rf /)",
+		"\" ; Remove-Item -Recurse C:\\ ; \"",
+		"a]b[c{d}e<f>g",
+		"$([char]0x61)",
+		"`e[31mRED`e[0m",
+	}
+
+	for _, payload := range injections {
+		t.Run(payload, func(t *testing.T) {
+			got := EscapePowerShellArg(payload)
+			if !strings.HasPrefix(got, "'") || !strings.HasSuffix(got, "'") {
+				t.Errorf("Result must be single-quoted, got: %q", got)
+			}
+			// After wrapping in single quotes, embedded `$(` is harmless
+			// because PowerShell single-quote strings do not interpolate.
+			// The only thing that could break out is an unescaped single
+			// quote. We double them as `''`, so verify the count of
+			// single quotes inside the wrapping is even.
+			inner := got[1 : len(got)-1]
+			if strings.Count(inner, "'")%2 != 0 {
+				t.Errorf("unbalanced single quotes inside escape: %q", got)
+			}
+		})
+	}
+}
+
 func TestEscapePowerShellArg_CommandInjectionPrevention(t *testing.T) {
 	injectionPatterns := []struct {
 		name  string
