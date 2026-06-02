@@ -7,6 +7,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
+	"github.com/dkmnx/kairo/internal/envutil"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
@@ -91,45 +92,7 @@ func runningWithRaceDetector() bool {
 }
 
 // mergeEnvVars combines multiple environment variable slices, deduplicating
-// by key name. Earlier values take precedence.
+// by key name. When duplicates exist, the value from the later slice wins.
 func mergeEnvVars(envs ...[]string) []string {
-	seen := make(map[string]bool)
-	var result []string
-
-	for _, envSlice := range envs {
-		for _, env := range envSlice {
-			idx := strings.IndexByte(env, '=')
-			if idx <= 0 {
-				continue
-			}
-			key := env[:idx]
-			seen[key] = true
-			result = append(result, env)
-		}
-	}
-
-	if len(seen) == len(result) {
-		return result
-	}
-
-	seen = make(map[string]bool)
-	var deduped []string
-	for i := len(result) - 1; i >= 0; i-- {
-		env := result[i]
-		idx := strings.IndexByte(env, '=')
-		if idx <= 0 {
-			continue
-		}
-		key := env[:idx]
-		if !seen[key] {
-			seen[key] = true
-			deduped = append(deduped, env)
-		}
-	}
-
-	for i, j := 0, len(deduped)-1; i < j; i, j = i+1, j-1 {
-		deduped[i], deduped[j] = deduped[j], deduped[i]
-	}
-
-	return deduped
+	return envutil.Merge(envs...)
 }

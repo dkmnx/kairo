@@ -6,39 +6,39 @@ import (
 
 func TestGlobalVariableAccess(t *testing.T) {
 	t.Run("configDir can be set and retrieved", func(t *testing.T) {
-		originalConfigDir := configDir()
-		defer func() { setConfigDir(originalConfigDir) }()
+		originalConfigDir := defaultCLIContext.ConfigDir()
+		defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
 		testDir := "/tmp/test-config-dir"
-		setConfigDir(testDir)
-		if got := configDir(); got != testDir {
-			t.Errorf("configDir() = %q, want %q", got, testDir)
+		defaultCLIContext.SetConfigDir(testDir)
+		if got := defaultCLIContext.ConfigDir(); got != testDir {
+			t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", got, testDir)
 		}
 	})
 
 	t.Run("configDir falls back to default when empty", func(t *testing.T) {
-		originalConfigDir := configDir()
-		defer func() { setConfigDir(originalConfigDir) }()
+		originalConfigDir := defaultCLIContext.ConfigDir()
+		defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
-		setConfigDir("")
-		got := configDir()
+		defaultCLIContext.SetConfigDir("")
+		got := defaultCLIContext.ConfigDir()
 		if got == "" {
-			t.Errorf("configDir() should return default directory when empty, got empty string")
+			t.Errorf("defaultCLIContext.ConfigDir() should return default directory when empty, got empty string")
 		}
 	})
 
 	t.Run("verbose can be set and retrieved", func(t *testing.T) {
 		originalVerbose := verbose()
-		defer func() { setVerbose(originalVerbose) }()
+		defer func() { defaultCLIContext.SetVerbose(originalVerbose) }()
 
-		setVerbose(true)
+		defaultCLIContext.SetVerbose(true)
 		if !verbose() {
-			t.Error("verbose() should return true after setVerbose(true)")
+			t.Error("verbose() should return true after defaultCLIContext.SetVerbose(true)")
 		}
 
-		setVerbose(false)
+		defaultCLIContext.SetVerbose(false)
 		if verbose() {
-			t.Error("verbose() should return false after setVerbose(false)")
+			t.Error("verbose() should return false after defaultCLIContext.SetVerbose(false)")
 		}
 	})
 }

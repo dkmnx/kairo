@@ -10,13 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	harnessClaude = harness.Claude
-	harnessQwen   = harness.Qwen
-	harnessPi     = harness.Pi
-	harnessCrush  = harness.Crush
-)
-
 func isValidHarness(name string) bool {
 	return harness.IsValid(name)
 }
@@ -101,7 +94,7 @@ func init() {
 
 func resolveHarness(flagHarness, configHarness string) string {
 	h := harness.Resolve(flagHarness, configHarness)
-	if h != flagHarness && h != configHarness && h == harnessClaude && (flagHarness != "" || configHarness != "") {
+	if h != flagHarness && h != configHarness && h == harness.Claude && (flagHarness != "" || configHarness != "") {
 		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", flagHarness))
 	}
 

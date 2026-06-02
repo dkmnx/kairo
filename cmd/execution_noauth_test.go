@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/harness"
 )
 
 func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
@@ -16,7 +17,7 @@ func TestExecuteWithoutAuth_QwenNoAPIKey(t *testing.T) {
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
 		ProviderEnv:   []string{"TEST=value"},
-		HarnessToUse:  harnessQwen,
+		HarnessToUse:  harness.Qwen,
 		HarnessBinary: "qwen",
 		Provider: config.Provider{
 			Name:    "Test Provider",
@@ -150,7 +151,7 @@ func TestExecuteWithoutAuth_QwenNoAuth(t *testing.T) {
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
 		ProviderEnv:   []string{"TEST=value"},
-		HarnessToUse:  harnessQwen,
+		HarnessToUse:  harness.Qwen,
 		HarnessBinary: "qwen",
 		Provider: config.Provider{
 			Name:    "Qwen Provider",
@@ -184,7 +185,7 @@ func TestExecuteWithoutAuth_PiHarness(t *testing.T) {
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
 		ProviderEnv:   []string{"TEST=value"},
-		HarnessToUse:  harnessPi,
+		HarnessToUse:  harness.Pi,
 		HarnessBinary: "pi",
 		Provider: config.Provider{
 			Name:    "DeepSeek AI",
@@ -218,7 +219,7 @@ func TestExecuteWithoutAuth_PiHarnessNotFound(t *testing.T) {
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
 		ProviderEnv:   []string{},
-		HarnessToUse:  harnessPi,
+		HarnessToUse:  harness.Pi,
 		HarnessBinary: "pi",
 		Provider: config.Provider{
 			Name:  "Test",

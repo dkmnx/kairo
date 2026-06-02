@@ -130,6 +130,14 @@ func (c *CLIContext) DefaultProviderExplicit() bool {
 	return c.defaultProviderExplicit
 }
 
+// defaultCLIContext is the package-level singleton used by production.
+// It is mutated in place by Execute() through PersistentPreRun and the
+// verbose-flag wiring. Tests must not depend on it: use NewCLIContext()
+// to construct isolated contexts and inject them with SetDeps.
+//
+// Goroutine-safety: the singleton is safe for concurrent reads; writes
+// happen only at startup (PersistentPreRun) and via SetConfigDir /
+// SetVerbose / SetDeps (the latter two are for tests).
 var defaultCLIContext = NewCLIContext()
 
 // CLIContextFromCmd extracts the CLIContext from a cobra command's context.

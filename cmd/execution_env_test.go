@@ -7,6 +7,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
+	"github.com/dkmnx/kairo/internal/harness"
 )
 
 func TestRequiresAPIKey(t *testing.T) {
@@ -250,17 +251,17 @@ func TestYoloModeFlag(t *testing.T) {
 		harness string
 		want    string
 	}{
-		{"claude", harnessClaude, "--dangerously-skip-permissions"},
-		{"qwen", harnessQwen, "--yolo"},
-		{"pi", harnessPi, ""},
-		{"crush", harnessCrush, "--yolo"},
+		{"claude", harness.Claude, "--dangerously-skip-permissions"},
+		{"qwen", harness.Qwen, "--yolo"},
+		{"pi", harness.Pi, ""},
+		{"crush", harness.Crush, "--yolo"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := yoloModeFlag(tt.harness)
+			got := harness.YoloFlag(tt.harness)
 			if got != tt.want {
-				t.Errorf("yoloModeFlag(%q) = %q, want %q", tt.harness, got, tt.want)
+				t.Errorf("harness.YoloFlag(%q) = %q, want %q", tt.harness, got, tt.want)
 			}
 		})
 	}
