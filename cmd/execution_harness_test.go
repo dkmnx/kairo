@@ -37,7 +37,7 @@ func TestExecutePi_HarnessNotFound(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessPi,
+		HarnessToUse:  harness.Pi,
 		HarnessBinary: "pi",
 		Provider: config.Provider{
 			Name:  "Test",
@@ -71,7 +71,7 @@ func TestExecutePi_ExecutionFails(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessPi,
+		HarnessToUse:  harness.Pi,
 		HarnessBinary: "pi",
 		Provider: config.Provider{
 			Name:  "Test",
@@ -97,7 +97,7 @@ func TestExecuteWrapperWithAuth_AuthDirFails(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessClaude,
+		HarnessToUse:  harness.Claude,
 		HarnessBinary: "claude",
 		Provider: config.Provider{
 			Name:  "Test",
@@ -128,7 +128,7 @@ func TestExecuteWrapperWithAuth_TokenFileFails(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessClaude,
+		HarnessToUse:  harness.Claude,
 		HarnessBinary: "claude",
 		Provider: config.Provider{
 			Name:  "Test",
@@ -171,7 +171,7 @@ func TestExecuteWrapperWithAuth_WrapperExecFails_Claude(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessClaude,
+		HarnessToUse:  harness.Claude,
 		HarnessBinary: "claude",
 		Provider: config.Provider{
 			Name:  "Test",
@@ -216,7 +216,7 @@ func TestExecuteWrapperWithAuth_QwenPassesAuthArgs(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessQwen,
+		HarnessToUse:  harness.Qwen,
 		HarnessBinary: "qwen",
 		Provider: config.Provider{
 			Name:  "Qwen",
@@ -263,7 +263,7 @@ func TestExecuteWithAuth_PiExecutionError(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessPi,
+		HarnessToUse:  harness.Pi,
 		HarnessBinary: "pi",
 		Provider: config.Provider{
 			Name:  "Test",
@@ -285,7 +285,7 @@ func TestExecuteWithoutAuth_YoloModeQwen(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessQwen,
+		HarnessToUse:  harness.Qwen,
 		HarnessBinary: "qwen",
 		Provider: config.Provider{
 			Name:  "Test",
@@ -321,7 +321,7 @@ func TestExecuteWrapperWithAuth_QwenWrapperFails(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessQwen,
+		HarnessToUse:  harness.Qwen,
 		HarnessBinary: "qwen",
 		Provider: config.Provider{
 			Name:  "Qwen",
@@ -353,7 +353,7 @@ func TestExecuteWithoutAuth_PiExecutionError(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessPi,
+		HarnessToUse:  harness.Pi,
 		HarnessBinary: "pi",
 		Provider: config.Provider{
 			Name:  "Test",
@@ -394,7 +394,7 @@ func TestExecuteWithAuth_AuthDirCleanup(t *testing.T) {
 	cmd := testCmd()
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
-		HarnessToUse:  harnessClaude,
+		HarnessToUse:  harness.Claude,
 		HarnessBinary: "claude",
 		Provider: config.Provider{
 			Name:  "Test",
@@ -429,7 +429,7 @@ func TestExecuteWithoutAuth_ClaudeSuccess(t *testing.T) {
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
 		ProviderEnv:   capturedEnv,
-		HarnessToUse:  harnessClaude,
+		HarnessToUse:  harness.Claude,
 		HarnessBinary: "claude",
 		Provider: config.Provider{
 			Name:  "Test",

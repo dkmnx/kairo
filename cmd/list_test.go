@@ -8,11 +8,11 @@ import (
 )
 
 func TestListCommandNoConfig(t *testing.T) {
-	originalConfigDir := configDir()
-	defer func() { setConfigDir(originalConfigDir) }()
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	setConfigDir(tmpDir)
+	defaultCLIContext.SetConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	listCmd.SetOut(buf)

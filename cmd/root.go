@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
@@ -20,18 +21,8 @@ var (
 	verboseFlag         bool
 )
 
-func setConfigDir(dir string) {
-	defaultCLIContext.SetConfigDir(dir)
-}
-
-func configDir() string {
-	return defaultCLIContext.ConfigDir()
-}
-
-func setVerbose(enabled bool) {
-	defaultCLIContext.SetVerbose(enabled)
-}
-
+// verbose reports whether verbose output should be emitted. It is true if
+// either the verbose context is set or the --verbose flag was passed.
 func verbose() bool {
 	return defaultCLIContext.Verbose() || verboseFlag
 }
@@ -64,7 +55,7 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 
 		harnessToUse := resolveHarness(harnessFlag, cfg.DefaultHarness)
 
-		if harnessToUse == harnessPi {
+		if harnessToUse == harness.Pi {
 			runPiProvider(cmd, cliCtx, cfg, provider, providerName, harnessToUse, harnessArgs)
 		} else {
 			runStandardProvider(cmd, cliCtx, provider, providerName, harnessToUse, harnessArgs)
@@ -74,33 +65,26 @@ Version: %s (commit: %s, date: %s)`, version.Version, version.Commit, version.Da
 
 // Execute runs the root command.
 func Execute() error {
-	var args []string
-	if testArgs != nil {
-		args = testArgs
-		testArgs = nil
-	} else {
-		args = os.Args[1:]
-	}
+	defaultCLIContext = NewCLIContext()
+
+	args := os.Args[1:]
+	defaultCLIContext.SetDefaultProviderExplicit(hasArgsSeparator(args))
 
 	defer func() {
 		rootCmd.SetArgs(nil)
 	}()
-
-	defaultCLIContext.SetDefaultProviderExplicit(hasArgsSeparator(args))
 
 	rootCmd.SetArgs(args)
 
 	return rootCmd.Execute()
 }
 
-// SetTestArgs sets the arguments for the root command in tests.
-// It configures the root command to use the provided args when Execute is called,
-// bypassing os.Args to allow direct testing of subcommands.
-func SetTestArgs(args ...string) {
-	testArgs = args
+// SetArgs overrides os.Args for the next Execute call. Production code never
+// calls this; tests use it to inject a deterministic argv without polluting
+// the global os.Args.
+func SetArgs(args ...string) {
+	os.Args = append([]string{os.Args[0]}, args...)
 }
-
-var testArgs []string
 
 func init() {
 	rootCmd.PersistentFlags().String("config", "", "Config directory (default is platform-specific)")

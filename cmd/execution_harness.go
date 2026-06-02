@@ -27,12 +27,64 @@ type HarnessRun struct {
 	Harness       string
 }
 
+// runHarnessExec is the shared harness-execution primitive. It locates the
+// binary in PATH, prints the Kairo banner (skipped for Crush which has its
+// own), starts a signal-aware session, and runs the binary with the standard
+// stdin/stdout/stderr wiring. On error it returns the error so the caller can
+// decide whether to exit or recover.
+func runHarnessExec(cfg ExecutionConfig, harnessPath string, cliArgs []string) error {
+	if cfg.HarnessToUse != harness.Crush {
+		ui.ClearScreen()
+		ui.PrintBanner(ui.Banner{
+			Version:      version.Version,
+			ModelName:    cfg.Provider.Model,
+			ProviderName: cfg.Provider.Name,
+			Harness:      cfg.HarnessToUse,
+		})
+	}
+
+	ctx, cancel, stopSig := execution.StartSession(CLIContextFromCmd(cfg.Cmd).RootCtx())
+	defer cancel()
+	defer stopSig()
+
+	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, harnessPath, cliArgs...)
+	execCmd.Env = cfg.ProviderEnv
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	return execCmd.Run()
+}
+
+// reportHarnessError prints a uniform harness-error line and exits the
+// process. It is the standard post-exec failure path.
+func reportHarnessError(cfg ExecutionConfig, displayName string, err error) {
+	cfg.Cmd.Printf("Error running %s: %v\n", displayName, err)
+	cfg.Deps.Process.ExitProcess(1)
+}
+
+// lookUpHarnessBinary resolves the binary in PATH. On miss it prints an error
+// via the cobra command and returns the empty string so callers can early-out
+// without printing a second time.
+func lookUpHarnessBinary(cfg ExecutionConfig) string {
+	path, err := cfg.Deps.Process.LookPath(cfg.HarnessBinary)
+	if err != nil {
+		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
+
+		return ""
+	}
+
+	return path
+}
+
+// executePi handles the Pi harness, which injects --provider/--model and runs
+// directly without the wrapper script. It returns the run error so callers
+// can decide whether to surface it and exit.
 func executePi(cfg ExecutionConfig) error {
 	cliArgs := cfg.HarnessArgs
 
 	if cfg.Yolo {
-		flag := harness.YoloFlag(cfg.HarnessToUse)
-		if flag != "" {
+		if flag := harness.YoloFlag(cfg.HarnessToUse); flag != "" {
 			cliArgs = append([]string{flag}, cliArgs...)
 		}
 	}
@@ -42,32 +94,12 @@ func executePi(cfg ExecutionConfig) error {
 		cliArgs...,
 	)
 
-	piPath, err := cfg.Deps.Process.LookPath(cfg.HarnessBinary)
-	if err != nil {
-		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
-
+	piPath := lookUpHarnessBinary(cfg)
+	if piPath == "" {
 		return nil
 	}
 
-	ui.ClearScreen()
-	ui.PrintBanner(ui.Banner{
-		Version:      version.Version,
-		ModelName:    cfg.Provider.Model,
-		ProviderName: cfg.Provider.Name,
-		Harness:      cfg.HarnessToUse,
-	})
-
-	ctx, cancel, stopSig := execution.StartSession(CLIContextFromCmd(cfg.Cmd).RootCtx())
-	defer cancel()
-	defer stopSig()
-
-	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, piPath, cliArgs...)
-	execCmd.Env = cfg.ProviderEnv
-	execCmd.Stdin = os.Stdin
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
-
-	return execCmd.Run()
+	return runHarnessExec(cfg, piPath, cliArgs)
 }
 
 func runHarnessWithWrapper(ctx context.Context, deps *Deps, params HarnessRun) error {
@@ -90,17 +122,6 @@ func runHarnessWithWrapper(ctx context.Context, deps *Deps, params HarnessRun) e
 			"generating wrapper script", err)
 	}
 
-	// Crush displays its own banner on startup; suppress Kairo's to avoid duplication.
-	if params.Harness != harnessCrush {
-		ui.ClearScreen()
-		ui.PrintBanner(ui.Banner{
-			Version:      version.Version,
-			ModelName:    params.Provider.Model,
-			ProviderName: params.Provider.Name,
-			Harness:      params.Harness,
-		})
-	}
-
 	execCmd := buildWrapperCommand(deps, WrapperCmd{
 		Ctx:           ctx,
 		WrapperScript: wrapperScript,
@@ -115,10 +136,9 @@ func runHarnessWithWrapper(ctx context.Context, deps *Deps, params HarnessRun) e
 }
 
 func executeWithAuth(cfg ExecutionConfig) {
-	if cfg.HarnessToUse == harnessPi {
+	if cfg.HarnessToUse == harness.Pi {
 		if err := executePi(cfg); err != nil {
-			cfg.Cmd.Printf("Error running Pi: %v\n", err)
-			cfg.Deps.Process.ExitProcess(1)
+			reportHarnessError(cfg, "Pi", err)
 		}
 
 		return
@@ -176,16 +196,14 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	}
 
 	if err := runHarnessWithWrapper(ctx, cfg.Deps, run); err != nil {
-		cfg.Cmd.Printf("Error running %s: %v\n", displayName, err)
-		cfg.Deps.Process.ExitProcess(1)
+		reportHarnessError(cfg, displayName, err)
 	}
 }
 
 func executeWithoutAuth(cfg ExecutionConfig) {
-	if cfg.HarnessToUse == harnessPi {
+	if cfg.HarnessToUse == harness.Pi {
 		if err := executePi(cfg); err != nil {
-			cfg.Cmd.Printf("Error running Pi: %v\n", err)
-			cfg.Deps.Process.ExitProcess(1)
+			reportHarnessError(cfg, "Pi", err)
 		}
 
 		return
@@ -197,7 +215,7 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 		cliArgs = append([]string{harness.YoloFlag(cfg.HarnessToUse)}, cliArgs...)
 	}
 
-	if cfg.HarnessToUse == harnessQwen {
+	if cfg.HarnessToUse == harness.Qwen {
 		ui.PrintError("API key not found for provider")
 		ui.PrintInfo("Qwen Code requires API keys to be set in environment variables.")
 
@@ -206,38 +224,13 @@ func executeWithoutAuth(cfg ExecutionConfig) {
 	// Crush prompts interactively for API keys when none are set, so it needs
 	// no early-exit guard here and falls through to direct execution.
 
-	harnessPath, err := cfg.Deps.Process.LookPath(cfg.HarnessBinary)
-	if err != nil {
-		cfg.Cmd.Printf("Error: '%s' command not found in PATH\n", cfg.HarnessBinary)
-
+	harnessPath := lookUpHarnessBinary(cfg)
+	if harnessPath == "" {
 		return
 	}
 
-	// Crush displays its own banner on startup; suppress Kairo's to avoid duplication.
-	if cfg.HarnessToUse != harnessCrush {
-		ui.ClearScreen()
-		ui.PrintBanner(ui.Banner{
-			Version:      version.Version,
-			ModelName:    cfg.Provider.Model,
-			ProviderName: cfg.Provider.Name,
-			Harness:      cfg.HarnessToUse,
-		})
-	}
-
-	ctx, cancel, stopSig := execution.StartSession(CLIContextFromCmd(cfg.Cmd).RootCtx())
-	defer cancel()
-	defer stopSig()
-
-	execCmd := cfg.Deps.Process.ExecCommandContext(ctx, harnessPath, cliArgs...)
-	execCmd.Env = cfg.ProviderEnv
-	execCmd.Stdin = os.Stdin
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
-
 	displayName, _, _ := harness.Dispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
-
-	if err := execCmd.Run(); err != nil {
-		cfg.Cmd.Printf("Error running %s: %v\n", displayName, err)
-		cfg.Deps.Process.ExitProcess(1)
+	if err := runHarnessExec(cfg, harnessPath, cliArgs); err != nil {
+		reportHarnessError(cfg, displayName, err)
 	}
 }
