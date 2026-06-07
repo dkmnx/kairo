@@ -3,7 +3,7 @@
 [cmd]: https://commandcode.ai/
 
 # git
-- Use short conventional commit messages (type(scope): description) — describe only what changed, no explanations or AI slop. Confidence: 0.70
+- Use short conventional commit messages (type(scope): description) — describe only what changed, no explanations or AI slop. Confidence: 0.75
 - Do not add Co-authored-by or other attribution lines to commit messages. Confidence: 0.75
 
 # audit
