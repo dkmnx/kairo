@@ -168,4 +168,4 @@ pre-commit install
 4. Run `just pre-release`
 5. Submit a PR
 
-See [Contributing Guide](../contributing/README.md) for PR format and commit guidance.
+See [Contributing Guide](../CONTRIBUTING.md) for PR format and commit guidance.
