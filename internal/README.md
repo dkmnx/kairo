@@ -124,7 +124,6 @@ Built-in providers:
 | `azure-openai-responses` | (provider-managed)                   | (provider-managed)    | Yes     |
 | `minimax-cn`             | (provider-managed)                   | (provider-managed)    | Yes     |
 | `custom`                 | user-defined                         | user-defined          | Yes     |
-
 ### `validate/`
 
 Validation for API keys, URLs, models, and cross-provider env-var conflicts.
@@ -168,9 +167,83 @@ Terminal output helpers and simple prompt/confirm functions.
 
 Examples:
 
-- `PrintSuccess`, `PrintWarn`, `PrintError`, `PrintInfo`
-- `Prompt`, `PromptSecret`, `PromptWithDefault`, `Confirm`
+- `PrintSuccess`, `PrintWarn`, `PrintError`, `PrintInfo`, `PrintWhite`
+- `Confirm`, `ConfirmReader`
+- `ClearScreen`
 - `PrintBanner(Banner{Version, ModelName, ProviderName, Harness})`
+
+### `constants/`
+
+Shared constants for file names, permission modes, environment variable names, and GitHub URLs.
+
+Key constants:
+
+- `KeyFileName`, `SecretsFileName`
+- `DirPermSecure`, `FilePermSecure`, `FilePermExec`
+- `EnvAuthToken`, `EnvBaseURL`, `EnvModel`
+- `GitHubRepo`, `RawGitHubBase`, `GitHubAPIBase`
+
+### `envutil/`
+
+Environment variable utilities.
+
+Key functions:
+
+- `Merge(osEnv, providerEnv)` - merges provider env vars into OS environment with deduplication
+
+### `execution/`
+
+Harness execution dispatch.
+
+Key functions:
+
+- `CheckHarnessInstalled(name)` - verifies a harness CLI is available
+- `HasYoloFlag(name)` - returns whether the harness supports a yolo flag
+
+### `fsutil/`
+
+Atomic file writing utility.
+
+Key functions:
+
+- `WriteAtomic(path, writeFn)` - atomically writes a file via temp file + rename
+
+### `harness/`
+
+Harness identification and dispatch constants.
+
+Key constants:
+
+- `Claude`, `Qwen`, `Pi`, `Crush` - harness name constants
+- `APIKeyEnvVar(providerName)` - returns the conventional API key env var name
+
+Key functions:
+
+- `IsValid(name)` - validates harness name
+- `Resolve(flagHarness, configHarness)` - resolves effective harness
+- `Dispatch(h, providerName, model)` - returns harness display name, env var, and CLI args
+- `YoloFlag(h)` - returns the harness-specific skip-permissions flag
+
+### `secrets/`
+
+Secrets parsing and formatting for encrypted API key storage.
+
+Key functions:
+
+- `Parse(content)` - parses key=value pairs from secrets content
+- `ParseWithStats(content)` - returns parse results with warnings and skipped count
+- `Format(secrets)` - formats a secrets map into key=value string lines
+
+### `update/`
+
+Self-update logic for fetching releases, verifying checksums, and installing updates.
+
+Key functions:
+
+- `CheckAndUpdate(ctx, cfg)` - checks for updates and installs if available
+- `LatestRelease(ctx, url)` - fetches the latest release from GitHub
+- `VerifyChecksum(downloadPath, expectedSHA)` - SHA256 checksum verification
+- `VerifyCosignBundle(assetPath, bundlePath)` - optional cosign bundle verification
 
 ### `errors/`
 
