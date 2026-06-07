@@ -1,6 +1,6 @@
 # Kairo Documentation
 
-Documentation for Kairo - Go CLI wrapper for Claude/Qwen Code with X25519 encryption.
+Documentation for Kairo - Go CLI wrapper for Claude Code, Qwen Code, Pi, and Crush with age/X25519 encryption.
 
 ## Quick Links
 
@@ -13,7 +13,7 @@ Documentation for Kairo - Go CLI wrapper for Claude/Qwen Code with X25519 encryp
 | [Contributing](contributing/README.md)                | Contribution workflow        |
 | [Configuration Reference](reference/configuration.md) | Config files and options     |
 | [Provider Reference](reference/providers.md)          | Built-in providers           |
-
+| [Security](security/update-verification.md)           | Update verification          |
 ## Guides
 
 ### For Users
@@ -57,8 +57,11 @@ docs/
 │   ├── user-guide.md         # Basic usage
 │   └── development-guide.md  # Development setup
 ├── reference/                # Reference documentation
+│   ├── README.md             # Reference index
 │   ├── configuration.md      # Config files
 │   └── providers.md          # Provider details
+├── security/                 # Security documentation
+│   └── update-verification.md # Update verification
 ├── troubleshooting/          # Problem solving
 │   └── README.md
 └── contributing/             # Contribution
