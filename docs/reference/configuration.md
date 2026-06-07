@@ -8,6 +8,7 @@ Configuration file formats and options for Kairo.
 | ----------- | ---------------------------------------- |
 | Linux/macOS | `~/.config/kairo/`                       |
 | Windows     | `%USERPROFILE%\AppData\Roaming\kairo\`   |
+
 Kairo can also read configuration from a custom directory via the `--config` CLI flag.
 
 ## Files
