@@ -9,6 +9,11 @@ import (
 
 func TestConfigDir(t *testing.T) {
 	t.Run("returns platform-specific config dir from home", func(t *testing.T) {
+		// Ensure KAIRO_CONFIG_DIR is not set for this test
+		origEnv := os.Getenv("KAIRO_CONFIG_DIR")
+		defer os.Setenv("KAIRO_CONFIG_DIR", origEnv)
+		os.Unsetenv("KAIRO_CONFIG_DIR")
+
 		home, err := os.UserHomeDir()
 		if err != nil {
 			t.Skip("cannot find home directory")
@@ -26,6 +31,20 @@ func TestConfigDir(t *testing.T) {
 		}
 		if dir != expected {
 			t.Errorf("ConfigDir() = %q, want %q", dir, expected)
+		}
+	})
+
+	t.Run("uses KAIRO_CONFIG_DIR env var when set", func(t *testing.T) {
+		origEnv := os.Getenv("KAIRO_CONFIG_DIR")
+		defer os.Setenv("KAIRO_CONFIG_DIR", origEnv)
+		os.Setenv("KAIRO_CONFIG_DIR", "/custom/kairo/path")
+
+		dir, err := ConfigDir()
+		if err != nil {
+			t.Fatalf("ConfigDir() returned error: %v", err)
+		}
+		if dir != "/custom/kairo/path" {
+			t.Errorf("ConfigDir() = %q, want %q", dir, "/custom/kairo/path")
 		}
 	})
 }
