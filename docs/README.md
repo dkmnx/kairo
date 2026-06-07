@@ -14,6 +14,7 @@ Documentation for Kairo - Go CLI wrapper for Claude Code, Qwen Code, Pi, and Cru
 | [Configuration Reference](reference/configuration.md) | Config files and options     |
 | [Provider Reference](reference/providers.md)          | Built-in providers           |
 | [Security](security/update-verification.md)           | Update verification          |
+
 ## Guides
 
 ### For Users
