@@ -20,9 +20,9 @@
 
 Kairo provides multi-provider API management with secure credential storage:
 
-- **Multi-harness**: Claude Code, Qwen Code, and Pi
+- **Multi-harness**: Claude Code, Qwen Code, Pi, and Crush
 - **Secure encryption**: age/X25519 for all API keys at rest
-- **Built-in providers**: Z.AI, MiniMax, Moonshot AI, DeepSeek, Anthropic, OpenAI, Google, Mistral, Groq, Cerebras, Cloudflare Workers AI, xAI, OpenRouter, Vercel AI Gateway, OpenCode, Hugging Face, Fireworks, Azure OpenAI, and custom providers
+- **Built-in providers**: Z.AI, MiniMax, MiniMax (CN), Moonshot AI, DeepSeek, Anthropic, OpenAI, Google, Mistral, Groq, Cerebras, Cloudflare Workers AI, xAI, OpenRouter, Vercel AI Gateway, OpenCode, Hugging Face, Fireworks, Azure OpenAI, and custom providers
 - **Cross-platform**: Linux, macOS, Windows
 
 ## Quick Start
@@ -45,6 +45,9 @@ npm install -g @qwen-code/qwen-code@latest
 
 # Pi
 npm install -g @earendil-works/pi-coding-agent
+
+# Crush
+# See https://github.com/charmbracelet/crush#installation
 ```
 
 ### Setup

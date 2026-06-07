@@ -127,10 +127,10 @@ func TestCustomProviderConfigPersistence(t *testing.T) {
 func TestE2ECompleteWorkflow(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	originalConfigDir := configDir()
-	defer func() { setConfigDir(originalConfigDir) }()
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
-	setConfigDir(tmpDir)
+	defaultCLIContext.SetConfigDir(tmpDir)
 
 	cfg := &config.Config{
 		DefaultProvider: "anthropic",

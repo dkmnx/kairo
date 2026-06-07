@@ -18,14 +18,14 @@ const (
 
 // ValidateCrossProviderConfig checks that no two providers set the same
 // environment variable to different values.
-func ValidateCrossProviderConfig(cfg *config.Config) error {
+func ValidateCrossProviderConfig(providerMap map[string]config.Provider) error {
 	type envVarSource struct {
 		provider string
 		value    string
 	}
 	envVarMap := make(map[string][]envVarSource)
 
-	for providerName, provider := range cfg.Providers {
+	for providerName, provider := range providerMap {
 		for _, envVar := range provider.EnvVars {
 			parts := strings.SplitN(envVar, "=", 2)
 			if len(parts) != 2 {

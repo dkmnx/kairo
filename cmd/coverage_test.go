@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/providers"
+	"github.com/dkmnx/kairo/internal/secrets"
 	"github.com/spf13/cobra"
 )
 
@@ -90,12 +92,12 @@ func TestBuildProviderConfig(t *testing.T) {
 }
 
 func TestBuildSecretsEnvVars(t *testing.T) {
-	secrets := map[string]string{
+	secretsMap := map[string]string{
 		"ANTHROPIC_API_KEY": "test-key-123",
 		"ZAI_API_KEY":       "zai-key-456",
 	}
 
-	envVars := BuildSecretsEnvVars(secrets)
+	envVars := secrets.EnvVars(secretsMap)
 
 	if len(envVars) != 2 {
 		t.Errorf("expected 2 env vars, got %d", len(envVars))
@@ -209,9 +211,9 @@ func TestAPIKeyEnvVarName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := APIKeyEnvVarName(tt.input)
+			got := harness.APIKeyEnvVar(tt.input)
 			if got != tt.expected {
-				t.Errorf("APIKeyEnvVarName(%q) = %q, want %q", tt.input, got, tt.expected)
+				t.Errorf("harness.APIKeyEnvVar(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
 		})
 	}

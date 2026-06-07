@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/spf13/cobra"
 )
 
 func TestRootCmd(t *testing.T) {
@@ -24,9 +25,9 @@ func TestRootCmd(t *testing.T) {
 	t.Run("no config file - shows setup message", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		originalConfigDir := configDir()
-		setConfigDir(tmpDir)
-		defer func() { setConfigDir(originalConfigDir) }()
+		originalConfigDir := defaultCLIContext.ConfigDir()
+		defaultCLIContext.SetConfigDir(tmpDir)
+		defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
@@ -50,10 +51,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := configDir()
-		setConfigDir(tmpDir)
+		originalConfigDir := defaultCLIContext.ConfigDir()
+		defaultCLIContext.SetConfigDir(tmpDir)
 		defer func() {
-			setConfigDir(originalConfigDir)
+			defaultCLIContext.SetConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -89,10 +90,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := configDir()
-		setConfigDir(tmpDir)
+		originalConfigDir := defaultCLIContext.ConfigDir()
+		defaultCLIContext.SetConfigDir(tmpDir)
 		defer func() {
-			setConfigDir(originalConfigDir)
+			defaultCLIContext.SetConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -140,10 +141,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := configDir()
-		setConfigDir(tmpDir)
+		originalConfigDir := defaultCLIContext.ConfigDir()
+		defaultCLIContext.SetConfigDir(tmpDir)
 		defer func() {
-			setConfigDir(originalConfigDir)
+			defaultCLIContext.SetConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -170,10 +171,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := configDir()
-		setConfigDir(tmpDir)
+		originalConfigDir := defaultCLIContext.ConfigDir()
+		defaultCLIContext.SetConfigDir(tmpDir)
 		defer func() {
-			setConfigDir(originalConfigDir)
+			defaultCLIContext.SetConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -212,13 +213,13 @@ func TestRootCmd(t *testing.T) {
 
 func TestRootCmdGetConfigDir(t *testing.T) {
 	t.Run("returns flag value when set", func(t *testing.T) {
-		originalDir := configDir()
-		setConfigDir("/custom/config/dir")
-		defer func() { setConfigDir(originalDir) }()
+		originalDir := defaultCLIContext.ConfigDir()
+		defaultCLIContext.SetConfigDir("/custom/config/dir")
+		defer func() { defaultCLIContext.SetConfigDir(originalDir) }()
 
-		result := configDir()
+		result := defaultCLIContext.ConfigDir()
 		if result != "/custom/config/dir" {
-			t.Errorf("configDir() = %q, want %q", result, "/custom/config/dir")
+			t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", result, "/custom/config/dir")
 		}
 	})
 
@@ -231,15 +232,15 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 		// Override the global context to use our injected resolver
 		prevCtx := defaultCLIContext
 		defaultCLIContext = cliCtx
-		setConfigDir("")
+		defaultCLIContext.SetConfigDir("")
 		defer func() {
 			defaultCLIContext = prevCtx
-			setConfigDir("")
+			defaultCLIContext.SetConfigDir("")
 		}()
 
-		result := configDir()
+		result := defaultCLIContext.ConfigDir()
 		if result != "/from/resolver" {
-			t.Errorf("configDir() = %q, want %q", result, "/from/resolver")
+			t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", result, "/from/resolver")
 		}
 	})
 
@@ -251,15 +252,15 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 
 		prevCtx := defaultCLIContext
 		defaultCLIContext = cliCtx
-		setConfigDir("")
+		defaultCLIContext.SetConfigDir("")
 		defer func() {
 			defaultCLIContext = prevCtx
-			setConfigDir("")
+			defaultCLIContext.SetConfigDir("")
 		}()
 
-		result := configDir()
+		result := defaultCLIContext.ConfigDir()
 		if result != "" {
-			t.Errorf("configDir() = %q, want empty with nil resolver", result)
+			t.Errorf("defaultCLIContext.ConfigDir() = %q, want empty with nil resolver", result)
 		}
 	})
 }
@@ -274,4 +275,36 @@ func createConfigFile(t *testing.T, dir string, cfg *config.Config) string {
 		t.Fatalf("Failed to create test config: %v", err)
 	}
 	return configPath
+}
+
+func TestLoadRootConfigConfigDirEmpty(t *testing.T) {
+	cliCtx := NewCLIContext()
+	cliCtx.SetConfigDirResolver(func() (string, error) {
+		return "", nil
+	})
+
+	got, ok := loadRootConfig(&cobra.Command{}, cliCtx)
+	if ok || got != nil {
+		t.Error("Expected failure when config dir is empty")
+	}
+}
+
+func TestIsKnownProvider(t *testing.T) {
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"my-custom": {Name: "My"},
+		},
+	}
+
+	if !isKnownProvider("my-custom", cfg) {
+		t.Error("Expected configured provider to be known")
+	}
+
+	if !isKnownProvider("anthropic", cfg) {
+		t.Error("Expected built-in provider to be known even if not configured")
+	}
+
+	if isKnownProvider("nonexistent", cfg) {
+		t.Error("Expected unknown provider to not be known")
+	}
 }

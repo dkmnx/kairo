@@ -113,11 +113,16 @@ func PrintBanner(b Banner) {
 	fmt.Printf("%s%s%s", Gray, info, Reset)
 }
 
-// Confirm prompts the user for a y/N confirmation.
+// Confirm prompts the user for a y/N confirmation reading from stdin.
 func Confirm(prompt string) (bool, error) {
+	return ConfirmReader(prompt, os.Stdin)
+}
+
+// ConfirmReader prompts the user for a y/N confirmation reading from r.
+func ConfirmReader(prompt string, r io.Reader) (bool, error) {
 	fmt.Printf("%s [y/N]: ", prompt)
 	var input string
-	_, err := fmt.Scanln(&input)
+	_, err := fmt.Fscanln(r, &input)
 	if err != nil {
 		if isEmptyInput(err) {
 			return false, nil

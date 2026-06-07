@@ -26,7 +26,7 @@ func FuzzValidateCrossProviderConfig(f *testing.F) {
 			t.Skip("Invalid config generated from fuzz input")
 		}
 
-		err := ValidateCrossProviderConfig(cfg)
+		err := ValidateCrossProviderConfig(cfg.Providers)
 
 		envVarValues := make(map[string]map[string]string) // envVar -> provider -> value
 		for providerName, provider := range cfg.Providers {

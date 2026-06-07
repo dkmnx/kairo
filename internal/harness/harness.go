@@ -68,19 +68,6 @@ func PiEnvVars(providerName, model string) []string {
 	}
 }
 
-// BuiltInEnvVars returns environment variables for Anthropic-compatible providers.
-func BuiltInEnvVars(baseURL, model string) []string {
-	return []string{
-		fmt.Sprintf("ANTHROPIC_BASE_URL=%s", baseURL),
-		fmt.Sprintf("ANTHROPIC_MODEL=%s", model),
-		fmt.Sprintf("ANTHROPIC_HAIKU_MODEL=%s", model),
-		fmt.Sprintf("ANTHROPIC_SONNET_MODEL=%s", model),
-		fmt.Sprintf("ANTHROPIC_OPUS_MODEL=%s", model),
-		fmt.Sprintf("ANTHROPIC_SMALL_FAST_MODEL=%s", model),
-		"NODE_OPTIONS=--no-deprecation",
-	}
-}
-
 // APIKeyEnvVar returns the conventional environment variable name for a provider's API key.
 func APIKeyEnvVar(providerName string) string {
 	return fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))

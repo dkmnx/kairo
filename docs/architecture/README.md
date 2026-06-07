@@ -4,7 +4,7 @@ System architecture and design documentation for Kairo.
 
 ## Overview
 
-Kairo is a Go CLI for routing Claude Code, Qwen Code, or Pi through configured providers while keeping API keys encrypted at rest.
+Kairo is a Go CLI for routing Claude Code, Qwen Code, Pi, or Crush through configured providers while keeping API keys encrypted at rest.
 
 Core characteristics:
 
@@ -36,6 +36,8 @@ flowchart TB
         Validate[validate]
         UI[ui]
         Wrapper[wrapper]
+        Fsutil[fsutil]
+        Execution[execution]
     end
 
     subgraph Storage
@@ -48,6 +50,7 @@ flowchart TB
         Claude[Claude Code CLI]
         Qwen[Qwen Code CLI]
         Pi[Pi CLI]
+        CrushCLI[Crush CLI]
         APIs[Provider APIs]
     end
 
@@ -67,9 +70,11 @@ flowchart TB
     Execution --> Claude
     Execution --> Qwen
     Execution --> Pi
+    Execution --> CrushCLI
     Claude --> APIs
     Qwen --> APIs
     Pi --> APIs
+    CrushCLI --> APIs
 ```
 
 ## Setup Flow
@@ -124,8 +129,11 @@ kairo/
 │   ├── constants/       # Shared constants (paths, defaults)
 │   ├── crypto/          # age/X25519 key management and encryption
 │   ├── errors/          # Typed errors
+│   ├── execution/        # Harness execution dispatch
+│   ├── fsutil/          # Atomic file write utility
+│   ├── harness/         # Harness dispatch (Claude, Qwen, Pi, Crush)
 │   ├── providers/       # Built-in provider registry
-│   ├── secrets/         # Secrets loading and saving
+│   ├── secrets/          # Secrets loading and saving
 │   ├── ui/              # Terminal output and prompts
 │   ├── update/          # Self-update logic
 │   ├── validate/        # Validation helpers
@@ -161,28 +169,28 @@ Notes:
 
 ## Provider Registry
 
-| Provider                 | Default Base URL                     | Default Model         | API Key Required |
-| ------------------------ | ------------------------------------ | --------------------- | ---------------- |
-| `zai`                    | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes              |
-| `minimax`                | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes              |
-| `deepseek`               | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes              |
-| `kimi`                   | `https://api.kimi.com/coding/`       | `kimi-for-coding`     | Yes              |
-| `anthropic`              | (provider-managed)                   | (provider-managed)    | Yes              |
-| `openai`                 | (provider-managed)                   | (provider-managed)    | Yes              |
-| `google`                 | (provider-managed)                   | (provider-managed)    | Yes              |
-| `mistral`                | (provider-managed)                   | (provider-managed)    | Yes              |
-| `groq`                   | (provider-managed)                   | (provider-managed)    | Yes              |
-| `cerebras`               | (provider-managed)                   | (provider-managed)    | Yes              |
-| `cloudflare-workers-ai`  | (provider-managed)                   | (provider-managed)    | Yes              |
-| `xai`                    | (provider-managed)                   | (provider-managed)    | Yes              |
-| `openrouter`             | (provider-managed)                   | (provider-managed)    | Yes              |
-| `vercel-ai-gateway`      | (provider-managed)                   | (provider-managed)    | Yes              |
-| `opencode`               | (provider-managed)                   | (provider-managed)    | Yes              |
-| `huggingface`            | (provider-managed)                   | (provider-managed)    | Yes              |
-| `fireworks`              | (provider-managed)                   | (provider-managed)    | Yes              |
-| `azure-openai-responses` | (provider-managed)                   | (provider-managed)    | Yes              |
-| `minimax-cn`             | (provider-managed)                   | (provider-managed)    | Yes              |
-| `custom`                 | user-defined                         | user-defined          | Yes              |
+| Key                      | Display Name          | Default Base URL                     | Default Model         | API Key |
+| ------------------------ | --------------------- | ------------------------------------ | --------------------- | ------- |
+| `zai`                    | Z.AI                  | `https://api.z.ai/api/anthropic`     | `glm-5.1`             | Yes     |
+| `minimax`                | MiniMax               | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        | Yes     |
+| `deepseek`               | DeepSeek AI           | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` | Yes     |
+| `kimi`                   | Moonshot AI           | `https://api.kimi.com/coding/`       | `kimi-for-coding`     | Yes     |
+| `anthropic`              | Anthropic             | (provider-managed)                   | (provider-managed)    | Yes     |
+| `openai`                 | OpenAI                | (provider-managed)                   | (provider-managed)    | Yes     |
+| `google`                 | Google                | (provider-managed)                   | (provider-managed)    | Yes     |
+| `mistral`                | Mistral               | (provider-managed)                   | (provider-managed)    | Yes     |
+| `groq`                   | Groq                  | (provider-managed)                   | (provider-managed)    | Yes     |
+| `cerebras`               | Cerebras              | (provider-managed)                   | (provider-managed)    | Yes     |
+| `cloudflare-workers-ai`  | Cloudflare Workers AI | (provider-managed)                   | (provider-managed)    | Yes     |
+| `xai`                    | xAI                   | (provider-managed)                   | (provider-managed)    | Yes     |
+| `openrouter`             | OpenRouter            | (provider-managed)                   | (provider-managed)    | Yes     |
+| `vercel-ai-gateway`      | Vercel AI Gateway     | (provider-managed)                   | (provider-managed)    | Yes     |
+| `opencode`               | OpenCode              | (provider-managed)                   | (provider-managed)    | Yes     |
+| `huggingface`            | Hugging Face          | (provider-managed)                   | (provider-managed)    | Yes     |
+| `fireworks`              | Fireworks             | (provider-managed)                   | (provider-managed)    | Yes     |
+| `azure-openai-responses` | Azure OpenAI          | (provider-managed)                   | (provider-managed)    | Yes     |
+| `minimax-cn`             | MiniMax (CN)          | (provider-managed)                   | (provider-managed)    | Yes     |
+| `custom`                 | Custom Provider       | user-defined                         | user-defined          | Yes     |
 
 ## Security Architecture
 
@@ -239,4 +247,4 @@ See [Wrapper Scripts](wrapper-scripts.md) for the detailed design.
 
 - Registry-driven built-in providers
 - Custom provider support
-- Harness abstraction for Claude and Qwen
+- Harness abstraction for Claude, Qwen, Pi, and Crush

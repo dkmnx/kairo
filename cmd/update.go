@@ -104,6 +104,13 @@ https://github.com/dkmnx/kairo/blob/<tag>/scripts/checksums.txt`,
 		cmd.Printf("Verifying script integrity...\n")
 
 		if err := deps.Update.VerifyCosignBundle(cmd.Context(), latest.TagName); err != nil {
+			if os.Getenv("KAIRO_REQUIRE_COSIGN") == "1" {
+				ui.PrintError(fmt.Sprintf("Cosign verification required but failed: %v", err))
+				cmd.Println("Set KAIRO_REQUIRE_COSIGN=0 to allow update without cosign.")
+				os.Remove(tempFile)
+
+				return
+			}
 			cmd.Printf("Warning: cosign verification skipped or failed: %v\n", err)
 		}
 

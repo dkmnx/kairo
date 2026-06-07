@@ -11,11 +11,11 @@ import (
 )
 
 func TestDefaultCommandNoArgs(t *testing.T) {
-	originalConfigDir := configDir()
-	defer func() { setConfigDir(originalConfigDir) }()
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	setConfigDir(tmpDir)
+	defaultCLIContext.SetConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: zai
@@ -38,11 +38,11 @@ providers:
 }
 
 func TestDefaultCommandSetProvider(t *testing.T) {
-	originalConfigDir := configDir()
-	defer func() { setConfigDir(originalConfigDir) }()
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	setConfigDir(tmpDir)
+	defaultCLIContext.SetConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
@@ -77,11 +77,11 @@ providers:
 }
 
 func TestDefaultCommandProviderNotFound(t *testing.T) {
-	originalConfigDir := configDir()
-	defer func() { setConfigDir(originalConfigDir) }()
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	setConfigDir(tmpDir)
+	defaultCLIContext.SetConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
@@ -104,11 +104,11 @@ providers:
 }
 
 func TestDefaultCommandUpdatesConfigFile(t *testing.T) {
-	originalConfigDir := configDir()
-	defer func() { setConfigDir(originalConfigDir) }()
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	setConfigDir(tmpDir)
+	defaultCLIContext.SetConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic

@@ -23,13 +23,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := configDir()
+		originalConfigDir := defaultCLIContext.ConfigDir()
 		originalVerbose := verbose()
-		setConfigDir("")
-		setVerbose(false)
+		defaultCLIContext.SetConfigDir("")
+		defaultCLIContext.SetVerbose(false)
 		defer func() {
-			setConfigDir(originalConfigDir)
-			setVerbose(originalVerbose)
+			defaultCLIContext.SetConfigDir(originalConfigDir)
+			defaultCLIContext.SetVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -54,13 +54,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetErr(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := configDir()
+		originalConfigDir := defaultCLIContext.ConfigDir()
 		originalVerbose := verbose()
-		setConfigDir("")
-		setVerbose(false)
+		defaultCLIContext.SetConfigDir("")
+		defaultCLIContext.SetVerbose(false)
 		defer func() {
-			setConfigDir(originalConfigDir)
-			setVerbose(originalVerbose)
+			defaultCLIContext.SetConfigDir(originalConfigDir)
+			defaultCLIContext.SetVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -84,13 +84,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := configDir()
+		originalConfigDir := defaultCLIContext.ConfigDir()
 		originalVerbose := verbose()
-		setConfigDir("")
-		setVerbose(false)
+		defaultCLIContext.SetConfigDir("")
+		defaultCLIContext.SetVerbose(false)
 		defer func() {
-			setConfigDir(originalConfigDir)
-			setVerbose(originalVerbose)
+			defaultCLIContext.SetConfigDir(originalConfigDir)
+			defaultCLIContext.SetVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -115,13 +115,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := configDir()
+		originalConfigDir := defaultCLIContext.ConfigDir()
 		originalVerbose := verbose()
-		setConfigDir("")
-		setVerbose(false)
+		defaultCLIContext.SetConfigDir("")
+		defaultCLIContext.SetVerbose(false)
 		defer func() {
-			setConfigDir(originalConfigDir)
-			setVerbose(originalVerbose)
+			defaultCLIContext.SetConfigDir(originalConfigDir)
+			defaultCLIContext.SetVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -153,13 +153,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetErr(output)
 		rootCmd.SetArgs(nil)
 
-		originalConfigDir := configDir()
+		originalConfigDir := defaultCLIContext.ConfigDir()
 		originalVerbose := verbose()
-		setConfigDir(tmpDir) // Use tmpDir, not empty string
-		setVerbose(false)
+		defaultCLIContext.SetConfigDir(tmpDir) // Use tmpDir, not empty string
+		defaultCLIContext.SetVerbose(false)
 		defer func() {
-			setConfigDir(originalConfigDir)
-			setVerbose(originalVerbose)
+			defaultCLIContext.SetConfigDir(originalConfigDir)
+			defaultCLIContext.SetVerbose(originalVerbose)
 			os.Remove(configPath)
 		}()
 
@@ -185,8 +185,8 @@ func TestHandleConfigError(t *testing.T) {
 			&yaml.TypeError{Errors: []string{"field default_harness not found in type config.Config"}})
 
 		originalVerbose := verbose()
-		setVerbose(false)
-		defer func() { setVerbose(originalVerbose) }()
+		defaultCLIContext.SetVerbose(false)
+		defer func() { defaultCLIContext.SetVerbose(originalVerbose) }()
 
 		handleConfigError(rootCmd, err)
 
@@ -220,8 +220,8 @@ func TestHandleConfigError(t *testing.T) {
 			&yaml.TypeError{Errors: []string{"field default_harness not found in type config.Config"}})
 
 		originalVerbose := verbose()
-		setVerbose(true)
-		defer func() { setVerbose(originalVerbose) }()
+		defaultCLIContext.SetVerbose(true)
+		defer func() { defaultCLIContext.SetVerbose(originalVerbose) }()
 
 		handleConfigError(rootCmd, err)
 
@@ -242,8 +242,8 @@ func TestHandleConfigError(t *testing.T) {
 		err := fmt.Errorf("some other config error")
 
 		originalVerbose := verbose()
-		setVerbose(false)
-		defer func() { setVerbose(originalVerbose) }()
+		defaultCLIContext.SetVerbose(false)
+		defer func() { defaultCLIContext.SetVerbose(originalVerbose) }()
 
 		handleConfigError(rootCmd, err)
 

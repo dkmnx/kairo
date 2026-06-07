@@ -143,9 +143,28 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 		cfg.DefaultModels = make(map[string]string)
 	}
 
+	// Reconcile DefaultModels with the authoritative source: the model
+	// recorded on each Provider. We treat DefaultModels as a derived
+	// index so the two maps cannot drift.
+	cfg.reconcileDefaultModels()
+
 	cfg.validate()
 
 	return &cfg, nil
+}
+
+// reconcileDefaultModels rebuilds DefaultModels from Providers[].Model.
+// Entries already present in DefaultModels are left untouched (so external
+// overrides survive) and new entries are populated from the built-in
+// provider registry for known providers. This keeps a single source of
+// truth: each provider's model lives on the Provider struct.
+func (c *Config) reconcileDefaultModels() {
+	for name, p := range c.Providers {
+		if _, ok := c.DefaultModels[name]; ok {
+			continue
+		}
+		c.DefaultModels[name] = p.Model
+	}
 }
 
 // isUnknownFieldError reports whether the error is a YAML type error caused by
@@ -187,6 +206,12 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 	}); err != nil {
 		return errors.WrapError(errors.FileSystemError,
 			"failed to save configuration file", err).
+			WithContext("path", configPath)
+	}
+
+	if err := os.Chmod(configPath, 0o600); err != nil {
+		return errors.WrapError(errors.FileSystemError,
+			"failed to set permissions on configuration file", err).
 			WithContext("path", configPath)
 	}
 
