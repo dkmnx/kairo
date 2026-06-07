@@ -8,6 +8,7 @@ import (
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/harness"
+	"github.com/dkmnx/kairo/internal/providers"
 )
 
 func TestRequiresAPIKey(t *testing.T) {
@@ -24,9 +25,9 @@ func TestRequiresAPIKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := RequiresAPIKey(tt.provider)
+			got := providers.RequiresAPIKey(tt.provider)
 			if got != tt.want {
-				t.Errorf("RequiresAPIKey(%q) = %v, want %v", tt.provider, got, tt.want)
+				t.Errorf("providers.RequiresAPIKey(%q) = %v, want %v", tt.provider, got, tt.want)
 			}
 		})
 	}
@@ -72,9 +73,9 @@ func TestApiKeyEnvVarName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := APIKeyEnvVarName(tt.provider)
+			result := harness.APIKeyEnvVar(tt.provider)
 			if result != tt.expected {
-				t.Errorf("APIKeyEnvVarName(%q) = %q, want %q", tt.provider, result, tt.expected)
+				t.Errorf("harness.APIKeyEnvVar(%q) = %q, want %q", tt.provider, result, tt.expected)
 			}
 		})
 	}
@@ -214,7 +215,7 @@ func TestPiAPIKeyEnvVarMapping(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.provider, func(t *testing.T) {
-			envVar, ok := PiAPIKeyEnvVar(tt.provider)
+			envVar, ok := providers.APIKeyEnvVarFor(tt.provider)
 			if ok != tt.ok {
 				t.Errorf("ok = %v, want %v", ok, tt.ok)
 			}
@@ -237,7 +238,12 @@ func TestHarnessAPIKeyEnvVar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.provider, func(t *testing.T) {
-			got := HarnessAPIKeyEnvVar(tt.provider)
+			var got string
+			if envVar, ok := providers.APIKeyEnvVarFor(tt.provider); ok {
+				got = envVar
+			} else {
+				got = harness.APIKeyEnvVar(tt.provider)
+			}
 			if got != tt.want {
 				t.Errorf("HarnessAPIKeyEnvVar(%q) = %q, want %q", tt.provider, got, tt.want)
 			}
