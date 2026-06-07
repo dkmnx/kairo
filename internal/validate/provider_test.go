@@ -9,53 +9,45 @@ import (
 
 func TestValidateCrossProviderConfig(t *testing.T) {
 	tests := []struct {
-		name    string
-		cfg     *config.Config
-		wantErr bool
-		errMsg  string // substring to check in error message
+		name      string
+		providers map[string]config.Provider
+		wantErr   bool
+		errMsg    string // substring to check in error message
 	}{
 		{
-			name: "empty providers",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{},
-			},
-			wantErr: false,
+			name:      "empty providers",
+			providers: map[string]config.Provider{},
+			wantErr:   false,
 		},
 		{
 			name: "single provider",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"test": {
-						EnvVars: []string{"KEY=value"},
-					},
+			providers: map[string]config.Provider{
+				"test": {
+					EnvVars: []string{"KEY=value"},
 				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "multiple providers same env var same value",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"provider1": {
-						EnvVars: []string{"SHARED_VAR=value1"},
-					},
-					"provider2": {
-						EnvVars: []string{"SHARED_VAR=value1"},
-					},
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"SHARED_VAR=value1"},
+				},
+				"provider2": {
+					EnvVars: []string{"SHARED_VAR=value1"},
 				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "multiple providers same env var different values",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"provider1": {
-						EnvVars: []string{"SHARED_VAR=value1"},
-					},
-					"provider2": {
-						EnvVars: []string{"SHARED_VAR=value2"},
-					},
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"SHARED_VAR=value1"},
+				},
+				"provider2": {
+					EnvVars: []string{"SHARED_VAR=value2"},
 				},
 			},
 			wantErr: true,
@@ -63,31 +55,27 @@ func TestValidateCrossProviderConfig(t *testing.T) {
 		},
 		{
 			name: "multiple providers different env vars",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"provider1": {
-						EnvVars: []string{"VAR1=value1", "VAR2=value2"},
-					},
-					"provider2": {
-						EnvVars: []string{"VAR3=value3"},
-					},
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"VAR1=value1", "VAR2=value2"},
+				},
+				"provider2": {
+					EnvVars: []string{"VAR3=value3"},
 				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "three providers collision",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"provider1": {
-						EnvVars: []string{"COMMON=test"},
-					},
-					"provider2": {
-						EnvVars: []string{"COMMON=test"},
-					},
-					"provider3": {
-						EnvVars: []string{"COMMON=different"},
-					},
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"COMMON=test"},
+				},
+				"provider2": {
+					EnvVars: []string{"COMMON=test"},
+				},
+				"provider3": {
+					EnvVars: []string{"COMMON=different"},
 				},
 			},
 			wantErr: true,
@@ -95,61 +83,51 @@ func TestValidateCrossProviderConfig(t *testing.T) {
 		},
 		{
 			name: "env var with equals in value",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"provider1": {
-						EnvVars: []string{"JSON_DATA={\"key\":\"value\"}"},
-					},
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"JSON_DATA={\"key\":\"value\"}"},
 				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "malformed env var (no equals)",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"provider1": {
-						EnvVars: []string{"INVALID_VAR"},
-					},
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"INVALID_VAR"},
 				},
 			},
 			wantErr: false, // malformed vars are skipped
 		},
 		{
 			name: "malformed env var (empty key)",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"provider1": {
-						EnvVars: []string{"=value"},
-					},
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"=value"},
 				},
 			},
 			wantErr: false, // malformed vars are skipped
 		},
 		{
 			name: "whitespace in key and value - same after trim",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"provider1": {
-						EnvVars: []string{"  KEY  =  value  "},
-					},
-					"provider2": {
-						EnvVars: []string{"KEY=value"},
-					},
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"  KEY  =  value  "},
+				},
+				"provider2": {
+					EnvVars: []string{"KEY=value"},
 				},
 			},
 			wantErr: false, // Keys and values match after trimming - no collision
 		},
 		{
 			name: "whitespace in key - different values after trim",
-			cfg: &config.Config{
-				Providers: map[string]config.Provider{
-					"provider1": {
-						EnvVars: []string{"  KEY  =  value1  "},
-					},
-					"provider2": {
-						EnvVars: []string{"KEY=value2"},
-					},
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"  KEY  =  value1  "},
+				},
+				"provider2": {
+					EnvVars: []string{"KEY=value2"},
 				},
 			},
 			wantErr: true, // Keys match after trim, but values differ -> collision
@@ -159,7 +137,7 @@ func TestValidateCrossProviderConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateCrossProviderConfig(tt.cfg)
+			err := ValidateCrossProviderConfig(tt.providers)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateCrossProviderConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
