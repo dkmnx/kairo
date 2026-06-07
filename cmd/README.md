@@ -26,12 +26,13 @@ logic lives in `internal/`.
 | `default.go`              | `kairo default [provider]` command                                                                                              |
 | `list.go`                 | `kairo list` command                                                                                                            |
 | `delete.go`               | `kairo delete [provider]` command, `deleteProviderSecrets`                                                                      |
-| `harness.go`              | `kairo harness get                                                                                                              | set` subcommands, `resolveHarness` |
+| `harness.go`              | `kairo harness get/set` subcommands, `resolveHarness`                                                                           |
 | `version.go`              | `kairo version`, `checkForUpdates`                                                                                              |
 | `update.go`               | `kairo update` command, cosign/checksum verification                                                                            |
 | `completion.go`           | `kairo completion` command and shell scripts                                                                                    |
 | `test_helpers.go`         | `testCmd`, `testEchoCmd`, `mockProcess`, `mockWrapper`, `mockUpdate`, `testDeps`                                                |
 | `deps_test.go`            | `NewDeps` smoke test and interface conformance                                                                                  |
+
 ## Lifecycle of `CLIContext`
 
 A single package-level `defaultCLIContext` is the only `*CLIContext` used

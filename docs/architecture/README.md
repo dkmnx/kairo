@@ -192,6 +192,7 @@ Notes:
 | `azure-openai-responses` | Azure OpenAI          | (provider-managed)                   | (provider-managed)    | Yes     |
 | `minimax-cn`             | MiniMax (CN)          | (provider-managed)                   | (provider-managed)    | Yes     |
 | `custom`                 | Custom Provider       | user-defined                         | user-defined          | Yes     |
+
 ## Security Architecture
 
 Kairo keeps credentials out of normal child-process environments by combining encrypted storage with temporary wrapper scripts.
@@ -213,6 +214,7 @@ See [Wrapper Scripts](wrapper-scripts.md) for the detailed design.
 | Install script    | `scripts/install.sh`              | `scripts/install.ps1`                   |
 | Wrapper script    | POSIX shell script                | PowerShell script                       |
 | Harness execution | direct executable / shell wrapper | `powershell -File <wrapper>.ps1`        |
+
 ### Key Code References
 
 - Config directory resolution: `internal/config/env.go`

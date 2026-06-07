@@ -124,6 +124,7 @@ Built-in providers:
 | `azure-openai-responses` | (provider-managed)                   | (provider-managed)    | Yes     |
 | `minimax-cn`             | (provider-managed)                   | (provider-managed)    | Yes     |
 | `custom`                 | user-defined                         | user-defined          | Yes     |
+
 ### `validate/`
 
 Validation for API keys, URLs, models, and cross-provider env-var conflicts.

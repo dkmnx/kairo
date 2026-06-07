@@ -17,6 +17,7 @@ Kairo can also read configuration from a custom directory via the `--config` CLI
 | `config.yaml` | Provider and harness settings  | `0600`      |
 | `secrets.age` | Encrypted API keys             | `0600`      |
 | `age.key`     | Encryption private key         | `0600`      |
+
 ## `config.yaml`
 
 Provider, model, and harness configuration in YAML format.
@@ -112,6 +113,7 @@ Fields:
 | `key_prefix`       | No       | `""`    | Required API key prefix (e.g. `sk-`)                                   |
 | `key_pattern`      | No       | `""`    | Regex pattern the API key must match                                   |
 | `env_vars`         | No       | `[]`    | Extra environment variables passed to the harness                      |
+
 ## `secrets.age`
 
 Encrypted API keys using age/X25519.
@@ -138,6 +140,7 @@ Generated on first setup. The file contains the private identity line followed b
 | `KAIRO_CONFIG_DIR`     | Override config directory path              | Platform default |
 | `KAIRO_UPDATE_URL`     | Override update check URL                   | GitHub Releases  |
 | `KAIRO_REQUIRE_COSIGN` | Abort update on cosign verification failure | unset            |
+
 ## Built-in Providers
 
 | Provider                 | API Key Required | Default Base URL                     | Default Model         |
@@ -162,6 +165,7 @@ Generated on first setup. The file contains the private identity line followed b
 | `azure-openai-responses` | Yes              | (provider-managed)                   | (provider-managed)    |
 | `minimax-cn`             | Yes              | (provider-managed)                   | (provider-managed)    |
 | `custom`                 | Yes              | user-defined                         | user-defined          |
+
 ## Custom Provider
 
 Required fields when using `kairo setup`:
