@@ -128,6 +128,7 @@ kairo/
 │   ├── config/          # Config loading, caching, migration, paths
 │   ├── constants/       # Shared constants (paths, defaults)
 │   ├── crypto/          # age/X25519 key management and encryption
+│   ├── envutil/         # Environment variable merge utilities
 │   ├── errors/          # Typed errors
 │   ├── execution/        # Harness execution dispatch
 │   ├── fsutil/          # Atomic file write utility
@@ -191,7 +192,6 @@ Notes:
 | `azure-openai-responses` | Azure OpenAI          | (provider-managed)                   | (provider-managed)    | Yes     |
 | `minimax-cn`             | MiniMax (CN)          | (provider-managed)                   | (provider-managed)    | Yes     |
 | `custom`                 | Custom Provider       | user-defined                         | user-defined          | Yes     |
-
 ## Security Architecture
 
 Kairo keeps credentials out of normal child-process environments by combining encrypted storage with temporary wrapper scripts.
@@ -213,12 +213,12 @@ See [Wrapper Scripts](wrapper-scripts.md) for the detailed design.
 | Install script    | `scripts/install.sh`              | `scripts/install.ps1`                   |
 | Wrapper script    | POSIX shell script                | PowerShell script                       |
 | Harness execution | direct executable / shell wrapper | `powershell -File <wrapper>.ps1`        |
-
 ### Key Code References
 
 - Config directory resolution: `internal/config/env.go`
 - Secure wrapper generation: `internal/wrapper/wrapper.go`
-- Harness execution: `cmd/execution.go`
+- Harness dispatch and constants: `internal/harness/harness.go`
+- Harness execution: `cmd/execution_harness.go`
 - Root command and flag wiring: `cmd/root.go`
 
 ## Design Principles
