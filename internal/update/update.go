@@ -58,25 +58,40 @@ type Release struct {
 	Body    string `json:"body"`
 }
 
-// doHTTPGet performs an HTTP GET request and returns the response body.
-func (c *Client) doHTTPGet(ctx context.Context, url string) ([]byte, error) {
+// doHTTPRequest performs an HTTP GET and returns the response (body open).
+// The caller must close resp.Body.
+func (c *Client) doHTTPRequest(ctx context.Context, url string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to create request", err)
 	}
 
+	req.Header.Set("User-Agent", "kairo-cli")
+
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to fetch", err)
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+
 		return nil, errors.NewError(errors.NetworkError,
 			fmt.Sprintf("request failed with status %d", resp.StatusCode))
 	}
+
+	return resp, nil
+}
+
+// doHTTPGet performs an HTTP GET request and returns the response body.
+func (c *Client) doHTTPGet(ctx context.Context, url string) ([]byte, error) {
+	resp, err := c.doHTTPRequest(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -98,31 +113,10 @@ func (c *Client) LatestReleaseURL() string {
 
 // FetchLatestRelease fetches the latest release information from GitHub.
 func (c *Client) FetchLatestRelease(ctx context.Context) (*Release, error) {
-	url := c.LatestReleaseURL()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to create request", err)
-	}
-
-	req.Header.Set("User-Agent", "kairo-cli")
-
-	resp, err := c.HTTPClient.Do(req)
+	body, err := c.doHTTPGet(ctx, c.LatestReleaseURL())
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to fetch release", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.NewError(errors.NetworkError,
-			fmt.Sprintf("API returned status %d", resp.StatusCode))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to read response", err)
 	}
 
 	var r Release
@@ -159,23 +153,12 @@ func InstallScriptURL(goos, tag string) string {
 
 // DownloadToTempFile downloads a URL to a temporary file and returns its path.
 func (c *Client) DownloadToTempFile(ctx context.Context, url string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
-	if err != nil {
-		return "", errors.WrapError(errors.NetworkError,
-			"failed to create download request", err)
-	}
-
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.doHTTPRequest(ctx, url)
 	if err != nil {
 		return "", errors.WrapError(errors.NetworkError,
 			"failed to download", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.NewError(errors.NetworkError,
-			fmt.Sprintf("download failed with status %d", resp.StatusCode))
-	}
 
 	ext := installScriptExt
 	if runtime.GOOS == constants.WindowsGOOS {
@@ -330,6 +313,55 @@ func ChecksumsBundleURL(tag string) string {
 	return constants.RawGitHubFileURL(tag, "scripts/checksums.txt.sigstore.json")
 }
 
+// dataToTempFile writes data to a temp file with the given pattern and returns its path.
+func dataToTempFile(data []byte, pattern string) (string, error) {
+	f, err := os.CreateTemp("", pattern)
+	if err != nil {
+		return "", errors.WrapError(errors.FileSystemError,
+			"failed to create temp file", err)
+	}
+
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+
+		return "", errors.WrapError(errors.FileSystemError,
+			"failed to write temp file", err)
+	}
+
+	if err := f.Close(); err != nil {
+		os.Remove(f.Name())
+
+		return "", errors.WrapError(errors.FileSystemError,
+			"failed to close temp file", err)
+	}
+
+	return f.Name(), nil
+}
+
+// cosignVerifyBlob runs cosign verify-blob against the given checksums file
+// using the sigstore bundle at bundlePath.
+func cosignVerifyBlob(ctx context.Context, cosignPath, bundlePath, checksumsPath string) error {
+	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml",
+		constants.GitHubRepo)
+
+	cmd := exec.CommandContext(ctx, cosignPath,
+		"verify-blob",
+		"--bundle="+bundlePath,
+		"--certificate-identity-regexp="+certIdentityRegexp,
+		"--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
+		checksumsPath,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return errors.WrapError(errors.VerificationError,
+			"cosign bundle verification failed", err).
+			WithContext("output", string(output))
+	}
+
+	return nil
+}
+
 // VerifyCosignBundle downloads the sigstore bundle for the checksums file and verifies
 // it using cosign. Returns nil if cosign is not installed (best-effort verification).
 func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
@@ -343,68 +375,31 @@ func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
 		return nil
 	}
 
-	bundleURL := ChecksumsBundleURL(tag)
-	bundleData, err := c.doHTTPGet(ctx, bundleURL)
+	bundleData, err := c.doHTTPGet(ctx, ChecksumsBundleURL(tag))
 	if err != nil {
 		return errors.WrapError(errors.NetworkError,
 			"failed to download cosign bundle", err)
 	}
 
-	bundleFile, err := os.CreateTemp("", "kairo-bundle-*.sigstore.json")
+	bundlePath, err := dataToTempFile(bundleData, "kairo-bundle-*.sigstore.json")
 	if err != nil {
-		return errors.WrapError(errors.FileSystemError,
-			"failed to create temp bundle file", err)
+		return err
 	}
-	defer os.Remove(bundleFile.Name())
+	defer os.Remove(bundlePath)
 
-	if _, err := bundleFile.Write(bundleData); err != nil {
-		bundleFile.Close()
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to write bundle file", err)
-	}
-	bundleFile.Close()
-
-	checksumsURL := ChecksumsURL(tag)
-	checksumsData, err := c.doHTTPGet(ctx, checksumsURL)
+	checksumsData, err := c.doHTTPGet(ctx, ChecksumsURL(tag))
 	if err != nil {
 		return errors.WrapError(errors.NetworkError,
 			"failed to download checksums for verification", err)
 	}
 
-	checksumsFile, err := os.CreateTemp("", "kairo-checksums-*.txt")
+	checksumsPath, err := dataToTempFile(checksumsData, "kairo-checksums-*.txt")
 	if err != nil {
-		return errors.WrapError(errors.FileSystemError,
-			"failed to create temp checksums file", err)
+		return err
 	}
-	defer os.Remove(checksumsFile.Name())
+	defer os.Remove(checksumsPath)
 
-	if _, err := checksumsFile.Write(checksumsData); err != nil {
-		checksumsFile.Close()
-
-		return errors.WrapError(errors.FileSystemError,
-			"failed to write checksums file", err)
-	}
-	checksumsFile.Close()
-
-	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml",
-		constants.GitHubRepo)
-
-	cmd := exec.CommandContext(cosignCtx, cosignPath,
-		"verify-blob",
-		"--bundle="+bundleFile.Name(),
-		"--certificate-identity-regexp="+certIdentityRegexp,
-		"--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
-		checksumsFile.Name(),
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return errors.WrapError(errors.VerificationError,
-			"cosign bundle verification failed", err).
-			WithContext("output", string(output))
-	}
-
-	return nil
+	return cosignVerifyBlob(cosignCtx, cosignPath, bundlePath, checksumsPath)
 }
 
 // ScriptNameForChecksums returns the script filename used in the checksums file.

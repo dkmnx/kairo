@@ -21,9 +21,9 @@ func TestLoadRootConfigEmptyProviders(t *testing.T) {
 	}
 	createConfigFile(t, tmpDir, cfg)
 
-	originalConfigDir := configDir()
-	setConfigDir(tmpDir)
-	defer func() { setConfigDir(originalConfigDir) }()
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defaultCLIContext.SetConfigDir(tmpDir)
+	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
 
 	output := &bytes.Buffer{}
 	rootCmd.SetOut(output)

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
 
@@ -77,7 +78,7 @@ func TestExecuteWithAuth_QwenHarness(t *testing.T) {
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
 		ProviderEnv:   []string{"TEST=value"},
-		HarnessToUse:  harnessQwen,
+		HarnessToUse:  harness.Qwen,
 		HarnessBinary: "qwen",
 		Provider: config.Provider{
 			Name:    "Test Provider",
@@ -234,7 +235,7 @@ func TestExecuteWithAuth_YoloModeQwen(t *testing.T) {
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
 		ProviderEnv:   []string{"TEST=value"},
-		HarnessToUse:  harnessQwen,
+		HarnessToUse:  harness.Qwen,
 		HarnessBinary: "qwen",
 		Provider: config.Provider{
 			Name:    "Test Provider",
@@ -281,7 +282,7 @@ func TestExecuteWithAuth_PiHarness(t *testing.T) {
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
 		ProviderEnv:   []string{"ZAI_API_KEY=test-key"},
-		HarnessToUse:  harnessPi,
+		HarnessToUse:  harness.Pi,
 		HarnessBinary: "pi",
 		Provider: config.Provider{
 			Name:    "Z.AI",
@@ -327,7 +328,7 @@ func TestExecuteWithAuth_PiYoloMode(t *testing.T) {
 	cfg := ExecutionConfig{
 		Cmd:           cmd,
 		ProviderEnv:   []string{"TEST=value"},
-		HarnessToUse:  harnessPi,
+		HarnessToUse:  harness.Pi,
 		HarnessBinary: "pi",
 		Provider: config.Provider{
 			Name:    "Z.AI",

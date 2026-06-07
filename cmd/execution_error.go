@@ -4,18 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/dkmnx/kairo/internal/constants"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
-	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-func yoloModeFlag(h string) string {
-	return harness.YoloFlag(h)
-}
 func handleConfigError(cmd *cobra.Command, err error) {
 	if isBinaryOutdatedError(err) {
 		promptUpgrade(cmd, err)
@@ -26,9 +23,22 @@ func handleConfigError(cmd *cobra.Command, err error) {
 }
 
 func isBinaryOutdatedError(err error) bool {
-	var typeErr *yaml.TypeError
+	if errors.Is(err, kairoerrors.ErrBinaryOutdated) {
+		return true
+	}
 
-	return errors.Is(err, kairoerrors.ErrBinaryOutdated) || errors.As(err, &typeErr)
+	var typeErr *yaml.TypeError
+	if !errors.As(err, &typeErr) {
+		return false
+	}
+
+	for _, msg := range typeErr.Errors {
+		if strings.Contains(msg, "not found in type") {
+			return true
+		}
+	}
+
+	return false
 }
 
 func promptUpgrade(cmd *cobra.Command, err error) {

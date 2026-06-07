@@ -35,6 +35,7 @@ providers:
     name: string
     base_url: string
     model: string
+    env_key: string
     env_vars:
       - KEY=value
 custom_providers:
@@ -54,6 +55,7 @@ custom_providers:
 Notes:
 
 - `default_harness` is optional. If omitted, Kairo uses `claude`. Valid values: `claude`, `qwen`, `pi`, `crush`.
+- `env_key` is optional. When set, it overrides the auto-derived `<PROVIDER>_API_KEY` environment variable name used to pass the API key to the harness.
 - `default_models` is optional migration metadata maintained for built-in providers.
 - `custom_providers` is optional. Custom provider definitions are validated at startup and merged into the provider registry. Custom entries with the same key as a built-in provider override the built-in definition.
 
@@ -101,17 +103,18 @@ custom_providers:
 
 Fields:
 
-| Field              | Required | Default | Description                                       |
-| ------------------ | -------- | ------- | ------------------------------------------------- |
-| `name`             | Yes      | —       | Display name shown in setup and list commands     |
-| `base_url`         | No       | `""`    | Anthropic-compatible endpoint (HTTPS only)        |
-| `model`            | No       | `""`    | Default model (user can override during setup)    |
-| `requires_api_key` | No       | `true`  | Whether an API key is required                    |
-| `api_key_env_var`  | No       | `""`    | Environment variable name for the API key         |
-| `min_key_length`   | No       | `20`    | Minimum API key length                            |
-| `key_prefix`       | No       | `""`    | Required API key prefix (e.g. `sk-`)              |
-| `key_pattern`      | No       | `""`    | Regex pattern the API key must match              |
-| `env_vars`         | No       | `[]`    | Extra environment variables passed to the harness |
+| Field              | Required | Default | Description                                                            |
+| ------------------ | -------- | ------- | ---------------------------------------------------------------------- |
+| `name`             | Yes      | —       | Display name shown in setup and list commands                          |
+| `base_url`         | No       | `""`    | Anthropic-compatible endpoint (HTTPS only)                             |
+| `model`            | No       | `""`    | Default model (user can override during setup)                         |
+| `requires_api_key` | No       | `true`  | Whether an API key is required                                         |
+| `api_key_env_var`  | No       | `""`    | Environment variable name for the API key                              |
+| `env_key`          | No       | `""`    | Override the auto-derived API key env var name passed to the harness   |
+| `min_key_length`   | No       | `20`    | Minimum API key length                                                 |
+| `key_prefix`       | No       | `""`    | Required API key prefix (e.g. `sk-`)                                   |
+| `key_pattern`      | No       | `""`    | Regex pattern the API key must match                                   |
+| `env_vars`         | No       | `[]`    | Extra environment variables passed to the harness                      |
 
 ## `secrets.age`
 

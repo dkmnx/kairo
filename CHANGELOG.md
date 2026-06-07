@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `EnvVars` field for custom provider environment variables in config
+- Abort update on cosign verification failure when `KAIRO_REQUIRE_COSIGN=1` is set
+- `envutil.Merge` helper for combining OS environment variable slices
+
+### Changed
+
+- Extract shared execution helpers from wrapper functions in root command
+- Deduplicate cosign verify logic in update command
+- Decouple URL validation from `config.Config`
+- Drop malformed entries silently on secrets parse instead of preserving them
+- Reconcile `DefaultModels` from built-in provider definitions on config load
+- Add Crush harness, MiniMax (CN), and `env_key` to documentation
+- Fix discrepancies between code and documentation
+
+### Fixed
+
+- Replace `os.Exit(1)` with panic in CIDR parser for fuzzing compatibility
+- Remove duplicate custom provider entry in setup provider list
+- Remove dead `BuiltInEnvVars` with incorrect environment variable names
+
 ## [v2.8.2] - 2026-05-30
 
 ### Fixed

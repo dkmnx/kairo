@@ -72,6 +72,8 @@ flowchart TB
 
 ### Implementation Details
 
+> **Note:** The code snippets in this section are simplified illustrations of the design. For the actual production implementations, see `internal/wrapper/wrapper.go` (`CreateTempAuthDir`, `WriteTempTokenFile`, `GenerateWrapperScript`).
+
 #### Step 1: Create Private Temp Directory
 
 ```go
@@ -384,7 +386,7 @@ The wrapper script approach adds complexity:
 
 ## Decision Record
 
-**Status**: Accepted (2024-2025)
+**Status**: Accepted
 
 **Context**: Need to securely pass API tokens to Claude/Qwen Code without exposing them in process environment or command-line arguments.
 

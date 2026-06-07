@@ -202,7 +202,7 @@ func generateUnixScript(envVar string, cfg ScriptConfig) string {
 	return sb.String()
 }
 
-// ExecCommand creates an exec.Cmd for the given command and arguments.
+// ExecCommandContext creates an exec.Cmd for the given command and arguments.
 func ExecCommandContext(ctx context.Context, name string, arg ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, name, arg...)
 }

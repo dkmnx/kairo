@@ -51,7 +51,8 @@ docs/
 ├── README.md                 # This file
 ├── architecture/             # System design
 │   ├── README.md             # Architecture overview
-│   └── wrapper-scripts.md    # Security design
+│   ├── wrapper-scripts.md    # Security design
+│   └── adr/                  # Architecture decision records
 ├── guides/                   # User and developer guides
 │   ├── user-guide.md         # Basic usage
 │   └── development-guide.md  # Development setup

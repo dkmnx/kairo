@@ -131,16 +131,6 @@ func TestPiEnvVars(t *testing.T) {
 	}
 }
 
-func TestBuiltInEnvVars(t *testing.T) {
-	vars := BuiltInEnvVars("https://api.example.com", "test-model")
-	if len(vars) != 7 {
-		t.Fatalf("expected 7 env vars, got %d", len(vars))
-	}
-	if vars[0] != "ANTHROPIC_BASE_URL=https://api.example.com" {
-		t.Errorf("first var = %q", vars[0])
-	}
-}
-
 func TestAPIKeyEnvVar(t *testing.T) {
 	if got := APIKeyEnvVar("testprovider"); got != "TESTPROVIDER_API_KEY" {
 		t.Errorf("APIKeyEnvVar = %q, want TESTPROVIDER_API_KEY", got)

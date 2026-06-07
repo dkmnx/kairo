@@ -58,11 +58,11 @@ func TestProviderEnvVarSetup(t *testing.T) {
 }
 
 func TestSwitchCmdProviderNotFound(t *testing.T) {
-	originalConfigDir := configDir()
-	defer setConfigDir(originalConfigDir)
+	originalConfigDir := defaultCLIContext.ConfigDir()
+	defer defaultCLIContext.SetConfigDir(originalConfigDir)
 
 	tmpDir := t.TempDir()
-	setConfigDir(tmpDir)
+	defaultCLIContext.SetConfigDir(tmpDir)
 
 	cfg := &config.Config{
 		Providers: map[string]config.Provider{
@@ -82,9 +82,9 @@ func TestSwitchCmdProviderNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dir := configDir()
+	dir := defaultCLIContext.ConfigDir()
 	if dir != tmpDir {
-		t.Errorf("configDir() = %q, want %q", dir, tmpDir)
+		t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", dir, tmpDir)
 	}
 }
 
