@@ -83,3 +83,13 @@ func Format(secrets map[string]string) string {
 
 	return b.String()
 }
+
+// EnvVars converts a secrets map into environment variable strings.
+func EnvVars(secrets map[string]string) []string {
+	envVars := make([]string, 0, len(secrets))
+	for k, v := range secrets {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return envVars
+}
