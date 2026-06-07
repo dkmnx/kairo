@@ -172,37 +172,22 @@ func runPiProvider(
 
 	hasAnyKey := false
 	for pName, p := range cfg.Providers {
-		piEnvVar, ok := PiAPIKeyEnvVar(pName)
+		piEnvVar, ok := providers.APIKeyEnvVarFor(pName)
 		if !ok {
 			if p.EnvKey == "" {
-				piEnvVar = APIKeyEnvVarName(pName)
+				piEnvVar = harness.APIKeyEnvVar(pName)
 			} else {
 				piEnvVar = p.EnvKey
 			}
 		}
-		key := APIKeyEnvVarName(pName)
-		val, found := secrets[key]
-		if !found && pName != customProviderName {
-			key = APIKeyEnvVarName(customProviderName)
-			val, found = secrets[key]
-		}
+		val, found := lookupAPIKeyWithFallback(secrets, pName)
 		if found {
 			providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", piEnvVar, val))
 			hasAnyKey = true
 		}
 	}
 
-	execCfg := ExecutionConfig{
-		Cmd:           cmd,
-		ProviderEnv:   providerEnv,
-		HarnessToUse:  harnessToUse,
-		HarnessBinary: harnessToUse,
-		Provider:      provider,
-		ProviderName:  providerName,
-		HarnessArgs:   harnessArgs,
-		Yolo:          skipPermissionsFlag,
-		Deps:          cliCtx.Deps(),
-	}
+	execCfg := buildExecutionConfig(cmd, cliCtx, providerEnv, provider, providerName, harnessToUse, harnessArgs, "")
 
 	if hasAnyKey {
 		executeWithAuth(execCfg)
@@ -227,11 +212,50 @@ func runStandardProvider(
 		return
 	}
 
-	apiKey, hasKey := resolveAPIKey(envResult.Secrets, providerName)
+	apiKey, hasKey := lookupAPIKeyWithFallback(envResult.Secrets, providerName)
 
-	execCfg := ExecutionConfig{
+	execCfg := buildExecutionConfig(
+		cmd, cliCtx, envResult.ProviderEnv, provider,
+		providerName, harnessToUse, harnessArgs, apiKey,
+	)
+
+	if hasKey {
+		executeWithAuth(execCfg)
+	} else {
+		executeWithoutAuth(execCfg)
+	}
+}
+
+// lookupAPIKeyWithFallback looks up the API key for the named provider, falling
+// back to the custom provider key if the provider-specific key is not found.
+// Returns the value and whether it was found.
+func lookupAPIKeyWithFallback(secrets map[string]string, providerName string) (string, bool) {
+	if val, ok := secrets[harness.APIKeyEnvVar(providerName)]; ok {
+		return val, true
+	}
+
+	if providerName != customProviderName {
+		if val, ok := secrets[harness.APIKeyEnvVar(customProviderName)]; ok {
+			return val, true
+		}
+	}
+
+	return "", false
+}
+
+// buildExecutionConfig creates an ExecutionConfig with common wiring.
+func buildExecutionConfig(
+	cmd *cobra.Command,
+	cliCtx *CLIContext,
+	providerEnv []string,
+	provider config.Provider,
+	providerName, harnessToUse string,
+	harnessArgs []string,
+	apiKey string,
+) ExecutionConfig {
+	return ExecutionConfig{
 		Cmd:           cmd,
-		ProviderEnv:   envResult.ProviderEnv,
+		ProviderEnv:   providerEnv,
 		HarnessToUse:  harnessToUse,
 		HarnessBinary: harnessToUse,
 		Provider:      provider,
@@ -241,26 +265,12 @@ func runStandardProvider(
 		Yolo:          skipPermissionsFlag,
 		Deps:          cliCtx.Deps(),
 	}
-
-	if hasKey {
-		executeWithAuth(execCfg)
-	} else {
-		executeWithoutAuth(execCfg)
-	}
 }
 
 // resolveAPIKey looks up the API key for the named provider, falling back to
 // the custom provider key if the provider-specific key is not found.
 func resolveAPIKey(secrets map[string]string, providerName string) (string, bool) {
-	if key, ok := secrets[APIKeyEnvVarName(providerName)]; ok {
-		return key, true
-	}
-
-	if key, ok := secrets[APIKeyEnvVarName(customProviderName)]; ok {
-		return key, true
-	}
-
-	return "", false
+	return lookupAPIKeyWithFallback(secrets, providerName)
 }
 
 func splitArgs(args []string) ([]string, []string) {

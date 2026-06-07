@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
 	"github.com/spf13/cobra"
@@ -77,7 +78,7 @@ func configureProvider(params ProviderSetup) (string, error) {
 		return "", err
 	}
 
-	params.Secrets[APIKeyEnvVarName(validatedName)] = apiKey
+	params.Secrets[harness.APIKeyEnvVar(validatedName)] = apiKey
 	if err := SaveSecrets(params.CLIContext, params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
 		return "", err
 	}

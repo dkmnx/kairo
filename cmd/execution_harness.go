@@ -81,14 +81,7 @@ func lookUpHarnessBinary(cfg ExecutionConfig) string {
 // directly without the wrapper script. It returns the run error so callers
 // can decide whether to surface it and exit.
 func executePi(cfg ExecutionConfig) error {
-	cliArgs := cfg.HarnessArgs
-
-	if cfg.Yolo {
-		if flag := harness.YoloFlag(cfg.HarnessToUse); flag != "" {
-			cliArgs = append([]string{flag}, cliArgs...)
-		}
-	}
-
+	cliArgs := applyYoloFlag(cfg, cfg.HarnessArgs)
 	cliArgs = append(
 		[]string{"--provider", cfg.ProviderName, "--model", cfg.Provider.Model},
 		cliArgs...,
@@ -135,12 +128,32 @@ func runHarnessWithWrapper(ctx context.Context, deps *Deps, params HarnessRun) e
 	return execCmd.Run()
 }
 
-func executeWithAuth(cfg ExecutionConfig) {
-	if cfg.HarnessToUse == harness.Pi {
-		if err := executePi(cfg); err != nil {
-			reportHarnessError(cfg, "Pi", err)
+// applyYoloFlag prepends the yolo flag to cliArgs when cfg.Yolo is set.
+func applyYoloFlag(cfg ExecutionConfig, cliArgs []string) []string {
+	if cfg.Yolo {
+		if flag := harness.YoloFlag(cfg.HarnessToUse); flag != "" {
+			return append([]string{flag}, cliArgs...)
 		}
+	}
 
+	return cliArgs
+}
+
+// handlePi returns true if the execution was handled by the Pi harness.
+func handlePi(cfg ExecutionConfig) bool {
+	if cfg.HarnessToUse != harness.Pi {
+		return false
+	}
+
+	if err := executePi(cfg); err != nil {
+		reportHarnessError(cfg, "Pi", err)
+	}
+
+	return true
+}
+
+func executeWithAuth(cfg ExecutionConfig) {
+	if handlePi(cfg) {
 		return
 	}
 
@@ -176,10 +189,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 		return
 	}
 
-	cliArgs := cfg.HarnessArgs
-	if cfg.Yolo {
-		cliArgs = append([]string{harness.YoloFlag(cfg.HarnessToUse)}, cliArgs...)
-	}
+	cliArgs := applyYoloFlag(cfg, cfg.HarnessArgs)
 
 	displayName, envVarName, extraArgs := harness.Dispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
 	cliArgs = append(extraArgs, cliArgs...)
@@ -201,19 +211,11 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 }
 
 func executeWithoutAuth(cfg ExecutionConfig) {
-	if cfg.HarnessToUse == harness.Pi {
-		if err := executePi(cfg); err != nil {
-			reportHarnessError(cfg, "Pi", err)
-		}
-
+	if handlePi(cfg) {
 		return
 	}
 
-	cliArgs := cfg.HarnessArgs
-
-	if cfg.Yolo {
-		cliArgs = append([]string{harness.YoloFlag(cfg.HarnessToUse)}, cliArgs...)
-	}
+	cliArgs := applyYoloFlag(cfg, cfg.HarnessArgs)
 
 	if cfg.HarnessToUse == harness.Qwen {
 		ui.PrintError("API key not found for provider")

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/spf13/cobra"
 )
 
 func TestRootCmd(t *testing.T) {
@@ -274,4 +275,36 @@ func createConfigFile(t *testing.T, dir string, cfg *config.Config) string {
 		t.Fatalf("Failed to create test config: %v", err)
 	}
 	return configPath
+}
+
+func TestLoadRootConfigConfigDirEmpty(t *testing.T) {
+	cliCtx := NewCLIContext()
+	cliCtx.SetConfigDirResolver(func() (string, error) {
+		return "", nil
+	})
+
+	got, ok := loadRootConfig(&cobra.Command{}, cliCtx)
+	if ok || got != nil {
+		t.Error("Expected failure when config dir is empty")
+	}
+}
+
+func TestIsKnownProvider(t *testing.T) {
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{
+			"my-custom": {Name: "My"},
+		},
+	}
+
+	if !isKnownProvider("my-custom", cfg) {
+		t.Error("Expected configured provider to be known")
+	}
+
+	if !isKnownProvider("anthropic", cfg) {
+		t.Error("Expected built-in provider to be known even if not configured")
+	}
+
+	if isKnownProvider("nonexistent", cfg) {
+		t.Error("Expected unknown provider to not be known")
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/yarlson/tap"
 )
@@ -97,10 +98,10 @@ func promptForAPIKey(cfg providerPromptConfig) string {
 		return tap.Password(ctx, tap.PasswordOptions{Message: "API Key"})
 	}
 
-	existingKey := cfg.Secrets[APIKeyEnvVarName(cfg.ProviderName)]
+	existingKey := cfg.Secrets[harness.APIKeyEnvVar(cfg.ProviderName)]
 
 	if existingKey == "" && cfg.ProviderName != customProviderName {
-		existingKey = cfg.Secrets[APIKeyEnvVarName(customProviderName)]
+		existingKey = cfg.Secrets[harness.APIKeyEnvVar(customProviderName)]
 	}
 
 	if existingKey == "" {
@@ -189,7 +190,7 @@ func promptForModel(cfg providerPromptConfig) string {
 }
 
 func promptForEnvKey(cfg providerPromptConfig) string {
-	defaultValue := APIKeyEnvVarName(cfg.ProviderName)
+	defaultValue := harness.APIKeyEnvVar(cfg.ProviderName)
 
 	return promptForField(promptFieldConfig{
 		Label:        "Env Key",
