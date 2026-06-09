@@ -10,15 +10,17 @@ import (
 )
 
 var (
-	private10   = parseCIDROrPanic("10.0.0.0/8")
-	private172  = parseCIDROrPanic("172.16.0.0/12")
-	private192  = parseCIDROrPanic("192.168.0.0/16")
-	linkLocal   = parseCIDROrPanic("169.254.0.0/16")
-	ulaIPv6     = parseCIDROrPanic("fc00::/7")
-	linkLocalV6 = parseCIDROrPanic("fe80::/10")
+	private10   = mustParseCIDR("10.0.0.0/8")
+	private172  = mustParseCIDR("172.16.0.0/12")
+	private192  = mustParseCIDR("192.168.0.0/16")
+	linkLocal   = mustParseCIDR("169.254.0.0/16")
+	ulaIPv6     = mustParseCIDR("fc00::/7")
+	linkLocalV6 = mustParseCIDR("fe80::/10")
 )
 
-func parseCIDROrPanic(s string) *net.IPNet {
+// mustParseCIDR parses a CIDR notation string into an *net.IPNet.
+// It panics on invalid input because the arguments are hardcoded constants.
+func mustParseCIDR(s string) *net.IPNet {
 	_, ipnet, err := net.ParseCIDR(s)
 	if err != nil {
 		panic("kairo: invalid hardcoded CIDR " + s + ": " + err.Error())

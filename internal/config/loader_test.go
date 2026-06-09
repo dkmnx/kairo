@@ -195,3 +195,138 @@ func TestLoadConfig_NonExistentDir(t *testing.T) {
 		t.Error("LoadConfig on nonexistent directory should return error")
 	}
 }
+
+func TestReconcileDefaultModels_PrunesStaleEntries(t *testing.T) {
+	cfg := &Config{
+		Providers: map[string]Provider{
+			"active": {Name: "Active", Model: "model-v2"},
+		},
+		DefaultModels: map[string]string{
+			"active":  "model-v1",
+			"removed": "model-old",
+			"deleted": "model-old",
+		},
+	}
+	cfg.reconcileDefaultModels()
+
+	if _, ok := cfg.DefaultModels["removed"]; ok {
+		t.Error("reconcileDefaultModels should prune DefaultModels entry for removed provider 'removed'")
+	}
+	if _, ok := cfg.DefaultModels["deleted"]; ok {
+		t.Error("reconcileDefaultModels should prune DefaultModels entry for removed provider 'deleted'")
+	}
+	if v := cfg.DefaultModels["active"]; v != "model-v1" {
+		t.Errorf("reconcileDefaultModels should preserve existing DefaultModels value, got %q", v)
+	}
+}
+
+func TestReconcileDefaultModels_PopulatesMissingEntries(t *testing.T) {
+	cfg := &Config{
+		Providers: map[string]Provider{
+			"new-one": {Name: "New One", Model: "model-v2"},
+			"new-two": {Name: "New Two", Model: "model-v1"},
+		},
+		DefaultModels: map[string]string{
+			"existing": "model-old",
+		},
+	}
+	cfg.reconcileDefaultModels()
+
+	if v := cfg.DefaultModels["new-one"]; v != "model-v2" {
+		t.Errorf("reconcileDefaultModels should populate missing entry for 'new-one', got %q", v)
+	}
+	if v := cfg.DefaultModels["new-two"]; v != "model-v1" {
+		t.Errorf("reconcileDefaultModels should populate missing entry for 'new-two', got %q", v)
+	}
+}
+
+func TestReconcileDefaultModels_PreservesExistingEntries(t *testing.T) {
+	cfg := &Config{
+		Providers: map[string]Provider{
+			"keep": {Name: "Keep", Model: "model-v2"},
+		},
+		DefaultModels: map[string]string{
+			"keep": "model-v1",
+		},
+	}
+	cfg.reconcileDefaultModels()
+
+	if v := cfg.DefaultModels["keep"]; v != "model-v1" {
+		t.Errorf("reconcileDefaultModels should preserve explicit DefaultModels override, got %q", v)
+	}
+}
+
+func TestReconcileDefaultModels_MixedAddAndPrune(t *testing.T) {
+	cfg := &Config{
+		Providers: map[string]Provider{
+			"stays": {Name: "Stays", Model: "model-v2"},
+			"new-p": {Name: "New P", Model: "model-v3"},
+		},
+		DefaultModels: map[string]string{
+			"stays": "model-v1",
+			"old-p": "model-old",
+		},
+	}
+	cfg.reconcileDefaultModels()
+
+	// stale removed
+	if _, ok := cfg.DefaultModels["old-p"]; ok {
+		t.Error("reconcileDefaultModels should prune removed provider 'old-p'")
+	}
+	// existing preserved
+	if v := cfg.DefaultModels["stays"]; v != "model-v1" {
+		t.Errorf("reconcileDefaultModels should preserve existing entry for 'stays', got %q", v)
+	}
+	// new populated
+	if v := cfg.DefaultModels["new-p"]; v != "model-v3" {
+		t.Errorf("reconcileDefaultModels should populate new entry for 'new-p', got %q", v)
+	}
+	if len(cfg.DefaultModels) != 2 {
+		t.Errorf("reconcileDefaultModels should result in exactly 2 entries, got %d", len(cfg.DefaultModels))
+	}
+}
+
+func TestReconcileDefaultModels_EmptyProviders(t *testing.T) {
+	cfg := &Config{
+		Providers:     map[string]Provider{},
+		DefaultModels: map[string]string{"old": "model-old"},
+	}
+	cfg.reconcileDefaultModels()
+
+	if len(cfg.DefaultModels) != 0 {
+		t.Errorf("reconcileDefaultModels should prune all entries when no providers remain, got %d", len(cfg.DefaultModels))
+	}
+}
+
+func TestReconcileDefaultModels_NilDefaultModels(t *testing.T) {
+	cfg := &Config{
+		Providers: map[string]Provider{
+			"a": {Name: "A", Model: "model-a"},
+		},
+		DefaultModels: nil,
+	}
+	cfg.reconcileDefaultModels()
+
+	if len(cfg.DefaultModels) != 1 {
+		t.Errorf("reconcileDefaultModels should populate from nil, got %d entries", len(cfg.DefaultModels))
+	}
+	if v := cfg.DefaultModels["a"]; v != "model-a" {
+		t.Errorf("reconcileDefaultModels should set model for 'a', got %q", v)
+	}
+}
+
+func TestReconcileDefaultModels_NilProvidersNoPanic(t *testing.T) {
+	cfg := &Config{
+		Providers:     nil,
+		DefaultModels: map[string]string{"old": "model-old"},
+	}
+	cfg.reconcileDefaultModels()
+
+	// Should not panic on nil Providers, and should prune stale entries
+	if cfg.DefaultModels == nil {
+		t.Error("reconcileDefaultModels should not leave DefaultModels nil after pruning on nil Providers")
+	}
+	if len(cfg.DefaultModels) != 0 {
+		t.Errorf("reconcileDefaultModels should prune all entries when Providers is nil, got %d", len(cfg.DefaultModels))
+	}
+}

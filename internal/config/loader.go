@@ -153,12 +153,22 @@ func LoadConfig(ctx context.Context, configDir string) (*Config, error) {
 	return &cfg, nil
 }
 
-// reconcileDefaultModels rebuilds DefaultModels from Providers[].Model.
-// Entries already present in DefaultModels are left untouched (so external
-// overrides survive) and new entries are populated from the built-in
-// provider registry for known providers. This keeps a single source of
-// truth: each provider's model lives on the Provider struct.
+// reconcileDefaultModels prunes stale entries for providers no longer in the
+// config, then populates missing entries from the built-in provider registry.
+// This keeps DefaultModels as a derived index of the authoritative Provider map.
 func (c *Config) reconcileDefaultModels() {
+	if c.DefaultModels == nil {
+		c.DefaultModels = make(map[string]string)
+	}
+
+	// Prune entries for providers that no longer exist.
+	for name := range c.DefaultModels {
+		if _, ok := c.Providers[name]; !ok {
+			delete(c.DefaultModels, name)
+		}
+	}
+
+	// Populate missing entries.
 	for name, p := range c.Providers {
 		if _, ok := c.DefaultModels[name]; ok {
 			continue

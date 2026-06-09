@@ -95,6 +95,18 @@ func WrapError(errorType ErrorType, message string, cause error) *KairoError {
 	}
 }
 
+// Standard context keys used across the codebase with WithContext():
+//   "path"         - file path
+//   "config_dir"   - configuration directory path
+//   "key_path"     - encryption key file path
+//   "secrets_path" - encrypted secrets file path
+//   "provider"     - provider name
+//   "hint"         - user-facing troubleshooting hint
+//   "model"        - model name
+//   "env_var"      - environment variable name
+//
+// Keep keys lowercase_snake_case and consistent across all packages.
+
 // WithContext adds a key-value pair to the error's context metadata.
 func (e *KairoError) WithContext(key, value string) *KairoError {
 	if e.Context == nil {
