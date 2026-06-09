@@ -149,8 +149,7 @@ deps:
     {{GO}} install github.com/goreleaser/goreleaser/v2@latest
     @echo ""
     @echo "Installing pre-commit..."
-    pip install pre-commit
-    pre-commit install
+    command -v pre-commit >/dev/null 2>&1 && echo "pre-commit already installed" || (uv pip install pre-commit && pre-commit install)
     @echo ""
     @echo "Dependencies installed!"
 
@@ -182,6 +181,12 @@ release-local:
 release-dry-run:
     @echo "Running goreleaser (dry-run, no publish)..."
     goreleaser release --clean --snapshot --skip=publish
+
+# Generate provider table for README
+generate:
+    @echo "Generating provider table..."
+    {{GO}} run ./cmd/gen/
+    @echo "Provider table generated! Update README.md with the output."
 
 # Display help message
 help:

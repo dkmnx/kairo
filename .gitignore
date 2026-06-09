@@ -43,7 +43,7 @@ ai_docs/
 .qwen/
 
 # Config files (contain sensitive data)
-.age.key
+age.key
 secrets.age
 ./config
 .env
