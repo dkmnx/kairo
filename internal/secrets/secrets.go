@@ -27,8 +27,9 @@ func ParseWithStats(content string) Result {
 	result := make(map[string]string)
 	var warnings []string
 	var skippedCount int
-	for lineNum, line := range strings.Split(content, "\n") {
-		if line == "" {
+	for lineNum, rawLine := range strings.Split(content, "\n") {
+		line := strings.TrimSpace(rawLine)
+		if line == "" || line[0] == '#' {
 			continue
 		}
 		parts := strings.SplitN(line, "=", 2)
