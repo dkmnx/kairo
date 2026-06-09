@@ -10,9 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support for `KAIRO_CONFIG_DIR` environment variable
+- Provider table generator, secrets cache, and execution orchestrator
 
 ### Changed
 
+- Move context key documentation to `doc.go` with expanded key list
+- Consolidate secret parsing into canonical `secrets` package
+- Update `cmd` README for CLIContext lifecycle refactor
+- Remove `defaultCLIContext` global singleton, inject `CLIContext` via Cobra context
+- Prune stale `DefaultModels`, rename `parseCIDROrPanic`, document error context keys
+- Move contributing guide from `docs/` to project root
 - Fix documentation discrepancies against code implementation
 
 ### Fixed
@@ -23,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Block `0.0.0.0`, `::`, and `169.254.169.254` in URL validation to prevent SSRF
 - Display warnings to stderr when malformed secrets entries are dropped
 - Add 5-minute timeout to Unix install scripts
+- Improve pre-commit installation with uv/pip fallback
 - Fix missing blank lines in docs and broken table cell
 
 ## [v2.9.0] - 2026-06-07
