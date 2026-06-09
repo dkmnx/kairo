@@ -322,9 +322,10 @@ func TestReconcileDefaultModels_NilProvidersNoPanic(t *testing.T) {
 	}
 	cfg.reconcileDefaultModels()
 
-	// Should not panic on nil Providers, and should prune stale entries
+	// Should initialize DefaultModels to a non-nil empty map when nil, then
+	// prune all entries since Providers is nil.
 	if cfg.DefaultModels == nil {
-		t.Error("reconcileDefaultModels should not leave DefaultModels nil after pruning on nil Providers")
+		t.Error("reconcileDefaultModels should initialize DefaultModels map even when Providers is nil")
 	}
 	if len(cfg.DefaultModels) != 0 {
 		t.Errorf("reconcileDefaultModels should prune all entries when Providers is nil, got %d", len(cfg.DefaultModels))
