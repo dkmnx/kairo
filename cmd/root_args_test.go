@@ -161,12 +161,12 @@ func TestHarnessFlagUsesDefaultProvider(t *testing.T) {
 	}
 	createConfigFile(t, tmpDir, cfg)
 
-	originalConfigDir := defaultCLIContext.ConfigDir()
+	originalConfigDir := testCLI.ConfigDir()
 	originalHarnessFlag := harnessFlag
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 	harnessFlag = "claude"
 	defer func() {
-		defaultCLIContext.SetConfigDir(originalConfigDir)
+		testCLI.SetConfigDir(originalConfigDir)
 		harnessFlag = originalHarnessFlag
 	}()
 

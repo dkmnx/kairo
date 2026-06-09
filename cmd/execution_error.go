@@ -61,7 +61,7 @@ func promptUpgrade(cmd *cobra.Command, err error) {
 	cmd.Println("  For manual installation, see:")
 	cmd.Printf("    %s#manual-installation\n", constants.GitHubBlobURL("main", "docs/guides/user-guide.md"))
 	cmd.Println()
-	if verbose() {
+	if verbose(cmd) {
 		cmd.Printf("Technical details: %v\n", err)
 	}
 }

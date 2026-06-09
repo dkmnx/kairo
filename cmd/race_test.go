@@ -6,39 +6,39 @@ import (
 
 func TestGlobalVariableAccess(t *testing.T) {
 	t.Run("configDir can be set and retrieved", func(t *testing.T) {
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+		originalConfigDir := testCLI.ConfigDir()
+		defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 		testDir := "/tmp/test-config-dir"
-		defaultCLIContext.SetConfigDir(testDir)
-		if got := defaultCLIContext.ConfigDir(); got != testDir {
-			t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", got, testDir)
+		testCLI.SetConfigDir(testDir)
+		if got := testCLI.ConfigDir(); got != testDir {
+			t.Errorf("testCLI.ConfigDir() = %q, want %q", got, testDir)
 		}
 	})
 
 	t.Run("configDir falls back to default when empty", func(t *testing.T) {
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+		originalConfigDir := testCLI.ConfigDir()
+		defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
-		defaultCLIContext.SetConfigDir("")
-		got := defaultCLIContext.ConfigDir()
+		testCLI.SetConfigDir("")
+		got := testCLI.ConfigDir()
 		if got == "" {
-			t.Errorf("defaultCLIContext.ConfigDir() should return default directory when empty, got empty string")
+			t.Errorf("testCLI.ConfigDir() should return default directory when empty, got empty string")
 		}
 	})
 
 	t.Run("verbose can be set and retrieved", func(t *testing.T) {
-		originalVerbose := verbose()
-		defer func() { defaultCLIContext.SetVerbose(originalVerbose) }()
+		originalVerbose := testCLI.Verbose()
+		defer func() { testCLI.SetVerbose(originalVerbose) }()
 
-		defaultCLIContext.SetVerbose(true)
-		if !verbose() {
-			t.Error("verbose() should return true after defaultCLIContext.SetVerbose(true)")
+		testCLI.SetVerbose(true)
+		if !testCLI.Verbose() {
+			t.Error("verbose() should return true after testCLI.SetVerbose(true)")
 		}
 
-		defaultCLIContext.SetVerbose(false)
-		if verbose() {
-			t.Error("verbose() should return false after defaultCLIContext.SetVerbose(false)")
+		testCLI.SetVerbose(false)
+		if testCLI.Verbose() {
+			t.Error("verbose() should return false after testCLI.SetVerbose(false)")
 		}
 	})
 }

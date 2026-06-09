@@ -130,17 +130,9 @@ func (c *CLIContext) DefaultProviderExplicit() bool {
 	return c.defaultProviderExplicit
 }
 
-// defaultCLIContext is the package-level singleton used by production.
-// It is mutated in place by Execute() through PersistentPreRun and the
-// verbose-flag wiring. Tests must not depend on it: use NewCLIContext()
-// to construct isolated contexts and inject them with SetDeps.
-//
-// Goroutine-safety: the singleton is safe for concurrent reads; writes
-// happen only at startup (PersistentPreRun) and via SetConfigDir /
-// SetVerbose / SetDeps (the latter two are for tests).
-var defaultCLIContext = NewCLIContext()
-
 // CLIContextFromCmd extracts the CLIContext from a cobra command's context.
+// Returns nil if no CLIContext is set (callers should use MustCLIContextFromCmd
+// when a cmd is always available, or handle nil gracefully).
 func CLIContextFromCmd(cmd *cobra.Command) *CLIContext {
 	if ctx := cmd.Context(); ctx != nil {
 		if cliCtx, ok := ctx.Value(cliContextKey{}).(*CLIContext); ok {
@@ -148,7 +140,19 @@ func CLIContextFromCmd(cmd *cobra.Command) *CLIContext {
 		}
 	}
 
-	return defaultCLIContext
+	return nil
+}
+
+// MustCLIContextFromCmd is like CLIContextFromCmd but panics if no CLIContext
+// is found. Use when a cobra command is guaranteed to have been initialized
+// via Execute().
+func MustCLIContextFromCmd(cmd *cobra.Command) *CLIContext {
+	cliCtx := CLIContextFromCmd(cmd)
+	if cliCtx == nil {
+		panic("kairo: no CLIContext in command context; Execute() must be called first")
+	}
+
+	return cliCtx
 }
 
 // WithCLIContext stores a CLIContext in the given context.

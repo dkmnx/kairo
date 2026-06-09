@@ -14,7 +14,14 @@ import (
 )
 
 func requireConfigDir(cmd *cobra.Command) string {
-	dir := CLIContextFromCmd(cmd).ConfigDir()
+	cliCtx := CLIContextFromCmd(cmd)
+	if cliCtx == nil {
+		ui.PrintError("CLI context not available")
+
+		return ""
+	}
+
+	dir := cliCtx.ConfigDir()
 	if dir == "" {
 		ui.PrintError("Config directory not found")
 	}
@@ -43,6 +50,10 @@ func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
 	}
 
 	cliCtx := CLIContextFromCmd(cmd)
+	if cliCtx == nil {
+		return nil, stderrors.New("CLI context not available")
+	}
+
 	cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), dir)
 	if err != nil {
 		if stderrors.Is(err, kairoerrors.ErrConfigNotFound) {

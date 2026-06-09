@@ -10,11 +10,11 @@ import (
 
 // TestCompletionCommandBash generates bash completion script.
 func TestCompletionCommandBash(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	t.Cleanup(func() { defaultCLIContext.SetConfigDir(originalConfigDir) })
+	originalConfigDir := testCLI.ConfigDir()
+	t.Cleanup(func() { testCLI.SetConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -42,11 +42,11 @@ func min(a, b int) int {
 
 // TestCompletionCommandZsh generates zsh completion script.
 func TestCompletionCommandZsh(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	t.Cleanup(func() { defaultCLIContext.SetConfigDir(originalConfigDir) })
+	originalConfigDir := testCLI.ConfigDir()
+	t.Cleanup(func() { testCLI.SetConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -67,11 +67,11 @@ func TestCompletionCommandZsh(t *testing.T) {
 
 // TestCompletionCommandFish generates fish completion script.
 func TestCompletionCommandFish(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	t.Cleanup(func() { defaultCLIContext.SetConfigDir(originalConfigDir) })
+	originalConfigDir := testCLI.ConfigDir()
+	t.Cleanup(func() { testCLI.SetConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -92,11 +92,11 @@ func TestCompletionCommandFish(t *testing.T) {
 
 // TestCompletionCommandPowerShell generates PowerShell completion script.
 func TestCompletionCommandPowerShell(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	t.Cleanup(func() { defaultCLIContext.SetConfigDir(originalConfigDir) })
+	originalConfigDir := testCLI.ConfigDir()
+	t.Cleanup(func() { testCLI.SetConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -117,11 +117,11 @@ func TestCompletionCommandPowerShell(t *testing.T) {
 
 // TestCompletionCommandUnknownShell returns error for unknown shell.
 func TestCompletionCommandUnknownShell(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	t.Cleanup(func() { defaultCLIContext.SetConfigDir(originalConfigDir) })
+	originalConfigDir := testCLI.ConfigDir()
+	t.Cleanup(func() { testCLI.SetConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -135,11 +135,11 @@ func TestCompletionCommandUnknownShell(t *testing.T) {
 
 // TestCompletionCommandNoArgs shows error when run without shell argument.
 func TestCompletionCommandNoArgs(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	t.Cleanup(func() { defaultCLIContext.SetConfigDir(originalConfigDir) })
+	originalConfigDir := testCLI.ConfigDir()
+	t.Cleanup(func() { testCLI.SetConfigDir(originalConfigDir) })
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -153,15 +153,15 @@ func TestCompletionCommandNoArgs(t *testing.T) {
 
 // TestCompletionCommandWithOutputFlag saves completion to file.
 func TestCompletionCommandWithOutputFlag(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
+	originalConfigDir := testCLI.ConfigDir()
 	t.Cleanup(func() {
-		defaultCLIContext.SetConfigDir(originalConfigDir)
+		testCLI.SetConfigDir(originalConfigDir)
 		completionOutput = ""
 		completionSave = false
 	})
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	outputPath := filepath.Join(tmpDir, "kairo-completion.sh")
 	rootCmd.SetArgs([]string{"completion", "bash", "--output", outputPath})
@@ -189,15 +189,15 @@ func TestCompletionCommandWithOutputFlag(t *testing.T) {
 
 // TestCompletionCommandWithShortOutputFlag saves to file using -o flag.
 func TestCompletionCommandWithShortOutputFlag(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
+	originalConfigDir := testCLI.ConfigDir()
 	t.Cleanup(func() {
-		defaultCLIContext.SetConfigDir(originalConfigDir)
+		testCLI.SetConfigDir(originalConfigDir)
 		completionOutput = ""
 		completionSave = false
 	})
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	outputPath := filepath.Join(tmpDir, "kairo-completion.sh")
 	rootCmd.SetArgs([]string{"completion", "bash", "-o", outputPath})
@@ -215,11 +215,11 @@ func TestCompletionCommandWithShortOutputFlag(t *testing.T) {
 
 // TestCompletionCommandAutoSaveToDefaultLocation saves completion to default location with --save flag.
 func TestCompletionCommandAutoSaveToDefaultLocation(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
+	originalConfigDir := testCLI.ConfigDir()
 	originalHome := os.Getenv("HOME")
 	originalUserProfile := os.Getenv("USERPROFILE")
 	t.Cleanup(func() {
-		defaultCLIContext.SetConfigDir(originalConfigDir)
+		testCLI.SetConfigDir(originalConfigDir)
 		if originalHome != "" {
 			os.Setenv("HOME", originalHome)
 		} else {
@@ -235,7 +235,7 @@ func TestCompletionCommandAutoSaveToDefaultLocation(t *testing.T) {
 	})
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	// Set both HOME and USERPROFILE for cross-platform compatibility
 	os.Setenv("HOME", tmpDir)
@@ -376,11 +376,11 @@ func TestGetDefaultCompletionPathNoHomeDir(t *testing.T) {
 // TestCompletionPowerShellSaveWithRegisterArgumentCompleter verifies that PowerShell
 // --save flag writes the Register-ArgumentCompleter script instead of cobra's default
 func TestCompletionPowerShellSaveWithRegisterArgumentCompleter(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
+	originalConfigDir := testCLI.ConfigDir()
 	originalHome := os.Getenv("HOME")
 	originalUserProfile := os.Getenv("USERPROFILE")
 	t.Cleanup(func() {
-		defaultCLIContext.SetConfigDir(originalConfigDir)
+		testCLI.SetConfigDir(originalConfigDir)
 		if originalHome != "" {
 			os.Setenv("HOME", originalHome)
 		} else {
@@ -396,7 +396,7 @@ func TestCompletionPowerShellSaveWithRegisterArgumentCompleter(t *testing.T) {
 	})
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 	os.Setenv("HOME", tmpDir)
 	os.Setenv("USERPROFILE", tmpDir)
 

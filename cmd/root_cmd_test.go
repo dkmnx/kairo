@@ -25,13 +25,14 @@ func TestRootCmd(t *testing.T) {
 	t.Run("no config file - shows setup message", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		defaultCLIContext.SetConfigDir(tmpDir)
-		defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+		originalConfigDir := testCLI.ConfigDir()
+		testCLI.SetConfigDir(tmpDir)
+		defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
 
+		rootCmd.SetContext(WithCLIContext(context.Background(), testCLI))
 		rootCmd.Run(rootCmd, []string{})
 
 		result := output.String()
@@ -51,16 +52,17 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		defaultCLIContext.SetConfigDir(tmpDir)
+		originalConfigDir := testCLI.ConfigDir()
+		testCLI.SetConfigDir(tmpDir)
 		defer func() {
-			defaultCLIContext.SetConfigDir(originalConfigDir)
+			testCLI.SetConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
 		output := &bytes.Buffer{}
 		rootCmd.SetOut(output)
 
+		rootCmd.SetContext(WithCLIContext(context.Background(), testCLI))
 		rootCmd.Run(rootCmd, []string{})
 
 		result := output.String()
@@ -90,10 +92,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		defaultCLIContext.SetConfigDir(tmpDir)
+		originalConfigDir := testCLI.ConfigDir()
+		testCLI.SetConfigDir(tmpDir)
 		defer func() {
-			defaultCLIContext.SetConfigDir(originalConfigDir)
+			testCLI.SetConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -141,10 +143,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		defaultCLIContext.SetConfigDir(tmpDir)
+		originalConfigDir := testCLI.ConfigDir()
+		testCLI.SetConfigDir(tmpDir)
 		defer func() {
-			defaultCLIContext.SetConfigDir(originalConfigDir)
+			testCLI.SetConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -152,6 +154,7 @@ func TestRootCmd(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetErr(output)
 
+		rootCmd.SetContext(WithCLIContext(context.Background(), testCLI))
 		rootCmd.Run(rootCmd, []string{"nonexistent"})
 
 		result := output.String()
@@ -171,10 +174,10 @@ func TestRootCmd(t *testing.T) {
 		}
 		configPath := createConfigFile(t, tmpDir, cfg)
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		defaultCLIContext.SetConfigDir(tmpDir)
+		originalConfigDir := testCLI.ConfigDir()
+		testCLI.SetConfigDir(tmpDir)
 		defer func() {
-			defaultCLIContext.SetConfigDir(originalConfigDir)
+			testCLI.SetConfigDir(originalConfigDir)
 			os.Remove(configPath)
 		}()
 
@@ -213,13 +216,13 @@ func TestRootCmd(t *testing.T) {
 
 func TestRootCmdGetConfigDir(t *testing.T) {
 	t.Run("returns flag value when set", func(t *testing.T) {
-		originalDir := defaultCLIContext.ConfigDir()
-		defaultCLIContext.SetConfigDir("/custom/config/dir")
-		defer func() { defaultCLIContext.SetConfigDir(originalDir) }()
+		originalDir := testCLI.ConfigDir()
+		testCLI.SetConfigDir("/custom/config/dir")
+		defer func() { testCLI.SetConfigDir(originalDir) }()
 
-		result := defaultCLIContext.ConfigDir()
+		result := testCLI.ConfigDir()
 		if result != "/custom/config/dir" {
-			t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", result, "/custom/config/dir")
+			t.Errorf("testCLI.ConfigDir() = %q, want %q", result, "/custom/config/dir")
 		}
 	})
 
@@ -230,17 +233,17 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 		})
 
 		// Override the global context to use our injected resolver
-		prevCtx := defaultCLIContext
-		defaultCLIContext = cliCtx
-		defaultCLIContext.SetConfigDir("")
+		prevCtx := testCLI
+		testCLI = cliCtx
+		testCLI.SetConfigDir("")
 		defer func() {
-			defaultCLIContext = prevCtx
-			defaultCLIContext.SetConfigDir("")
+			testCLI = prevCtx
+			testCLI.SetConfigDir("")
 		}()
 
-		result := defaultCLIContext.ConfigDir()
+		result := testCLI.ConfigDir()
 		if result != "/from/resolver" {
-			t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", result, "/from/resolver")
+			t.Errorf("testCLI.ConfigDir() = %q, want %q", result, "/from/resolver")
 		}
 	})
 
@@ -250,17 +253,17 @@ func TestRootCmdGetConfigDir(t *testing.T) {
 			return "", nil
 		})
 
-		prevCtx := defaultCLIContext
-		defaultCLIContext = cliCtx
-		defaultCLIContext.SetConfigDir("")
+		prevCtx := testCLI
+		testCLI = cliCtx
+		testCLI.SetConfigDir("")
 		defer func() {
-			defaultCLIContext = prevCtx
-			defaultCLIContext.SetConfigDir("")
+			testCLI = prevCtx
+			testCLI.SetConfigDir("")
 		}()
 
-		result := defaultCLIContext.ConfigDir()
+		result := testCLI.ConfigDir()
 		if result != "" {
-			t.Errorf("defaultCLIContext.ConfigDir() = %q, want empty with nil resolver", result)
+			t.Errorf("testCLI.ConfigDir() = %q, want empty with nil resolver", result)
 		}
 	})
 }
