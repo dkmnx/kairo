@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for `KAIRO_CONFIG_DIR` environment variable
+
+### Changed
+
+- Fix documentation discrepancies against code implementation
+
+### Fixed
+
+- Enforce cosign signing instead of silently skipping when cosign is absent
+- Cap HTTP response bodies at 10MB to prevent OOM/disk exhaustion
+- Sanitize provider names in `APIKeyEnvVar` (hyphens replaced with underscores)
+- Block `0.0.0.0`, `::`, and `169.254.169.254` in URL validation to prevent SSRF
+- Display warnings to stderr when malformed secrets entries are dropped
+- Add 5-minute timeout to Unix install scripts
+- Fix missing blank lines in docs and broken table cell
+
 ## [v2.9.0] - 2026-06-07
 
 ### Added
