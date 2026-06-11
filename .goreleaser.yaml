@@ -45,13 +45,12 @@ checksum:
   algorithm: sha256
 
 signs:
-  - cmd: sh
+  - cmd: cosign
     args:
-      - "-c"
-      - "if command -v cosign >/dev/null 2>&1; then exec cosign sign-blob --bundle=\"$2\" \"$1\" --yes; else echo 'cosign not found, skipping signing'; fi"
-      - "cosign"
-      - "${artifact}"
-      - "${signature}"
+      - sign-blob
+      - --bundle=${signature}
+      - ${artifact}
+      - --yes
     artifacts: checksum
     output: true
 

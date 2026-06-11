@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
@@ -156,25 +157,43 @@ func TestExecute(t *testing.T) {
 
 		originalConfigDir := testCLI.ConfigDir()
 		originalVerbose := testCLI.Verbose()
-		testCLI.SetConfigDir(tmpDir) // Use tmpDir, not empty string
-		testCLI.SetVerbose(false)
 		defer func() {
 			testCLI.SetConfigDir(originalConfigDir)
 			testCLI.SetVerbose(originalVerbose)
 			os.Remove(configPath)
 		}()
 
-		rootCmd.SetArgs([]string{"anthropic"})
+		var execCalled bool
+		d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+			mp.LookPathFn = func(file string) (string, error) {
+				if file == "claude" {
+					return "/usr/bin/claude", nil
+				}
+				return "", fmt.Errorf("not found: %s", file)
+			}
+			mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+				execCalled = true
+				cmd := exec.CommandContext(ctx, "echo", "mocked")
+				cmd.Args = []string{"echo", "mocked"}
+				return cmd
+			}
+			mp.ExitProcessFn = func(int) {}
+		})
 
-		// Inject CLIContext with the test config dir so OrchestrateExecution can find it.
-		rootCmd.SetContext(WithCLIContext(context.Background(), testCLI))
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDir(tmpDir)
+		cliCtx.SetVerbose(false)
+		cliCtx.SetDeps(d)
+		rootCmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 
-		// Note: This test verifies the provider shorthand behavior with rootCmd.Run
 		rootCmd.Run(rootCmd, []string{"anthropic"})
 
 		result := output.String()
 		if containsString(result, "unknown command") {
 			t.Errorf("Got 'unknown command' error, output: %s", result)
+		}
+		if !execCalled {
+			t.Errorf("Expected execCommand to be called when provider name is passed as argument")
 		}
 	})
 }

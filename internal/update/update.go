@@ -27,6 +27,12 @@ const (
 	checksumsFilename   = "checksums.txt"
 	installScriptExt    = ".sh"
 	installScriptExtPS1 = ".ps1"
+
+	// maxHTTPBodySize is the maximum size of an HTTP response body that
+	// doHTTPGet will read into memory. This prevents OOM from malicious
+	// or compromised responses. 10 MB covers release JSON, checksums,
+	// and cosign bundles with generous headroom.
+	maxHTTPBodySize = 10 * 1024 * 1024
 )
 
 // Client holds injectable dependencies for update operations.
@@ -93,10 +99,15 @@ func (c *Client) doHTTPGet(ctx context.Context, url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxHTTPBodySize))
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to read response", err)
+	}
+
+	if int64(len(body)) >= maxHTTPBodySize {
+		return nil, errors.NewError(errors.NetworkError,
+			"response body exceeded maximum size")
 	}
 
 	return body, nil
@@ -170,13 +181,21 @@ func (c *Client) DownloadToTempFile(ctx context.Context, url string) (string, er
 			"failed to create temp file", err)
 	}
 
-	_, err = io.Copy(tempFile, resp.Body)
+	n, err := io.Copy(tempFile, io.LimitReader(resp.Body, maxHTTPBodySize))
 	if err != nil {
 		tempFile.Close()
 		os.Remove(tempFile.Name())
 
 		return "", errors.WrapError(errors.NetworkError,
 			"failed to write to temp file", err)
+	}
+
+	if n >= maxHTTPBodySize {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+
+		return "", errors.NewError(errors.NetworkError,
+			"response body exceeded maximum size")
 	}
 
 	if err := tempFile.Close(); err != nil {
