@@ -35,6 +35,8 @@ const (
 	maxHTTPBodySize = 10 * 1024 * 1024
 )
 
+var checksumHashPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+
 // Client holds injectable dependencies for update operations.
 type Client struct {
 	HTTPClient   *http.Client
@@ -266,8 +268,7 @@ func ParseChecksumLine(line string) (hash, filename string, ok bool) {
 		return "", "", false
 	}
 
-	hashPattern := regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
-	if !hashPattern.MatchString(parts[0]) {
+	if !checksumHashPattern.MatchString(parts[0]) {
 		return "", "", false
 	}
 

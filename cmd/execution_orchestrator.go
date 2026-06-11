@@ -21,7 +21,7 @@ func OrchestrateExecution(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	_, harnessArgs, providerName := resolveProviderAndArgs(cmd, cfg, args)
+	_, harnessArgs, providerName := resolveProviderAndArgs(cmd, cliCtx, cfg, args)
 	if providerName == "" {
 		return
 	}
@@ -99,9 +99,9 @@ func lookupProvider(cmd *cobra.Command, cfg *config.Config, providerName string)
 
 // resolveProviderAndArgs resolves the provider name and harness arguments from
 // the command-line args and configuration.
-func resolveProviderAndArgs(cmd *cobra.Command, cfg *config.Config, args []string) ([]string, []string, string) {
-	cliCtx := CLIContextFromCmd(cmd)
-
+func resolveProviderAndArgs(cmd *cobra.Command, cliCtx *CLIContext,
+	cfg *config.Config, args []string,
+) ([]string, []string, string) {
 	if len(args) == 0 || cliCtx.DefaultProviderExplicit() {
 		if cfg.DefaultProvider == "" {
 			cmd.Println("No default provider set.")

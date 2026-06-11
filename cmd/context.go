@@ -26,8 +26,10 @@ type CLIContext struct {
 	configCache       *config.ConfigCache
 	rootCtx           context.Context
 	deps              *Deps
+	depsMu            sync.RWMutex
 
-	defaultProviderExplicit bool
+	defaultProviderExplicit   bool
+	defaultProviderExplicitMu sync.RWMutex
 }
 
 // NewCLIContext creates a CLIContext with default settings.
@@ -101,16 +103,22 @@ func (c *CLIContext) RootCtx() context.Context {
 
 // Deps returns the external dependencies for this CLI session.
 func (c *CLIContext) Deps() *Deps {
+	c.depsMu.RLock()
+	defer c.depsMu.RUnlock()
+
 	return c.deps
 }
 
 // Crypto returns the crypto service for this CLI session.
 func (c *CLIContext) Crypto() crypto.Service {
-	return c.deps.Crypto
+	return c.Deps().Crypto
 }
 
 // SetDeps replaces the external dependencies. For use in tests.
 func (c *CLIContext) SetDeps(d *Deps) {
+	c.depsMu.Lock()
+	defer c.depsMu.Unlock()
+
 	c.deps = d
 }
 
@@ -122,11 +130,17 @@ func (c *CLIContext) InvalidateCache(dir string) {
 // SetDefaultProviderExplicit records whether the user passed "--" to separate
 // kairo flags from harness flags.
 func (c *CLIContext) SetDefaultProviderExplicit(v bool) {
+	c.defaultProviderExplicitMu.Lock()
+	defer c.defaultProviderExplicitMu.Unlock()
+
 	c.defaultProviderExplicit = v
 }
 
 // DefaultProviderExplicit reports whether the user passed "--".
 func (c *CLIContext) DefaultProviderExplicit() bool {
+	c.defaultProviderExplicitMu.RLock()
+	defer c.defaultProviderExplicitMu.RUnlock()
+
 	return c.defaultProviderExplicit
 }
 
