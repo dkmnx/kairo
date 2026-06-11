@@ -66,6 +66,9 @@ func isBlockedHost(host string) bool {
 		"localhost",
 		"127.0.0.1",
 		"::1",
+		"::",
+		"0.0.0.0",
+		"169.254.169.254",
 	}
 
 	if slices.Contains(blockedHosts, host) {

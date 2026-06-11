@@ -3,9 +3,28 @@ package secrets
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 )
+
+// WarnFunc is called when malformed entries are encountered during parsing.
+// Defaults to printing to stderr. Tests should save and restore this value
+// (e.g., via t.Cleanup) to avoid leaking between test cases.
+var WarnFunc = defaultWarn
+
+func defaultWarn(msg string) {
+	fmt.Fprintln(os.Stderr, msg)
+}
+
+// SetWarnFunc replaces WarnFunc and returns a function that restores the
+// previous value. Intended for use in tests: defer secrets.SetWarnFunc(old).
+func SetWarnFunc(fn func(string)) func() {
+	old := WarnFunc
+	WarnFunc = fn
+
+	return func() { WarnFunc = old }
+}
 
 // Result holds parsed secrets along with parsing metadata.
 type Result struct {
@@ -58,6 +77,10 @@ func ParseWithStats(content string) Result {
 			continue
 		}
 		result[key] = value
+	}
+
+	for _, w := range warnings {
+		WarnFunc(w)
 	}
 
 	return Result{Secrets: result, SkippedCount: skippedCount, Warnings: warnings}

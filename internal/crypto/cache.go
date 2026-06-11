@@ -9,6 +9,7 @@ import (
 
 	"github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/secrets"
+	"golang.org/x/sync/singleflight"
 )
 
 const secretsCacheTTL = 60 * time.Second
@@ -26,6 +27,7 @@ type SecretsCache struct {
 	mu      sync.RWMutex
 	entries map[string]*cachedSecrets
 	ttl     time.Duration
+	group   singleflight.Group
 }
 
 // NewSecretsCache creates a SecretsCache with the default TTL.
@@ -57,26 +59,39 @@ func (sc *SecretsCache) Get(ctx context.Context, configDir, keyPath string) (map
 	}
 	sc.mu.RUnlock()
 
-	// Cache miss: decrypt fresh.
-	decrypted, err := DecryptSecrets(ctx, secretsPath, keyPath)
+	// Cache miss: deduplicate concurrent requests for the same configDir.
+	v, err, _ := sc.group.Do(configDir, func() (any, error) {
+		decrypted, err := DecryptSecrets(ctx, secretsPath, keyPath)
+		if err != nil {
+			return nil, errors.WrapError(errors.CryptoError,
+				"failed to decrypt secrets", err).
+				WithContext("path", secretsPath).
+				WithContext("key_path", keyPath)
+		}
+
+		parsed := secrets.ParseWithStats(decrypted)
+
+		sc.mu.Lock()
+		sc.entries[configDir] = &cachedSecrets{
+			secrets:  parsed.Secrets,
+			loadedAt: time.Now(),
+			modTime:  currentModTime,
+		}
+		sc.mu.Unlock()
+
+		return copySecrets(parsed.Secrets), nil
+	})
 	if err != nil {
-		return nil, errors.WrapError(errors.CryptoError,
-			"failed to decrypt secrets", err).
-			WithContext("path", secretsPath).
-			WithContext("key_path", keyPath)
+		return nil, err
 	}
 
-	parsed := secrets.Parse(decrypted)
-
-	sc.mu.Lock()
-	sc.entries[configDir] = &cachedSecrets{
-		secrets:  parsed,
-		loadedAt: time.Now(),
-		modTime:  currentModTime,
+	result, ok := v.(map[string]string)
+	if !ok || result == nil {
+		return nil, errors.NewError(errors.RuntimeError,
+			"unexpected nil secrets from singleflight")
 	}
-	sc.mu.Unlock()
 
-	return copySecrets(parsed), nil
+	return result, nil
 }
 
 // Invalidate removes the cached entry for configDir, forcing a fresh decrypt
