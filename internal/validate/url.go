@@ -16,6 +16,15 @@ var (
 	linkLocal   = mustParseCIDR("169.254.0.0/16")
 	ulaIPv6     = mustParseCIDR("fc00::/7")
 	linkLocalV6 = mustParseCIDR("fe80::/10")
+
+	blockedHosts = []string{
+		"localhost",
+		"127.0.0.1",
+		"::1",
+		"::",
+		"0.0.0.0",
+		"169.254.169.254",
+	}
 )
 
 // mustParseCIDR parses a CIDR notation string into an *net.IPNet.
@@ -62,15 +71,6 @@ func ValidateURL(rawURL, providerName string) error {
 }
 
 func isBlockedHost(host string) bool {
-	blockedHosts := []string{
-		"localhost",
-		"127.0.0.1",
-		"::1",
-		"::",
-		"0.0.0.0",
-		"169.254.169.254",
-	}
-
 	if slices.Contains(blockedHosts, host) {
 		return true
 	}

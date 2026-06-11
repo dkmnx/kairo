@@ -10,7 +10,9 @@ import (
 
 // WriteAtomic writes to a file atomically by writing to a temp file in the
 // same directory then renaming. The writeFn receives the open temp file and
-// should handle all writing. On any error, the temp file is cleaned up automatically.
+// should handle all writing. On any error, the temp file is cleaned up
+// automatically. The temp file is created with 0600 permissions (os.CreateTemp
+// default), so the final file is never world-readable.
 func WriteAtomic(path string, writeFn func(f *os.File) error) error {
 	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp.*")
 	if err != nil {

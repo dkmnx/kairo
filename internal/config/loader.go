@@ -219,6 +219,8 @@ func SaveConfig(ctx context.Context, configDir string, cfg *Config) error {
 			WithContext("path", configPath)
 	}
 
+	// Chmod is redundant (WriteAtomic creates with 0600) but serves as a
+	// safety net for platforms where os.CreateTemp uses a different default.
 	if err := os.Chmod(configPath, 0o600); err != nil {
 		return errors.WrapError(errors.FileSystemError,
 			"failed to set permissions on configuration file", err).

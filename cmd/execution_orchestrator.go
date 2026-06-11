@@ -170,6 +170,8 @@ func splitArgs(args []string) ([]string, []string) {
 }
 
 // hasArgsSeparator reports whether args contain the "--" separator outside of flag values.
+// It walks past flags and their values (e.g. --harness pi, -v value) looking for "--".
+// Once a non-flag argument is seen, "--" is no longer valid as a separator.
 func hasArgsSeparator(args []string) bool {
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--" {

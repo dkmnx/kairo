@@ -235,7 +235,10 @@ func RunInstallScript(scriptPath string) error {
 			"failed to find shell", err)
 	}
 
-	shCmd := exec.CommandContext(context.Background(), shPath, scriptPath)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	shCmd := exec.CommandContext(ctx, shPath, scriptPath)
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
 	if err := shCmd.Run(); err != nil {

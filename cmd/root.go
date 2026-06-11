@@ -71,7 +71,8 @@ func Execute() error {
 
 // SetArgs overrides os.Args for the next Execute call. Production code never
 // calls this; tests use it to inject a deterministic argv without polluting
-// the global os.Args.
+// the global os.Args. Callers must save/restore os.Args to avoid parallel
+// test interference — see root_execute_test.go for the pattern.
 func SetArgs(args ...string) {
 	os.Args = append([]string{os.Args[0]}, args...)
 }
