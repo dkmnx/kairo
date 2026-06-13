@@ -9,13 +9,23 @@ import (
 	"github.com/dkmnx/kairo/internal/errors"
 )
 
+const (
+	cidrPrivate10   = "10.0.0.0/8"
+	cidrPrivate172  = "172.16.0.0/12"
+	cidrPrivate192  = "192.168.0.0/16"
+	cidrLinkLocal   = "169.254.0.0/16"
+	cidrULAv6       = "fc00::/7"
+	cidrLinkLocalV6 = "fe80::/10"
+)
+
+// CIDR prefixes validated by TestHardcodedCIDRs.
 var (
-	private10   = mustParseCIDR("10.0.0.0/8")
-	private172  = mustParseCIDR("172.16.0.0/12")
-	private192  = mustParseCIDR("192.168.0.0/16")
-	linkLocal   = mustParseCIDR("169.254.0.0/16")
-	ulaIPv6     = mustParseCIDR("fc00::/7")
-	linkLocalV6 = mustParseCIDR("fe80::/10")
+	_, private10, _   = net.ParseCIDR(cidrPrivate10)
+	_, private172, _  = net.ParseCIDR(cidrPrivate172)
+	_, private192, _  = net.ParseCIDR(cidrPrivate192)
+	_, linkLocal, _   = net.ParseCIDR(cidrLinkLocal)
+	_, ulaIPv6, _     = net.ParseCIDR(cidrULAv6)
+	_, linkLocalV6, _ = net.ParseCIDR(cidrLinkLocalV6)
 
 	blockedHosts = []string{
 		"localhost",
@@ -26,17 +36,6 @@ var (
 		"169.254.169.254",
 	}
 )
-
-// mustParseCIDR parses a CIDR notation string into an *net.IPNet.
-// It panics on invalid input because the arguments are hardcoded constants.
-func mustParseCIDR(s string) *net.IPNet {
-	_, ipnet, err := net.ParseCIDR(s)
-	if err != nil {
-		panic("kairo: invalid hardcoded CIDR " + s + ": " + err.Error())
-	}
-
-	return ipnet
-}
 
 // ValidateURL checks that the given URL is a valid HTTPS URL without blocked hosts.
 func ValidateURL(rawURL, providerName string) error {

@@ -122,6 +122,11 @@ func deleteProviderSecrets(ctx context.Context, svc crypto.Service, secretsPath,
 
 	parsed := secrets.ParseWithStats(string(existingSecrets))
 
+	// Surface per-entry malformed-entry warnings from the parse.
+	for _, w := range parsed.Warnings {
+		ui.PrintWarn(w)
+	}
+
 	apiKey := harness.APIKeyEnvVar(providerName)
 	delete(parsed.Secrets, apiKey)
 

@@ -79,6 +79,55 @@ func (m *mockUpdate) RunInstallScript(scriptPath string) error {
 	return m.RunInstallScriptFn(scriptPath)
 }
 
+// mockCrypto is a test double for crypto.Service with configurable function fields.
+type mockCrypto struct {
+	GenerateKeyFn         func(ctx context.Context, keyPath string) error
+	EncryptSecretsFn      func(ctx context.Context, secretsPath, keyPath, secrets string) error
+	DecryptSecretsFn      func(ctx context.Context, secretsPath, keyPath string) (string, error)
+	DecryptSecretsBytesFn func(ctx context.Context, secretsPath, keyPath string) ([]byte, error)
+	EnsureKeyExistsFn     func(ctx context.Context, configDir string) error
+}
+
+func (m *mockCrypto) GenerateKey(ctx context.Context, keyPath string) error {
+	if m.GenerateKeyFn != nil {
+		return m.GenerateKeyFn(ctx, keyPath)
+	}
+
+	return nil
+}
+
+func (m *mockCrypto) EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) error {
+	if m.EncryptSecretsFn != nil {
+		return m.EncryptSecretsFn(ctx, secretsPath, keyPath, secrets)
+	}
+
+	return nil
+}
+
+func (m *mockCrypto) DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, error) {
+	if m.DecryptSecretsFn != nil {
+		return m.DecryptSecretsFn(ctx, secretsPath, keyPath)
+	}
+
+	return "", nil
+}
+
+func (m *mockCrypto) DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) ([]byte, error) {
+	if m.DecryptSecretsBytesFn != nil {
+		return m.DecryptSecretsBytesFn(ctx, secretsPath, keyPath)
+	}
+
+	return []byte{}, nil
+}
+
+func (m *mockCrypto) EnsureKeyExists(ctx context.Context, configDir string) error {
+	if m.EnsureKeyExistsFn != nil {
+		return m.EnsureKeyExistsFn(ctx, configDir)
+	}
+
+	return nil
+}
+
 // testDeps creates a Deps with mock implementations. The optional callback
 // receives the three mock structs for field-level configuration.
 func testDeps(overrides ...func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate)) *Deps {
