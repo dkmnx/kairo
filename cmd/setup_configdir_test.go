@@ -20,10 +20,10 @@ func TestGetConfigDirWithEnv(t *testing.T) {
 	os.Setenv("HOME", tmpDir)
 	os.Setenv("USERPROFILE", tmpDir)
 
-	// Reset configDir to empty so defaultCLIContext.ConfigDir() falls back to env.GetConfigDir()
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer defaultCLIContext.SetConfigDir(originalConfigDir)
-	defaultCLIContext.SetConfigDir("")
+	// Reset configDir to empty so testCLI.ConfigDir() falls back to env.GetConfigDir()
+	originalConfigDir := testCLI.ConfigDir()
+	defer testCLI.SetConfigDir(originalConfigDir)
+	testCLI.SetConfigDir("")
 
 	var expectedDir string
 	if runtime.GOOS == "windows" {
@@ -31,45 +31,45 @@ func TestGetConfigDirWithEnv(t *testing.T) {
 	} else {
 		expectedDir = filepath.Join(tmpDir, ".config", "kairo")
 	}
-	dir := defaultCLIContext.ConfigDir()
+	dir := testCLI.ConfigDir()
 	if dir != expectedDir {
-		t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", dir, expectedDir)
+		t.Errorf("testCLI.ConfigDir() = %q, want %q", dir, expectedDir)
 	}
 }
 
 func TestGetConfigDirWithFlag(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defaultCLIContext.SetConfigDir("/custom/path")
-	defer defaultCLIContext.SetConfigDir(originalConfigDir)
+	originalConfigDir := testCLI.ConfigDir()
+	testCLI.SetConfigDir("/custom/path")
+	defer testCLI.SetConfigDir(originalConfigDir)
 
-	dir := defaultCLIContext.ConfigDir()
+	dir := testCLI.ConfigDir()
 	if dir != "/custom/path" {
-		t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", dir, "/custom/path")
+		t.Errorf("testCLI.ConfigDir() = %q, want %q", dir, "/custom/path")
 	}
 }
 
 func TestGetConfigDirWithFlagAndEnv(t *testing.T) {
 	originalHome := os.Getenv("HOME")
-	originalConfigDir := defaultCLIContext.ConfigDir()
+	originalConfigDir := testCLI.ConfigDir()
 	defer func() {
 		os.Setenv("HOME", originalHome)
-		defaultCLIContext.SetConfigDir(originalConfigDir)
+		testCLI.SetConfigDir(originalConfigDir)
 	}()
 
 	tmpDir := t.TempDir()
 	os.Setenv("HOME", tmpDir)
-	defaultCLIContext.SetConfigDir("/custom/path")
+	testCLI.SetConfigDir("/custom/path")
 
-	dir := defaultCLIContext.ConfigDir()
+	dir := testCLI.ConfigDir()
 	if dir != "/custom/path" {
-		t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q (flag should take precedence)", dir, "/custom/path")
+		t.Errorf("testCLI.ConfigDir() = %q, want %q (flag should take precedence)", dir, "/custom/path")
 	}
 }
 
 func TestGetConfigDirEmptyConfigDir(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defaultCLIContext.SetConfigDir("")
-	defer defaultCLIContext.SetConfigDir(originalConfigDir)
+	originalConfigDir := testCLI.ConfigDir()
+	testCLI.SetConfigDir("")
+	defer testCLI.SetConfigDir(originalConfigDir)
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -82,9 +82,9 @@ func TestGetConfigDirEmptyConfigDir(t *testing.T) {
 	} else {
 		expectedDir = filepath.Join(home, ".config", "kairo")
 	}
-	dir := defaultCLIContext.ConfigDir()
+	dir := testCLI.ConfigDir()
 	if dir != expectedDir {
-		t.Errorf("defaultCLIContext.ConfigDir() = %q, want %q", dir, expectedDir)
+		t.Errorf("testCLI.ConfigDir() = %q, want %q", dir, expectedDir)
 	}
 }
 

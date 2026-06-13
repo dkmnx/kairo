@@ -136,3 +136,9 @@ func TestAPIKeyEnvVar(t *testing.T) {
 		t.Errorf("APIKeyEnvVar = %q, want TESTPROVIDER_API_KEY", got)
 	}
 }
+
+func TestAPIKeyEnvVar_Hyphenated(t *testing.T) {
+	if got := APIKeyEnvVar("cloudflare-workers-ai"); got != "CLOUDFLARE_WORKERS_AI_API_KEY" {
+		t.Errorf("APIKeyEnvVar = %q, want CLOUDFLARE_WORKERS_AI_API_KEY", got)
+	}
+}

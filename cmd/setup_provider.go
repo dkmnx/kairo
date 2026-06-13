@@ -57,7 +57,7 @@ func ResolveProviderName(providerName string) (string, error) {
 		return providerName, nil
 	}
 
-	customName := tap.Text(defaultCLIContext.RootCtx(), tap.TextOptions{
+	customName := tap.Text(promptRootCtx, tap.TextOptions{
 		Message: "Provider name",
 	})
 

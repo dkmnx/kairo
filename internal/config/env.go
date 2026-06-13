@@ -15,7 +15,12 @@ func DefaultConfigDir() (string, error) {
 }
 
 // ConfigDir returns the platform-specific default kairo configuration directory.
+// KAIRO_CONFIG_DIR environment variable overrides the platform default.
 func ConfigDir() (string, error) {
+	if dir := os.Getenv("KAIRO_CONFIG_DIR"); dir != "" {
+		return dir, nil
+	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", errors.WrapError(errors.ConfigError,

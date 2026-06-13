@@ -9,13 +9,13 @@ import (
 )
 
 func TestHarnessGetNoConfig(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
-	rootCmd.SetArgs([]string{"harness", "get"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "harness", "get"})
 	err := rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -23,11 +23,11 @@ func TestHarnessGetNoConfig(t *testing.T) {
 }
 
 func TestHarnessGetWithConfig(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	cfg := &config.Config{
 		Providers:      make(map[string]config.Provider),
@@ -39,7 +39,7 @@ func TestHarnessGetWithConfig(t *testing.T) {
 		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
 	}
 
-	rootCmd.SetArgs([]string{"harness", "get"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "harness", "get"})
 	err = rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -47,13 +47,13 @@ func TestHarnessGetWithConfig(t *testing.T) {
 }
 
 func TestHarnessSetClaude(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
-	rootCmd.SetArgs([]string{"harness", "set", "claude"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "harness", "set", "claude"})
 	err := rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -69,13 +69,13 @@ func TestHarnessSetClaude(t *testing.T) {
 }
 
 func TestHarnessSetQwen(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
-	rootCmd.SetArgs([]string{"harness", "set", "qwen"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "harness", "set", "qwen"})
 	err := rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -91,11 +91,11 @@ func TestHarnessSetQwen(t *testing.T) {
 }
 
 func TestHarnessSetInvalid(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	// Pre-create a config so we can verify it wasn't modified
 	initialCfg := &config.Config{
@@ -107,7 +107,7 @@ func TestHarnessSetInvalid(t *testing.T) {
 		t.Fatalf("SaveConfig() error = %v", err)
 	}
 
-	rootCmd.SetArgs([]string{"harness", "set", "invalid"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "harness", "set", "invalid"})
 	err := rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -124,13 +124,13 @@ func TestHarnessSetInvalid(t *testing.T) {
 }
 
 func TestHarnessSetPi(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
-	rootCmd.SetArgs([]string{"harness", "set", "pi"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "harness", "set", "pi"})
 	err := rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -146,13 +146,13 @@ func TestHarnessSetPi(t *testing.T) {
 }
 
 func TestHarnessSetCrush(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
-	rootCmd.SetArgs([]string{"harness", "set", "crush"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "harness", "set", "crush"})
 	err := rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -211,13 +211,13 @@ func TestHarnessSetCaseInsensitive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			originalConfigDir := defaultCLIContext.ConfigDir()
-			defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+			originalConfigDir := testCLI.ConfigDir()
+			defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 			tmpDir := t.TempDir()
-			defaultCLIContext.SetConfigDir(tmpDir)
+			testCLI.SetConfigDir(tmpDir)
 
-			rootCmd.SetArgs([]string{"harness", "set", tt.harnessName})
+			rootCmd.SetArgs([]string{"--config", tmpDir, "harness", "set", tt.harnessName})
 			err := rootCmd.Execute()
 			if err != nil {
 				t.Fatalf("Execute() error = %v", err)
@@ -263,11 +263,11 @@ func TestGetHarness(t *testing.T) {
 }
 
 func TestGetHarnessWithExistingConfig(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	cfg := &config.Config{
 		Providers:      make(map[string]config.Provider),

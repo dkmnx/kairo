@@ -80,10 +80,10 @@ pre-commit:
     @echo "Running pre-commit hooks..."
     pre-commit run --all-files
 
-# Install pre-commit hooks
-pre-commit-install:
-    @echo "Installing pre-commit hooks..."
-    pre-commit install
+# Install pre-commit CLI tool using uv (recommended) or pip (fallback)
+install-pre-commit:
+    @if command -v pre-commit >/dev/null 2>&1; then echo "pre-commit already installed" && pre-commit install; elif command -v uv >/dev/null 2>&1; then uv tool install pre-commit && export PATH="$HOME/.local/bin:$PATH" && pre-commit install; elif command -v pip >/dev/null 2>&1; then pip install --user pre-commit && export PATH="$HOME/.local/bin:$PATH" && pre-commit install; else echo "ERROR: neither uv nor pip found. Install uv or pip to continue." >&2 && exit 1; fi
+
 
 # Pre-release checks: format, lint, pre-commit, test, goreleaser dry-run
 pre-release:
@@ -149,8 +149,7 @@ deps:
     {{GO}} install github.com/goreleaser/goreleaser/v2@latest
     @echo ""
     @echo "Installing pre-commit..."
-    pip install pre-commit
-    pre-commit install
+    {{just_executable()}} install-pre-commit
     @echo ""
     @echo "Dependencies installed!"
 
@@ -182,6 +181,12 @@ release-local:
 release-dry-run:
     @echo "Running goreleaser (dry-run, no publish)..."
     goreleaser release --clean --snapshot --skip=publish
+
+# Generate provider table for README
+generate:
+    @echo "Generating provider table..."
+    {{GO}} run ./cmd/gen/
+    @echo "Provider table generated! Update README.md with the output."
 
 # Display help message
 help:

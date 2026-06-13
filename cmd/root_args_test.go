@@ -87,7 +87,7 @@ func TestGetProviderFromArgs(t *testing.T) {
 	}
 }
 
-func TestHasArgsSeparator(t *testing.T) {
+func TestHasLeadingArgsSeparator(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -106,20 +106,20 @@ func TestHasArgsSeparator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := hasArgsSeparator(tt.args)
+			got := hasLeadingArgsSeparator(tt.args)
 			if got != tt.want {
-				t.Errorf("hasArgsSeparator(%v) = %v, want %v", tt.args, got, tt.want)
+				t.Errorf("hasLeadingArgsSeparator(%v) = %v, want %v", tt.args, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestResolveAPIKey(t *testing.T) {
+func TestLookupAPIKeyWithFallback(t *testing.T) {
 	t.Run("returns provider-specific key", func(t *testing.T) {
 		secrets := map[string]string{
 			"ANTHROPIC_API_KEY": "sk-ant-xxx",
 		}
-		key, ok := resolveAPIKey(secrets, "anthropic")
+		key, ok := lookupAPIKeyWithFallback(secrets, "anthropic")
 		if !ok {
 			t.Error("Expected key to be found")
 		}
@@ -132,7 +132,7 @@ func TestResolveAPIKey(t *testing.T) {
 		secrets := map[string]string{
 			"CUSTOM_API_KEY": "sk-custom-xxx",
 		}
-		key, ok := resolveAPIKey(secrets, "anthropic")
+		key, ok := lookupAPIKeyWithFallback(secrets, "anthropic")
 		if !ok {
 			t.Error("Expected key to be found via custom fallback")
 		}
@@ -143,7 +143,7 @@ func TestResolveAPIKey(t *testing.T) {
 
 	t.Run("returns false when no key found", func(t *testing.T) {
 		secrets := map[string]string{}
-		_, ok := resolveAPIKey(secrets, "anthropic")
+		_, ok := lookupAPIKeyWithFallback(secrets, "anthropic")
 		if ok {
 			t.Error("Expected no key to be found")
 		}
@@ -161,12 +161,12 @@ func TestHarnessFlagUsesDefaultProvider(t *testing.T) {
 	}
 	createConfigFile(t, tmpDir, cfg)
 
-	originalConfigDir := defaultCLIContext.ConfigDir()
+	originalConfigDir := testCLI.ConfigDir()
 	originalHarnessFlag := harnessFlag
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 	harnessFlag = "claude"
 	defer func() {
-		defaultCLIContext.SetConfigDir(originalConfigDir)
+		testCLI.SetConfigDir(originalConfigDir)
 		harnessFlag = originalHarnessFlag
 	}()
 

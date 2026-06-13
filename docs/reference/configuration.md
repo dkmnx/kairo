@@ -110,7 +110,6 @@ Fields:
 | `model`            | No       | `""`    | Default model (user can override during setup)                         |
 | `requires_api_key` | No       | `true`  | Whether an API key is required                                         |
 | `api_key_env_var`  | No       | `""`    | Environment variable name for the API key                              |
-| `env_key`          | No       | `""`    | Override the auto-derived API key env var name passed to the harness   |
 | `min_key_length`   | No       | `20`    | Minimum API key length                                                 |
 | `key_prefix`       | No       | `""`    | Required API key prefix (e.g. `sk-`)                                   |
 | `key_pattern`      | No       | `""`    | Regex pattern the API key must match                                   |
@@ -137,20 +136,36 @@ Generated on first setup. The file contains the private identity line followed b
 
 ## Environment Variables
 
-| Variable             | Purpose                           | Default          |
-| -------------------- | --------------------------------- | ---------------- |
-| `KAIRO_CONFIG_DIR`   | Override config directory path    | Platform default |
-| `KAIRO_UPDATE_URL`   | Override update check URL         | GitHub Releases  |
+| Variable               | Purpose                                     | Default          |
+| ---------------------- | ------------------------------------------- | ---------------- |
+| `KAIRO_CONFIG_DIR`     | Override config directory path              | Platform default |
+| `KAIRO_UPDATE_URL`     | Override update check URL                   | GitHub Releases  |
+| `KAIRO_REQUIRE_COSIGN` | Abort update on cosign verification failure | unset            |
 
 ## Built-in Providers
 
-| Provider   | API Key Required | Default Base URL                     | Default Model         |
-| ---------- | ---------------- | ------------------------------------ | --------------------- |
-| `zai`      | Yes              | `https://api.z.ai/api/anthropic`     | `glm-5.1`             |
-| `minimax`  | Yes              | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        |
-| `kimi`     | Yes              | `https://api.kimi.com/coding/`       | `kimi-for-coding`     |
-| `deepseek` | Yes              | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` |
-| `custom`   | Yes              | user-defined                         | user-defined          |
+| Provider                 | API Key Required | Default Base URL                     | Default Model         |
+| ------------------------ | ---------------- | ------------------------------------ | --------------------- |
+| `zai`                    | Yes              | `https://api.z.ai/api/anthropic`     | `glm-5.1`             |
+| `minimax`                | Yes              | `https://api.minimax.io/anthropic`   | `MiniMax-M2.7`        |
+| `kimi`                   | Yes              | `https://api.kimi.com/coding/`       | `kimi-for-coding`     |
+| `deepseek`               | Yes              | `https://api.deepseek.com/anthropic` | `deepseek-v4-pro[1m]` |
+| `anthropic`              | Yes              | (provider-managed)                   | (provider-managed)    |
+| `openai`                 | Yes              | (provider-managed)                   | (provider-managed)    |
+| `google`                 | Yes              | (provider-managed)                   | (provider-managed)    |
+| `mistral`                | Yes              | (provider-managed)                   | (provider-managed)    |
+| `groq`                   | Yes              | (provider-managed)                   | (provider-managed)    |
+| `cerebras`               | Yes              | (provider-managed)                   | (provider-managed)    |
+| `cloudflare-workers-ai`  | Yes              | (provider-managed)                   | (provider-managed)    |
+| `xai`                    | Yes              | (provider-managed)                   | (provider-managed)    |
+| `openrouter`             | Yes              | (provider-managed)                   | (provider-managed)    |
+| `vercel-ai-gateway`      | Yes              | (provider-managed)                   | (provider-managed)    |
+| `opencode`               | Yes              | (provider-managed)                   | (provider-managed)    |
+| `huggingface`            | Yes              | (provider-managed)                   | (provider-managed)    |
+| `fireworks`              | Yes              | (provider-managed)                   | (provider-managed)    |
+| `azure-openai-responses` | Yes              | (provider-managed)                   | (provider-managed)    |
+| `minimax-cn`             | Yes              | (provider-managed)                   | (provider-managed)    |
+| `custom`                 | Yes              | user-defined                         | user-defined          |
 
 ## Custom Provider
 

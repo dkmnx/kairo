@@ -156,8 +156,24 @@ Common test patterns used in this project:
 ## Pre-commit
 
 ```bash
-pip install pre-commit
-pre-commit install
+if command -v pre-commit >/dev/null 2>&1; then
+  echo "pre-commit already installed"
+  pre-commit install
+elif command -v uv >/dev/null 2>&1; then
+  uv tool install pre-commit
+  export PATH="$HOME/.local/bin:$PATH"
+  pre-commit install
+elif command -v pip >/dev/null 2>&1; then
+  pip install --user pre-commit
+  export PATH="$HOME/.local/bin:$PATH"
+  pre-commit install
+else
+  echo "ERROR: Install uv or pip first" >&2
+  exit 1
+fi
+
+# Note: if pre-commit was just installed, you may need to restart your shell
+# or run: export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ## Contributing
@@ -168,4 +184,4 @@ pre-commit install
 4. Run `just pre-release`
 5. Submit a PR
 
-See [Contributing Guide](../contributing/README.md) for PR format and commit guidance.
+See [Contributing Guide](../CONTRIBUTING.md) for PR format and commit guidance.

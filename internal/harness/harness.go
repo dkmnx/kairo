@@ -2,6 +2,7 @@ package harness
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -68,7 +69,12 @@ func PiEnvVars(providerName, model string) []string {
 	}
 }
 
+var nonAlphanumeric = regexp.MustCompile(`[^a-zA-Z0-9]`)
+
 // APIKeyEnvVar returns the conventional environment variable name for a provider's API key.
+// Non-alphanumeric characters in the provider name are replaced with underscores.
 func APIKeyEnvVar(providerName string) string {
-	return fmt.Sprintf("%s_API_KEY", strings.ToUpper(providerName))
+	sanitized := nonAlphanumeric.ReplaceAllString(strings.ToUpper(providerName), "_")
+
+	return fmt.Sprintf("%s_API_KEY", sanitized)
 }

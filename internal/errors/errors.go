@@ -96,6 +96,7 @@ func WrapError(errorType ErrorType, message string, cause error) *KairoError {
 }
 
 // WithContext adds a key-value pair to the error's context metadata.
+// See package doc for the list of canonical context keys.
 func (e *KairoError) WithContext(key, value string) *KairoError {
 	if e.Context == nil {
 		e.Context = make(map[string]string)

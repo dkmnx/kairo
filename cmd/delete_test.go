@@ -22,10 +22,10 @@ func TestDeleteCmdDeletesProviderFromConfig(t *testing.T) {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	cfg := &config.Config{
 		DefaultProvider: "testprovider",
@@ -85,10 +85,10 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("EnsureKeyExists() error = %v", err)
 	}
 
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	cfg := &config.Config{
 		DefaultProvider: "provider1",

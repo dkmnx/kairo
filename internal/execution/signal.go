@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
@@ -14,9 +15,11 @@ func StartSession(parent context.Context) (ctx context.Context, cancel context.C
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 
 	done := make(chan struct{})
+	var once sync.Once
+
 	stop = func() {
 		signal.Stop(ch)
-		close(done)
+		once.Do(func() { close(done) })
 	}
 
 	go func() {

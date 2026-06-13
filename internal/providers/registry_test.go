@@ -563,7 +563,7 @@ func TestKeyFormat_validateForKey(t *testing.T) {
 	})
 
 	t.Run("pattern mismatch", func(t *testing.T) {
-		kf := KeyFormat{Pattern: `^[a-f0-9]+$`, compiled: nil}
+		kf := KeyFormat{Pattern: `^[a-f0-9]+$`}
 		// trigger regex compilation
 		err := kf.validateForKey("contains-upper-and-dashes")
 		if err == nil {
@@ -575,7 +575,7 @@ func TestKeyFormat_validateForKey(t *testing.T) {
 	})
 
 	t.Run("pattern match passes", func(t *testing.T) {
-		kf := KeyFormat{Pattern: `^[a-f0-9]{32,}$`, compiled: nil}
+		kf := KeyFormat{Pattern: `^[a-f0-9]{32,}$`}
 		hexKey := strings.Repeat("a", 32)
 		err := kf.validateForKey(hexKey)
 		if err != nil {
@@ -598,13 +598,10 @@ func TestKeyFormat_validateForKey(t *testing.T) {
 	})
 
 	t.Run("compiled regex reused on second call", func(t *testing.T) {
-		kf := KeyFormat{Pattern: `^[a-z]+$`, compiled: nil}
+		kf := KeyFormat{Pattern: `^[a-z]+$`}
 		err := kf.validateForKey("validlowercase")
 		if err != nil {
 			t.Fatalf("first call should pass: %v", err)
-		}
-		if kf.compiled == nil {
-			t.Fatal("regex should be compiled after first call")
 		}
 		err2 := kf.validateForKey("validlowercase")
 		if err2 != nil {

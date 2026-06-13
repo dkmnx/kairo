@@ -20,6 +20,9 @@ func TestURLValidation(t *testing.T) {
 		{"private IP 10.x", "https://10.0.0.1/api", "TestProvider", true},
 		{"private IP 172.16.x", "https://172.16.0.1/api", "TestProvider", true},
 		{"private IP 192.168.x", "https://192.168.1.1/api", "TestProvider", true},
+		{"unspecified IPv4", "https://0.0.0.0/api", "TestProvider", true},
+		{"unspecified IPv6", "https://[::]/api", "TestProvider", true},
+		{"cloud metadata", "https://169.254.169.254/latest/meta-data/", "TestProvider", true},
 		{"valid HTTPS", "https://api.example.com/anthropic", "TestProvider", false},
 		{"valid with path", "https://api.example.com/v1/anthropic", "TestProvider", false},
 	}

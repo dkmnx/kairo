@@ -43,7 +43,12 @@ func runHarnessExec(cfg ExecutionConfig, harnessPath string, cliArgs []string) e
 		})
 	}
 
-	ctx, cancel, stopSig := execution.StartSession(CLIContextFromCmd(cfg.Cmd).RootCtx())
+	rootCtx := context.Background()
+	if cliCtx := CLIContextFromCmd(cfg.Cmd); cliCtx != nil {
+		rootCtx = cliCtx.RootCtx()
+	}
+
+	ctx, cancel, stopSig := execution.StartSession(rootCtx)
 	defer cancel()
 	defer stopSig()
 
@@ -161,7 +166,11 @@ func executeWithAuth(cfg ExecutionConfig) {
 }
 
 func executeWrapperWithAuth(cfg ExecutionConfig) {
-	ctx, cancel, stopSig := execution.StartSession(CLIContextFromCmd(cfg.Cmd).RootCtx())
+	rootCtx := context.Background()
+	if cliCtx := CLIContextFromCmd(cfg.Cmd); cliCtx != nil {
+		rootCtx = cliCtx.RootCtx()
+	}
+	ctx, cancel, stopSig := execution.StartSession(rootCtx)
 	defer cancel()
 	defer stopSig()
 

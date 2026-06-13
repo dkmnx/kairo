@@ -46,12 +46,11 @@ checksum:
 
 signs:
   - cmd: cosign
-    signature: "${artifact}.sigstore.json"
     args:
-      - "sign-blob"
-      - "--bundle=${signature}"
-      - "${artifact}"
-      - "--yes"
+      - sign-blob
+      - --bundle=${signature}
+      - ${artifact}
+      - --yes
     artifacts: checksum
     output: true
 

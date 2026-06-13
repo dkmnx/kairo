@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
@@ -23,13 +25,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		originalVerbose := verbose()
-		defaultCLIContext.SetConfigDir("")
-		defaultCLIContext.SetVerbose(false)
+		originalConfigDir := testCLI.ConfigDir()
+		originalVerbose := testCLI.Verbose()
+		testCLI.SetConfigDir("")
+		testCLI.SetVerbose(false)
 		defer func() {
-			defaultCLIContext.SetConfigDir(originalConfigDir)
-			defaultCLIContext.SetVerbose(originalVerbose)
+			testCLI.SetConfigDir(originalConfigDir)
+			testCLI.SetVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -54,13 +56,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetErr(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		originalVerbose := verbose()
-		defaultCLIContext.SetConfigDir("")
-		defaultCLIContext.SetVerbose(false)
+		originalConfigDir := testCLI.ConfigDir()
+		originalVerbose := testCLI.Verbose()
+		testCLI.SetConfigDir("")
+		testCLI.SetVerbose(false)
 		defer func() {
-			defaultCLIContext.SetConfigDir(originalConfigDir)
-			defaultCLIContext.SetVerbose(originalVerbose)
+			testCLI.SetConfigDir(originalConfigDir)
+			testCLI.SetVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -84,13 +86,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		originalVerbose := verbose()
-		defaultCLIContext.SetConfigDir("")
-		defaultCLIContext.SetVerbose(false)
+		originalConfigDir := testCLI.ConfigDir()
+		originalVerbose := testCLI.Verbose()
+		testCLI.SetConfigDir("")
+		testCLI.SetVerbose(false)
 		defer func() {
-			defaultCLIContext.SetConfigDir(originalConfigDir)
-			defaultCLIContext.SetVerbose(originalVerbose)
+			testCLI.SetConfigDir(originalConfigDir)
+			testCLI.SetVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -99,8 +101,8 @@ func TestExecute(t *testing.T) {
 			t.Errorf("Execute() with --verbose should succeed, got error: %v", err)
 		}
 
-		if !verbose() {
-			t.Error("verbose flag should be set")
+		if !verboseFlag {
+			t.Error("verbose flag should be set after Execute() with --verbose")
 		}
 	})
 
@@ -115,13 +117,13 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetOut(output)
 		rootCmd.SetArgs(nil) // Reset any args from previous tests
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		originalVerbose := verbose()
-		defaultCLIContext.SetConfigDir("")
-		defaultCLIContext.SetVerbose(false)
+		originalConfigDir := testCLI.ConfigDir()
+		originalVerbose := testCLI.Verbose()
+		testCLI.SetConfigDir("")
+		testCLI.SetVerbose(false)
 		defer func() {
-			defaultCLIContext.SetConfigDir(originalConfigDir)
-			defaultCLIContext.SetVerbose(originalVerbose)
+			testCLI.SetConfigDir(originalConfigDir)
+			testCLI.SetVerbose(originalVerbose)
 		}()
 
 		err := Execute()
@@ -153,24 +155,45 @@ func TestExecute(t *testing.T) {
 		rootCmd.SetErr(output)
 		rootCmd.SetArgs(nil)
 
-		originalConfigDir := defaultCLIContext.ConfigDir()
-		originalVerbose := verbose()
-		defaultCLIContext.SetConfigDir(tmpDir) // Use tmpDir, not empty string
-		defaultCLIContext.SetVerbose(false)
+		originalConfigDir := testCLI.ConfigDir()
+		originalVerbose := testCLI.Verbose()
 		defer func() {
-			defaultCLIContext.SetConfigDir(originalConfigDir)
-			defaultCLIContext.SetVerbose(originalVerbose)
+			testCLI.SetConfigDir(originalConfigDir)
+			testCLI.SetVerbose(originalVerbose)
 			os.Remove(configPath)
 		}()
 
-		rootCmd.SetArgs([]string{"--config", tmpDir, "anthropic"})
+		var execCalled bool
+		d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+			mp.LookPathFn = func(file string) (string, error) {
+				if file == "claude" {
+					return "/usr/bin/claude", nil
+				}
+				return "", fmt.Errorf("not found: %s", file)
+			}
+			mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+				execCalled = true
+				cmd := exec.CommandContext(ctx, "echo", "mocked")
+				cmd.Args = []string{"echo", "mocked"}
+				return cmd
+			}
+			mp.ExitProcessFn = func(int) {}
+		})
 
-		// Note: This test verifies the provider shorthand behavior with rootCmd.Run
-		rootCmd.Run(rootCmd, []string{"--config", tmpDir, "anthropic"})
+		cliCtx := NewCLIContext()
+		cliCtx.SetConfigDir(tmpDir)
+		cliCtx.SetVerbose(false)
+		cliCtx.SetDeps(d)
+		rootCmd.SetContext(WithCLIContext(context.Background(), cliCtx))
+
+		rootCmd.Run(rootCmd, []string{"anthropic"})
 
 		result := output.String()
 		if containsString(result, "unknown command") {
 			t.Errorf("Got 'unknown command' error, output: %s", result)
+		}
+		if !execCalled {
+			t.Errorf("Expected execCommand to be called when provider name is passed as argument")
 		}
 	})
 }
@@ -184,9 +207,9 @@ func TestHandleConfigError(t *testing.T) {
 			"configuration file contains field(s) not recognized by this version of kairo",
 			&yaml.TypeError{Errors: []string{"field default_harness not found in type config.Config"}})
 
-		originalVerbose := verbose()
-		defaultCLIContext.SetVerbose(false)
-		defer func() { defaultCLIContext.SetVerbose(originalVerbose) }()
+		originalVerbose := testCLI.Verbose()
+		testCLI.SetVerbose(false)
+		defer func() { testCLI.SetVerbose(originalVerbose) }()
 
 		handleConfigError(rootCmd, err)
 
@@ -219,9 +242,8 @@ func TestHandleConfigError(t *testing.T) {
 			"configuration file contains field(s) not recognized by this version of kairo",
 			&yaml.TypeError{Errors: []string{"field default_harness not found in type config.Config"}})
 
-		originalVerbose := verbose()
-		defaultCLIContext.SetVerbose(true)
-		defer func() { defaultCLIContext.SetVerbose(originalVerbose) }()
+		verboseFlag = true
+		defer func() { verboseFlag = false }()
 
 		handleConfigError(rootCmd, err)
 
@@ -241,9 +263,9 @@ func TestHandleConfigError(t *testing.T) {
 
 		err := fmt.Errorf("some other config error")
 
-		originalVerbose := verbose()
-		defaultCLIContext.SetVerbose(false)
-		defer func() { defaultCLIContext.SetVerbose(originalVerbose) }()
+		originalVerbose := testCLI.Verbose()
+		testCLI.SetVerbose(false)
+		defer func() { testCLI.SetVerbose(originalVerbose) }()
 
 		handleConfigError(rootCmd, err)
 

@@ -22,8 +22,11 @@ type KeyFormat struct {
 	MinLength int
 	Prefix    string
 	Pattern   string
-	compiled  *regexp.Regexp
 }
+
+// compiledCache caches compiled regexps by pattern to avoid races on
+// the lazy-init path. Package-level so it's shared across all KeyFormat values.
+var compiledCache sync.Map
 
 func (kf *KeyFormat) validateForKey(key string) error {
 	if strings.TrimSpace(key) == "" {
@@ -36,14 +39,17 @@ func (kf *KeyFormat) validateForKey(key string) error {
 		return fmt.Errorf("API key must start with '%s'", kf.Prefix)
 	}
 	if kf.Pattern != "" {
-		if kf.compiled == nil {
+		v, ok := compiledCache.Load(kf.Pattern)
+		if !ok {
 			compiled, err := regexp.Compile(kf.Pattern)
 			if err != nil {
 				return fmt.Errorf("invalid key pattern for provider: %w", err)
 			}
-			kf.compiled = compiled
+			compiledCache.Store(kf.Pattern, compiled)
+			v = compiled
 		}
-		if !kf.compiled.MatchString(key) {
+		compiled, _ := v.(*regexp.Regexp)
+		if !compiled.MatchString(key) {
 			return fmt.Errorf("API key format is invalid")
 		}
 	}

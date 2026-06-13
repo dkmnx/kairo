@@ -11,11 +11,11 @@ import (
 )
 
 func TestDefaultCommandNoArgs(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: zai
@@ -30,7 +30,7 @@ providers:
 		t.Fatal(err)
 	}
 
-	rootCmd.SetArgs([]string{"default"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "default"})
 	err = rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -38,11 +38,11 @@ providers:
 }
 
 func TestDefaultCommandSetProvider(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
@@ -61,7 +61,7 @@ providers:
 		t.Fatal(err)
 	}
 
-	rootCmd.SetArgs([]string{"default", "zai"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "default", "zai"})
 	err = rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -77,11 +77,11 @@ providers:
 }
 
 func TestDefaultCommandProviderNotFound(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
@@ -96,7 +96,7 @@ providers:
 		t.Fatal(err)
 	}
 
-	rootCmd.SetArgs([]string{"default", "nonexistent"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "default", "nonexistent"})
 	err = rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -104,11 +104,11 @@ providers:
 }
 
 func TestDefaultCommandUpdatesConfigFile(t *testing.T) {
-	originalConfigDir := defaultCLIContext.ConfigDir()
-	defer func() { defaultCLIContext.SetConfigDir(originalConfigDir) }()
+	originalConfigDir := testCLI.ConfigDir()
+	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
 
 	tmpDir := t.TempDir()
-	defaultCLIContext.SetConfigDir(tmpDir)
+	testCLI.SetConfigDir(tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	configContent := `default_provider: anthropic
@@ -127,7 +127,7 @@ providers:
 		t.Fatal(err)
 	}
 
-	rootCmd.SetArgs([]string{"default", "zai"})
+	rootCmd.SetArgs([]string{"--config", tmpDir, "default", "zai"})
 	err = rootCmd.Execute()
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)

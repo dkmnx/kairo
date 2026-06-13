@@ -26,8 +26,10 @@ type CLIContext struct {
 	configCache       *config.ConfigCache
 	rootCtx           context.Context
 	deps              *Deps
+	depsMu            sync.RWMutex
 
-	defaultProviderExplicit bool
+	defaultProviderExplicit   bool
+	defaultProviderExplicitMu sync.RWMutex
 }
 
 // NewCLIContext creates a CLIContext with default settings.
@@ -101,16 +103,22 @@ func (c *CLIContext) RootCtx() context.Context {
 
 // Deps returns the external dependencies for this CLI session.
 func (c *CLIContext) Deps() *Deps {
+	c.depsMu.RLock()
+	defer c.depsMu.RUnlock()
+
 	return c.deps
 }
 
 // Crypto returns the crypto service for this CLI session.
 func (c *CLIContext) Crypto() crypto.Service {
-	return c.deps.Crypto
+	return c.Deps().Crypto
 }
 
 // SetDeps replaces the external dependencies. For use in tests.
 func (c *CLIContext) SetDeps(d *Deps) {
+	c.depsMu.Lock()
+	defer c.depsMu.Unlock()
+
 	c.deps = d
 }
 
@@ -119,28 +127,26 @@ func (c *CLIContext) InvalidateCache(dir string) {
 	c.configCache.Invalidate(dir)
 }
 
-// SetDefaultProviderExplicit records whether the user passed "--" to separate
-// kairo flags from harness flags.
+// SetDefaultProviderExplicit records whether the user passed "--" before the
+// first positional argument to explicitly select the default provider.
 func (c *CLIContext) SetDefaultProviderExplicit(v bool) {
+	c.defaultProviderExplicitMu.Lock()
+	defer c.defaultProviderExplicitMu.Unlock()
+
 	c.defaultProviderExplicit = v
 }
 
 // DefaultProviderExplicit reports whether the user passed "--".
 func (c *CLIContext) DefaultProviderExplicit() bool {
+	c.defaultProviderExplicitMu.RLock()
+	defer c.defaultProviderExplicitMu.RUnlock()
+
 	return c.defaultProviderExplicit
 }
 
-// defaultCLIContext is the package-level singleton used by production.
-// It is mutated in place by Execute() through PersistentPreRun and the
-// verbose-flag wiring. Tests must not depend on it: use NewCLIContext()
-// to construct isolated contexts and inject them with SetDeps.
-//
-// Goroutine-safety: the singleton is safe for concurrent reads; writes
-// happen only at startup (PersistentPreRun) and via SetConfigDir /
-// SetVerbose / SetDeps (the latter two are for tests).
-var defaultCLIContext = NewCLIContext()
-
 // CLIContextFromCmd extracts the CLIContext from a cobra command's context.
+// Returns nil if no CLIContext is set (callers should use MustCLIContextFromCmd
+// when a cmd is always available, or handle nil gracefully).
 func CLIContextFromCmd(cmd *cobra.Command) *CLIContext {
 	if ctx := cmd.Context(); ctx != nil {
 		if cliCtx, ok := ctx.Value(cliContextKey{}).(*CLIContext); ok {
@@ -148,7 +154,19 @@ func CLIContextFromCmd(cmd *cobra.Command) *CLIContext {
 		}
 	}
 
-	return defaultCLIContext
+	return nil
+}
+
+// MustCLIContextFromCmd is like CLIContextFromCmd but panics if no CLIContext
+// is found. Use when a cobra command is guaranteed to have been initialized
+// via Execute().
+func MustCLIContextFromCmd(cmd *cobra.Command) *CLIContext {
+	cliCtx := CLIContextFromCmd(cmd)
+	if cliCtx == nil {
+		panic("kairo: no CLIContext in command context; Execute() must be called first")
+	}
+
+	return cliCtx
 }
 
 // WithCLIContext stores a CLIContext in the given context.

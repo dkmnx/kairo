@@ -51,6 +51,26 @@ func TestParse(t *testing.T) {
 			input:    "ZAI_API_KEY=sk-test-key123\nMINIMAX_API_KEY=sk-another-key456\n",
 			expected: map[string]string{"ZAI_API_KEY": "sk-test-key123", "MINIMAX_API_KEY": "sk-another-key456"},
 		},
+		{
+			name:     "comment lines ignored",
+			input:    "# this is a comment\nKEY=value\n# another comment",
+			expected: map[string]string{"KEY": "value"},
+		},
+		{
+			name:     "indented comment ignored",
+			input:    "  # indented comment\nKEY=value",
+			expected: map[string]string{"KEY": "value"},
+		},
+		{
+			name:     "comment between entries",
+			input:    "KEY1=val1\n# comment\nKEY2=val2",
+			expected: map[string]string{"KEY1": "val1", "KEY2": "val2"},
+		},
+		{
+			name:     "whitespace trimmed from lines, not key-value parts",
+			input:    "  KEY1 =val1  \n  KEY2=val2",
+			expected: map[string]string{"KEY1 ": "val1", "KEY2": "val2"},
+		},
 	}
 
 	for _, tt := range tests {

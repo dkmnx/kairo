@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for `KAIRO_CONFIG_DIR` environment variable
+- Provider table generator and execution orchestrator
+
+### Changed
+
+- Move context key documentation to `doc.go` with expanded key list
+- Consolidate secret parsing into canonical `secrets` package
+- Update `cmd` README for CLIContext lifecycle refactor
+- Remove `defaultCLIContext` global singleton, inject `CLIContext` via Cobra context
+- Prune stale `DefaultModels`, rename `parseCIDROrPanic`, document error context keys
+- Move contributing guide from `docs/` to project root
+- Fix documentation discrepancies against code implementation
+- Remove dead `resolveAPIKey` wrapper function, update tests to use `lookupAPIKeyWithFallback`
+- Remove dead `SecretsCache` from `internal/crypto/cache.go` (never wired in)
+- Rename `hasArgsSeparator` to `hasLeadingArgsSeparator` to clarify semantics
+
+### Fixed
+
+- Skip cosign verification gracefully when cosign is not installed; strict mode via `KAIRO_REQUIRE_COSIGN=1` only enforces when verification actually fails
+- Cap HTTP response bodies at 10MB to prevent OOM/disk exhaustion
+- Fix off-by-one in HTTP body size limit
+- Anchor cosign certificate identity regexp with `$` to prevent suffix attacks
+- Escape `|` characters in provider table markdown output
+- Sanitize provider names in `APIKeyEnvVar` (hyphens replaced with underscores)
+- Block `0.0.0.0`, `::`, and `169.254.169.254` in URL validation to prevent SSRF
+- Display warnings to stderr when malformed secrets entries are dropped
+- Add 5-minute timeout to install script execution in update command
+- Improve pre-commit installation with uv/pip fallback
+- Fix missing blank lines in docs and broken table cell
+- Correct inaccurate function signatures in `internal/README.md`
+
 ## [v2.9.0] - 2026-06-07
 
 ### Added

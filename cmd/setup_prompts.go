@@ -22,20 +22,14 @@ func buildProviderListOptions(providerList []string) []tap.SelectOption[string] 
 	return options
 }
 
-func promptForProvider(cfg *config.Config) string {
-	ctx := promptContext()
-
-	if len(cfg.Providers) == 0 {
-		return promptForNewProvider(ctx)
-	}
-
-	return promptForExistingOrNewProvider(ctx, cfg)
-}
+// promptRootCtx is the root context used by interactive prompts. It is
+// initialized by Execute() and used by prompter functions that don't have
+// a cobra.Command reference. Tests may set it directly.
+var promptRootCtx = context.Background()
 
 // promptContext returns the CLI root context for interactive prompts.
-// Falls back to context.Background if no CLI context is available.
 func promptContext() context.Context {
-	return defaultCLIContext.RootCtx()
+	return promptRootCtx
 }
 
 func promptForNewProvider(ctx context.Context) string {
@@ -46,6 +40,16 @@ func promptForNewProvider(ctx context.Context) string {
 		Message: "Select provider to configure",
 		Options: options,
 	})
+}
+
+func promptForProvider(cfg *config.Config) string {
+	ctx := promptContext()
+
+	if len(cfg.Providers) == 0 {
+		return promptForNewProvider(ctx)
+	}
+
+	return promptForExistingOrNewProvider(ctx, cfg)
 }
 
 func promptForExistingOrNewProvider(ctx context.Context, cfg *config.Config) string {

@@ -128,6 +128,7 @@ kairo/
 │   ├── config/          # Config loading, caching, migration, paths
 │   ├── constants/       # Shared constants (paths, defaults)
 │   ├── crypto/          # age/X25519 key management and encryption
+│   ├── envutil/         # Environment variable merge utilities
 │   ├── errors/          # Typed errors
 │   ├── execution/        # Harness execution dispatch
 │   ├── fsutil/          # Atomic file write utility
@@ -218,7 +219,8 @@ See [Wrapper Scripts](wrapper-scripts.md) for the detailed design.
 
 - Config directory resolution: `internal/config/env.go`
 - Secure wrapper generation: `internal/wrapper/wrapper.go`
-- Harness execution: `cmd/execution.go`
+- Harness dispatch and constants: `internal/harness/harness.go`
+- Harness execution: `cmd/execution_harness.go`
 - Root command and flag wiring: `cmd/root.go`
 
 ## Design Principles

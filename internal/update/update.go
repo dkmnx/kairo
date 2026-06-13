@@ -27,7 +27,15 @@ const (
 	checksumsFilename   = "checksums.txt"
 	installScriptExt    = ".sh"
 	installScriptExtPS1 = ".ps1"
+
+	// maxHTTPBodySize is the maximum size of an HTTP response body that
+	// doHTTPGet will read into memory. This prevents OOM from malicious
+	// or compromised responses. 10 MB covers release JSON, checksums,
+	// and cosign bundles with generous headroom.
+	maxHTTPBodySize = 10 * 1024 * 1024
 )
+
+var checksumHashPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 
 // Client holds injectable dependencies for update operations.
 type Client struct {
@@ -93,10 +101,17 @@ func (c *Client) doHTTPGet(ctx context.Context, url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxHTTPBodySize))
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
 			"failed to read response", err)
+	}
+
+	// Check if there's more data beyond the limit.
+	var buf [1]byte
+	if _, err := io.ReadFull(resp.Body, buf[:]); err == nil {
+		return nil, errors.NewError(errors.NetworkError,
+			"response body exceeded maximum size")
 	}
 
 	return body, nil
@@ -170,13 +185,22 @@ func (c *Client) DownloadToTempFile(ctx context.Context, url string) (string, er
 			"failed to create temp file", err)
 	}
 
-	_, err = io.Copy(tempFile, resp.Body)
-	if err != nil {
+	if _, err := io.Copy(tempFile, io.LimitReader(resp.Body, maxHTTPBodySize)); err != nil {
 		tempFile.Close()
 		os.Remove(tempFile.Name())
 
 		return "", errors.WrapError(errors.NetworkError,
 			"failed to write to temp file", err)
+	}
+
+	// Check if there's more data beyond the limit.
+	var buf [1]byte
+	if _, readErr := io.ReadFull(resp.Body, buf[:]); readErr == nil {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+
+		return "", errors.NewError(errors.NetworkError,
+			"response body exceeded maximum size")
 	}
 
 	if err := tempFile.Close(); err != nil {
@@ -216,7 +240,10 @@ func RunInstallScript(scriptPath string) error {
 			"failed to find shell", err)
 	}
 
-	shCmd := exec.CommandContext(context.Background(), shPath, scriptPath)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	shCmd := exec.CommandContext(ctx, shPath, scriptPath)
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
 	if err := shCmd.Run(); err != nil {
@@ -244,8 +271,7 @@ func ParseChecksumLine(line string) (hash, filename string, ok bool) {
 		return "", "", false
 	}
 
-	hashPattern := regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
-	if !hashPattern.MatchString(parts[0]) {
+	if !checksumHashPattern.MatchString(parts[0]) {
 		return "", "", false
 	}
 
@@ -342,7 +368,7 @@ func dataToTempFile(data []byte, pattern string) (string, error) {
 // cosignVerifyBlob runs cosign verify-blob against the given checksums file
 // using the sigstore bundle at bundlePath.
 func cosignVerifyBlob(ctx context.Context, cosignPath, bundlePath, checksumsPath string) error {
-	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml",
+	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml$",
 		constants.GitHubRepo)
 
 	cmd := exec.CommandContext(ctx, cosignPath,

@@ -535,6 +535,36 @@ func TestDoHTTPGet_NotFound(t *testing.T) {
 	}
 }
 
+func TestDoHTTPGet_BodyTooLarge(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(make([]byte, maxHTTPBodySize+1))
+	}))
+	defer server.Close()
+
+	c := NewClient()
+	_, err := c.doHTTPGet(context.Background(), server.URL)
+	if err == nil {
+		t.Error("doHTTPGet() should return error when body exceeds size limit")
+	}
+}
+
+func TestDownloadToTempFile_BodyTooLarge(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(make([]byte, maxHTTPBodySize+1))
+	}))
+	defer server.Close()
+
+	c := NewClient()
+	_, err := c.DownloadToTempFile(context.Background(), server.URL)
+	if err == nil {
+		t.Error("DownloadToTempFile() should return error when body exceeds size limit")
+	}
+}
+
 func TestDownloadToTempFile_WriteFails(t *testing.T) {
 	// Server that closes connection prematurely, causing io.Copy to fail
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
