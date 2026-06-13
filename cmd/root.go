@@ -50,7 +50,7 @@ func Execute() error {
 	promptRootCtx = cliCtx.RootCtx()
 
 	args := os.Args[1:]
-	cliCtx.SetDefaultProviderExplicit(hasArgsSeparator(args))
+	cliCtx.SetDefaultProviderExplicit(hasLeadingArgsSeparator(args))
 
 	rootCmd.SetArgs(args)
 
@@ -205,8 +205,4 @@ func buildExecutionConfig(
 		Yolo:          skipPermissionsFlag,
 		Deps:          cliCtx.Deps(),
 	}
-}
-
-func resolveAPIKey(secrets map[string]string, providerName string) (string, bool) {
-	return lookupAPIKeyWithFallback(secrets, providerName)
 }

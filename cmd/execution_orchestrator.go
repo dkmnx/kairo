@@ -21,7 +21,7 @@ func OrchestrateExecution(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	_, harnessArgs, providerName := resolveProviderAndArgs(cmd, cliCtx, cfg, args)
+	harnessArgs, providerName := resolveProviderAndArgs(cmd, cliCtx, cfg, args)
 	if providerName == "" {
 		return
 	}
@@ -101,7 +101,7 @@ func lookupProvider(cmd *cobra.Command, cfg *config.Config, providerName string)
 // the command-line args and configuration.
 func resolveProviderAndArgs(cmd *cobra.Command, cliCtx *CLIContext,
 	cfg *config.Config, args []string,
-) ([]string, []string, string) {
+) ([]string, string) {
 	if len(args) == 0 || cliCtx.DefaultProviderExplicit() {
 		if cfg.DefaultProvider == "" {
 			cmd.Println("No default provider set.")
@@ -112,10 +112,10 @@ func resolveProviderAndArgs(cmd *cobra.Command, cliCtx *CLIContext,
 			cmd.Println("  kairo list             # List providers")
 			cmd.Println("  kairo <provider>       # Use specific provider")
 
-			return nil, nil, ""
+			return nil, ""
 		}
 
-		return []string{cfg.DefaultProvider}, args, cfg.DefaultProvider
+		return args, cfg.DefaultProvider
 	}
 
 	providerName, harnessArgs := providerFromArgs(cmd, cfg, args)
@@ -123,10 +123,10 @@ func resolveProviderAndArgs(cmd *cobra.Command, cliCtx *CLIContext,
 	// When --harness is set and the first arg is not a known provider,
 	// treat all args as harness args and use the default provider.
 	if harnessFlag != "" && !isKnownProvider(providerName, cfg) && cfg.DefaultProvider != "" {
-		return []string{cfg.DefaultProvider}, args, cfg.DefaultProvider
+		return args, cfg.DefaultProvider
 	}
 
-	return args, harnessArgs, providerName
+	return harnessArgs, providerName
 }
 
 // isKnownProvider reports whether name matches a configured or built-in provider.
@@ -169,10 +169,13 @@ func splitArgs(args []string) ([]string, []string) {
 	return args, nil
 }
 
-// hasArgsSeparator reports whether args contain the "--" separator outside of flag values.
-// It walks past flags and their values (e.g. --harness pi, -v value) looking for "--".
-// Once a non-flag argument is seen, "--" is no longer valid as a separator.
-func hasArgsSeparator(args []string) bool {
+// hasLeadingArgsSeparator reports whether args contain the "--" separator before
+// any non-flag argument. It walks past flags and their values (e.g. --harness pi,
+// -v value) looking for "--". Once a non-flag argument is seen, "--" is no longer
+// valid as a separator. Note: splitArgs always splits on the first "--" regardless
+// of position, so this function has different semantics — it only detects separators
+// that appear before the first positional argument.
+func hasLeadingArgsSeparator(args []string) bool {
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--" {
 			return true

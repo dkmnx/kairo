@@ -107,7 +107,9 @@ func (c *Client) doHTTPGet(ctx context.Context, url string) ([]byte, error) {
 			"failed to read response", err)
 	}
 
-	if int64(len(body)) >= maxHTTPBodySize {
+	// Check if there's more data beyond the limit.
+	var buf [1]byte
+	if _, err := io.ReadFull(resp.Body, buf[:]); err == nil {
 		return nil, errors.NewError(errors.NetworkError,
 			"response body exceeded maximum size")
 	}
@@ -183,8 +185,7 @@ func (c *Client) DownloadToTempFile(ctx context.Context, url string) (string, er
 			"failed to create temp file", err)
 	}
 
-	n, err := io.Copy(tempFile, io.LimitReader(resp.Body, maxHTTPBodySize))
-	if err != nil {
+	if _, err := io.Copy(tempFile, io.LimitReader(resp.Body, maxHTTPBodySize)); err != nil {
 		tempFile.Close()
 		os.Remove(tempFile.Name())
 
@@ -192,7 +193,9 @@ func (c *Client) DownloadToTempFile(ctx context.Context, url string) (string, er
 			"failed to write to temp file", err)
 	}
 
-	if n >= maxHTTPBodySize {
+	// Check if there's more data beyond the limit.
+	var buf [1]byte
+	if _, readErr := io.ReadFull(resp.Body, buf[:]); readErr == nil {
 		tempFile.Close()
 		os.Remove(tempFile.Name())
 
@@ -365,7 +368,7 @@ func dataToTempFile(data []byte, pattern string) (string, error) {
 // cosignVerifyBlob runs cosign verify-blob against the given checksums file
 // using the sigstore bundle at bundlePath.
 func cosignVerifyBlob(ctx context.Context, cosignPath, bundlePath, checksumsPath string) error {
-	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml",
+	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml$",
 		constants.GitHubRepo)
 
 	cmd := exec.CommandContext(ctx, cosignPath,

@@ -539,7 +539,7 @@ func TestDoHTTPGet_BodyTooLarge(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(make([]byte, maxHTTPBodySize))
+		_, _ = w.Write(make([]byte, maxHTTPBodySize+1))
 	}))
 	defer server.Close()
 
@@ -554,7 +554,7 @@ func TestDownloadToTempFile_BodyTooLarge(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(make([]byte, maxHTTPBodySize))
+		_, _ = w.Write(make([]byte, maxHTTPBodySize+1))
 	}))
 	defer server.Close()
 

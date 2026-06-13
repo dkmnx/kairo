@@ -30,15 +30,20 @@ func ProviderTableMarkdown() string {
 		}
 
 		fmt.Fprintf(&b, "| %s | `%s` | `%s` | `%s` | `%s` |\n",
-			def.Name,
-			name,
-			baseURL,
-			model,
-			def.APIKeyEnvVar,
+			escapeMarkdownPipe(def.Name),
+			escapeMarkdownPipe(name),
+			escapeMarkdownPipe(baseURL),
+			escapeMarkdownPipe(model),
+			escapeMarkdownPipe(def.APIKeyEnvVar),
 		)
 	}
 
 	return b.String()
+}
+
+// escapeMarkdownPipe escapes pipe characters in markdown table cells.
+func escapeMarkdownPipe(s string) string {
+	return strings.ReplaceAll(s, "|", "\\|")
 }
 
 // ProviderOrder returns provider names in display order (priority order first,

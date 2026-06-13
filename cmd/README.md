@@ -22,8 +22,8 @@ logic lives in `internal/`.
 | `execution_env.go`          | `BuildProviderEnv`, `BuildPiEnvVars`, `BuildBuiltInEnvVars`, env-var merge logic                                                |
 | `execution_harness.go`      | `executePi`, `runHarnessExec`, `executeWithAuth`, `executeWithoutAuth`, `lookUpHarnessBinary`, `reportHarnessError`, `handlePi` |
 | `execution_error.go`        | `handleConfigError`, `isBinaryOutdatedError`, `promptUpgrade`, `handleSecretsError`                                             |
-| `execution_orchestrator.go` | `OrchestrateExecution`, `loadRootConfig`, `resolveProviderAndArgs`, `lookupProvider`, `splitArgs`, `hasArgsSeparator`           |
-| `util.go`                   | `requireConfigDir`, `loadConfigOrExit`, `loadConfigOrEmpty`, `mergeEnvVars` (delegates to `internal/envutil`)                   |
+| `execution_orchestrator.go` | `OrchestrateExecution`, `loadRootConfig`, `resolveProviderAndArgs`, `lookupProvider`                                            |
+| `util.go`                   | `requireConfigDir`, `loadConfigOrExit`, `loadConfigOrEmpty`, `mergeEnvVars`                                                     |
 | `default.go`                | `kairo default [provider]` command                                                                                              |
 | `list.go`                   | `kairo list` command                                                                                                            |
 | `delete.go`                 | `kairo delete [provider]` command, `deleteProviderSecrets`                                                                      |

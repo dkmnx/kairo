@@ -127,8 +127,8 @@ func (c *CLIContext) InvalidateCache(dir string) {
 	c.configCache.Invalidate(dir)
 }
 
-// SetDefaultProviderExplicit records whether the user passed "--" to separate
-// kairo flags from harness flags.
+// SetDefaultProviderExplicit records whether the user passed "--" before the
+// first positional argument to explicitly select the default provider.
 func (c *CLIContext) SetDefaultProviderExplicit(v bool) {
 	c.defaultProviderExplicitMu.Lock()
 	defer c.defaultProviderExplicitMu.Unlock()
