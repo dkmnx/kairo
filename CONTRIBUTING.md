@@ -93,6 +93,13 @@ Requirements:
 - Use table-driven tests
 - Use `t.TempDir()` for isolation
 
+### Coverage
+
+- The `cmd` package must stay above the 70% coverage gate.
+- New commands and setup-wizard changes must include test coverage to avoid dropping below the threshold.
+- Run `go test -coverprofile=coverage.out -covermode=atomic ./...` and check `go tool cover -func=coverage.out` before submitting.
+- `internal/update` (self-update path) and `cmd` (setup wizard) are the highest-value coverage targets.
+
 ## License
 
 MIT License - your contributions are licensed under MIT.
