@@ -194,12 +194,11 @@ Key functions:
 
 ### `execution/`
 
-Harness execution dispatch.
+Session lifecycle management for harness execution.
 
 Key functions:
 
-- `CheckHarnessInstalled(name)` - verifies a harness CLI is available
-- `HasYoloFlag(name)` - returns whether the harness supports a yolo flag
+- `StartSession(parent)` - creates a cancellable context for harness execution
 
 ### `fsutil/`
 
@@ -241,10 +240,11 @@ Self-update logic for fetching releases, verifying checksums, and installing upd
 
 Key functions:
 
-- `CheckAndUpdate(ctx, cfg)` - checks for updates and installs if available
-- `LatestRelease(ctx, url)` - fetches the latest release from GitHub
-- `VerifyChecksum(downloadPath, expectedSHA)` - SHA256 checksum verification
-- `VerifyCosignBundle(assetPath, bundlePath)` - optional cosign bundle verification
+- `NewClient()` - creates an update client with production defaults
+- `FetchLatestRelease(ctx)` - fetches the latest release from GitHub
+- `VerifyChecksum(scriptPath, expectedHash)` - SHA256 checksum verification
+- `VerifyCosignBundle(ctx, tag)` - optional cosign bundle verification (best-effort)
+- `RunInstallScript(scriptPath)` - executes an install script with 5-minute timeout
 
 ### `errors/`
 
