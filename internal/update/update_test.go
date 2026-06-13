@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -674,19 +675,8 @@ func TestVerifyCosignBundle_CosignNotInstalled(t *testing.T) {
 }
 
 func TestVerifyCosignBundle_BundleDownloadFails(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer server.Close()
-
 	c := &Client{
-		HTTPClient: &http.Client{},
-		EnvFunc: func(key string) (string, bool) {
-			if key == "KAIRO_UPDATE_URL" {
-				return server.URL, true
-			}
-			return "", false
-		},
+		HTTPClient:   &http.Client{Transport: failingTransport{}},
 		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
 	}
 	err := c.VerifyCosignBundle(context.Background(), "v1.0.0")
@@ -695,32 +685,107 @@ func TestVerifyCosignBundle_BundleDownloadFails(t *testing.T) {
 	}
 }
 
-func TestVerifyCosignBundle_ChecksumsDownloadFails(t *testing.T) {
-	callCount := 0
+// TestDoHTTPGetRejectsOversizeBody verifies the body-size limit enforcement in doHTTPGet.
+func TestDoHTTPGetRejectsOversizeBody(t *testing.T) {
+	oversizeData := make([]byte, maxHTTPBodySize+1)
+	for i := range oversizeData {
+		oversizeData[i] = byte(i % 256)
+	}
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callCount++
-		if callCount == 1 {
-			// First call: bundle download succeeds
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"payload": "test"}`))
-		} else {
-			// Second call: checksums download fails
-			w.WriteHeader(http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(oversizeData)
+	}))
+	defer server.Close()
+
+	c := NewClient()
+	_, err := c.doHTTPGet(context.Background(), server.URL)
+	if err == nil {
+		t.Fatal("doHTTPGet should return error for oversize body")
+	}
+	if !strings.Contains(err.Error(), "exceeded maximum size") {
+		t.Errorf("error should mention oversize, got: %v", err)
+	}
+}
+
+// TestDownloadToTempFileRejectsOversizeBody verifies the body-size limit enforcement
+// in DownloadToTempFile.
+func TestDownloadToTempFileRejectsOversizeBody(t *testing.T) {
+	oversizeData := make([]byte, maxHTTPBodySize+1)
+	for i := range oversizeData {
+		oversizeData[i] = byte(i % 256)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(oversizeData)
+	}))
+	defer server.Close()
+
+	c := NewClient()
+	_, err := c.DownloadToTempFile(context.Background(), server.URL)
+	if err == nil {
+		t.Fatal("DownloadToTempFile should return error for oversize body")
+	}
+	if !strings.Contains(err.Error(), "exceeded maximum size") {
+		t.Errorf("error should mention oversize, got: %v", err)
+	}
+}
+
+// TestTempFileCleanupOnError verifies that temp files are cleaned up when
+// a write error occurs during DownloadToTempFile.
+func TestTempFileCleanupOnError(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("TMPDIR", tempDir)
+
+	// Cause a write error by having the server write partial data then close.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("partial data"))
+		// Flush and hijack to close the connection mid-stream.
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+			if hijacker, ok := w.(http.Hijacker); ok {
+				conn, _, _ := hijacker.Hijack()
+				_ = conn.Close()
+			}
 		}
 	}))
 	defer server.Close()
 
+	c := NewClient()
+	_, err := c.DownloadToTempFile(context.Background(), server.URL)
+	if err == nil {
+		t.Fatal("expected error from broken connection")
+	}
+
+	// Verify that the temp directory is empty — all temp files were cleaned up.
+	entries, err := os.ReadDir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) > 0 {
+		t.Errorf("expected temp dir to be empty after cleanup, got %d entries: %v",
+			len(entries), entries)
+	}
+}
+
+func TestVerifyCosignBundle_ChecksumsDownloadFails(t *testing.T) {
 	c := &Client{
-		HTTPClient: &http.Client{},
-		EnvFunc: func(key string) (string, bool) {
-			if key == "KAIRO_UPDATE_URL" {
-				return server.URL, true
-			}
-			return "", false
+		HTTPClient: &http.Client{
+			Transport: &successTransport{
+				bundleResp: []byte(`{"payload": "test-bundle"}`),
+			},
 		},
 		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
+		ExecCommand: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			return exec.CommandContext(ctx, "true")
+		},
 	}
+
 	err := c.VerifyCosignBundle(context.Background(), "v1.0.0")
 	if err == nil {
 		t.Error("VerifyCosignBundle should return error when checksums download fails")

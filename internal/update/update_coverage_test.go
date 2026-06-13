@@ -1,10 +1,13 @@
 package update
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,6 +18,14 @@ type failingTransport struct{}
 
 func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	return nil, errors.New("network down")
+}
+
+// successTransport returns canned responses for the cosign bundle and checksums
+// URLs. Unrecognized requests return 404.
+type successTransport struct {
+	nonce         int
+	bundleResp    []byte
+	checksumsResp []byte
 }
 
 // TestRunInstallScript_ShellSuccess covers the Unix sh path of RunInstallScript.
@@ -134,20 +145,7 @@ func TestScriptNameForChecksumsExtra(t *testing.T) {
 	}
 }
 
-func TestVerifyCosignBundle_BundleDownloadFails_Cov(t *testing.T) {
-	c := &Client{
-		HTTPClient: &http.Client{Transport: failingTransport{}},
-		LookPathFunc: func(string) (string, error) {
-			return "/usr/bin/cosign", nil
-		},
-	}
-
-	if err := c.VerifyCosignBundle(context.Background(), "v1.0.0"); err == nil {
-		t.Error("VerifyCosignBundle() should error when bundle download fails")
-	}
-}
-
-func TestVerifyCosignBundle_LookPathError_Cov(t *testing.T) {
+func TestVerifyCosignBundle_LookPathPermissionDenied(t *testing.T) {
 	c := &Client{
 		LookPathFunc: func(string) (string, error) {
 			return "", os.ErrPermission
@@ -156,5 +154,85 @@ func TestVerifyCosignBundle_LookPathError_Cov(t *testing.T) {
 
 	if err := c.VerifyCosignBundle(context.Background(), "v1.0.0"); err != nil {
 		t.Errorf("VerifyCosignBundle() should silently skip when cosign cannot be located: %v", err)
+	}
+}
+
+func (s *successTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	s.nonce++
+
+	if strings.Contains(req.URL.Path, "checksums.txt.sigstore.json") {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(s.bundleResp)),
+			Header:     make(http.Header),
+		}, nil
+	}
+
+	if strings.Contains(req.URL.Path, "checksums.txt") {
+		// Return 404 when checksumsResp is unset (nil or empty).
+		if len(s.checksumsResp) == 0 {
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+				Body:       io.NopCloser(bytes.NewReader(nil)),
+				Header:     make(http.Header),
+			}, nil
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(s.checksumsResp)),
+			Header:     make(http.Header),
+		}, nil
+	}
+
+	return &http.Response{
+		StatusCode: http.StatusNotFound,
+		Body:       io.NopCloser(bytes.NewReader(nil)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+// TestVerifyCosignBundle_VerifySuccess exercises the full cosign verification path:
+// bundle download, checksums download, and cosign subprocess execution (exit 0).
+func TestVerifyCosignBundle_VerifySuccess(t *testing.T) {
+	c := &Client{
+		HTTPClient: &http.Client{
+			Transport: &successTransport{
+				bundleResp:    []byte(`{"payload": "test-bundle"}`),
+				checksumsResp: []byte("abc123  scripts/install.sh\n"),
+			},
+		},
+		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
+		ExecCommand: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			return exec.CommandContext(ctx, "true")
+		},
+	}
+
+	if err := c.VerifyCosignBundle(context.Background(), "v1.0.0"); err != nil {
+		t.Errorf("VerifyCosignBundle should succeed when cosign exits 0, got: %v", err)
+	}
+}
+
+// TestVerifyCosignBundle_VerifyFails exercises the cosign verification failure path:
+// cosign exits non-zero, VerifyCosignBundle must surface the error.
+func TestVerifyCosignBundle_VerifyFails(t *testing.T) {
+	c := &Client{
+		HTTPClient: &http.Client{
+			Transport: &successTransport{
+				bundleResp:    []byte(`{"payload": "test-bundle"}`),
+				checksumsResp: []byte("abc123  scripts/install.sh\n"),
+			},
+		},
+		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
+		ExecCommand: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			return exec.CommandContext(ctx, "false")
+		},
+	}
+
+	err := c.VerifyCosignBundle(context.Background(), "v1.0.0")
+	if err == nil {
+		t.Fatal("VerifyCosignBundle should return error when cosign exits non-zero")
+	}
+	if !strings.Contains(err.Error(), "cosign bundle verification failed") {
+		t.Errorf("error should mention cosign verification, got: %v", err)
 	}
 }

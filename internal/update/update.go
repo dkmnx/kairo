@@ -4,6 +4,7 @@ package update
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -42,6 +43,7 @@ type Client struct {
 	HTTPClient   *http.Client
 	EnvFunc      func(key string) (string, bool)
 	LookPathFunc func(string) (string, error)
+	ExecCommand  func(ctx context.Context, name string, arg ...string) *exec.Cmd
 }
 
 // NewClient returns a Client with production defaults.
@@ -56,6 +58,7 @@ func NewClient() *Client {
 			return "", false
 		},
 		LookPathFunc: exec.LookPath,
+		ExecCommand:  exec.CommandContext,
 	}
 }
 
@@ -107,14 +110,60 @@ func (c *Client) doHTTPGet(ctx context.Context, url string) ([]byte, error) {
 			"failed to read response", err)
 	}
 
-	// Check if there's more data beyond the limit.
-	var buf [1]byte
-	if _, err := io.ReadFull(resp.Body, buf[:]); err == nil {
-		return nil, errors.NewError(errors.NetworkError,
-			"response body exceeded maximum size")
+	if err := bodyExceedsLimit(resp.Body); err != nil {
+		return nil, err
 	}
 
 	return body, nil
+}
+
+// bodyExceedsLimit checks whether r has additional data beyond maxHTTPBodySize.
+// Returns nil if the body is at or within the limit.
+func bodyExceedsLimit(r io.Reader) error {
+	var buf [1]byte
+	if _, err := io.ReadFull(r, buf[:]); err == nil {
+		return errors.NewError(errors.NetworkError,
+			"response body exceeded maximum size")
+	}
+
+	return nil
+}
+
+// writeStreamToTemp reads from r into a temp file, enforcing maxHTTPBodySize.
+// The temp file is cleaned up on any write/close error.
+func writeStreamToTemp(r io.Reader, pattern string) (string, error) {
+	f, err := os.CreateTemp("", pattern)
+	if err != nil {
+		return "", errors.WrapError(errors.FileSystemError,
+			"failed to create temp file", err)
+	}
+
+	// If anything fails below, remove the temp file.
+	removeOnErr := true
+	defer func() {
+		if removeOnErr {
+			f.Close()
+			os.Remove(f.Name())
+		}
+	}()
+
+	if _, err := io.Copy(f, io.LimitReader(r, maxHTTPBodySize)); err != nil {
+		return "", errors.WrapError(errors.NetworkError,
+			"failed to write to temp file", err)
+	}
+
+	if err := bodyExceedsLimit(r); err != nil {
+		return "", err
+	}
+
+	if err := f.Close(); err != nil {
+		return "", errors.WrapError(errors.FileSystemError,
+			"failed to close temp file", err)
+	}
+
+	removeOnErr = false
+
+	return f.Name(), nil
 }
 
 // LatestReleaseURL returns the URL to check for the latest release.
@@ -179,38 +228,8 @@ func (c *Client) DownloadToTempFile(ctx context.Context, url string) (string, er
 	if runtime.GOOS == constants.WindowsGOOS {
 		ext = installScriptExtPS1
 	}
-	tempFile, err := os.CreateTemp("", "kairo-install-*"+ext)
-	if err != nil {
-		return "", errors.WrapError(errors.FileSystemError,
-			"failed to create temp file", err)
-	}
 
-	if _, err := io.Copy(tempFile, io.LimitReader(resp.Body, maxHTTPBodySize)); err != nil {
-		tempFile.Close()
-		os.Remove(tempFile.Name())
-
-		return "", errors.WrapError(errors.NetworkError,
-			"failed to write to temp file", err)
-	}
-
-	// Check if there's more data beyond the limit.
-	var buf [1]byte
-	if _, readErr := io.ReadFull(resp.Body, buf[:]); readErr == nil {
-		tempFile.Close()
-		os.Remove(tempFile.Name())
-
-		return "", errors.NewError(errors.NetworkError,
-			"response body exceeded maximum size")
-	}
-
-	if err := tempFile.Close(); err != nil {
-		os.Remove(tempFile.Name())
-
-		return "", errors.WrapError(errors.FileSystemError,
-			"failed to close temp file", err)
-	}
-
-	return tempFile.Name(), nil
+	return writeStreamToTemp(resp.Body, "kairo-install-*"+ext)
 }
 
 // RunInstallScript executes the install script at the given path.
@@ -341,37 +360,20 @@ func ChecksumsBundleURL(tag string) string {
 
 // dataToTempFile writes data to a temp file with the given pattern and returns its path.
 func dataToTempFile(data []byte, pattern string) (string, error) {
-	f, err := os.CreateTemp("", pattern)
-	if err != nil {
-		return "", errors.WrapError(errors.FileSystemError,
-			"failed to create temp file", err)
-	}
-
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		os.Remove(f.Name())
-
-		return "", errors.WrapError(errors.FileSystemError,
-			"failed to write temp file", err)
-	}
-
-	if err := f.Close(); err != nil {
-		os.Remove(f.Name())
-
-		return "", errors.WrapError(errors.FileSystemError,
-			"failed to close temp file", err)
-	}
-
-	return f.Name(), nil
+	return writeStreamToTemp(bytes.NewReader(data), pattern)
 }
 
 // cosignVerifyBlob runs cosign verify-blob against the given checksums file
 // using the sigstore bundle at bundlePath.
-func cosignVerifyBlob(ctx context.Context, cosignPath, bundlePath, checksumsPath string) error {
+func cosignVerifyBlob(
+	ctx context.Context,
+	execFn func(ctx context.Context, name string, arg ...string) *exec.Cmd,
+	cosignPath, bundlePath, checksumsPath string,
+) error {
 	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml$",
 		constants.GitHubRepo)
 
-	cmd := exec.CommandContext(ctx, cosignPath,
+	cmd := execFn(ctx, cosignPath,
 		"verify-blob",
 		"--bundle="+bundlePath,
 		"--certificate-identity-regexp="+certIdentityRegexp,
@@ -389,7 +391,8 @@ func cosignVerifyBlob(ctx context.Context, cosignPath, bundlePath, checksumsPath
 }
 
 // VerifyCosignBundle downloads the sigstore bundle for the checksums file and verifies
-// it using cosign. Returns nil if cosign is not installed (best-effort verification).
+// it using cosign. Verification is silently skipped (returns nil) when cosign is not
+// found on PATH, making this a best-effort check.
 func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
 	// Cosign subprocess uses a separate timeout so it can't hang
 	// even if the caller's context has no deadline.
@@ -425,7 +428,7 @@ func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
 	}
 	defer os.Remove(checksumsPath)
 
-	return cosignVerifyBlob(cosignCtx, cosignPath, bundlePath, checksumsPath)
+	return cosignVerifyBlob(cosignCtx, c.ExecCommand, cosignPath, bundlePath, checksumsPath)
 }
 
 // ScriptNameForChecksums returns the script filename used in the checksums file.
