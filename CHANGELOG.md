@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.9.1] - 2026-06-13
+
 ### Added
 
 - Support for `KAIRO_CONFIG_DIR` environment variable
@@ -1383,7 +1385,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.9.1...HEAD
+[v2.9.1]: https://github.com/dkmnx/kairo/compare/v2.9.0...v2.9.1
 [v2.9.0]: https://github.com/dkmnx/kairo/compare/v2.8.2...v2.9.0
 [v2.8.1]: https://github.com/dkmnx/kairo/compare/v2.8.0...v2.8.1
 [v2.8.2]: https://github.com/dkmnx/kairo/compare/v2.8.1...v2.8.2
