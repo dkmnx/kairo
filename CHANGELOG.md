@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Deduplicate temp-file handling in update command, make cosign execution injectable for testability
+
 ## [v2.9.1] - 2026-06-13
 
 ### Added
