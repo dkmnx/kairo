@@ -110,16 +110,15 @@ func (c *Client) doHTTPGet(ctx context.Context, url string) ([]byte, error) {
 			"failed to read response", err)
 	}
 
-	if err := bodyExceedsLimit(resp.Body); err != nil {
+	if err := ensureBodyWithinLimit(resp.Body); err != nil {
 		return nil, err
 	}
 
 	return body, nil
 }
 
-// bodyExceedsLimit checks whether r has additional data beyond maxHTTPBodySize.
-// Returns nil if the body is at or within the limit.
-func bodyExceedsLimit(r io.Reader) error {
+// ensureBodyWithinLimit returns an error if r has any data beyond maxHTTPBodySize.
+func ensureBodyWithinLimit(r io.Reader) error {
 	var buf [1]byte
 	if _, err := io.ReadFull(r, buf[:]); err == nil {
 		return errors.NewError(errors.NetworkError,
@@ -152,7 +151,7 @@ func writeStreamToTemp(r io.Reader, pattern string) (string, error) {
 			"failed to write to temp file", err)
 	}
 
-	if err := bodyExceedsLimit(r); err != nil {
+	if err := ensureBodyWithinLimit(r); err != nil {
 		return "", err
 	}
 
@@ -309,7 +308,7 @@ func (c *Client) DownloadAndParseChecksums(ctx context.Context, url string) (map
 	}
 
 	checksums := make(map[string]string)
-	scanner := bufio.NewScanner(strings.NewReader(string(body)))
+	scanner := bufio.NewScanner(bytes.NewReader(body))
 	for scanner.Scan() {
 		line := scanner.Text()
 		hash, filename, ok := ParseChecksumLine(line)
@@ -365,15 +364,14 @@ func dataToTempFile(data []byte, pattern string) (string, error) {
 
 // cosignVerifyBlob runs cosign verify-blob against the given checksums file
 // using the sigstore bundle at bundlePath.
-func cosignVerifyBlob(
+func (c *Client) cosignVerifyBlob(
 	ctx context.Context,
-	execFn func(ctx context.Context, name string, arg ...string) *exec.Cmd,
 	cosignPath, bundlePath, checksumsPath string,
 ) error {
 	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml$",
 		constants.GitHubRepo)
 
-	cmd := execFn(ctx, cosignPath,
+	cmd := c.ExecCommand(ctx, cosignPath,
 		"verify-blob",
 		"--bundle="+bundlePath,
 		"--certificate-identity-regexp="+certIdentityRegexp,
@@ -428,7 +426,7 @@ func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
 	}
 	defer os.Remove(checksumsPath)
 
-	return cosignVerifyBlob(cosignCtx, c.ExecCommand, cosignPath, bundlePath, checksumsPath)
+	return c.cosignVerifyBlob(cosignCtx, cosignPath, bundlePath, checksumsPath)
 }
 
 // ScriptNameForChecksums returns the script filename used in the checksums file.

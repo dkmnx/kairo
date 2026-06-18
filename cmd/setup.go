@@ -156,9 +156,7 @@ var setupCmd = &cobra.Command{
 			}
 		}
 
-		for _, w := range secretsResult.Warnings {
-			ui.PrintWarn(w)
-		}
+		ui.PrintWarnings(secretsResult.Warnings)
 
 		providerName := promptForProvider(cfg)
 		if providerName == "" {

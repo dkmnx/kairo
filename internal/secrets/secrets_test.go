@@ -219,7 +219,6 @@ func TestParseWithStatsWarnings(t *testing.T) {
 // TestParseWithStatsNoGlobalSideEffect verifies that ParseWithStats does not
 // write to stderr via a global side-effect. Warnings are returned in Result.Warnings.
 func TestParseWithStatsNoGlobalSideEffect(t *testing.T) {
-	// Capture stderr.
 	oldStderr := os.Stderr
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -227,20 +226,16 @@ func TestParseWithStatsNoGlobalSideEffect(t *testing.T) {
 	}
 	os.Stderr = w
 
-	// Restore unconditionally.
 	defer func() { os.Stderr = oldStderr }()
 
-	// Parse content with malformed entries that would generate warnings.
 	result := ParseWithStats("=empty_key\nKEY=\nNO_EQUALS\n")
 
-	// Close the write end and read stderr.
 	w.Close()
 	stderrOutput := make([]byte, 4096)
 	n, _ := r.Read(stderrOutput)
 	stderrStr := string(stderrOutput[:n])
 	r.Close()
 
-	// Assert warnings are populated via Result, not via stderr side-effect.
 	if len(result.Warnings) == 0 {
 		t.Fatal("Expected warnings in Result.Warnings")
 	}
@@ -249,8 +244,7 @@ func TestParseWithStatsNoGlobalSideEffect(t *testing.T) {
 	}
 }
 
-// TestParseStillReturnsWarnings is a regression test: warnings must still be
-// present in Result.Warnings even without the old WarnFunc side-effect.
+// TestParseStillReturnsWarnings verifies warnings are present in Result.Warnings.
 func TestParseStillReturnsWarnings(t *testing.T) {
 	tests := []struct {
 		name          string

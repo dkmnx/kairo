@@ -23,7 +23,6 @@ func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
 // successTransport returns canned responses for the cosign bundle and checksums
 // URLs. Unrecognized requests return 404.
 type successTransport struct {
-	nonce         int
 	bundleResp    []byte
 	checksumsResp []byte
 }
@@ -158,8 +157,6 @@ func TestVerifyCosignBundle_LookPathPermissionDenied(t *testing.T) {
 }
 
 func (s *successTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	s.nonce++
-
 	if strings.Contains(req.URL.Path, "checksums.txt.sigstore.json") {
 		return &http.Response{
 			StatusCode: http.StatusOK,

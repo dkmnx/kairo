@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"runtime"
+	"testing"
 
 	"github.com/dkmnx/kairo/internal/crypto"
 	"github.com/dkmnx/kairo/internal/update"
@@ -126,6 +128,24 @@ func (m *mockCrypto) EnsureKeyExists(ctx context.Context, configDir string) erro
 	}
 
 	return nil
+}
+
+// feedStdin replaces os.Stdin with a pipe pre-filled with input and registered
+// for cleanup. The test reads from os.Stdin (e.g. via fmt.Scanln).
+func feedStdin(t *testing.T, input string) {
+	t.Helper()
+	oldStdin := os.Stdin
+	t.Cleanup(func() { os.Stdin = oldStdin })
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString(input); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+	os.Stdin = r
 }
 
 // testDeps creates a Deps with mock implementations. The optional callback

@@ -53,6 +53,13 @@ func PrintWarn(msg string) {
 	fmt.Printf("%s⚠%s %s%s\n", Yellow, Reset, msg, Reset)
 }
 
+// PrintWarnings prints each warning string as a yellow warning message.
+func PrintWarnings(warnings []string) {
+	for _, w := range warnings {
+		PrintWarn(w)
+	}
+}
+
 // PrintError prints a red error message to stderr.
 func PrintError(msg string) {
 	fmt.Fprintf(os.Stderr, "%s✗%s %s%s\n", Red, Reset, msg, Reset)

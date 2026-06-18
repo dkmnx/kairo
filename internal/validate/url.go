@@ -9,33 +9,43 @@ import (
 	"github.com/dkmnx/kairo/internal/errors"
 )
 
-const (
-	cidrPrivate10   = "10.0.0.0/8"
-	cidrPrivate172  = "172.16.0.0/12"
-	cidrPrivate192  = "192.168.0.0/16"
-	cidrLinkLocal   = "169.254.0.0/16"
-	cidrULAv6       = "fc00::/7"
-	cidrLinkLocalV6 = "fe80::/10"
-)
+// hardcodedCIDRs are the private and link-local CIDR ranges blocked by
+// ValidateURL. Parsed once at package init into blockedCIDRs; a typo here
+// fails TestHardcodedCIDRs rather than panicking at startup.
+var hardcodedCIDRs = []string{
+	"10.0.0.0/8",
+	"172.16.0.0/12",
+	"192.168.0.0/16",
+	"169.254.0.0/16",
+	"fc00::/7",
+	"fe80::/10",
+}
 
-// CIDR prefixes validated by TestHardcodedCIDRs.
-var (
-	_, private10, _   = net.ParseCIDR(cidrPrivate10)
-	_, private172, _  = net.ParseCIDR(cidrPrivate172)
-	_, private192, _  = net.ParseCIDR(cidrPrivate192)
-	_, linkLocal, _   = net.ParseCIDR(cidrLinkLocal)
-	_, ulaIPv6, _     = net.ParseCIDR(cidrULAv6)
-	_, linkLocalV6, _ = net.ParseCIDR(cidrLinkLocalV6)
+var blockedCIDRs = mustParseCIDRs(hardcodedCIDRs)
 
-	blockedHosts = []string{
-		"localhost",
-		"127.0.0.1",
-		"::1",
-		"::",
-		"0.0.0.0",
-		"169.254.169.254",
+var blockedHosts = []string{
+	"localhost",
+	"127.0.0.1",
+	"::1",
+	"::",
+	"0.0.0.0",
+	"169.254.169.254",
+}
+
+// mustParseCIDRs parses each CIDR string and panics if any are malformed.
+// Inputs are package constants covered by TestHardcodedCIDRs.
+func mustParseCIDRs(cidrs []string) []*net.IPNet {
+	out := make([]*net.IPNet, len(cidrs))
+	for i, c := range cidrs {
+		_, ipnet, err := net.ParseCIDR(c)
+		if err != nil {
+			panic(fmt.Sprintf("validate: malformed hardcoded CIDR %q: %v", c, err))
+		}
+		out[i] = ipnet
 	}
-)
+
+	return out
+}
 
 // ValidateURL checks that the given URL is a valid HTTPS URL without blocked hosts.
 func ValidateURL(rawURL, providerName string) error {
@@ -83,10 +93,11 @@ func isBlockedHost(host string) bool {
 }
 
 func isPrivateIP(ip net.IP) bool {
-	return private10.Contains(ip) ||
-		private172.Contains(ip) ||
-		private192.Contains(ip) ||
-		linkLocal.Contains(ip) ||
-		ulaIPv6.Contains(ip) ||
-		linkLocalV6.Contains(ip)
+	for _, cidr := range blockedCIDRs {
+		if cidr.Contains(ip) {
+			return true
+		}
+	}
+
+	return false
 }
