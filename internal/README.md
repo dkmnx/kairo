@@ -43,7 +43,7 @@ Configuration loading, caching, migration, and config-directory resolution.
 
 Key types:
 
-- `Config` - root configuration with `default_provider`, `default_harness`, `default_models`, and `providers`
+- `Config` - root configuration with `default_provider`, `default_harness`, `default_models`, `providers`, and `custom_providers`
 - `Provider` - provider configuration with `name`, `base_url`, `model`, `env_vars`, and `env_key`
 
 Key functions:
@@ -175,7 +175,7 @@ Examples:
 
 ### `constants/`
 
-Shared constants for file names, permission modes, environment variable names, and GitHub URLs.
+Shared constants for file names, permission modes, environment variable names, and GitHub URLs (split across `paths.go`, `platform.go`, and `urls.go`).
 
 Key constants:
 
@@ -190,7 +190,7 @@ Environment variable utilities.
 
 Key functions:
 
-- `Merge(osEnv, providerEnv)` - merges provider env vars into OS environment with deduplication
+- `Merge(envs ...[]string)` - merges environment variable slices with deduplication (last value wins)
 
 ### `execution/`
 
@@ -223,6 +223,7 @@ Key functions:
 - `Resolve(flagHarness, configHarness)` - resolves effective harness
 - `Dispatch(h, providerName, model)` - returns harness display name, env var, and CLI args
 - `YoloFlag(h)` - returns the harness-specific skip-permissions flag
+- `PiEnvVars(providerName, model)` - returns Pi-specific environment variables
 
 ### `secrets/`
 
@@ -282,8 +283,8 @@ go test ./internal/validate/...
 
 ## Adding a New Built-in Provider
 
-1. Add the provider to `internal/providers/registry.go`
-2. Add it to `providerOrder` in the same file
+1. Add the provider definition to `internal/providers/catalog.json`
+2. Add it to `providerPriority` in `internal/providers/registry.go`
 3. Add provider-specific key validation in `internal/validate/api_key.go` if needed
 4. Run provider and validation tests
 5. Update docs in `docs/reference/` and `docs/guides/`
