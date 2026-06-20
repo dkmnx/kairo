@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.10.0] - 2026-06-20
+
 ### Added
 
 - Externalize provider catalog to embedded `catalog.json` with sigstore-verified refresh
@@ -1404,7 +1406,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.9.1...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.10.0...HEAD
+[v2.10.0]: https://github.com/dkmnx/kairo/compare/v2.9.1...v2.10.0
 [v2.9.1]: https://github.com/dkmnx/kairo/compare/v2.9.0...v2.9.1
 [v2.9.0]: https://github.com/dkmnx/kairo/compare/v2.8.2...v2.9.0
 [v2.8.1]: https://github.com/dkmnx/kairo/compare/v2.8.0...v2.8.1
