@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dkmnx/kairo/internal/constants"
+	"github.com/dkmnx/kairo/internal/httpfetch"
 )
 
 func TestVersionGreaterThan(t *testing.T) {
@@ -337,12 +338,13 @@ func TestRunInstallScript_Unix(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping Unix-specific test on Windows")
 	}
+	c := NewClient()
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test.sh")
 	if err := os.WriteFile(scriptPath, []byte("#!/bin/sh\nexit 0"), 0644); err != nil {
 		t.Fatalf("Failed to create test script: %v", err)
 	}
-	if err := RunInstallScript(scriptPath); err != nil {
+	if err := c.RunInstallScript(scriptPath); err != nil {
 		t.Errorf("RunInstallScript() error = %v", err)
 	}
 }
@@ -351,18 +353,20 @@ func TestRunInstallScript_ExecutionFails(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping Unix-specific test on Windows")
 	}
+	c := NewClient()
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "test.sh")
 	if err := os.WriteFile(scriptPath, []byte("#!/bin/sh\nexit 1"), 0644); err != nil {
 		t.Fatalf("Failed to create test script: %v", err)
 	}
-	if err := RunInstallScript(scriptPath); err == nil {
+	if err := c.RunInstallScript(scriptPath); err == nil {
 		t.Error("should return error when script fails")
 	}
 }
 
 func TestRunInstallScript_ScriptNotFound(t *testing.T) {
-	if err := RunInstallScript("/nonexistent/path/to/script.sh"); err == nil {
+	c := NewClient()
+	if err := c.RunInstallScript("/nonexistent/path/to/script.sh"); err == nil {
 		t.Error("should return error when script not found")
 	}
 }
@@ -540,7 +544,7 @@ func TestDoHTTPGet_BodyTooLarge(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(make([]byte, maxHTTPBodySize+1))
+		_, _ = w.Write(make([]byte, httpfetch.MaxBodySize+1))
 	}))
 	defer server.Close()
 
@@ -555,7 +559,7 @@ func TestDownloadToTempFile_BodyTooLarge(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(make([]byte, maxHTTPBodySize+1))
+		_, _ = w.Write(make([]byte, httpfetch.MaxBodySize+1))
 	}))
 	defer server.Close()
 
@@ -593,7 +597,8 @@ func TestRunInstallScript_ChmodFails(t *testing.T) {
 		t.Skip("Skipping Unix-specific test on Windows")
 	}
 
-	err := RunInstallScript("/invalid/path/to/script.sh")
+	c := NewClient()
+	err := c.RunInstallScript("/invalid/path/to/script.sh")
 	if err == nil {
 		t.Error("RunInstallScript() should return error for non-writable path")
 	}
@@ -687,7 +692,7 @@ func TestVerifyCosignBundle_BundleDownloadFails(t *testing.T) {
 
 // TestDoHTTPGetRejectsOversizeBody verifies the body-size limit enforcement in doHTTPGet.
 func TestDoHTTPGetRejectsOversizeBody(t *testing.T) {
-	oversizeData := make([]byte, maxHTTPBodySize+1)
+	oversizeData := make([]byte, httpfetch.MaxBodySize+1)
 	for i := range oversizeData {
 		oversizeData[i] = byte(i % 256)
 	}
@@ -712,7 +717,7 @@ func TestDoHTTPGetRejectsOversizeBody(t *testing.T) {
 // TestDownloadToTempFileRejectsOversizeBody verifies the body-size limit enforcement
 // in DownloadToTempFile.
 func TestDownloadToTempFileRejectsOversizeBody(t *testing.T) {
-	oversizeData := make([]byte, maxHTTPBodySize+1)
+	oversizeData := make([]byte, httpfetch.MaxBodySize+1)
 	for i := range oversizeData {
 		oversizeData[i] = byte(i % 256)
 	}

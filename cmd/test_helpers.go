@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/crypto"
+	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
@@ -79,6 +80,23 @@ func (m *mockUpdate) VerifyCosignBundle(ctx context.Context, tag string) error {
 }
 func (m *mockUpdate) RunInstallScript(scriptPath string) error {
 	return m.RunInstallScriptFn(scriptPath)
+}
+
+// mockCatalog is a test double for CatalogService.
+type mockCatalog struct {
+	ProviderListFn      func() []string
+	ProviderSourceFn    func(name string) string
+	BuiltInProviderFn   func(name string) (providers.ProviderDefinition, bool)
+	RefreshFromRemoteFn func(ctx context.Context) (int, error)
+}
+
+func (m *mockCatalog) ProviderList() []string            { return m.ProviderListFn() }
+func (m *mockCatalog) ProviderSource(name string) string { return m.ProviderSourceFn(name) }
+func (m *mockCatalog) BuiltInProvider(name string) (providers.ProviderDefinition, bool) {
+	return m.BuiltInProviderFn(name)
+}
+func (m *mockCatalog) RefreshFromRemote(ctx context.Context) (int, error) {
+	return m.RefreshFromRemoteFn(ctx)
 }
 
 // mockCrypto is a test double for crypto.Service with configurable function fields.
@@ -175,4 +193,24 @@ func testDeps(overrides ...func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate
 	}
 
 	return &Deps{Process: mp, Wrapper: mw, Update: mu, Crypto: crypto.DefaultService{}}
+}
+
+// testDepsWithCatalog creates a Deps with mock implementations including Catalog.
+// The callback receives all four mock structs.
+func testDepsWithCatalog(overrides ...func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate, mc *mockCatalog)) *Deps {
+	d := testDeps()
+	mc := &mockCatalog{
+		ProviderListFn:   func() []string { return nil },
+		ProviderSourceFn: func(string) string { return "" },
+		BuiltInProviderFn: func(string) (providers.ProviderDefinition, bool) {
+			return providers.ProviderDefinition{}, false
+		},
+		RefreshFromRemoteFn: func(context.Context) (int, error) { return 0, nil },
+	}
+	for _, fn := range overrides {
+		fn(nil, nil, nil, mc)
+	}
+	d.Catalog = mc
+
+	return d
 }

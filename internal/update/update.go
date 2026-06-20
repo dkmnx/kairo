@@ -22,18 +22,13 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/httpfetch"
 )
 
 const (
 	checksumsFilename   = "checksums.txt"
 	installScriptExt    = ".sh"
 	installScriptExtPS1 = ".ps1"
-
-	// maxHTTPBodySize is the maximum size of an HTTP response body that
-	// doHTTPGet will read into memory. This prevents OOM from malicious
-	// or compromised responses. 10 MB covers release JSON, checksums,
-	// and cosign bundles with generous headroom.
-	maxHTTPBodySize = 10 * 1024 * 1024
 )
 
 var checksumHashPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
@@ -44,6 +39,7 @@ type Client struct {
 	EnvFunc      func(key string) (string, bool)
 	LookPathFunc func(string) (string, error)
 	ExecCommand  func(ctx context.Context, name string, arg ...string) *exec.Cmd
+	GOOS         string
 }
 
 // NewClient returns a Client with production defaults.
@@ -59,6 +55,7 @@ func NewClient() *Client {
 		},
 		LookPathFunc: exec.LookPath,
 		ExecCommand:  exec.CommandContext,
+		GOOS:         runtime.GOOS,
 	}
 }
 
@@ -69,100 +66,9 @@ type Release struct {
 	Body    string `json:"body"`
 }
 
-// doHTTPRequest performs an HTTP GET and returns the response (body open).
-// The caller must close resp.Body.
-func (c *Client) doHTTPRequest(ctx context.Context, url string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to create request", err)
-	}
-
-	req.Header.Set("User-Agent", "kairo-cli")
-
-	resp, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to fetch", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-
-		return nil, errors.NewError(errors.NetworkError,
-			fmt.Sprintf("request failed with status %d", resp.StatusCode))
-	}
-
-	return resp, nil
-}
-
 // doHTTPGet performs an HTTP GET request and returns the response body.
 func (c *Client) doHTTPGet(ctx context.Context, url string) ([]byte, error) {
-	resp, err := c.doHTTPRequest(ctx, url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxHTTPBodySize))
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to read response", err)
-	}
-
-	if err := ensureBodyWithinLimit(resp.Body); err != nil {
-		return nil, err
-	}
-
-	return body, nil
-}
-
-// ensureBodyWithinLimit returns an error if r has any data beyond maxHTTPBodySize.
-func ensureBodyWithinLimit(r io.Reader) error {
-	var buf [1]byte
-	if _, err := io.ReadFull(r, buf[:]); err == nil {
-		return errors.NewError(errors.NetworkError,
-			"response body exceeded maximum size")
-	}
-
-	return nil
-}
-
-// writeStreamToTemp reads from r into a temp file, enforcing maxHTTPBodySize.
-// The temp file is cleaned up on any write/close error.
-func writeStreamToTemp(r io.Reader, pattern string) (string, error) {
-	f, err := os.CreateTemp("", pattern)
-	if err != nil {
-		return "", errors.WrapError(errors.FileSystemError,
-			"failed to create temp file", err)
-	}
-
-	// If anything fails below, remove the temp file.
-	removeOnErr := true
-	defer func() {
-		if removeOnErr {
-			f.Close()
-			os.Remove(f.Name())
-		}
-	}()
-
-	if _, err := io.Copy(f, io.LimitReader(r, maxHTTPBodySize)); err != nil {
-		return "", errors.WrapError(errors.NetworkError,
-			"failed to write to temp file", err)
-	}
-
-	if err := ensureBodyWithinLimit(r); err != nil {
-		return "", err
-	}
-
-	if err := f.Close(); err != nil {
-		return "", errors.WrapError(errors.FileSystemError,
-			"failed to close temp file", err)
-	}
-
-	removeOnErr = false
-
-	return f.Name(), nil
+	return httpfetch.DoHTTPGet(ctx, c.HTTPClient, url)
 }
 
 // LatestReleaseURL returns the URL to check for the latest release.
@@ -216,7 +122,7 @@ func InstallScriptURL(goos, tag string) string {
 
 // DownloadToTempFile downloads a URL to a temporary file and returns its path.
 func (c *Client) DownloadToTempFile(ctx context.Context, url string) (string, error) {
-	resp, err := c.doHTTPRequest(ctx, url)
+	resp, err := httpfetch.DoHTTPRequest(ctx, c.HTTPClient, url)
 	if err != nil {
 		return "", errors.WrapError(errors.NetworkError,
 			"failed to download", err)
@@ -224,19 +130,19 @@ func (c *Client) DownloadToTempFile(ctx context.Context, url string) (string, er
 	defer resp.Body.Close()
 
 	ext := installScriptExt
-	if runtime.GOOS == constants.WindowsGOOS {
+	if c.GOOS == constants.WindowsGOOS {
 		ext = installScriptExtPS1
 	}
 
-	return writeStreamToTemp(resp.Body, "kairo-install-*"+ext)
+	return httpfetch.WriteStreamToTemp(resp.Body, "kairo-install-*"+ext)
 }
 
 // RunInstallScript executes the install script at the given path.
-func RunInstallScript(scriptPath string) error {
-	if runtime.GOOS == constants.WindowsGOOS {
+func (c *Client) RunInstallScript(scriptPath string) error {
+	if c.GOOS == constants.WindowsGOOS {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-		pwshCmd := exec.CommandContext(ctx, "powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
+		pwshCmd := c.ExecCommand(ctx, "powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 		pwshCmd.Stdout = os.Stdout
 		pwshCmd.Stderr = os.Stderr
 		if err := pwshCmd.Run(); err != nil {
@@ -252,7 +158,7 @@ func RunInstallScript(scriptPath string) error {
 			"failed to make script executable", err)
 	}
 
-	shPath, err := exec.LookPath("sh")
+	shPath, err := c.LookPathFunc("sh")
 	if err != nil {
 		return errors.WrapError(errors.RuntimeError,
 			"failed to find shell", err)
@@ -261,7 +167,7 @@ func RunInstallScript(scriptPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	shCmd := exec.CommandContext(ctx, shPath, scriptPath)
+	shCmd := c.ExecCommand(ctx, shPath, scriptPath)
 	shCmd.Stdout = os.Stdout
 	shCmd.Stderr = os.Stderr
 	if err := shCmd.Run(); err != nil {
@@ -357,46 +263,10 @@ func ChecksumsBundleURL(tag string) string {
 	return constants.RawGitHubFileURL(tag, "scripts/checksums.txt.sigstore.json")
 }
 
-// dataToTempFile writes data to a temp file with the given pattern and returns its path.
-func dataToTempFile(data []byte, pattern string) (string, error) {
-	return writeStreamToTemp(bytes.NewReader(data), pattern)
-}
-
-// cosignVerifyBlob runs cosign verify-blob against the given checksums file
-// using the sigstore bundle at bundlePath.
-func (c *Client) cosignVerifyBlob(
-	ctx context.Context,
-	cosignPath, bundlePath, checksumsPath string,
-) error {
-	certIdentityRegexp := fmt.Sprintf("^https://github\\.com/%s/\\.github/workflows/release\\.yml$",
-		constants.GitHubRepo)
-
-	cmd := c.ExecCommand(ctx, cosignPath,
-		"verify-blob",
-		"--bundle="+bundlePath,
-		"--certificate-identity-regexp="+certIdentityRegexp,
-		"--certificate-oidc-issuer=https://token.actions.githubusercontent.com",
-		checksumsPath,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return errors.WrapError(errors.VerificationError,
-			"cosign bundle verification failed", err).
-			WithContext("output", string(output))
-	}
-
-	return nil
-}
-
 // VerifyCosignBundle downloads the sigstore bundle for the checksums file and verifies
 // it using cosign. Verification is silently skipped (returns nil) when cosign is not
 // found on PATH, making this a best-effort check.
 func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
-	// Cosign subprocess uses a separate timeout so it can't hang
-	// even if the caller's context has no deadline.
-	cosignCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
-	defer cancel()
-
 	cosignPath, err := c.LookPathFunc("cosign")
 	if err != nil {
 		return nil
@@ -408,7 +278,7 @@ func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
 			"failed to download cosign bundle", err)
 	}
 
-	bundlePath, err := dataToTempFile(bundleData, "kairo-bundle-*.sigstore.json")
+	bundlePath, err := httpfetch.DataToTempFile(bundleData, "kairo-bundle-*.sigstore.json")
 	if err != nil {
 		return err
 	}
@@ -420,13 +290,13 @@ func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
 			"failed to download checksums for verification", err)
 	}
 
-	checksumsPath, err := dataToTempFile(checksumsData, "kairo-checksums-*.txt")
+	checksumsPath, err := httpfetch.DataToTempFile(checksumsData, "kairo-checksums-*.txt")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(checksumsPath)
 
-	return c.cosignVerifyBlob(cosignCtx, cosignPath, bundlePath, checksumsPath)
+	return httpfetch.CosignVerifyBlob(ctx, c.ExecCommand, cosignPath, bundlePath, checksumsPath)
 }
 
 // ScriptNameForChecksums returns the script filename used in the checksums file.

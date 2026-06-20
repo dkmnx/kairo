@@ -1,6 +1,8 @@
 package providers
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -743,6 +745,147 @@ func BuiltInProviderNoMap(name string) ProviderDefinition {
 	return ProviderDefinition{
 		Name:      name,
 		KeyFormat: KeyFormatMin32,
+	}
+}
+
+func TestProviderRegistry_CacheLoad(t *testing.T) {
+	r := NewRegistry()
+
+	if got := r.ProviderSource("test-provider"); got != "" {
+		t.Errorf("expected empty source, got %q", got)
+	}
+
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	cacheData := `{"test-provider":{"name":"Test Provider","requires_api_key":true,"api_key_env_var":"TEST_KEY","key_format":{"min_length":32}}}`
+	if err := os.WriteFile(cachePath, []byte(cacheData), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := r.LoadCache(cachePath); err != nil {
+		t.Fatalf("LoadCache: %v", err)
+	}
+
+	if got := r.ProviderSource("test-provider"); got != "cached" {
+		t.Errorf("expected 'cached' source, got %q", got)
+	}
+
+	def, ok := r.BuiltInProvider("test-provider")
+	if !ok {
+		t.Fatal("expected test-provider to be found")
+	}
+	if def.Name != "Test Provider" {
+		t.Errorf("Name = %q, want 'Test Provider'", def.Name)
+	}
+	if def.APIKeyEnvVar != "TEST_KEY" {
+		t.Errorf("APIKeyEnvVar = %q, want 'TEST_KEY'", def.APIKeyEnvVar)
+	}
+
+	// Load cache that overrides an embedded provider
+	overrideData := `{"zai":{"name":"Custom ZAI","base_url":"https://custom.example.com","requires_api_key":true,"api_key_env_var":"ZAI_API_KEY","key_format":{"min_length":32}}}`
+	overridePath := filepath.Join(t.TempDir(), "override.json")
+	if err := os.WriteFile(overridePath, []byte(overrideData), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.LoadCache(overridePath); err != nil {
+		t.Fatalf("LoadCache: %v", err)
+	}
+	if got := r.ProviderSource("zai"); got != "cached" {
+		t.Errorf("expected 'cached' for zai after cache load, got %q", got)
+	}
+	def, ok = r.BuiltInProvider("zai")
+	if !ok {
+		t.Fatal("expected zai to be found")
+	}
+	if def.Name != "Custom ZAI" {
+		t.Errorf("Name = %q, want 'Custom ZAI'", def.Name)
+	}
+
+	// Embedded provider still accessible
+	if got := r.ProviderSource("anthropic"); got != "embedded" {
+		t.Errorf("expected 'embedded' for anthropic, got %q", got)
+	}
+}
+
+func TestProviderRegistry_RefreshCacheFromBytes(t *testing.T) {
+	r := NewRegistry()
+
+	data := []byte(`{"new-provider":{"name":"New Provider","requires_api_key":true,"api_key_env_var":"NEW_KEY","key_format":{"min_length":32}}}`)
+	cachePath := filepath.Join(t.TempDir(), "providers.catalog.json")
+
+	n, err := r.RefreshCacheFromBytes(data, cachePath)
+	if err != nil {
+		t.Fatalf("RefreshCacheFromBytes: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("expected 1 provider, got %d", n)
+	}
+
+	if got := r.ProviderSource("new-provider"); got != "cached" {
+		t.Errorf("expected 'cached', got %q", got)
+	}
+
+	// File should exist on disk
+	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
+		t.Error("cache file should exist on disk")
+	}
+
+	// Bad JSON should error
+	_, err = r.RefreshCacheFromBytes([]byte(`{bad`), cachePath)
+	if err == nil {
+		t.Error("expected error for bad JSON")
+	}
+}
+
+func TestProviderRegistry_ProviderSource(t *testing.T) {
+	r := NewRegistry()
+
+	// Embedded
+	if got := r.ProviderSource("zai"); got != "embedded" {
+		t.Errorf("zai source = %q, want 'embedded'", got)
+	}
+
+	// Unknown
+	if got := r.ProviderSource("nonexistent"); got != "" {
+		t.Errorf("nonexistent source = %q, want ''", got)
+	}
+}
+
+func TestProviderRegistry_LoadCacheFileNotFound(t *testing.T) {
+	r := NewRegistry()
+	if err := r.LoadCache("/nonexistent/path/cache.json"); err != nil {
+		t.Errorf("LoadCache should be no-op for missing file, got: %v", err)
+	}
+}
+
+func TestProviderRegistry_CachePrecedence(t *testing.T) {
+	r := NewRegistry()
+
+	// Custom takes precedence over cached
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	cacheData := `{"test-provider":{"name":"Cached Provider","requires_api_key":true,"api_key_env_var":"CACHED_KEY","key_format":{"min_length":32}}}`
+	if err := os.WriteFile(cachePath, []byte(cacheData), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.LoadCache(cachePath); err != nil {
+		t.Fatal(err)
+	}
+
+	r.RegisterCustom(map[string]CustomProviderDefinition{
+		"test-provider": {
+			Name:         "Custom Provider",
+			APIKeyEnvVar: "CUSTOM_KEY",
+		},
+	})
+
+	def, ok := r.BuiltInProvider("test-provider")
+	if !ok {
+		t.Fatal("expected test-provider")
+	}
+	if def.APIKeyEnvVar != "CUSTOM_KEY" {
+		t.Errorf("custom should override cached: APIKeyEnvVar = %q, want 'CUSTOM_KEY'", def.APIKeyEnvVar)
+	}
+	if got := r.ProviderSource("test-provider"); got != "custom" {
+		t.Errorf("source should be 'custom', got %q", got)
 	}
 }
 

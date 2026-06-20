@@ -152,8 +152,21 @@ func TestGenerateWrapperScript_WithSpecialArgs(t *testing.T) {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
 
-	if !contains(string(content), "Hello") || !contains(string(content), "World") {
-		t.Error("Wrapper script should contain escaped arguments")
+	scriptStr := string(content)
+
+	// $HOME must appear inside POSIX single quotes (not expanded by sh)
+	if !strings.Contains(scriptStr, "and $HOME'") {
+		t.Error("$HOME should be inside single quotes in the script, not expanded to a path")
+	}
+
+	// Single quotes inside args must be escaped with POSIX quoting (end quote, \', resume quote)
+	if !strings.Contains(scriptStr, "'\\''") {
+		t.Error("single quotes inside args should be POSIX-escaped")
+	}
+
+	// The flag=value pair should be preserved inside single quotes
+	if !strings.Contains(scriptStr, `'--option="value with spaces"'`) {
+		t.Error("flag with spaces should be POSIX single-quoted")
 	}
 }
 

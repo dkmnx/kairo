@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,13 +34,14 @@ func TestRunInstallScript_ShellSuccess(t *testing.T) {
 		t.Skip("unix-only test")
 	}
 
+	c := NewClient()
 	dir := t.TempDir()
 	script := filepath.Join(dir, "install.sh")
 	if err := os.WriteFile(script, []byte("#!/bin/sh\necho ok\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := RunInstallScript(script); err != nil {
+	if err := c.RunInstallScript(script); err != nil {
 		t.Errorf("RunInstallScript() unexpected error: %v", err)
 	}
 }
@@ -49,13 +51,14 @@ func TestRunInstallScript_ShellFails(t *testing.T) {
 		t.Skip("unix-only test")
 	}
 
+	c := NewClient()
 	dir := t.TempDir()
 	script := filepath.Join(dir, "install.sh")
 	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 1\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := RunInstallScript(script); err == nil {
+	if err := c.RunInstallScript(script); err == nil {
 		t.Error("RunInstallScript() should fail when script exits non-zero")
 	}
 }
@@ -65,13 +68,115 @@ func TestRunInstallScript_ChmodOnMissingDirFails(t *testing.T) {
 		t.Skip("unix-only test")
 	}
 
+	c := NewClient()
 	dir := t.TempDir()
 	// Path inside a non-existent directory so chmod fails.
 	bad := filepath.Join(dir, "missing", "install.sh")
 
-	err := RunInstallScript(bad)
+	err := c.RunInstallScript(bad)
 	if err == nil {
 		t.Error("RunInstallScript() should error when chmod fails (missing dir)")
+	}
+}
+
+// TestRunInstallScript_WindowsBranch verifies the PowerShell branch is selected
+// when GOOS is windows, using injected fakes.
+func TestRunInstallScript_WindowsBranch(t *testing.T) {
+	called := false
+	c := &Client{
+		GOOS: "windows",
+		ExecCommand: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			called = true
+			if name != "powershell" {
+				t.Errorf("expected powershell, got %q", name)
+			}
+			return exec.CommandContext(ctx, "true")
+		},
+	}
+
+	dir := t.TempDir()
+	script := filepath.Join(dir, "install.ps1")
+	if err := os.WriteFile(script, []byte("exit 0"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.RunInstallScript(script); err != nil {
+		t.Errorf("RunInstallScript() unexpected error: %v", err)
+	}
+	if !called {
+		t.Error("ExecCommand was not called (Windows branch not taken)")
+	}
+}
+
+// TestRunInstallScript_UnixBranch verifies the sh branch is selected
+// when GOOS is not windows, using injected LookPathFunc.
+func TestRunInstallScript_UnixBranch(t *testing.T) {
+	lookPathCalled := false
+	execCalled := false
+	c := &Client{
+		GOOS: "linux",
+		LookPathFunc: func(name string) (string, error) {
+			lookPathCalled = true
+			if name != "sh" {
+				t.Errorf("expected 'sh', got %q", name)
+			}
+			return "/bin/sh", nil
+		},
+		ExecCommand: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			execCalled = true
+			return exec.CommandContext(ctx, "true")
+		},
+	}
+
+	dir := t.TempDir()
+	script := filepath.Join(dir, "install.sh")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 0"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.RunInstallScript(script); err != nil {
+		t.Errorf("RunInstallScript() unexpected error: %v", err)
+	}
+	if !lookPathCalled {
+		t.Error("LookPathFunc was not called")
+	}
+	if !execCalled {
+		t.Error("ExecCommand was not called (Unix branch not taken)")
+	}
+}
+
+// TestDownloadToTempFile_GOOSExtension verifies the extension follows c.GOOS.
+func TestDownloadToTempFile_GOOSExtension(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("content"))
+	}))
+	defer server.Close()
+
+	tests := []struct {
+		goos    string
+		wantExt string
+	}{
+		{"linux", ".sh"},
+		{"darwin", ".sh"},
+		{"windows", ".ps1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.goos, func(t *testing.T) {
+			c := &Client{
+				GOOS:       tt.goos,
+				HTTPClient: &http.Client{},
+				EnvFunc:    func(string) (string, bool) { return "", false },
+			}
+			f, err := c.DownloadToTempFile(context.Background(), server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(f)
+			if !strings.HasSuffix(f, tt.wantExt) {
+				t.Errorf("expected extension %q, got %q", tt.wantExt, f)
+			}
+		})
 	}
 }
 
