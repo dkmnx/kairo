@@ -5,7 +5,7 @@ version: 2
 before:
   hooks:
     - go mod tidy
-    - sh -c "cp internal/providers/catalog.json dist/catalog.json && if command -v cosign >/dev/null 2>&1; then cosign sign-blob --bundle dist/catalog.json.sigstore.json dist/catalog.json --yes; else echo 'catalog signing skipped (cosign not in PATH)'; fi"
+    - sh -c "mkdir -p .release && if command -v cosign >/dev/null 2>&1; then cosign sign-blob --bundle .release/catalog.json.sigstore.json internal/providers/catalog.json --yes; else echo 'catalog signing skipped (cosign not in PATH)'; fi"
 
 builds:
   - id: kairo
@@ -62,7 +62,7 @@ changelog:
 release:
   extra_files:
     - glob: ./internal/providers/catalog.json
-    - glob: ./dist/catalog.json.sigstore.json
+    - glob: ./.release/catalog.json.sigstore.json
   footer: |
 
     ---
