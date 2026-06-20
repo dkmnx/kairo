@@ -113,6 +113,10 @@ Install Claude Code.
 
 Install Qwen Code.
 
+### `pi: command not found`
+
+Install Pi coding agent.
+
 ### `crush: command not found`
 
 Install Crush. See <https://github.com/charmbracelet/crush#installation>

@@ -82,18 +82,20 @@ kairo -- "Quick question"
 | `kairo -- [args]`                    | Execute with the default provider                 |
 | `kairo harness get`                  | Get current harness                               |
 | `kairo harness set <name>`           | Set default harness (claude, qwen, pi, or crush)  |
+| `kairo providers list`               | List all providers in the catalog                 |
+| `kairo providers refresh`            | Refresh provider catalog from remote source       |
 | `kairo update`                       | Update to the latest version                      |
 | `kairo version`                      | Show version                                      |
 | `kairo completion [shell]`           | Generate shell completion script                  |
 
-### Global Flags
+### Flags
 
-| Flag            | Purpose                                                            |
-| --------------- | ------------------------------------------------------------------ |
-| `--config`      | Config directory (default is platform-specific)                    |
-| `-v, --verbose` | Enable verbose output                                              |
-| `--harness`     | Harness to use (`claude`, `qwen`, `pi`, or `crush`)                |
-| `-y, --yolo`    | Skip permission prompts (see [Harnesses](cmd/README.md#harnesses)) |
+| Flag            | Purpose                                                            | Scope                |
+| --------------- | ------------------------------------------------------------------ | -------------------- |
+| `--config`      | Config directory (default is platform-specific)                    | All commands         |
+| `-v, --verbose` | Enable verbose output                                              | All commands         |
+| `--harness`     | Harness to use (`claude`, `qwen`, `pi`, or `crush`)                | Provider execution   |
+| `-y, --yolo`    | Skip permission prompts (see [Harnesses](cmd/README.md#harnesses)) | Provider execution   |
 
 ## Supported Providers
 

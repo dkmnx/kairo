@@ -31,6 +31,7 @@ logic lives in `internal/`.
 | `version.go`                | `kairo version`, `checkForUpdates`                                                                                              |
 | `update.go`                 | `kairo update` command, cosign/checksum verification                                                                            |
 | `completion.go`             | `kairo completion` command and shell scripts                                                                                    |
+| `providers.go`              | `kairo providers list` and `kairo providers refresh` commands                                                                   |
 | `test_helpers.go`           | `testCmd`, `testEchoCmd`, `mockProcess`, `mockWrapper`, `mockUpdate`, `testDeps`                                                |
 | `deps_test.go`              | `NewDeps` smoke test and interface conformance                                                                                  |
 

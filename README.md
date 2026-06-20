@@ -72,6 +72,8 @@ kairo -- "query"     # Use the default provider
 | `kairo -- [args]`             | Execute with the default provider               |
 | `kairo harness get`           | Get the current harness                         |
 | `kairo harness set <name>`    | Set the default harness                         |
+| `kairo providers list`        | List all providers in the catalog               |
+| `kairo providers refresh`     | Refresh provider catalog from remote source     |
 | `kairo update`                | Update to the latest version                    |
 | `kairo version`               | Show version information                        |
 | `kairo completion [shell]`    | Generate shell completion script                |

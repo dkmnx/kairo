@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Deduplicate temp-file handling in update command, make cosign execution injectable for testability
 
+### Removed
+
+- `--no-update-check` flag from `kairo version` (flag removed; version release check is lightweight and runs silently)
+
 ## [v2.9.1] - 2026-06-13
 
 ### Added
