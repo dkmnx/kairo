@@ -5,6 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/dkmnx/kairo/internal/crypto"
+	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
@@ -34,6 +35,14 @@ type UpdateService interface {
 	RunInstallScript(scriptPath string) error
 }
 
+// CatalogService provides provider catalog listing and remote refresh.
+type CatalogService interface {
+	ProviderList() []string
+	ProviderSource(name string) string
+	BuiltInProvider(name string) (providers.ProviderDefinition, bool)
+	RefreshFromRemote(ctx context.Context) (int, error)
+}
+
 // Deps holds all external dependencies as interfaces.
 // Production code uses NewDeps(); tests inject mocks via CLIContext.SetDeps.
 type Deps struct {
@@ -41,4 +50,5 @@ type Deps struct {
 	Wrapper WrapperService
 	Update  UpdateService
 	Crypto  crypto.Service
+	Catalog CatalogService
 }

@@ -122,6 +122,8 @@ func deleteProviderSecrets(ctx context.Context, svc crypto.Service, secretsPath,
 
 	parsed := secrets.ParseWithStats(string(existingSecrets))
 
+	ui.PrintWarnings(parsed.Warnings)
+
 	apiKey := harness.APIKeyEnvVar(providerName)
 	delete(parsed.Secrets, apiKey)
 

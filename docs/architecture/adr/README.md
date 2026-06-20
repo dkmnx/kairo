@@ -4,17 +4,19 @@ ADRs document the architectural decisions made for the Kairo project.
 
 ## Available ADRs
 
-| Number | Title                                                          | Date       | Status   |
-| ------ | -------------------------------------------------------------- | ---------- | -------- |
-| 0001   | [X25519 Encryption Choice](./0001-x25519-encryption-choice.md) | 2026-03-01 | Accepted |
-| 0002   | [Cobra Framework Choice](./0002-cobra-framework-choice.md)     | 2026-03-01 | Accepted |
-| 0003   | [Age Library Selection](./0003-age-library-selection.md)       | 2026-03-01 | Accepted |
+| Number | Title                                                                        | Date       | Status   |
+| ------ | ---------------------------------------------------------------------------- | ---------- | -------- |
+| 0001   | [X25519 Encryption Choice](./0001-x25519-encryption-choice.md)               | 2026-03-01 | Accepted |
+| 0002   | [Cobra Framework Choice](./0002-cobra-framework-choice.md)                   | 2026-03-01 | Accepted |
+| 0003   | [Age Library Selection](./0003-age-library-selection.md)                     | 2026-03-01 | Accepted |
+| 0004   | [Dependency Injection Discipline](./0004-dependency-injection-discipline.md) | 2026-06-13 | Accepted |
 
 ## History
 
-| Date       | ADRs                             |
-| ---------- | -------------------------------- |
-| 2026-03-01 | Initial ADRs: X25519, Cobra, age |
+| Date       | ADRs                                      |
+| ---------- | ----------------------------------------- |
+| 2026-06-13 | ADR 0004: Dependency Injection Discipline |
+| 2026-03-01 | Initial ADRs: X25519, Cobra, age          |
 
 ## Process
 

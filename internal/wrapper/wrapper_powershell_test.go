@@ -3,6 +3,7 @@ package wrapper
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestEscapePowerShellArg_Basic(t *testing.T) {
@@ -133,6 +134,52 @@ func TestEscapePowerShellArg_CommandInjectionPrevention(t *testing.T) {
 			}
 		})
 	}
+}
+
+// FuzzEscapePowerShellArg fuzzes the PowerShell escaper.
+// Invariants: result is single-quote wrapped; inner ' count is even
+// (balanced ' doubling); every $( is preceded by a backtick escape;
+// output is always valid UTF-8.
+func FuzzEscapePowerShellArg(f *testing.F) {
+	seeds := []string{
+		"",
+		"hello",
+		"$HOME",
+		"'; Start-Process calc; '",
+		"`$(Get-Process)",
+		"$(rm -rf /)",
+		"\" ; Remove-Item -Recurse C:\\ ; \"",
+		"$([char]0x61)",
+		"a]b[c{d}e<f>g",
+		"\n\r\t\x00",
+		"`e[31mRED`e[0m",
+	}
+	for _, s := range seeds {
+		f.Add(s)
+	}
+
+	f.Fuzz(func(t *testing.T, s string) {
+		result := EscapePowerShellArg(s)
+
+		if !strings.HasPrefix(result, "'") || !strings.HasSuffix(result, "'") {
+			t.Errorf("result must be single-quoted wrapping, got: %q", result)
+		}
+
+		inner := result[1 : len(result)-1]
+		if strings.Count(inner, "'")%2 != 0 {
+			t.Errorf("unbalanced single quotes inside escape: %q", result)
+		}
+
+		if strings.Contains(result, "$(") && !strings.Contains(result, "`$(") {
+			t.Errorf("command substitution $( not backtick-escaped in: %q", result)
+		}
+
+		// Only assert UTF-8 validity when the original input is valid UTF-8.
+		// Raw byte sequences pass through the escaper without encoding checks.
+		if utf8.ValidString(s) && !utf8.ValidString(result) {
+			t.Errorf("valid UTF-8 input produced invalid UTF-8 output: %q -> %q", s, result)
+		}
+	})
 }
 
 func TestEscapePowerShellArg_SemicolonAndPipe(t *testing.T) {

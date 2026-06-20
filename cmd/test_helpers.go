@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"runtime"
+	"testing"
 
 	"github.com/dkmnx/kairo/internal/crypto"
+	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/wrapper"
 )
@@ -79,6 +82,90 @@ func (m *mockUpdate) RunInstallScript(scriptPath string) error {
 	return m.RunInstallScriptFn(scriptPath)
 }
 
+// mockCatalog is a test double for CatalogService.
+type mockCatalog struct {
+	ProviderListFn      func() []string
+	ProviderSourceFn    func(name string) string
+	BuiltInProviderFn   func(name string) (providers.ProviderDefinition, bool)
+	RefreshFromRemoteFn func(ctx context.Context) (int, error)
+}
+
+func (m *mockCatalog) ProviderList() []string            { return m.ProviderListFn() }
+func (m *mockCatalog) ProviderSource(name string) string { return m.ProviderSourceFn(name) }
+func (m *mockCatalog) BuiltInProvider(name string) (providers.ProviderDefinition, bool) {
+	return m.BuiltInProviderFn(name)
+}
+func (m *mockCatalog) RefreshFromRemote(ctx context.Context) (int, error) {
+	return m.RefreshFromRemoteFn(ctx)
+}
+
+// mockCrypto is a test double for crypto.Service with configurable function fields.
+type mockCrypto struct {
+	GenerateKeyFn         func(ctx context.Context, keyPath string) error
+	EncryptSecretsFn      func(ctx context.Context, secretsPath, keyPath, secrets string) error
+	DecryptSecretsFn      func(ctx context.Context, secretsPath, keyPath string) (string, error)
+	DecryptSecretsBytesFn func(ctx context.Context, secretsPath, keyPath string) ([]byte, error)
+	EnsureKeyExistsFn     func(ctx context.Context, configDir string) error
+}
+
+func (m *mockCrypto) GenerateKey(ctx context.Context, keyPath string) error {
+	if m.GenerateKeyFn != nil {
+		return m.GenerateKeyFn(ctx, keyPath)
+	}
+
+	return nil
+}
+
+func (m *mockCrypto) EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) error {
+	if m.EncryptSecretsFn != nil {
+		return m.EncryptSecretsFn(ctx, secretsPath, keyPath, secrets)
+	}
+
+	return nil
+}
+
+func (m *mockCrypto) DecryptSecrets(ctx context.Context, secretsPath, keyPath string) (string, error) {
+	if m.DecryptSecretsFn != nil {
+		return m.DecryptSecretsFn(ctx, secretsPath, keyPath)
+	}
+
+	return "", nil
+}
+
+func (m *mockCrypto) DecryptSecretsBytes(ctx context.Context, secretsPath, keyPath string) ([]byte, error) {
+	if m.DecryptSecretsBytesFn != nil {
+		return m.DecryptSecretsBytesFn(ctx, secretsPath, keyPath)
+	}
+
+	return []byte{}, nil
+}
+
+func (m *mockCrypto) EnsureKeyExists(ctx context.Context, configDir string) error {
+	if m.EnsureKeyExistsFn != nil {
+		return m.EnsureKeyExistsFn(ctx, configDir)
+	}
+
+	return nil
+}
+
+// feedStdin replaces os.Stdin with a pipe pre-filled with input and registered
+// for cleanup. The test reads from os.Stdin (e.g. via fmt.Scanln).
+func feedStdin(t *testing.T, input string) {
+	t.Helper()
+	oldStdin := os.Stdin
+	t.Cleanup(func() { os.Stdin = oldStdin })
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString(input); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+	os.Stdin = r
+}
+
 // testDeps creates a Deps with mock implementations. The optional callback
 // receives the three mock structs for field-level configuration.
 func testDeps(overrides ...func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate)) *Deps {
@@ -106,4 +193,24 @@ func testDeps(overrides ...func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate
 	}
 
 	return &Deps{Process: mp, Wrapper: mw, Update: mu, Crypto: crypto.DefaultService{}}
+}
+
+// testDepsWithCatalog creates a Deps with mock implementations including Catalog.
+// The callback receives all four mock structs.
+func testDepsWithCatalog(overrides ...func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate, mc *mockCatalog)) *Deps {
+	d := testDeps()
+	mc := &mockCatalog{
+		ProviderListFn:   func() []string { return nil },
+		ProviderSourceFn: func(string) string { return "" },
+		BuiltInProviderFn: func(string) (providers.ProviderDefinition, bool) {
+			return providers.ProviderDefinition{}, false
+		},
+		RefreshFromRemoteFn: func(context.Context) (int, error) { return 0, nil },
+	}
+	for _, fn := range overrides {
+		fn(nil, nil, nil, mc)
+	}
+	d.Catalog = mc
+
+	return d
 }

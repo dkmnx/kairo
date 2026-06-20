@@ -156,7 +156,8 @@ func decryptToBuffer(ctx context.Context, secretsPath, keyPath string, buf *byte
 	return nil
 }
 
-// readKeyFileScanner opens a key file and returns a scanner for reading its lines.
+// checkKeyFilePermissions returns an error if the key file is group/world
+// accessible (skipped on Windows).
 func checkKeyFilePermissions(keyPath string) error {
 	if runtime.GOOS == "windows" {
 		return nil
@@ -177,6 +178,7 @@ func checkKeyFilePermissions(keyPath string) error {
 	return nil
 }
 
+// readKeyFileScanner opens a key file and returns a scanner for reading its lines.
 // The caller must close the returned file when done.
 func readKeyFileScanner(keyPath string) (*os.File, *bufio.Scanner, error) {
 	if err := checkKeyFilePermissions(keyPath); err != nil {

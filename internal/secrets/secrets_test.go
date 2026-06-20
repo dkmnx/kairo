@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -212,5 +213,91 @@ func TestParseWithStatsWarnings(t *testing.T) {
 	}
 	if !strings.Contains(warningText, "empty value") {
 		t.Error("Expected warning about empty value")
+	}
+}
+
+// TestParseWithStatsNoGlobalSideEffect verifies that ParseWithStats does not
+// write to stderr via a global side-effect. Warnings are returned in Result.Warnings.
+func TestParseWithStatsNoGlobalSideEffect(t *testing.T) {
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = w
+
+	defer func() { os.Stderr = oldStderr }()
+
+	result := ParseWithStats("=empty_key\nKEY=\nNO_EQUALS\n")
+
+	w.Close()
+	stderrOutput := make([]byte, 4096)
+	n, _ := r.Read(stderrOutput)
+	stderrStr := string(stderrOutput[:n])
+	r.Close()
+
+	if len(result.Warnings) == 0 {
+		t.Fatal("Expected warnings in Result.Warnings")
+	}
+	if stderrStr != "" {
+		t.Errorf("Expected nothing on stderr, got: %q", stderrStr)
+	}
+}
+
+// TestParseStillReturnsWarnings verifies warnings are present in Result.Warnings.
+func TestParseStillReturnsWarnings(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		skippedCount  int
+		wantWarnings  int
+		warnSubstring string
+	}{
+		{
+			name:          "empty key",
+			input:         "=value",
+			skippedCount:  1,
+			wantWarnings:  1,
+			warnSubstring: "empty key",
+		},
+		{
+			name:          "empty value",
+			input:         "KEY=",
+			skippedCount:  1,
+			wantWarnings:  1,
+			warnSubstring: "empty value",
+		},
+		{
+			name:          "no equals sign",
+			input:         "NOEQUALS",
+			skippedCount:  1,
+			wantWarnings:  0, // lines without = are counted but have no specific warning
+			warnSubstring: "",
+		},
+		{
+			name:          "mixed malformed",
+			input:         "OK=1\n=bad\nKEY2=",
+			skippedCount:  2,
+			wantWarnings:  2,
+			warnSubstring: "empty key",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseWithStats(tt.input)
+			if result.SkippedCount != tt.skippedCount {
+				t.Errorf("SkippedCount = %d, want %d", result.SkippedCount, tt.skippedCount)
+			}
+			if len(result.Warnings) != tt.wantWarnings {
+				t.Errorf("len(Warnings) = %d, want %d", len(result.Warnings), tt.wantWarnings)
+			}
+			if tt.wantWarnings > 0 && tt.warnSubstring != "" {
+				warnText := strings.Join(result.Warnings, " ")
+				if !strings.Contains(warnText, tt.warnSubstring) {
+					t.Errorf("Warnings should contain %q, got: %s", tt.warnSubstring, warnText)
+				}
+			}
+		})
 	}
 }

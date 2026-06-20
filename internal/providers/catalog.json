@@ -1,0 +1,147 @@
+{
+  "zai": {
+    "name": "Z.AI",
+    "base_url": "https://api.z.ai/api/anthropic",
+    "model": "glm-5.1",
+    "requires_api_key": true,
+    "env_vars": ["ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash"],
+    "api_key_env_var": "ZAI_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "minimax": {
+    "name": "MiniMax",
+    "base_url": "https://api.minimax.io/anthropic",
+    "model": "MiniMax-M2.7",
+    "requires_api_key": true,
+    "env_vars": [
+      "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT=120",
+      "ANTHROPIC_SMALL_FAST_MAX_TOKENS=24576"
+    ],
+    "api_key_env_var": "MINIMAX_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "kimi": {
+    "name": "Moonshot AI",
+    "base_url": "https://api.kimi.com/coding/",
+    "model": "kimi-for-coding",
+    "requires_api_key": true,
+    "env_vars": [
+      "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT=240",
+      "ANTHROPIC_SMALL_FAST_MAX_TOKENS=200000"
+    ],
+    "api_key_env_var": "KIMI_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "deepseek": {
+    "name": "DeepSeek AI",
+    "base_url": "https://api.deepseek.com/anthropic",
+    "model": "deepseek-v4-pro[1m]",
+    "requires_api_key": true,
+    "env_vars": [
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash",
+      "CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash",
+      "CLAUDE_CODE_EFFORT_LEVEL=max",
+      "API_TIMEOUT_MS=600000",
+      "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"
+    ],
+    "api_key_env_var": "DEEPSEEK_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "anthropic": {
+    "name": "Anthropic",
+    "requires_api_key": true,
+    "api_key_env_var": "ANTHROPIC_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "sk-ant-", "pattern": ""}
+  },
+  "openai": {
+    "name": "OpenAI",
+    "requires_api_key": true,
+    "api_key_env_var": "OPENAI_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "sk-", "pattern": ""}
+  },
+  "google": {
+    "name": "Google",
+    "requires_api_key": true,
+    "api_key_env_var": "GEMINI_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "mistral": {
+    "name": "Mistral",
+    "requires_api_key": true,
+    "api_key_env_var": "MISTRAL_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "groq": {
+    "name": "Groq",
+    "requires_api_key": true,
+    "api_key_env_var": "GROQ_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "gsk_", "pattern": ""}
+  },
+  "cerebras": {
+    "name": "Cerebras",
+    "requires_api_key": true,
+    "api_key_env_var": "CEREBRAS_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "cloudflare-workers-ai": {
+    "name": "Cloudflare Workers AI",
+    "requires_api_key": true,
+    "api_key_env_var": "CLOUDFLARE_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "xai": {
+    "name": "xAI",
+    "requires_api_key": true,
+    "api_key_env_var": "XAI_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "openrouter": {
+    "name": "OpenRouter",
+    "requires_api_key": true,
+    "api_key_env_var": "OPENROUTER_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "sk-or-", "pattern": ""}
+  },
+  "vercel-ai-gateway": {
+    "name": "Vercel AI Gateway",
+    "requires_api_key": true,
+    "api_key_env_var": "AI_GATEWAY_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "opencode": {
+    "name": "OpenCode",
+    "requires_api_key": true,
+    "api_key_env_var": "OPENCODE_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "huggingface": {
+    "name": "Hugging Face",
+    "requires_api_key": true,
+    "api_key_env_var": "HF_TOKEN",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "fireworks": {
+    "name": "Fireworks",
+    "requires_api_key": true,
+    "api_key_env_var": "FIREWORKS_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "azure-openai-responses": {
+    "name": "Azure OpenAI",
+    "requires_api_key": true,
+    "api_key_env_var": "AZURE_OPENAI_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "minimax-cn": {
+    "name": "MiniMax (CN)",
+    "requires_api_key": true,
+    "api_key_env_var": "MINIMAX_CN_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  },
+  "custom": {
+    "name": "Custom Provider",
+    "base_url": "",
+    "model": "",
+    "requires_api_key": true,
+    "key_format": {"min_length": 20, "prefix": "", "pattern": ""}
+  }
+}

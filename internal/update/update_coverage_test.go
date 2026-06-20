@@ -1,10 +1,14 @@
 package update
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -17,19 +21,27 @@ func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	return nil, errors.New("network down")
 }
 
+// successTransport returns canned responses for the cosign bundle and checksums
+// URLs. Unrecognized requests return 404.
+type successTransport struct {
+	bundleResp    []byte
+	checksumsResp []byte
+}
+
 // TestRunInstallScript_ShellSuccess covers the Unix sh path of RunInstallScript.
 func TestRunInstallScript_ShellSuccess(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("unix-only test")
 	}
 
+	c := NewClient()
 	dir := t.TempDir()
 	script := filepath.Join(dir, "install.sh")
 	if err := os.WriteFile(script, []byte("#!/bin/sh\necho ok\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := RunInstallScript(script); err != nil {
+	if err := c.RunInstallScript(script); err != nil {
 		t.Errorf("RunInstallScript() unexpected error: %v", err)
 	}
 }
@@ -39,13 +51,14 @@ func TestRunInstallScript_ShellFails(t *testing.T) {
 		t.Skip("unix-only test")
 	}
 
+	c := NewClient()
 	dir := t.TempDir()
 	script := filepath.Join(dir, "install.sh")
 	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 1\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := RunInstallScript(script); err == nil {
+	if err := c.RunInstallScript(script); err == nil {
 		t.Error("RunInstallScript() should fail when script exits non-zero")
 	}
 }
@@ -55,13 +68,115 @@ func TestRunInstallScript_ChmodOnMissingDirFails(t *testing.T) {
 		t.Skip("unix-only test")
 	}
 
+	c := NewClient()
 	dir := t.TempDir()
 	// Path inside a non-existent directory so chmod fails.
 	bad := filepath.Join(dir, "missing", "install.sh")
 
-	err := RunInstallScript(bad)
+	err := c.RunInstallScript(bad)
 	if err == nil {
 		t.Error("RunInstallScript() should error when chmod fails (missing dir)")
+	}
+}
+
+// TestRunInstallScript_WindowsBranch verifies the PowerShell branch is selected
+// when GOOS is windows, using injected fakes.
+func TestRunInstallScript_WindowsBranch(t *testing.T) {
+	called := false
+	c := &Client{
+		GOOS: "windows",
+		ExecCommand: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			called = true
+			if name != "powershell" {
+				t.Errorf("expected powershell, got %q", name)
+			}
+			return exec.CommandContext(ctx, "true")
+		},
+	}
+
+	dir := t.TempDir()
+	script := filepath.Join(dir, "install.ps1")
+	if err := os.WriteFile(script, []byte("exit 0"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.RunInstallScript(script); err != nil {
+		t.Errorf("RunInstallScript() unexpected error: %v", err)
+	}
+	if !called {
+		t.Error("ExecCommand was not called (Windows branch not taken)")
+	}
+}
+
+// TestRunInstallScript_UnixBranch verifies the sh branch is selected
+// when GOOS is not windows, using injected LookPathFunc.
+func TestRunInstallScript_UnixBranch(t *testing.T) {
+	lookPathCalled := false
+	execCalled := false
+	c := &Client{
+		GOOS: "linux",
+		LookPathFunc: func(name string) (string, error) {
+			lookPathCalled = true
+			if name != "sh" {
+				t.Errorf("expected 'sh', got %q", name)
+			}
+			return "/bin/sh", nil
+		},
+		ExecCommand: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			execCalled = true
+			return exec.CommandContext(ctx, "true")
+		},
+	}
+
+	dir := t.TempDir()
+	script := filepath.Join(dir, "install.sh")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 0"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.RunInstallScript(script); err != nil {
+		t.Errorf("RunInstallScript() unexpected error: %v", err)
+	}
+	if !lookPathCalled {
+		t.Error("LookPathFunc was not called")
+	}
+	if !execCalled {
+		t.Error("ExecCommand was not called (Unix branch not taken)")
+	}
+}
+
+// TestDownloadToTempFile_GOOSExtension verifies the extension follows c.GOOS.
+func TestDownloadToTempFile_GOOSExtension(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("content"))
+	}))
+	defer server.Close()
+
+	tests := []struct {
+		goos    string
+		wantExt string
+	}{
+		{"linux", ".sh"},
+		{"darwin", ".sh"},
+		{"windows", ".ps1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.goos, func(t *testing.T) {
+			c := &Client{
+				GOOS:       tt.goos,
+				HTTPClient: &http.Client{},
+				EnvFunc:    func(string) (string, bool) { return "", false },
+			}
+			f, err := c.DownloadToTempFile(context.Background(), server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(f)
+			if !strings.HasSuffix(f, tt.wantExt) {
+				t.Errorf("expected extension %q, got %q", tt.wantExt, f)
+			}
+		})
 	}
 }
 
@@ -134,20 +249,7 @@ func TestScriptNameForChecksumsExtra(t *testing.T) {
 	}
 }
 
-func TestVerifyCosignBundle_BundleDownloadFails_Cov(t *testing.T) {
-	c := &Client{
-		HTTPClient: &http.Client{Transport: failingTransport{}},
-		LookPathFunc: func(string) (string, error) {
-			return "/usr/bin/cosign", nil
-		},
-	}
-
-	if err := c.VerifyCosignBundle(context.Background(), "v1.0.0"); err == nil {
-		t.Error("VerifyCosignBundle() should error when bundle download fails")
-	}
-}
-
-func TestVerifyCosignBundle_LookPathError_Cov(t *testing.T) {
+func TestVerifyCosignBundle_LookPathPermissionDenied(t *testing.T) {
 	c := &Client{
 		LookPathFunc: func(string) (string, error) {
 			return "", os.ErrPermission
@@ -156,5 +258,83 @@ func TestVerifyCosignBundle_LookPathError_Cov(t *testing.T) {
 
 	if err := c.VerifyCosignBundle(context.Background(), "v1.0.0"); err != nil {
 		t.Errorf("VerifyCosignBundle() should silently skip when cosign cannot be located: %v", err)
+	}
+}
+
+func (s *successTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if strings.Contains(req.URL.Path, "checksums.txt.sigstore.json") {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(s.bundleResp)),
+			Header:     make(http.Header),
+		}, nil
+	}
+
+	if strings.Contains(req.URL.Path, "checksums.txt") {
+		// Return 404 when checksumsResp is unset (nil or empty).
+		if len(s.checksumsResp) == 0 {
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+				Body:       io.NopCloser(bytes.NewReader(nil)),
+				Header:     make(http.Header),
+			}, nil
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(s.checksumsResp)),
+			Header:     make(http.Header),
+		}, nil
+	}
+
+	return &http.Response{
+		StatusCode: http.StatusNotFound,
+		Body:       io.NopCloser(bytes.NewReader(nil)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+// TestVerifyCosignBundle_VerifySuccess exercises the full cosign verification path:
+// bundle download, checksums download, and cosign subprocess execution (exit 0).
+func TestVerifyCosignBundle_VerifySuccess(t *testing.T) {
+	c := &Client{
+		HTTPClient: &http.Client{
+			Transport: &successTransport{
+				bundleResp:    []byte(`{"payload": "test-bundle"}`),
+				checksumsResp: []byte("abc123  scripts/install.sh\n"),
+			},
+		},
+		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
+		ExecCommand: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			return exec.CommandContext(ctx, "true")
+		},
+	}
+
+	if err := c.VerifyCosignBundle(context.Background(), "v1.0.0"); err != nil {
+		t.Errorf("VerifyCosignBundle should succeed when cosign exits 0, got: %v", err)
+	}
+}
+
+// TestVerifyCosignBundle_VerifyFails exercises the cosign verification failure path:
+// cosign exits non-zero, VerifyCosignBundle must surface the error.
+func TestVerifyCosignBundle_VerifyFails(t *testing.T) {
+	c := &Client{
+		HTTPClient: &http.Client{
+			Transport: &successTransport{
+				bundleResp:    []byte(`{"payload": "test-bundle"}`),
+				checksumsResp: []byte("abc123  scripts/install.sh\n"),
+			},
+		},
+		LookPathFunc: func(string) (string, error) { return "/usr/bin/cosign", nil },
+		ExecCommand: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			return exec.CommandContext(ctx, "false")
+		},
+	}
+
+	err := c.VerifyCosignBundle(context.Background(), "v1.0.0")
+	if err == nil {
+		t.Fatal("VerifyCosignBundle should return error when cosign exits non-zero")
+	}
+	if !strings.Contains(err.Error(), "cosign bundle verification failed") {
+		t.Errorf("error should mention cosign verification, got: %v", err)
 	}
 }

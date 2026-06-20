@@ -96,23 +96,22 @@ Custom providers override built-in providers with the same key.
 
 ### Built-in providers (code)
 
-1. Add the provider definition in `internal/providers/registry.go`:
+1. Add the provider definition to the embedded catalog in `internal/providers/catalog.json`:
 
-```go
-var builtInProviders = map[string]ProviderDefinition{
-    // ... existing entries ...
-    "newprovider": {
-        Name:           "New Provider",
-        BaseURL:        "https://api.newprovider.com/anthropic",
-        Model:          "new-model",
-        RequiresAPIKey: true,
-        APIKeyEnvVar:   "NEWPROVIDER_API_KEY",
-        KeyFormat:      KeyFormatMin32,
-    },
+```json
+{
+  "newprovider": {
+    "name": "New Provider",
+    "base_url": "https://api.newprovider.com/anthropic",
+    "model": "new-model",
+    "requires_api_key": true,
+    "api_key_env_var": "NEWPROVIDER_API_KEY",
+    "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
+  }
 }
 ```
 
-1. Add the provider key to `providerOrder` in the same file so it appears in setup menus.
+1. Add the provider key to `providerPriority` in `internal/providers/registry.go` so it appears in setup menus.
 
 2. Run targeted tests:
 

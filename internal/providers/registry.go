@@ -3,14 +3,22 @@
 package providers
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 	"sync"
 
 	"github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/fsutil"
 )
+
+//go:embed catalog.json
+var embeddedCatalog []byte
 
 const (
 	MinAPIKeyLength     = 32
@@ -19,9 +27,9 @@ const (
 
 // KeyFormat holds minimum length, prefix, and pattern rules for API key validation.
 type KeyFormat struct {
-	MinLength int
-	Prefix    string
-	Pattern   string
+	MinLength int    `json:"min_length"`
+	Prefix    string `json:"prefix"`
+	Pattern   string `json:"pattern"`
 }
 
 // compiledCache caches compiled regexps by pattern to avoid races on
@@ -66,154 +74,35 @@ var (
 	DefaultKeyFormat    = KeyFormat{MinLength: DefaultMinKeyLength}
 )
 
-// builtInProviders maps provider short names to their definitions.
-var builtInProviders = map[string]ProviderDefinition{
-	"zai": {
-		Name:           "Z.AI",
-		BaseURL:        "https://api.z.ai/api/anthropic",
-		Model:          "glm-5.1",
-		RequiresAPIKey: true,
-		EnvVars:        []string{"ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash"},
-		APIKeyEnvVar:   "ZAI_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"minimax": {
-		Name:           "MiniMax",
-		BaseURL:        "https://api.minimax.io/anthropic",
-		Model:          "MiniMax-M2.7",
-		RequiresAPIKey: true,
-		EnvVars: []string{
-			"ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT=120",
-			"ANTHROPIC_SMALL_FAST_MAX_TOKENS=24576",
-		},
-		APIKeyEnvVar: "MINIMAX_API_KEY",
-		KeyFormat:    KeyFormatMin32,
-	},
-	"kimi": {
-		Name:           "Moonshot AI",
-		BaseURL:        "https://api.kimi.com/coding/",
-		Model:          "kimi-for-coding",
-		RequiresAPIKey: true,
-		EnvVars: []string{
-			"ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT=240",
-			"ANTHROPIC_SMALL_FAST_MAX_TOKENS=200000",
-		},
-		APIKeyEnvVar: "KIMI_API_KEY",
-		KeyFormat:    KeyFormatMin32,
-	},
-	"deepseek": {
-		Name:           "DeepSeek AI",
-		BaseURL:        "https://api.deepseek.com/anthropic",
-		Model:          "deepseek-v4-pro[1m]",
-		RequiresAPIKey: true,
-		EnvVars: []string{
-			"ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash",
-			"CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash",
-			"CLAUDE_CODE_EFFORT_LEVEL=max",
-			"API_TIMEOUT_MS=600000",
-			"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
-		},
-		APIKeyEnvVar: "DEEPSEEK_API_KEY",
-		KeyFormat:    KeyFormatMin32,
-	},
-	"anthropic": {
-		Name:           "Anthropic",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "ANTHROPIC_API_KEY",
-		KeyFormat:      KeyFormatAnthropic,
-	},
-	"openai": {
-		Name:           "OpenAI",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "OPENAI_API_KEY",
-		KeyFormat:      KeyFormatOpenAI,
-	},
-	"google": {
-		Name:           "Google",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "GEMINI_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"mistral": {
-		Name:           "Mistral",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "MISTRAL_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"groq": {
-		Name:           "Groq",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "GROQ_API_KEY",
-		KeyFormat:      KeyFormatGroq,
-	},
-	"cerebras": {
-		Name:           "Cerebras",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "CEREBRAS_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"cloudflare-workers-ai": {
-		Name:           "Cloudflare Workers AI",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "CLOUDFLARE_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"xai": {
-		Name:           "xAI",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "XAI_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"openrouter": {
-		Name:           "OpenRouter",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "OPENROUTER_API_KEY",
-		KeyFormat:      KeyFormatOpenRouter,
-	},
-	"vercel-ai-gateway": {
-		Name:           "Vercel AI Gateway",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "AI_GATEWAY_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"opencode": {
-		Name:           "OpenCode",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "OPENCODE_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"huggingface": {
-		Name:           "Hugging Face",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "HF_TOKEN",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"fireworks": {
-		Name:           "Fireworks",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "FIREWORKS_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"azure-openai-responses": {
-		Name:           "Azure OpenAI",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "AZURE_OPENAI_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"minimax-cn": {
-		Name:           "MiniMax (CN)",
-		RequiresAPIKey: true,
-		APIKeyEnvVar:   "MINIMAX_CN_API_KEY",
-		KeyFormat:      KeyFormatMin32,
-	},
-	"custom": {
-		Name:           "Custom Provider",
-		BaseURL:        "",
-		Model:          "",
-		RequiresAPIKey: true,
-		KeyFormat:      DefaultKeyFormat,
-	},
+// catalogProvider is the JSON-deserializable form of a provider definition.
+type catalogProvider struct {
+	Name           string    `json:"name"`
+	BaseURL        string    `json:"base_url"`
+	Model          string    `json:"model"`
+	EnvVars        []string  `json:"env_vars"`
+	RequiresAPIKey bool      `json:"requires_api_key"`
+	APIKeyEnvVar   string    `json:"api_key_env_var"`
+	KeyFormat      KeyFormat `json:"key_format"`
 }
+
+// loadEmbeddedCatalog parses the embedded catalog.json into a map of providers.
+func loadEmbeddedCatalog() map[string]ProviderDefinition {
+	var raw map[string]catalogProvider
+	if err := json.Unmarshal(embeddedCatalog, &raw); err != nil {
+		panic("providers: failed to parse embedded catalog.json: " + err.Error())
+	}
+
+	result := make(map[string]ProviderDefinition, len(raw))
+	for k := range raw {
+		result[k] = ProviderDefinition(raw[k])
+	}
+
+	return result
+}
+
+// builtInProviders maps provider short names to their definitions.
+// Populated at init from the embedded catalog.json.
+var builtInProviders = loadEmbeddedCatalog()
 
 // ProviderDefinition describes a built-in provider's display name, default
 // base URL, model, environment variables, API key requirements, and key format.
@@ -289,6 +178,7 @@ func computeProviderOrder() []string {
 type ProviderRegistry struct {
 	mu      sync.RWMutex
 	builtIn map[string]ProviderDefinition
+	cached  map[string]ProviderDefinition
 	custom  map[string]ProviderDefinition
 }
 
@@ -296,6 +186,7 @@ type ProviderRegistry struct {
 func NewRegistry() *ProviderRegistry {
 	r := &ProviderRegistry{
 		builtIn: make(map[string]ProviderDefinition, len(builtInProviders)),
+		cached:  make(map[string]ProviderDefinition),
 		custom:  make(map[string]ProviderDefinition),
 	}
 	for k := range builtInProviders {
@@ -329,11 +220,13 @@ func (r *ProviderRegistry) IsBuiltInProvider(name string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	_, ok := r.builtIn[name]
-	if ok {
+	if _, ok := r.builtIn[name]; ok {
 		return true
 	}
-	_, ok = r.custom[name]
+	if _, ok := r.cached[name]; ok {
+		return true
+	}
+	_, ok := r.custom[name]
 
 	return ok
 }
@@ -346,21 +239,32 @@ func (r *ProviderRegistry) BuiltInProvider(name string) (ProviderDefinition, boo
 	if def, ok := r.custom[name]; ok {
 		return def, true
 	}
+	if def, ok := r.cached[name]; ok {
+		return def, true
+	}
 	def, ok := r.builtIn[name]
 
 	return def, ok
 }
 
-// ProviderList returns all provider names, built-in first then custom.
+// ProviderList returns all provider names, built-in + cached + custom.
 func (r *ProviderRegistry) ProviderList() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	seen := make(map[string]bool)
-	result := make([]string, 0, len(r.builtIn)+len(r.custom))
+	result := make([]string, 0, len(r.builtIn)+len(r.cached)+len(r.custom))
 
 	for _, name := range providerOrder {
 		if _, ok := r.builtIn[name]; ok {
+			seen[name] = true
+			result = append(result, name)
+		}
+	}
+
+	// Append cached providers not already seen (not in embedded).
+	for name := range r.cached {
+		if !seen[name] {
 			seen[name] = true
 			result = append(result, name)
 		}
@@ -397,6 +301,88 @@ func (r *ProviderRegistry) APIKeyEnvVarFor(name string) (string, bool) {
 	}
 
 	return def.APIKeyEnvVar, true
+}
+
+// ProviderSource returns the source layer for the named provider:
+// "custom", "cached", "embedded", or "" if not found.
+func (r *ProviderRegistry) ProviderSource(name string) string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if _, ok := r.custom[name]; ok {
+		return "custom"
+	}
+	if _, ok := r.cached[name]; ok {
+		return "cached"
+	}
+	if _, ok := r.builtIn[name]; ok {
+		return "embedded"
+	}
+
+	return ""
+}
+
+// LoadCache loads a provider catalog from the given JSON file path into
+// the cached layer. Providers in the file override embedded definitions
+// with the same name. If the file does not exist, LoadCache is a no-op.
+func (r *ProviderRegistry) LoadCache(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	var raw map[string]catalogProvider
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.cached = make(map[string]ProviderDefinition, len(raw))
+	for k := range raw {
+		r.cached[k] = ProviderDefinition(raw[k])
+	}
+
+	return nil
+}
+
+// RefreshCacheFromBytes replaces the cached layer with providers parsed from
+// data (JSON) and atomically writes the cache to path. Returns the number of
+// providers loaded.
+func (r *ProviderRegistry) RefreshCacheFromBytes(data []byte, path string) (int, error) {
+	var raw map[string]catalogProvider
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return 0, err
+	}
+
+	cached := make(map[string]ProviderDefinition, len(raw))
+	for k := range raw {
+		cached[k] = ProviderDefinition(raw[k])
+	}
+
+	// Write to disk atomically.
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return 0, err
+	}
+	if err := fsutil.WriteAtomic(path, func(f *os.File) error {
+		_, err := f.Write(data)
+
+		return err
+	}); err != nil {
+		return 0, err
+	}
+
+	r.mu.Lock()
+	r.cached = cached
+	r.mu.Unlock()
+
+	return len(cached), nil
 }
 
 // DefaultRegistry is the package-level singleton initialized with built-in providers.

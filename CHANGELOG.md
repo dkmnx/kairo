@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Externalize provider catalog to embedded `catalog.json` with sigstore-verified refresh
+- `kairo providers list` and `kairo providers refresh` commands
+- `KAIRO_PROVIDER_CATALOG_BUNDLE_URL` environment variable for catalog URL override
+- Shared `internal/httpfetch` primitives (HTTP GET, temp-file, cosign verification)
+
+### Changed
+
+- Deduplicate temp-file handling in update command, make cosign execution injectable for testability
+- Simplify cmd helpers, consolidate CIDR validation, and streamline temp-file scaffolding
+- Rename `bodyExceedsLimit` to `ensureBodyWithinLimit` for clarity
+- Convert `cosignVerifyBlob` from free function to `*Client` method
+- Replace `strings.NewReader(string(body))` with `bytes.NewReader(body)` in checksum download
+
+### Removed
+
+- `--no-update-check` flag from `kairo version` (flag removed; version release check is lightweight and runs silently)
+
 ## [v2.9.1] - 2026-06-13
 
 ### Added

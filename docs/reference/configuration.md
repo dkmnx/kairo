@@ -136,11 +136,13 @@ Generated on first setup. The file contains the private identity line followed b
 
 ## Environment Variables
 
-| Variable               | Purpose                                     | Default          |
-| ---------------------- | ------------------------------------------- | ---------------- |
-| `KAIRO_CONFIG_DIR`     | Override config directory path              | Platform default |
-| `KAIRO_UPDATE_URL`     | Override update check URL                   | GitHub Releases  |
-| `KAIRO_REQUIRE_COSIGN` | Abort update on cosign verification failure | unset            |
+| Variable                             | Purpose                                                         | Default          |
+| ------------------------------------ | --------------------------------------------------------------- | ---------------- |
+| `KAIRO_CONFIG_DIR`                   | Override config directory path                                  | Platform default |
+| `KAIRO_UPDATE_URL`                   | Override update check URL                                       | GitHub Releases  |
+| `KAIRO_REQUIRE_COSIGN`               | Abort update on cosign verification failure                     | unset            |
+| `KAIRO_PROVIDER_CATALOG_URL`         | Override the remote provider catalog URL                        | GitHub Releases  |
+| `KAIRO_PROVIDER_CATALOG_BUNDLE_URL`  | Override the cosign sigstore bundle URL for the catalog         | GitHub Releases  |
 
 ## Built-in Providers
 

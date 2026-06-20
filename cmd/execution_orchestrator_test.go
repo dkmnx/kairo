@@ -258,6 +258,256 @@ func TestResolveProviderAndArgs_HarnessFallback(t *testing.T) {
 	}
 }
 
+func TestProviderFromArgs_FirstArgIsProvider(t *testing.T) {
+	cfg := &config.Config{
+		DefaultProvider: "anthropic",
+		Providers: map[string]config.Provider{
+			"anthropic": {Name: "Anthropic"},
+			"openai":    {Name: "OpenAI"},
+		},
+	}
+
+	tests := []struct {
+		name             string
+		args             []string
+		wantProvider     string
+		wantHarnessCount int
+	}{
+		{"first positional is configured provider", []string{"openai", "--prompt", "hi"}, "openai", 2},
+		{"first positional is built-in provider", []string{"zai", "--help"}, "zai", 1},
+		{"unknown is returned as-is (fallback in resolveProviderAndArgs)", []string{"unknown", "arg"}, "unknown", 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := testCmd()
+			gotProvider, gotArgs := providerFromArgs(cmd, cfg, tt.args)
+			if gotProvider != tt.wantProvider {
+				t.Errorf("providerFromArgs() provider = %q, want %q", gotProvider, tt.wantProvider)
+			}
+			if len(gotArgs) != tt.wantHarnessCount {
+				t.Errorf("providerFromArgs() harness args count = %d, want %d: %v", len(gotArgs), tt.wantHarnessCount, gotArgs)
+			}
+		})
+	}
+}
+
+func TestProviderFromArgs_FirstArgIsFlag(t *testing.T) {
+	cfg := &config.Config{
+		DefaultProvider: "anthropic",
+		Providers: map[string]config.Provider{
+			"anthropic": {Name: "Anthropic"},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		args         []string
+		wantProvider string
+		wantArgs     []string
+	}{
+		{"flag arg uses default", []string{"--prompt", "hi"}, "anthropic", []string{"--prompt", "hi"}},
+		{"dash arg uses default", []string{"-v"}, "anthropic", []string{"-v"}},
+		{"flag with equals", []string{"--x=y"}, "anthropic", []string{"--x=y"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := testCmd()
+			gotProvider, gotArgs := providerFromArgs(cmd, cfg, tt.args)
+			if gotProvider != tt.wantProvider {
+				t.Errorf("providerFromArgs() provider = %q, want %q", gotProvider, tt.wantProvider)
+			}
+			if len(gotArgs) != len(tt.wantArgs) {
+				t.Errorf("providerFromArgs() args = %v, want %v", gotArgs, tt.wantArgs)
+			}
+		})
+	}
+}
+
+func TestProviderFromArgs_NoDefaultWithFlag(t *testing.T) {
+	cfg := &config.Config{
+		DefaultProvider: "",
+		Providers:       map[string]config.Provider{},
+	}
+
+	cmd := testCmd()
+	output := &bytes.Buffer{}
+	cmd.SetOut(output)
+
+	provider, args := providerFromArgs(cmd, cfg, []string{"--flag"})
+	if provider != "" {
+		t.Errorf("expected empty provider, got %q", provider)
+	}
+	if args != nil {
+		t.Errorf("expected nil args, got %v", args)
+	}
+	if !containsString(output.String(), "No default provider set") {
+		t.Error("expected error message about no default provider")
+	}
+}
+
+func TestProviderFromArgs_WithDoubleDash(t *testing.T) {
+	cfg := &config.Config{
+		DefaultProvider: "",
+		Providers: map[string]config.Provider{
+			"anthropic": {Name: "Anthropic"},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		args         []string
+		wantProvider string
+		wantHarness  []string
+	}{
+		{"double dash after provider", []string{"anthropic", "--", "--flag"}, "anthropic", []string{"--flag"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := testCmd()
+			gotProvider, gotArgs := providerFromArgs(cmd, cfg, tt.args)
+			if gotProvider != tt.wantProvider {
+				t.Errorf("providerFromArgs() provider = %q, want %q", gotProvider, tt.wantProvider)
+			}
+			if len(gotArgs) != len(tt.wantHarness) {
+				t.Errorf("providerFromArgs() args = %v, want %v", gotArgs, tt.wantHarness)
+			}
+		})
+	}
+}
+
+func TestResolveProviderAndArgs_EmptyArgs(t *testing.T) {
+	cfg := &config.Config{
+		DefaultProvider: "",
+		Providers:       map[string]config.Provider{},
+	}
+
+	t.Run("empty args no default", func(t *testing.T) {
+		cmd := testCmd()
+		output := &bytes.Buffer{}
+		cmd.SetOut(output)
+
+		cliCtx := NewCLIContext()
+		cliCtx.SetDefaultProviderExplicit(false)
+
+		_, provider := resolveProviderAndArgs(cmd, cliCtx, cfg, []string{})
+		if provider != "" {
+			t.Errorf("expected empty provider, got %q", provider)
+		}
+		if !containsString(output.String(), "No default provider set") {
+			t.Error("expected no default provider message")
+		}
+	})
+
+	t.Run("empty args with default", func(t *testing.T) {
+		cfg.DefaultProvider = "anthropic"
+		cfg.Providers = map[string]config.Provider{
+			"anthropic": {Name: "Anthropic"},
+		}
+
+		cmd := testCmd()
+		cliCtx := NewCLIContext()
+		cliCtx.SetDefaultProviderExplicit(false)
+
+		args, provider := resolveProviderAndArgs(cmd, cliCtx, cfg, []string{})
+		if provider != "anthropic" {
+			t.Errorf("expected 'anthropic', got %q", provider)
+		}
+		if len(args) != 0 {
+			t.Errorf("expected empty args, got %v", args)
+		}
+	})
+}
+
+func TestResolveProviderAndArgs_HarnessOverrideBranch(t *testing.T) {
+	cfg := &config.Config{
+		DefaultProvider: "anthropic",
+		Providers: map[string]config.Provider{
+			"anthropic": {Name: "Anthropic"},
+		},
+	}
+
+	originalHarnessFlag := harnessFlag
+	defer func() { harnessFlag = originalHarnessFlag }()
+
+	t.Run("harness set with unknown provider falls back to default", func(t *testing.T) {
+		harnessFlag = "claude"
+
+		cmd := testCmd()
+		cliCtx := NewCLIContext()
+		cliCtx.SetDefaultProviderExplicit(false)
+
+		harnessArgs, provider := resolveProviderAndArgs(cmd, cliCtx, cfg, []string{"nonexistent", "--prompt", "hi"})
+		if provider != "anthropic" {
+			t.Errorf("expected 'anthropic', got %q", provider)
+		}
+		if len(harnessArgs) != 3 {
+			t.Errorf("expected all 3 args to be harness args, got %v", harnessArgs)
+		}
+	})
+
+	t.Run("harness set with known provider still uses that provider", func(t *testing.T) {
+		harnessFlag = "claude"
+
+		cmd := testCmd()
+		cliCtx := NewCLIContext()
+		cliCtx.SetDefaultProviderExplicit(false)
+
+		_, provider := resolveProviderAndArgs(cmd, cliCtx, cfg, []string{"anthropic"})
+		if provider != "anthropic" {
+			t.Errorf("expected 'anthropic', got %q", provider)
+		}
+	})
+}
+
+func TestHasLeadingArgsSeparator_Extended(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"flag with value before separator", []string{"--harness", "pi", "--", "hello"}, true},
+		{"flag with equals before separator", []string{"--harness=pi", "--", "hello"}, true},
+		{"short flag before separator", []string{"-v", "--", "hello"}, true},
+		{"positional before separator is false", []string{"hello", "--", "world"}, false},
+		{"empty", []string{}, false},
+		{"just separator", []string{"--"}, true},
+		{"multiple flags before separator", []string{"-v", "--harness", "pi", "--", "arg"}, true},
+		{"dash dash at start is always separator", []string{"--", "hello", "--"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := hasLeadingArgsSeparator(tt.args); got != tt.want {
+				t.Errorf("hasLeadingArgsSeparator(%v) = %v, want %v", tt.args, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSplitArgs_Extended(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantArgs []string
+		wantRest []string
+	}{
+		{"two dashes after args", []string{"--harness", "pi", "--", "rest"}, []string{"--harness", "pi"}, []string{"rest"}},
+		{"multiple dashes split at first", []string{"a", "--", "b", "--", "c"}, []string{"a"}, []string{"b", "--", "c"}},
+		{"flag with value", []string{"--harness", "pi", "--", "a", "b"}, []string{"--harness", "pi"}, []string{"a", "b"}},
+		{"flag with equals before dash", []string{"--x=y", "--", "z"}, []string{"--x=y"}, []string{"z"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotArgs, gotRest := splitArgs(tt.args)
+			if len(gotArgs) != len(tt.wantArgs) {
+				t.Errorf("splitArgs() args = %v, want %v", gotArgs, tt.wantArgs)
+			}
+			if len(gotRest) != len(tt.wantRest) {
+				t.Errorf("splitArgs() rest = %v, want %v", gotRest, tt.wantRest)
+			}
+		})
+	}
+}
+
 func TestResolveProviderAndArgs_DoubleDashSeparator(t *testing.T) {
 	cfg := &config.Config{
 		DefaultProvider: "",
