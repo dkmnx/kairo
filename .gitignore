@@ -7,6 +7,7 @@
 kairo
 dist/
 bin/
+.release/
 
 # Test binary
 *.test
