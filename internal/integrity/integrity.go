@@ -1,11 +1,8 @@
-// Package integrity provides sigstore-verified HTTP fetching using cosign.
-// Both the update system and the provider catalog refresh depend on it.
-//
-// NOTE on cosign-not-found policy: unlike update.VerifyCosignBundle, which
-// silently skips verification when cosign is absent (the install-script
-// download is best-effort), FetchVerified hard-errors. The provider catalog
-// is a security boundary — accepting an unverified catalog would allow an
-// attacker to feed the CLI arbitrary provider definitions. This is by design.
+// Package integrity provides verified HTTP fetching for the provider catalog.
+// FetchVerified uses a two-tier verification strategy: cosign sigstore bundle
+// verification (preferred) with SHA256 checksum fallback when cosign is absent.
+// The provider catalog is a security boundary — accepting an unverified catalog
+// would allow an attacker to feed the CLI arbitrary provider definitions.
 package integrity
 
 import (
@@ -13,28 +10,27 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 
 	"github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/httpfetch"
 )
 
-// FetchVerified downloads the artifact at artifactURL, verifies its sigstore
-// bundle at bundleURL using cosign, and returns the artifact bytes. Cosign
-// lookup and subprocess use the given functions. Returns the verified data
-// on success.
+// hexHashPattern matches exactly 64 hexadecimal characters (SHA256 digest).
+var hexHashPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+
+// FetchVerified downloads the artifact at artifactURL, verifies its integrity,
+// and returns the artifact bytes. Verification uses cosign sigstore bundle
+// verification when cosign is available, falling back to SHA256 checksum
+// verification against checksumURL when cosign is absent. Both paths hard-error
+// on verification failure. Returns the verified data on success.
 func FetchVerified(
 	ctx context.Context,
 	httpClient *http.Client,
 	lookPath func(string) (string, error),
 	execCommand func(context.Context, string, ...string) *exec.Cmd,
-	artifactURL, bundleURL string,
+	artifactURL, bundleURL, checksumURL string,
 ) ([]byte, error) {
-	bundleData, err := httpfetch.DoHTTPGet(ctx, httpClient, bundleURL)
-	if err != nil {
-		return nil, errors.WrapError(errors.NetworkError,
-			"failed to download sigstore bundle", err)
-	}
-
 	artifactData, err := httpfetch.DoHTTPGet(ctx, httpClient, artifactURL)
 	if err != nil {
 		return nil, errors.WrapError(errors.NetworkError,
@@ -42,9 +38,25 @@ func FetchVerified(
 	}
 
 	cosignPath, err := lookPath("cosign")
+	if err == nil {
+		return verifyCosign(ctx, httpClient, execCommand, cosignPath, bundleURL, artifactData)
+	}
+
+	return verifyChecksum(ctx, httpClient, checksumURL, artifactData)
+}
+
+// verifyCosign downloads the sigstore bundle and verifies the artifact using cosign.
+func verifyCosign(
+	ctx context.Context,
+	httpClient *http.Client,
+	execCommand func(context.Context, string, ...string) *exec.Cmd,
+	cosignPath, bundleURL string,
+	artifactData []byte,
+) ([]byte, error) {
+	bundleData, err := httpfetch.DoHTTPGet(ctx, httpClient, bundleURL)
 	if err != nil {
-		return nil, errors.WrapError(errors.RuntimeError,
-			"cosign not found on PATH", err)
+		return nil, errors.WrapError(errors.NetworkError,
+			"failed to download sigstore bundle", err)
 	}
 
 	bundlePath, err := httpfetch.DataToTempFile(bundleData, "kairo-bundle-*.sigstore.json")
@@ -60,6 +72,32 @@ func FetchVerified(
 	defer os.Remove(artifactPath)
 
 	if err := httpfetch.CosignVerifyBlob(ctx, execCommand, cosignPath, bundlePath, artifactPath); err != nil {
+		return nil, err
+	}
+
+	return artifactData, nil
+}
+
+// verifyChecksum downloads the checksum file and verifies the artifact using SHA256.
+func verifyChecksum(
+	ctx context.Context,
+	httpClient *http.Client,
+	checksumURL string,
+	artifactData []byte,
+) ([]byte, error) {
+	checksumData, err := httpfetch.DoHTTPGet(ctx, httpClient, checksumURL)
+	if err != nil {
+		return nil, errors.WrapError(errors.NetworkError,
+			"failed to download checksum", err)
+	}
+
+	expectedHash := string(checksumData)
+	if !hexHashPattern.MatchString(expectedHash) {
+		return nil, errors.NewError(errors.VerificationError,
+			"checksum file does not contain a valid 64-character hex hash")
+	}
+
+	if err := httpfetch.VerifySHA256(artifactData, expectedHash); err != nil {
 		return nil, err
 	}
 

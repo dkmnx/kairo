@@ -6,6 +6,7 @@ before:
   hooks:
     - go mod tidy
     - sh -c "mkdir -p .release && if command -v cosign >/dev/null 2>&1; then cosign sign-blob --bundle .release/catalog.json.sigstore.json internal/providers/catalog.json --yes; else echo 'catalog signing skipped (cosign not in PATH)'; fi"
+    - sh -c "sha256sum internal/providers/catalog.json | awk '{print $1}' > .release/catalog.json.sha256"
 
 builds:
   - id: kairo
@@ -63,6 +64,7 @@ release:
   extra_files:
     - glob: ./internal/providers/catalog.json
     - glob: ./.release/catalog.json.sigstore.json
+    - glob: ./.release/catalog.json.sha256
   footer: |
 
     ---
@@ -71,7 +73,10 @@ release:
 
     The provider catalog is published as a release artifact for the `kairo providers refresh` command:
       - `catalog.json` — provider definitions
-      - `catalog.json.sigstore.json` — cosign sigstore bundle (verify with `cosign verify-blob --bundle catalog.json.sigstore.json --certificate-identity-regexp '^https://github\.com/dkmnx/kairo/\.github/workflows/release\.yml$' --certificate-oidc-issuer https://token.actions.githubusercontent.com catalog.json`)
+      - `catalog.json.sigstore.json` — cosign sigstore bundle (preferred verification)
+      - `catalog.json.sha256` — SHA256 checksum (fallback when cosign is absent)
+
+    **Verification:** `kairo providers refresh` uses cosign sigstore verification when available. When cosign is not installed, it falls back to SHA256 checksum verification against `catalog.json.sha256`.
 
     ---
 
