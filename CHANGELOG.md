@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- SHA256 fallback for provider catalog verification when cosign is absent
+
 ## [v2.10.0] - 2026-06-20
 
 ### Added
