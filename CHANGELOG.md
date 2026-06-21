@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Trim whitespace from checksum file before hash validation in provider catalog SHA256 fallback
+
 ## [v2.10.1] - 2026-06-21
 
 ### Added
