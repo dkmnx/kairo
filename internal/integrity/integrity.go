@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 
 	"github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/httpfetch"
@@ -91,7 +92,10 @@ func verifyChecksum(
 			"failed to download checksum", err)
 	}
 
-	expectedHash := string(checksumData)
+	expectedHash := strings.TrimSpace(string(checksumData))
+	if i := strings.IndexByte(expectedHash, ' '); i != -1 {
+		expectedHash = expectedHash[:i]
+	}
 	if !hexHashPattern.MatchString(expectedHash) {
 		return nil, errors.NewError(errors.VerificationError,
 			"checksum file does not contain a valid 64-character hex hash")
