@@ -102,6 +102,12 @@ func catalogBundleDownloadURL() string {
 		constants.GitHubRepo, catalogReleaseTag())
 }
 
+// catalogChecksumURL returns the download URL for the catalog SHA256 checksum.
+func catalogChecksumURL() string {
+	return fmt.Sprintf("https://github.com/%s/releases/download/%s/catalog.json.sha256",
+		constants.GitHubRepo, catalogReleaseTag())
+}
+
 // prodCatalogService is the production CatalogService that delegates to
 // the providers.DefaultRegistry and fetches verified remote catalogs.
 type prodCatalogService struct{}
@@ -126,12 +132,16 @@ func (prodCatalogService) RefreshFromRemote(ctx context.Context) (int, error) {
 
 	artifactURL := catalogDownloadURL()
 	bundleURL := catalogBundleDownloadURL()
+	checksumURL := catalogChecksumURL()
 
 	if u, ok := os.LookupEnv("KAIRO_PROVIDER_CATALOG_URL"); ok && u != "" {
 		artifactURL = u
 	}
 	if u, ok := os.LookupEnv("KAIRO_PROVIDER_CATALOG_BUNDLE_URL"); ok && u != "" {
 		bundleURL = u
+	}
+	if u, ok := os.LookupEnv("KAIRO_PROVIDER_CATALOG_CHECKSUM_URL"); ok && u != "" {
+		checksumURL = u
 	}
 
 	data, err := integrity.FetchVerified(
@@ -141,6 +151,7 @@ func (prodCatalogService) RefreshFromRemote(ctx context.Context) (int, error) {
 		exec.CommandContext,
 		artifactURL,
 		bundleURL,
+		checksumURL,
 	)
 	if err != nil {
 		return 0, err

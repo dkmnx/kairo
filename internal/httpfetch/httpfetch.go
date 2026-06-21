@@ -1,15 +1,19 @@
-// Package httpfetch provides shared HTTP-fetch, temp-file, and cosign
-// verify-blob primitives used by the update and provider-catalog paths.
+// Package httpfetch provides shared HTTP-fetch, temp-file, cosign
+// verify-blob, and SHA256 verification primitives used by the update
+// and provider-catalog paths.
 package httpfetch
 
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/dkmnx/kairo/internal/constants"
@@ -150,6 +154,26 @@ func CosignVerifyBlob(
 		return errors.WrapError(errors.VerificationError,
 			"cosign bundle verification failed", err).
 			WithContext("output", string(output))
+	}
+
+	return nil
+}
+
+// VerifySHA256 computes the SHA256 hash of data and compares it to expectedHex.
+// The comparison is case-insensitive. Returns a VerificationError on mismatch.
+func VerifySHA256(data []byte, expectedHex string) error {
+	expectedHex = strings.TrimSpace(expectedHex)
+	hasher := sha256.New()
+	hasher.Write(data)
+	actualHex := hex.EncodeToString(hasher.Sum(nil))
+
+	if !strings.EqualFold(actualHex, expectedHex) {
+		return errors.VerificationErr(
+			fmt.Sprintf("SHA256 integrity check failed (expected: %.8s..., got: %.8s...)",
+				expectedHex, actualHex),
+			nil,
+		).WithContext("expected", expectedHex).
+			WithContext("actual", actualHex)
 	}
 
 	return nil
