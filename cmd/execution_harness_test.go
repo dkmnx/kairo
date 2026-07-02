@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -296,6 +297,54 @@ func TestExecuteWithoutAuth_YoloModeQwen(t *testing.T) {
 	}
 
 	executeWithoutAuth(cfg)
+}
+
+func TestExecuteWrapperWithAuth_CleanupOnHarnessError(t *testing.T) {
+	authDir := t.TempDir()
+	var cleanupRan bool
+	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+		mw.CreateTempAuthDirFn = func() (string, error) {
+			// Override the default CreateTempAuthDir with one we control.
+			// The test below verifies the dir is removed even on harness error.
+			return authDir, nil
+		}
+		mw.WriteTempTokenFileFn = func(authDir, token string) (string, error) {
+			return filepath.Join(authDir, "token"), nil
+		}
+		mp.LookPathFn = func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		}
+		mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			return exec.Command("false")
+		}
+		mp.ExitProcessFn = func(int) {
+			// Simulate os.Exit(1): check that cleanup already removed the dir
+			// before exit is called.
+			if _, err := os.Stat(authDir); !os.IsNotExist(err) {
+				t.Error("cleanup() should have removed authDir before ExitProcess is called")
+			}
+			cleanupRan = true
+		}
+	})
+
+	cmd := testCmd()
+	cfg := ExecutionConfig{
+		Cmd:           cmd,
+		HarnessToUse:  harness.Claude,
+		HarnessBinary: "claude",
+		Provider: config.Provider{
+			Name:  "Test",
+			Model: "test-model",
+		},
+		APIKey: "test-key",
+		Deps:   d,
+	}
+
+	executeWrapperWithAuth(cfg)
+
+	if !cleanupRan {
+		t.Error("ExitProcess should have been called after cleanup")
+	}
 }
 
 func TestExecuteWrapperWithAuth_QwenWrapperFails(t *testing.T) {

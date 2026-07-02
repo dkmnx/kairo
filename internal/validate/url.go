@@ -19,6 +19,9 @@ var hardcodedCIDRs = []string{
 	"169.254.0.0/16",
 	"fc00::/7",
 	"fe80::/10",
+	"127.0.0.0/8",
+	"0.0.0.0/8",
+	"::1/128",
 }
 
 var blockedCIDRs = mustParseCIDRs(hardcodedCIDRs)
