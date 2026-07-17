@@ -179,7 +179,7 @@ func TestBuildPiEnvVars(t *testing.T) {
 		BaseURL: "https://api.z.ai/api/anthropic",
 		Model:   "glm-5.1",
 	}
-	envVars := BuildPiEnvVars(provider, "zai")
+	envVars := harness.PiEnvVars("zai", provider.Model)
 
 	hasProvider := false
 	hasModel := false

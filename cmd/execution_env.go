@@ -9,14 +9,6 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 )
 
-// BuildPiEnvVars constructs the environment variables for the Pi harness.
-func BuildPiEnvVars(provider config.Provider, providerName string) []string {
-	return []string{
-		fmt.Sprintf("PI_PROVIDER=%s", providerName),
-		fmt.Sprintf("PI_MODEL=%s", provider.Model),
-	}
-}
-
 // BuildBuiltInEnvVars constructs the standard Anthropic environment variables for a provider.
 func BuildBuiltInEnvVars(provider config.Provider) []string {
 	return []string{

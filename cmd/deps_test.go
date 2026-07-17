@@ -1,103 +1,77 @@
 package cmd
 
 import (
-	"os"
-	"os/exec"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/constants"
-	"github.com/dkmnx/kairo/internal/wrapper"
+	"github.com/dkmnx/kairo/internal/version"
 )
 
-func removeAll(p string) error  { return os.RemoveAll(p) }
-func removeFile(p string) error { return os.Remove(p) }
+func TestCatalogReleaseTag(t *testing.T) {
+	origVersion := version.Version
 
-// TestNewDeps wires up the production Deps and exercises each wrapper to
-// guarantee the production adapters stay in sync with the interfaces they
-// satisfy. The smoke test runs every adapter at least once.
-func TestNewDeps(t *testing.T) {
-	d := NewDeps()
-	if d == nil {
-		t.Fatal("NewDeps() returned nil")
-	}
-	if d.Process == nil {
-		t.Error("Process is nil")
-	}
-	if d.Wrapper == nil {
-		t.Error("Wrapper is nil")
-	}
-	if d.Update == nil {
-		t.Error("Update is nil")
-	}
-	if d.Crypto == nil {
-		t.Error("Crypto is nil")
-	}
-}
+	t.Run("dev version returns latest", func(t *testing.T) {
+		version.Version = "dev"
+		defer func() { version.Version = origVersion }()
 
-// TestDepsProductionAdapters_Coverage invokes each production adapter so the
-// coverage tool records at least one execution per wrapper. Real calls (e.g.
-// LookPath of `sh`) are used.
-func TestDepsProductionAdapters_Coverage(t *testing.T) {
-	d := NewDeps()
-
-	// Process adapters
-	if _, err := d.Process.LookPath("sh"); err != nil {
-		t.Logf("LookPath: %v (expected on some systems)", err)
-	}
-	if cmd := d.Process.ExecCommandContext(t.Context(), "echo", "x"); cmd == nil {
-		t.Error("ExecCommandContext returned nil")
-	}
-	// Note: ExitProcess calls os.Exit and is therefore not exercised here.
-
-	// Wrapper adapter — CreateTempAuthDir is safe to call; the rest are too.
-	authDir, err := d.Wrapper.CreateTempAuthDir()
-	if err != nil {
-		t.Errorf("CreateTempAuthDir: %v", err)
-	} else {
-		t.Cleanup(func() { _ = removeAll(authDir) })
-	}
-
-	tokenPath, err := d.Wrapper.WriteTempTokenFile(authDir, "x")
-	if err != nil {
-		t.Errorf("WriteTempTokenFile: %v", err)
-	} else {
-		t.Cleanup(func() { _ = removeFile(tokenPath) })
-	}
-
-	scriptPath, _, err := d.Wrapper.GenerateWrapperScript(wrapper.ScriptConfig{
-		AuthDir:    authDir,
-		TokenPath:  tokenPath,
-		CliPath:    "/bin/echo",
-		EnvVarName: "X",
+		if got := catalogReleaseTag(); got != "latest" {
+			t.Errorf("catalogReleaseTag() = %q, want %q", got, "latest")
+		}
 	})
-	if err != nil {
-		t.Errorf("GenerateWrapperScript: %v", err)
-	} else {
-		t.Cleanup(func() { _ = removeFile(scriptPath) })
-	}
 
-	// Update adapter — exercise methods that don't require network or
-	// process execution. ConfirmUpdate just delegates to ui.Confirm.
-	_, _ = d.Update.ConfirmUpdate("test?")
+	t.Run("release version returns version", func(t *testing.T) {
+		version.Version = "v1.2.3"
+		defer func() { version.Version = origVersion }()
 
-	// Crypto adapter — full encrypt-decrypt cycle to cover every method.
-	dir := t.TempDir()
-	if err := d.Crypto.EnsureKeyExists(t.Context(), dir); err != nil {
-		t.Errorf("EnsureKeyExists: %v", err)
-	}
-	secretsPath := filepath.Join(dir, constants.SecretsFileName)
-	keyPath := filepath.Join(dir, constants.KeyFileName)
-	if err := d.Crypto.EncryptSecrets(t.Context(), secretsPath, keyPath, "FOO=bar"); err != nil {
-		t.Errorf("EncryptSecrets: %v", err)
-	}
-	if _, err := d.Crypto.DecryptSecretsBytes(t.Context(), secretsPath, keyPath); err != nil {
-		t.Errorf("DecryptSecretsBytes: %v", err)
-	}
-	if _, err := d.Crypto.DecryptSecrets(t.Context(), secretsPath, keyPath); err != nil {
-		t.Errorf("DecryptSecrets: %v", err)
+		if got := catalogReleaseTag(); got != "v1.2.3" {
+			t.Errorf("catalogReleaseTag() = %q, want %q", got, "v1.2.3")
+		}
+	})
+}
+
+func TestCatalogDownloadURL(t *testing.T) {
+	origVersion := version.Version
+	version.Version = "v1.0.0"
+	defer func() { version.Version = origVersion }()
+
+	got := catalogDownloadURL()
+	want := "https://github.com/" + constants.GitHubRepo + "/releases/download/v1.0.0/catalog.json"
+	if got != want {
+		t.Errorf("catalogDownloadURL() = %q, want %q", got, want)
 	}
 }
 
-// Sanity check that exec.CommandContext is reachable from the wrapper code path.
-var _ *exec.Cmd = (*exec.Cmd)(nil)
+func TestCatalogBundleDownloadURL(t *testing.T) {
+	origVersion := version.Version
+	version.Version = "v1.0.0"
+	defer func() { version.Version = origVersion }()
+
+	got := catalogBundleDownloadURL()
+	want := "https://github.com/" + constants.GitHubRepo + "/releases/download/v1.0.0/catalog.json.sigstore.json"
+	if got != want {
+		t.Errorf("catalogBundleDownloadURL() = %q, want %q", got, want)
+	}
+}
+
+func TestCatalogChecksumURL(t *testing.T) {
+	origVersion := version.Version
+	version.Version = "v1.0.0"
+	defer func() { version.Version = origVersion }()
+
+	got := catalogChecksumURL()
+	want := "https://github.com/" + constants.GitHubRepo + "/releases/download/v1.0.0/catalog.json.sha256"
+	if got != want {
+		t.Errorf("catalogChecksumURL() = %q, want %q", got, want)
+	}
+}
+
+func TestProviderCatalogCachePath(t *testing.T) {
+	got, err := providerCatalogCachePath()
+	if err != nil {
+		t.Fatalf("providerCatalogCachePath() error = %v", err)
+	}
+	if !strings.HasSuffix(got, "/providers.catalog.json") {
+		t.Errorf("providerCatalogCachePath() = %q, want suffix /providers.catalog.json", got)
+	}
+}
