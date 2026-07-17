@@ -114,3 +114,27 @@ func TestGitHubBlobURL(t *testing.T) {
 		})
 	}
 }
+
+func TestCatalogDownloadURL(t *testing.T) {
+	got := CatalogDownloadURL("v1.0.0")
+	want := "https://github.com/dkmnx/kairo/releases/download/v1.0.0/catalog.json"
+	if got != want {
+		t.Errorf("CatalogDownloadURL(%q) = %q, want %q", "v1.0.0", got, want)
+	}
+}
+
+func TestCatalogBundleDownloadURL(t *testing.T) {
+	got := CatalogBundleDownloadURL("v1.0.0")
+	want := "https://github.com/dkmnx/kairo/releases/download/v1.0.0/catalog.json.sigstore.json"
+	if got != want {
+		t.Errorf("CatalogBundleDownloadURL(%q) = %q, want %q", "v1.0.0", got, want)
+	}
+}
+
+func TestCatalogChecksumURL(t *testing.T) {
+	got := CatalogChecksumURL("v1.0.0")
+	want := "https://github.com/dkmnx/kairo/releases/download/v1.0.0/catalog.json.sha256"
+	if got != want {
+		t.Errorf("CatalogChecksumURL(%q) = %q, want %q", "v1.0.0", got, want)
+	}
+}

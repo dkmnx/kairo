@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -92,20 +91,17 @@ func catalogReleaseTag() string {
 
 // catalogDownloadURL returns the download URL for the catalog.json artifact.
 func catalogDownloadURL() string {
-	return fmt.Sprintf("https://github.com/%s/releases/download/%s/catalog.json",
-		constants.GitHubRepo, catalogReleaseTag())
+	return constants.CatalogDownloadURL(catalogReleaseTag())
 }
 
 // catalogBundleDownloadURL returns the download URL for the catalog sigstore bundle.
 func catalogBundleDownloadURL() string {
-	return fmt.Sprintf("https://github.com/%s/releases/download/%s/catalog.json.sigstore.json",
-		constants.GitHubRepo, catalogReleaseTag())
+	return constants.CatalogBundleDownloadURL(catalogReleaseTag())
 }
 
 // catalogChecksumURL returns the download URL for the catalog SHA256 checksum.
 func catalogChecksumURL() string {
-	return fmt.Sprintf("https://github.com/%s/releases/download/%s/catalog.json.sha256",
-		constants.GitHubRepo, catalogReleaseTag())
+	return constants.CatalogChecksumURL(catalogReleaseTag())
 }
 
 // prodCatalogService is the production CatalogService that delegates to

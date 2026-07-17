@@ -43,7 +43,9 @@ func requireConfigDirWritable(cmd *cobra.Command) string {
 	return dir
 }
 
-func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
+// loadConfigFromCmd loads config via CLIContext, printing errors and returning
+// nil config on not-found. Callers wrap this for their specific error behavior.
+func loadConfigFromCmd(cmd *cobra.Command) (*config.Config, error) {
 	dir := requireConfigDir(cmd)
 	if dir == "" {
 		return nil, stderrors.New("config directory not found")
@@ -70,8 +72,17 @@ func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
 	return cfg, nil
 }
 
+func loadConfigOrExit(cmd *cobra.Command) (*config.Config, error) {
+	cfg, err := loadConfigFromCmd(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
 func loadConfigOrEmpty(cmd *cobra.Command) (*config.Config, error) {
-	cfg, err := loadConfigOrExit(cmd)
+	cfg, err := loadConfigFromCmd(cmd)
 	if err != nil {
 		return nil, err
 	}

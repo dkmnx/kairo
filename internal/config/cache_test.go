@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dkmnx/kairo/internal/providers"
 )
 
 func TestConfigCache(t *testing.T) {
@@ -183,5 +185,73 @@ providers:
 
 	for err := range errs {
 		t.Errorf("Concurrent write error: %v", err)
+	}
+}
+
+func TestDeepCopyConfig_IsDeep(t *testing.T) {
+	original := &Config{
+		DefaultProvider: "anthropic",
+		DefaultHarness:  "claude",
+		Providers: map[string]Provider{
+			"anthropic": {
+				Name:    "Anthropic",
+				BaseURL: "https://api.anthropic.com",
+				Model:   "claude-sonnet-4-20250514",
+				EnvKey:  "ANTHROPIC_API_KEY",
+				EnvVars: []string{"CUSTOM_VAR=val"},
+			},
+		},
+		DefaultModels: map[string]string{
+			"anthropic": "claude-sonnet-4-20250514",
+		},
+		CustomProviders: map[string]providers.CustomProviderDefinition{
+			"custom": {Name: "Custom"},
+		},
+	}
+
+	copy := deepCopyConfig(original)
+
+	// Modify the copy
+	copy.DefaultProvider = "openai"
+	copy.DefaultHarness = "qwen"
+	anthCopy := copy.Providers["anthropic"]
+	anthCopy.Name = "Changed"
+	anthCopy.EnvVars[0] = "CHANGED"
+	copy.Providers["anthropic"] = anthCopy
+	copy.Providers["openai"] = Provider{Name: "OpenAI"}
+	copy.DefaultModels["anthropic"] = "changed"
+	copy.DefaultModels["openai"] = "gpt-4"
+	customCopy := copy.CustomProviders["custom"]
+	customCopy.Name = "Changed"
+	copy.CustomProviders["custom"] = customCopy
+	copy.CustomProviders["new"] = providers.CustomProviderDefinition{Name: "New"}
+
+	// Verify original is unchanged
+	if original.DefaultProvider != "anthropic" {
+		t.Errorf("DefaultProvider was mutated: got %q, want %q", original.DefaultProvider, "anthropic")
+	}
+	if original.DefaultHarness != "claude" {
+		t.Errorf("DefaultHarness was mutated: got %q, want %q", original.DefaultHarness, "claude")
+	}
+	if original.Providers["anthropic"].Name != "Anthropic" {
+		t.Errorf("Provider.Name was mutated: got %q, want %q", original.Providers["anthropic"].Name, "Anthropic")
+	}
+	if original.Providers["anthropic"].EnvVars[0] != "CUSTOM_VAR=val" {
+		t.Errorf("Provider.EnvVars was mutated: got %q, want %q", original.Providers["anthropic"].EnvVars[0], "CUSTOM_VAR=val")
+	}
+	if _, ok := original.Providers["openai"]; ok {
+		t.Error("Provider map was mutated: new entry appeared")
+	}
+	if original.DefaultModels["anthropic"] != "claude-sonnet-4-20250514" {
+		t.Errorf("DefaultModels was mutated: got %q, want %q", original.DefaultModels["anthropic"], "claude-sonnet-4-20250514")
+	}
+	if _, ok := original.DefaultModels["openai"]; ok {
+		t.Error("DefaultModels map was mutated: new entry appeared")
+	}
+	if original.CustomProviders["custom"].Name != "Custom" {
+		t.Errorf("CustomProviders was mutated: got %q, want %q", original.CustomProviders["custom"].Name, "Custom")
+	}
+	if _, ok := original.CustomProviders["new"]; ok {
+		t.Error("CustomProviders map was mutated: new entry appeared")
 	}
 }

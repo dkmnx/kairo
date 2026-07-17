@@ -23,6 +23,14 @@ func TestURLValidation(t *testing.T) {
 		{"unspecified IPv4", "https://0.0.0.0/api", "TestProvider", true},
 		{"unspecified IPv6", "https://[::]/api", "TestProvider", true},
 		{"cloud metadata", "https://169.254.169.254/latest/meta-data/", "TestProvider", true},
+		{"loopback 127.0.0.2", "https://127.0.0.2/api", "TestProvider", true},
+		{"loopback 127.127.0.1", "https://127.127.0.1/api", "TestProvider", true},
+		{"loopback 127.255.255.255", "https://127.255.255.255/api", "TestProvider", true},
+		{"current network 0.0.0.1", "https://0.0.0.1/api", "TestProvider", true},
+		{"current network 0.255.255.255", "https://0.255.255.255/api", "TestProvider", true},
+		{"expanded IPv6 loopback", "https://[0:0:0:0:0:0:0:1]/api", "TestProvider", true},
+		{"IPv4-mapped IPv6 loopback", "https://[::ffff:127.0.0.1]/api", "TestProvider", true},
+		{"IPv4-mapped IPv6 private", "https://[::ffff:10.0.0.1]/api", "TestProvider", true},
 		{"valid HTTPS", "https://api.example.com/anthropic", "TestProvider", false},
 		{"valid with path", "https://api.example.com/v1/anthropic", "TestProvider", false},
 	}
@@ -77,6 +85,11 @@ func FuzzValidateURL(f *testing.F) {
 	f.Add("https://192.168.1.1/api", "TestProvider")
 	f.Add("https://api.z.ai/api/anthropic", "zai")
 	f.Add("https://api.minimax.io/v1", "minimax")
+	f.Add("https://127.0.0.2/api", "TestProvider")
+	f.Add("https://0.0.0.1/api", "TestProvider")
+	f.Add("https://[0:0:0:0:0:0:0:1]/api", "TestProvider")
+	f.Add("https://[::ffff:127.0.0.1]/api", "TestProvider")
+	f.Add("https://[::ffff:10.0.0.1]/api", "TestProvider")
 
 	f.Fuzz(func(t *testing.T, rawURL, providerName string) {
 		err := ValidateURL(rawURL, providerName)

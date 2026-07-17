@@ -215,6 +215,7 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	}
 
 	if err := runHarnessWithWrapper(ctx, cfg.Deps, run); err != nil {
+		cleanup()
 		reportHarnessError(cfg, displayName, err)
 	}
 }
