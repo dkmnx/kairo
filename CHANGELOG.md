@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Ensure auth temp directory is cleaned up before process exit on wrapper launch failure
+- Block entire loopback (`127.0.0.0/8`), current network (`0.0.0.0/8`), and IPv6 loopback (`::1/128`) ranges in URL validation for SSRF protection
+
 ## [v2.10.2] - 2026-06-21
 
 ### Fixed
