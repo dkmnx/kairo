@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.10.3] - 2026-07-18
+
 ### Fixed
 
 - Ensure auth temp directory is cleaned up before process exit on wrapper launch failure
@@ -1427,7 +1429,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.10.2...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.10.3...HEAD
+[v2.10.3]: https://github.com/dkmnx/kairo/compare/v2.10.2...v2.10.3
 [v2.10.2]: https://github.com/dkmnx/kairo/compare/v2.10.1...v2.10.2
 [v2.10.1]: https://github.com/dkmnx/kairo/compare/v2.10.0...v2.10.1
 [v2.10.0]: https://github.com/dkmnx/kairo/compare/v2.9.1...v2.10.0
