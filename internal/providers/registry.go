@@ -270,11 +270,14 @@ func (r *ProviderRegistry) ProviderList() []string {
 		}
 	}
 
+	custom := make([]string, 0, len(r.custom))
 	for name := range r.custom {
 		if !seen[name] {
-			result = append(result, name)
+			custom = append(custom, name)
 		}
 	}
+	slices.Sort(custom)
+	result = append(result, custom...)
 
 	return result
 }

@@ -49,12 +49,15 @@ func WriteTempTokenFile(authDir, token string) (string, error) {
 
 	if _, err := f.WriteString(token); err != nil {
 		_ = f.Close()
+		_ = os.Remove(f.Name())
 
 		return "", errors.WrapError(errors.FileSystemError,
 			"failed to write token to temp file", err)
 	}
 
 	if err := f.Close(); err != nil {
+		_ = os.Remove(f.Name())
+
 		return "", errors.WrapError(errors.FileSystemError,
 			"failed to close temp token file", err)
 	}

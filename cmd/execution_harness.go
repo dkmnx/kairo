@@ -64,7 +64,7 @@ func runHarnessExec(cfg ExecutionConfig, harnessPath string, cliArgs []string) e
 // reportHarnessError prints a uniform harness-error line and exits the
 // process. It is the standard post-exec failure path.
 func reportHarnessError(cfg ExecutionConfig, displayName string, err error) {
-	cfg.Cmd.Printf("Error running %s: %v\n", displayName, err)
+	ui.PrintError(fmt.Sprintf("Error running %s: %v", displayName, err))
 	cfg.Deps.Process.ExitProcess(1)
 }
 

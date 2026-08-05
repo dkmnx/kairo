@@ -126,10 +126,6 @@ func TestBuildBuiltInEnvVars(t *testing.T) {
 	expectedKeys := []string{
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_MODEL",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-		"ANTHROPIC_DEFAULT_SONNET_MODEL",
-		"ANTHROPIC_DEFAULT_OPUS_MODEL",
-		"ANTHROPIC_SMALL_FAST_MODEL",
 	}
 
 	envMap := make(map[string]string)
@@ -148,6 +144,20 @@ func TestBuildBuiltInEnvVars(t *testing.T) {
 
 	if envMap["ANTHROPIC_BASE_URL"] != provider.BaseURL {
 		t.Errorf("ANTHROPIC_BASE_URL = %s, want %s", envMap["ANTHROPIC_BASE_URL"], provider.BaseURL)
+	}
+
+	// Model-specific overrides are not set by built-ins; they come from
+	// provider.EnvVars so the main model isn't clobbered onto haiku/sonnet/opus.
+	notExpected := []string{
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+		"ANTHROPIC_DEFAULT_SONNET_MODEL",
+		"ANTHROPIC_DEFAULT_OPUS_MODEL",
+		"ANTHROPIC_SMALL_FAST_MODEL",
+	}
+	for _, key := range notExpected {
+		if _, exists := envMap[key]; exists {
+			t.Errorf("BuildBuiltInEnvVars() should not set %s", key)
+		}
 	}
 }
 

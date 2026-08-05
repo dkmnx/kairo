@@ -14,10 +14,6 @@ func BuildBuiltInEnvVars(provider config.Provider) []string {
 	return []string{
 		fmt.Sprintf("%s=%s", constants.EnvBaseURL, provider.BaseURL),
 		fmt.Sprintf("%s=%s", constants.EnvModel, provider.Model),
-		fmt.Sprintf("%s=%s", constants.EnvHaikuModel, provider.Model),
-		fmt.Sprintf("%s=%s", constants.EnvSonnetModel, provider.Model),
-		fmt.Sprintf("%s=%s", constants.EnvOpusModel, provider.Model),
-		fmt.Sprintf("%s=%s", constants.EnvSmallFast, provider.Model),
 		"NODE_OPTIONS=--no-deprecation",
 	}
 }

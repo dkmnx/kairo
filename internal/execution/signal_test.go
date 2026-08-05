@@ -38,9 +38,9 @@ func TestStartSession_StopCleansUp(t *testing.T) {
 	stop()
 
 	select {
-	case <-time.After(100 * time.Millisecond):
 	case <-ctx.Done():
-		t.Fatal("context should not be canceled after stop without signal")
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("context should be canceled after stop")
 	}
 }
 

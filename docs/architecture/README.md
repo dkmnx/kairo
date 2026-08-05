@@ -133,8 +133,10 @@ kairo/
 │   ├── execution/        # Harness execution dispatch
 │   ├── fsutil/          # Atomic file write utility
 │   ├── harness/         # Harness dispatch (Claude, Qwen, Pi, Crush)
+│   ├── httpfetch/       # HTTP fetching with size limits and cosign verify
+│   ├── integrity/       # Verified catalog downloads (cosign + checksum)
 │   ├── providers/       # Built-in provider registry
-│   ├── secrets/          # Secrets loading and saving
+│   ├── secrets/         # Secrets parse/format utilities (load/save in cmd/)
 │   ├── ui/              # Terminal output and prompts
 │   ├── update/          # Self-update logic
 │   ├── validate/        # Validation helpers
