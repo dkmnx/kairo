@@ -2,6 +2,7 @@ package validate
 
 import (
 	"net"
+	"strings"
 	"testing"
 )
 
@@ -40,16 +41,35 @@ func TestIsPrivateIP(t *testing.T) {
 }
 
 func TestIsBlockedHost(t *testing.T) {
+	stubLookupIP(t, func(host string) ([]net.IP, error) {
+		if strings.Contains(host, "private") {
+			return []net.IP{net.ParseIP("10.0.0.1")}, nil
+		}
+
+		return stubPublicResolver(host)
+	})
+
 	tests := []struct {
 		name string
 		host string
 		want bool
 	}{
 		{"localhost", "localhost", true},
+		{"localhost trailing dot", "localhost.", true},
 		{"127.0.0.1", "127.0.0.1", true},
+		{"127.0.0.1 trailing dot", "127.0.0.1.", true},
 		{"::1 IPv6 localhost", "::1", true},
+		{"shortened loopback", "127.1", true},
+		{"shortened loopback 3-part", "127.0.1", true},
+		{"decimal loopback", "2130706433", true},
+		{"hex loopback", "0x7f000001", true},
+		{"octal loopback", "0177.0.0.1", true},
+		{"hex dotted loopback", "0x7f.0.0.1", true},
+		{"hostname resolving to private", "internal.private", true},
 		{"public host", "api.example.com", false},
 		{"public IP", "8.8.8.8", false},
+		{"numeric-looking hostname with letter", "x1", false},
+		{"hostname with x not 0x-prefixed", "examplex.com", false},
 	}
 
 	for _, tt := range tests {

@@ -1,12 +1,37 @@
 package validate
 
 import (
+	"context"
+	"net"
 	"net/url"
 	"strings"
 	"testing"
 )
 
+// stubLookupIP replaces the package DNS resolver for the duration of a test.
+func stubLookupIP(t *testing.T, fn func(host string) ([]net.IP, error)) {
+	t.Helper()
+	orig := lookupIP
+	lookupIP = func(_ context.Context, host string) ([]net.IP, error) {
+		return fn(host)
+	}
+	t.Cleanup(func() { lookupIP = orig })
+}
+
+// stubPublicResolver resolves every hostname to a public address.
+func stubPublicResolver(host string) ([]net.IP, error) {
+	return []net.IP{net.ParseIP("93.184.216.34")}, nil
+}
+
 func TestURLValidation(t *testing.T) {
+	stubLookupIP(t, func(host string) ([]net.IP, error) {
+		if strings.Contains(host, "nip.io") {
+			return []net.IP{net.ParseIP("169.254.169.254")}, nil
+		}
+
+		return stubPublicResolver(host)
+	})
+
 	tests := []struct {
 		name         string
 		url          string
@@ -16,7 +41,9 @@ func TestURLValidation(t *testing.T) {
 		{"empty URL", "", "TestProvider", true},
 		{"http instead of https", "http://api.example.com", "TestProvider", true},
 		{"localhost", "https://localhost/api", "TestProvider", true},
+		{"localhost trailing dot", "https://localhost./api", "TestProvider", true},
 		{"127.0.0.1", "https://127.0.0.1/api", "TestProvider", true},
+		{"127.0.0.1 trailing dot", "https://127.0.0.1./api", "TestProvider", true},
 		{"private IP 10.x", "https://10.0.0.1/api", "TestProvider", true},
 		{"private IP 172.16.x", "https://172.16.0.1/api", "TestProvider", true},
 		{"private IP 192.168.x", "https://192.168.1.1/api", "TestProvider", true},
@@ -31,8 +58,17 @@ func TestURLValidation(t *testing.T) {
 		{"expanded IPv6 loopback", "https://[0:0:0:0:0:0:0:1]/api", "TestProvider", true},
 		{"IPv4-mapped IPv6 loopback", "https://[::ffff:127.0.0.1]/api", "TestProvider", true},
 		{"IPv4-mapped IPv6 private", "https://[::ffff:10.0.0.1]/api", "TestProvider", true},
+		{"shortened loopback 127.1", "https://127.1/api", "TestProvider", true},
+		{"shortened loopback 127.0.1", "https://127.0.1/api", "TestProvider", true},
+		{"decimal loopback", "https://2130706433/api", "TestProvider", true},
+		{"hex loopback", "https://0x7f000001/api", "TestProvider", true},
+		{"uppercase hex loopback", "https://0X7F000001/api", "TestProvider", true},
+		{"octal loopback", "https://0177.0.0.1/api", "TestProvider", true},
+		{"hex dotted loopback", "https://0x7f.0.0.1/api", "TestProvider", true},
+		{"metadata via DNS rebinding", "https://169.254.169.254.nip.io/latest/meta-data/", "TestProvider", true},
 		{"valid HTTPS", "https://api.example.com/anthropic", "TestProvider", false},
 		{"valid with path", "https://api.example.com/v1/anthropic", "TestProvider", false},
+		{"valid provider host", "https://api.z.ai/api/anthropic", "zai", false},
 	}
 
 	for _, tt := range tests {
@@ -92,6 +128,15 @@ func FuzzValidateURL(f *testing.F) {
 	f.Add("https://[::ffff:10.0.0.1]/api", "TestProvider")
 
 	f.Fuzz(func(t *testing.T, rawURL, providerName string) {
+		// Stub DNS so fuzzing is deterministic and offline; random hostnames
+		// resolve to a public address and are only rejected when their host
+		// is a literal private/numeric form.
+		orig := lookupIP
+		lookupIP = func(_ context.Context, host string) ([]net.IP, error) {
+			return stubPublicResolver(host)
+		}
+		defer func() { lookupIP = orig }()
+
 		err := ValidateURL(rawURL, providerName)
 
 		if err != nil && providerName != "" {
