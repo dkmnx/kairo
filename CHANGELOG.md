@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `--reset-secrets` now generates the new encryption key before removing the old key and secrets, so an interrupted or failed reset no longer destroys stored API keys
+- Standalone install scripts (`install.sh`, `install.ps1`) now abort when the checksum file is unavailable or the binary checksum does not match, instead of installing an unverified binary
+- Fix PowerShell installer silently skipping cosign signature verification due to an undefined `$versionNoPrefix` variable
+
 ## [v2.10.3] - 2026-07-18
 
 ### Fixed
