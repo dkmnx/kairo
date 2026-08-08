@@ -679,6 +679,27 @@ func TestVerifyCosignBundle_CosignNotInstalled(t *testing.T) {
 	}
 }
 
+func TestVerifyCosignBundle_StrictModeCosignMissing(t *testing.T) {
+	c := &Client{
+		HTTPClient: &http.Client{},
+		EnvFunc: func(key string) (string, bool) {
+			if key == "KAIRO_REQUIRE_COSIGN" {
+				return "1", true
+			}
+
+			return "", false
+		},
+		LookPathFunc: func(string) (string, error) { return "", fmt.Errorf("not found") },
+	}
+	err := c.VerifyCosignBundle(context.Background(), "v1.0.0")
+	if err == nil {
+		t.Error("VerifyCosignBundle should error when cosign missing and KAIRO_REQUIRE_COSIGN=1")
+	}
+	if !strings.Contains(err.Error(), "KAIRO_REQUIRE_COSIGN") {
+		t.Errorf("error should mention KAIRO_REQUIRE_COSIGN, got: %v", err)
+	}
+}
+
 func TestVerifyCosignBundle_BundleDownloadFails(t *testing.T) {
 	c := &Client{
 		HTTPClient:   &http.Client{Transport: failingTransport{}},

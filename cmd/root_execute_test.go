@@ -79,7 +79,11 @@ func TestExecute(t *testing.T) {
 
 	t.Run("with --verbose flag", func(t *testing.T) {
 		oldArgs := os.Args
-		defer func() { os.Args = oldArgs }()
+		originalVerboseFlag := verboseFlag
+		defer func() {
+			os.Args = oldArgs
+			verboseFlag = originalVerboseFlag
+		}()
 
 		os.Args = []string{"kairo", "--verbose", "--help"}
 		output := &bytes.Buffer{}

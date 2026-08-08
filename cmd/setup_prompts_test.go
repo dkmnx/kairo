@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -9,6 +10,24 @@ import (
 	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/yarlson/tap"
 )
+
+// waitForOutput polls the mock writable until a rendered frame contains want.
+// tap registers the keypress listener before rendering a prompt, so observing
+// the prompt's output guarantees subsequent emitted keypresses are queued and
+// handled — unlike fixed sleeps, which race slow prompt setup (e.g. DNS).
+func waitForOutput(t *testing.T, out *tap.MockWritable, want string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, f := range out.GetFrames() {
+			if strings.Contains(f, want) {
+				return
+			}
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for prompt output %q; frames: %v", want, out.GetFrames())
+}
 
 func mustProvider(t *testing.T, name string) providers.ProviderDefinition {
 	t.Helper()
@@ -29,26 +48,91 @@ func setupTapTest(t *testing.T) (*tap.MockReadable, *tap.MockWritable) {
 	return in, out
 }
 
-func emitReturn(in *tap.MockReadable) {
-	in.EmitKeypress("", tap.Key{Name: "return"})
+// advanceWithin reports whether the mock writable gained frames within d.
+func advanceWithin(out *tap.MockWritable, before int, d time.Duration) bool {
+	deadline := time.Now().Add(d)
+	for time.Now().Before(deadline) {
+		if len(out.GetFrames()) != before {
+			return true
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	return false
 }
 
-func emitText(in *tap.MockReadable, text string) {
-	for _, ch := range text {
-		in.EmitKeypress(string(ch), tap.Key{Name: string(ch)})
+// pressReturn emits a return keypress and retries until the prompt output
+// advances (the keypress was consumed) or the attempt budget is exhausted.
+// A keypress emitted inside tap's async listener-registration window can be
+// silently dropped; retrying is safe because an unchanged output means the
+// same prompt is still active, and a delivered return always renders.
+func pressReturn(in *tap.MockReadable, out *tap.MockWritable) {
+	for attempt := 0; attempt < 5; attempt++ {
+		before := len(out.GetFrames())
+		in.EmitKeypress("", tap.Key{Name: "return"})
+		if advanceWithin(out, before, 200*time.Millisecond) {
+			return
+		}
+	}
+}
+
+// typeText types text into the prompt labeled want (waiting for it to
+// render), confirming the first character is consumed (the drop window), then
+// presses return with retry.
+func typeText(t *testing.T, in *tap.MockReadable, out *tap.MockWritable, want, text string) {
+	t.Helper()
+	waitForOutput(t, out, want)
+
+	for i, ch := range text {
+		emit := func() {
+			in.EmitKeypress(string(ch), tap.Key{Name: string(ch)})
+		}
+		if i == 0 {
+			// First keypress after a prompt starts can be dropped; confirm
+			// it renders before continuing.
+			for attempt := 0; attempt < 5; attempt++ {
+				before := len(out.GetFrames())
+				emit()
+				if advanceWithin(out, before, 200*time.Millisecond) {
+					break
+				}
+			}
+		} else {
+			emit()
+		}
+	}
+
+	pressReturn(in, out)
+}
+
+// pressEnter waits for the prompt labeled want and presses return with retry.
+func pressEnter(t *testing.T, in *tap.MockReadable, out *tap.MockWritable, want string) {
+	t.Helper()
+	waitForOutput(t, out, want)
+	pressReturn(in, out)
+}
+
+// answerConfirm waits for the confirm prompt labeled want and answers it with
+// y or n. The character itself submits the confirm (tap submits on y/n), so
+// no return keypress follows.
+func answerConfirm(t *testing.T, in *tap.MockReadable, out *tap.MockWritable, want, answer string) {
+	t.Helper()
+	waitForOutput(t, out, want)
+	in.EmitKeypress(answer, tap.Key{Name: answer})
+	if !advanceWithin(out, len(out.GetFrames()), time.Second) {
+		t.Fatalf("confirm %q did not submit on %q; frames: %v", want, answer, out.GetFrames())
 	}
 }
 
 func TestPromptForNewProvider(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	resultCh := make(chan string)
 	go func() {
 		resultCh <- promptForNewProvider(context.Background())
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
+	pressEnter(t, in, out, "Select provider to configure")
 
 	result := <-resultCh
 
@@ -59,7 +143,7 @@ func TestPromptForNewProvider(t *testing.T) {
 }
 
 func TestPromptForProvider_NoExistingProviders(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := &config.Config{
 		DefaultProvider: "",
@@ -71,8 +155,7 @@ func TestPromptForProvider_NoExistingProviders(t *testing.T) {
 		resultCh <- promptForProvider(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
+	pressEnter(t, in, out, "Select provider to configure")
 
 	result := <-resultCh
 
@@ -83,7 +166,7 @@ func TestPromptForProvider_NoExistingProviders(t *testing.T) {
 }
 
 func TestPromptForProvider_WithExistingProviders(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := &config.Config{
 		DefaultProvider: "zai",
@@ -97,8 +180,7 @@ func TestPromptForProvider_WithExistingProviders(t *testing.T) {
 		resultCh <- promptForProvider(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
+	pressEnter(t, in, out, "Select provider to edit or setup new")
 
 	result := <-resultCh
 
@@ -108,7 +190,7 @@ func TestPromptForProvider_WithExistingProviders(t *testing.T) {
 }
 
 func TestPromptForExistingOrNewProvider_SelectExisting(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := &config.Config{
 		DefaultProvider: "zai",
@@ -122,8 +204,7 @@ func TestPromptForExistingOrNewProvider_SelectExisting(t *testing.T) {
 		resultCh <- promptForExistingOrNewProvider(context.Background(), cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
+	pressEnter(t, in, out, "Select provider to edit or setup new")
 
 	result := <-resultCh
 
@@ -133,7 +214,7 @@ func TestPromptForExistingOrNewProvider_SelectExisting(t *testing.T) {
 }
 
 func TestPromptForAPIKey_NewInput(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
@@ -147,9 +228,7 @@ func TestPromptForAPIKey_NewInput(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "sk-zai")
-	emitReturn(in)
+	typeText(t, in, out, "API Key", "sk-zai")
 
 	result := <-resultCh
 
@@ -159,7 +238,7 @@ func TestPromptForAPIKey_NewInput(t *testing.T) {
 }
 
 func TestPromptForAPIKey_EditKeep(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
@@ -174,10 +253,7 @@ func TestPromptForAPIKey_EditKeep(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	// Confirm "Modify API key?" -> n + return
-	emitText(in, "n")
-	emitReturn(in)
+	answerConfirm(t, in, out, "Modify API key?", "n")
 
 	result := <-resultCh
 
@@ -187,7 +263,7 @@ func TestPromptForAPIKey_EditKeep(t *testing.T) {
 }
 
 func TestPromptForAPIKey_EditChange(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
@@ -202,16 +278,8 @@ func TestPromptForAPIKey_EditChange(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	// Confirm "Modify API key?" -> y + return
-	emitText(in, "y")
-	emitReturn(in)
-
-	// Wait for password prompt to register handler
-	time.Sleep(50 * time.Millisecond)
-	// New password
-	emitText(in, "new-key")
-	emitReturn(in)
+	answerConfirm(t, in, out, "Modify API key?", "y")
+	typeText(t, in, out, "New API Key", "new-key")
 
 	result := <-resultCh
 
@@ -221,7 +289,7 @@ func TestPromptForAPIKey_EditChange(t *testing.T) {
 }
 
 func TestPromptForField_NewInput(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := promptFieldConfig{
 		Label:        "Base URL",
@@ -235,9 +303,7 @@ func TestPromptForField_NewInput(t *testing.T) {
 		resultCh <- promptForField(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "https://custom.url")
-	emitReturn(in)
+	typeText(t, in, out, "Base URL", "https://custom.url")
 
 	result := <-resultCh
 
@@ -247,7 +313,7 @@ func TestPromptForField_NewInput(t *testing.T) {
 }
 
 func TestPromptForField_NewInputBlank(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := promptFieldConfig{
 		Label:        "Base URL",
@@ -261,8 +327,7 @@ func TestPromptForField_NewInputBlank(t *testing.T) {
 		resultCh <- promptForField(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
+	pressEnter(t, in, out, "Base URL")
 
 	result := <-resultCh
 
@@ -272,7 +337,7 @@ func TestPromptForField_NewInputBlank(t *testing.T) {
 }
 
 func TestPromptForFieldEdit_Keep(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := promptFieldConfig{
 		Label:        "Model",
@@ -287,10 +352,7 @@ func TestPromptForFieldEdit_Keep(t *testing.T) {
 		resultCh <- promptForFieldEdit(context.Background(), cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	// Confirm "Modify Model? (current: glm-5)" -> n + return
-	emitText(in, "n")
-	emitReturn(in)
+	answerConfirm(t, in, out, "Modify Model?", "n")
 
 	result := <-resultCh
 
@@ -300,7 +362,7 @@ func TestPromptForFieldEdit_Keep(t *testing.T) {
 }
 
 func TestPromptForFieldEdit_Change(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := promptFieldConfig{
 		Label:        "Model",
@@ -315,16 +377,8 @@ func TestPromptForFieldEdit_Change(t *testing.T) {
 		resultCh <- promptForFieldEdit(context.Background(), cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	// Confirm "Modify Model? (current: glm-5)" -> y + return
-	emitText(in, "y")
-	emitReturn(in)
-
-	// Wait for text prompt to register handler
-	time.Sleep(50 * time.Millisecond)
-	// New model text
-	emitText(in, "new-model")
-	emitReturn(in)
+	answerConfirm(t, in, out, "Modify Model?", "y")
+	typeText(t, in, out, "New Model", "new-model")
 
 	result := <-resultCh
 
@@ -334,7 +388,7 @@ func TestPromptForFieldEdit_Change(t *testing.T) {
 }
 
 func TestPromptForFieldEdit_NoCurrent(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := promptFieldConfig{
 		Label:        "Model",
@@ -349,9 +403,7 @@ func TestPromptForFieldEdit_NoCurrent(t *testing.T) {
 		resultCh <- promptForFieldEdit(context.Background(), cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "new")
-	emitReturn(in)
+	typeText(t, in, out, "Model", "new")
 
 	result := <-resultCh
 
@@ -361,7 +413,7 @@ func TestPromptForFieldEdit_NoCurrent(t *testing.T) {
 }
 
 func TestPromptForAPIKey_EditNoExistingKey(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
@@ -376,9 +428,7 @@ func TestPromptForAPIKey_EditNoExistingKey(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "sk-new")
-	emitReturn(in)
+	typeText(t, in, out, "API Key", "sk-new")
 
 	result := <-resultCh
 
@@ -388,7 +438,7 @@ func TestPromptForAPIKey_EditNoExistingKey(t *testing.T) {
 }
 
 func TestPromptForAPIKey_CustomProviderFallback(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := providerPromptConfig{
 		ProviderName: "myprovider",
@@ -403,9 +453,7 @@ func TestPromptForAPIKey_CustomProviderFallback(t *testing.T) {
 		resultCh <- promptForAPIKey(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "n")
-	emitReturn(in)
+	answerConfirm(t, in, out, "Modify API key?", "n")
 
 	result := <-resultCh
 
@@ -415,7 +463,7 @@ func TestPromptForAPIKey_CustomProviderFallback(t *testing.T) {
 }
 
 func TestPromptForFieldEdit_KeepByEnter(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := promptFieldConfig{
 		Label:        "Base URL",
@@ -430,8 +478,7 @@ func TestPromptForFieldEdit_KeepByEnter(t *testing.T) {
 		resultCh <- promptForFieldEdit(context.Background(), cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
+	pressEnter(t, in, out, "Modify Base URL?")
 
 	result := <-resultCh
 
@@ -441,7 +488,7 @@ func TestPromptForFieldEdit_KeepByEnter(t *testing.T) {
 }
 
 func TestPromptForField_EditMaintainsExisting(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := promptFieldConfig{
 		Label:        "Base URL",
@@ -456,9 +503,7 @@ func TestPromptForField_EditMaintainsExisting(t *testing.T) {
 		resultCh <- promptForField(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "n")
-	emitReturn(in)
+	answerConfirm(t, in, out, "Modify Base URL?", "n")
 
 	result := <-resultCh
 
@@ -492,7 +537,7 @@ func TestDisplayProviderHeader_NewOnly(t *testing.T) {
 }
 
 func TestPromptForBaseURL(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
@@ -507,9 +552,7 @@ func TestPromptForBaseURL(t *testing.T) {
 		resultCh <- promptForBaseURL(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "https://custom.api.com")
-	emitReturn(in)
+	typeText(t, in, out, "Base URL", "https://custom.api.com")
 
 	result := <-resultCh
 
@@ -519,7 +562,7 @@ func TestPromptForBaseURL(t *testing.T) {
 }
 
 func TestPromptForModel(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
@@ -534,9 +577,7 @@ func TestPromptForModel(t *testing.T) {
 		resultCh <- promptForModel(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "custom-model")
-	emitReturn(in)
+	typeText(t, in, out, "Model", "custom-model")
 
 	result := <-resultCh
 
@@ -546,7 +587,7 @@ func TestPromptForModel(t *testing.T) {
 }
 
 func TestPromptForEnvKey(t *testing.T) {
-	in, _ := setupTapTest(t)
+	in, out := setupTapTest(t)
 
 	cfg := providerPromptConfig{
 		ProviderName: "zai",
@@ -561,9 +602,7 @@ func TestPromptForEnvKey(t *testing.T) {
 		resultCh <- promptForEnvKey(cfg)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "CUSTOM_API_KEY")
-	emitReturn(in)
+	typeText(t, in, out, "Env Key", "CUSTOM_API_KEY")
 
 	result := <-resultCh
 

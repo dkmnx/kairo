@@ -9,13 +9,13 @@ import (
 )
 
 // startConfigureProvider spins up configureProvider in a goroutine using a
-// mock-backed CLIContext and returns the input handle, config, and a channel
-// that receives the provider name or "error:<msg>" on completion.
+// mock-backed CLIContext and returns the input handle, output handle, config,
+// and a channel that receives the provider name or "error:<msg>" on completion.
 func startConfigureProvider(
 	t *testing.T,
 	providerName string,
 	cfg *config.Config,
-) (in *tap.MockReadable, cfgOut *config.Config, resultCh chan string) {
+) (in *tap.MockReadable, out *tap.MockWritable, cfgOut *config.Config, resultCh chan string) {
 	return startConfigureProviderWithSecrets(t, providerName, cfg, nil)
 }
 
@@ -27,10 +27,10 @@ func startConfigureProviderWithSecrets(
 	providerName string,
 	cfg *config.Config,
 	seedSecrets map[string]string,
-) (in *tap.MockReadable, cfgOut *config.Config, resultCh chan string) {
+) (in *tap.MockReadable, out *tap.MockWritable, cfgOut *config.Config, resultCh chan string) {
 	t.Helper()
 
-	in, _ = setupTapTest(t)
+	in, out = setupTapTest(t)
 	configDir := t.TempDir()
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(configDir)
@@ -68,5 +68,5 @@ func startConfigureProviderWithSecrets(
 		resultCh <- result
 	}()
 
-	return in, cfg, resultCh
+	return in, out, cfg, resultCh
 }

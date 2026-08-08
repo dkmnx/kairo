@@ -72,9 +72,9 @@ func TestEscapePowerShellArg_AdditionalMetachars(t *testing.T) {
 		in   string
 		want string
 	}{
-		{"ampersand", "a&b", "'a`&b'"},
-		{"percent", "100%", "'100``%'"},
-		{"tab", "a\tb", "'a`tb'"},
+		{"ampersand", "a&b", "'a&b'"},
+		{"percent", "100%", "'100%'"},
+		{"tab", "a\tb", "'a\tb'"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

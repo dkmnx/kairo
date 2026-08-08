@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--reset-secrets` now generates the new encryption key before removing the old key and secrets, so an interrupted or failed reset no longer destroys stored API keys
 - Standalone install scripts (`install.sh`, `install.ps1`) now abort when the checksum file is unavailable or the binary checksum does not match, instead of installing an unverified binary
 - Fix PowerShell installer silently skipping cosign signature verification due to an undefined `$versionNoPrefix` variable
+- Block non-canonical IP encodings (`127.1`, `2130706433`, `0x7f000001`, octal forms, trailing-dot hosts) and hostnames resolving to private/link-local addresses in base-URL validation
+- `KAIRO_REQUIRE_COSIGN=1` now aborts the update when the `cosign` binary is missing, not only when bundle verification fails
+- Save encrypted secrets before `config.yaml` during setup so a failure cannot leave a configured provider without its stored key
+- PowerShell wrapper escaping now only single-quote-wraps and doubles embedded quotes; characters like `$`, `"`, `&`, and `|` pass through to the harness unchanged instead of being corrupted with injected backticks/backslashes
+- Fix order-dependent test pollution from a leaked `verboseFlag` package global
+- Replace fixed-sleep prompt tests with output-driven synchronization to eliminate timing-dependent flakiness
 
 ## [v2.10.3] - 2026-07-18
 

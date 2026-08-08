@@ -66,6 +66,14 @@ func configureProvider(params ProviderSetup) (string, error) {
 		Existing:   &provider,
 	})
 
+	// Persist the API key before the config so a failure writing config.yaml
+	// never leaves a configured provider without its stored key. A key for a
+	// provider not yet in the config is an inert orphan entry.
+	params.Secrets[harness.APIKeyEnvVar(validatedName)] = apiKey
+	if err := SaveSecrets(params.CLIContext, params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
+		return "", err
+	}
+
 	setAsDefault := params.Cfg.DefaultProvider == ""
 	if err := AddAndSaveProvider(AddProviderParams{
 		CLIContext:   params.CLIContext,
@@ -75,11 +83,6 @@ func configureProvider(params ProviderSetup) (string, error) {
 		Provider:     provider,
 		SetAsDefault: setAsDefault,
 	}); err != nil {
-		return "", err
-	}
-
-	params.Secrets[harness.APIKeyEnvVar(validatedName)] = apiKey
-	if err := SaveSecrets(params.CLIContext, params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
 		return "", err
 	}
 

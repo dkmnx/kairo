@@ -1,5 +1,5 @@
 # Kairo release checksums
 # DO NOT EDIT - This file is auto-generated during release
 
-39bbde292cad7107190bbcab65577a9fa2e8399ba7a9bbd0007e4d7b7e83c664 *scripts/install.sh
-573e516ddba1e840963e94bdf0bf425de6e4ac4d71e59e4ad621dadbf7cdb008 *scripts/install.ps1
+39bbde292cad7107190bbcab65577a9fa2e8399ba7a9bbd0007e4d7b7e83c664  scripts/install.sh
+573e516ddba1e840963e94bdf0bf425de6e4ac4d71e59e4ad621dadbf7cdb008  scripts/install.ps1

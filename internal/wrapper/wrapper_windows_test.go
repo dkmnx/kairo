@@ -28,8 +28,8 @@ func TestGenerateWindowsScript_BasicOutput(t *testing.T) {
 	if !strings.Contains(script, "Remove-Item") {
 		t.Error("Script should remove token file")
 	}
-	if !strings.Contains(script, "C:\\\\temp\\\\token") {
-		t.Error("Script should contain token path (with escaped backslashes)")
+	if !strings.Contains(script, "'C:\\temp\\token'") {
+		t.Error("Script should contain single-quoted token path")
 	}
 }
 
@@ -44,14 +44,17 @@ func TestGenerateWindowsScript_WithSpecialCharacters(t *testing.T) {
 
 	script := GenerateWindowsScript("ANTHROPIC_AUTH_TOKEN", cfg)
 
-	if !strings.Contains(script, "`$HOME") {
-		t.Error("Script should escape dollar sign in $HOME")
+	if !strings.Contains(script, "$HOME") {
+		t.Error("Script should keep dollar sign literal inside single quotes")
 	}
-	if strings.Contains(script, "$HOME") && !strings.Contains(script, "`$HOME") {
-		t.Error("Dollar sign should be escaped")
+	if strings.Contains(script, "`$HOME") {
+		t.Error("Script must not inject a backtick before $HOME")
 	}
-	if !strings.Contains(script, `\"quotes\"`) {
-		t.Error("Script should escape double quotes properly")
+	if !strings.Contains(script, `"quotes"`) {
+		t.Error("Script should keep double quotes literal inside single quotes")
+	}
+	if strings.Contains(script, `\"quotes\"`) {
+		t.Error("Script must not backslash-escape double quotes")
 	}
 }
 
@@ -66,11 +69,11 @@ func TestGenerateWindowsScript_WithDollarVariables(t *testing.T) {
 
 	script := GenerateWindowsScript("ANTHROPIC_AUTH_TOKEN", cfg)
 
-	if !strings.Contains(script, "`$price") {
-		t.Error("Script should escape $price variable")
+	if !strings.Contains(script, "$price") {
+		t.Error("Script should keep $price literal inside single quotes")
 	}
-	if !strings.Contains(script, "`$total") {
-		t.Error("Script should escape $total variable")
+	if !strings.Contains(script, "$total") {
+		t.Error("Script should keep $total literal inside single quotes")
 	}
 }
 
