@@ -87,8 +87,8 @@ function Get-Checksum {
         return $response
     }
     catch {
-        Write-Log "Warning: Checksum file not found, skipping verification"
-        return $null
+        Write-Error-Log "Failed to download checksum file: $_"
+        exit 1
     }
 }
 
@@ -111,16 +111,17 @@ function Test-Checksum {
     param([string]$FilePath, [string]$ChecksumData, [string]$BinaryName, [string]$Arch)
 
     if (-not $ChecksumData) {
-        return $true
+        Write-Error-Log "Checksum data is missing, aborting installation"
+        return $false
     }
 
     Write-Log "Verifying checksum..."
     $hash = Get-FileHashCompat -Path $FilePath
 
-    # Parse checksums.txt to find the matching hash
+    # Parse checksums.txt to find the hash for this exact binary+arch.
     $lines = $ChecksumData -split "`n"
     foreach ($line in $lines) {
-        if ($line -match "^([a-f0-9]+)\s+($($BinaryName)_windows_\S+)") {
+        if ($line -match "^([a-fA-F0-9]+)\s+($($BinaryName)_windows_$($Arch)\.zip)\s*$") {
             $expectedHash = $matches[1].ToLower()
             $actualHash = $hash.Hash.ToLower()
 
@@ -137,8 +138,8 @@ function Test-Checksum {
         }
     }
 
-    Write-Log "Warning: Could not find checksum for this binary"
-    return $true # Continue anyway
+    Write-Error-Log "Could not find checksum entry for ${BinaryName}_windows_$Arch.zip"
+    return $false
 }
 
 function Stop-KairoProcess {
@@ -197,6 +198,10 @@ function Install-Binary {
     $os = "windows"
     $filename = "${BinaryName}_${os}_${Arch}.zip"
     $url = "https://github.com/$Repo/releases/download/$Version/$filename"
+
+    # Defined here (not inside Get-Checksum, whose scope dies on return) so the
+    # cosign bundle/checksum downloads below use the correct artifact names.
+    $versionNoPrefix = $Version -replace '^v', ''
 
     Write-Log "Downloading $url..."
 
