@@ -113,7 +113,7 @@ func (m *mockCrypto) GenerateKey(ctx context.Context, keyPath string) error {
 		return m.GenerateKeyFn(ctx, keyPath)
 	}
 
-	return nil
+	return crypto.GenerateKey(ctx, keyPath)
 }
 
 func (m *mockCrypto) EncryptSecrets(ctx context.Context, secretsPath, keyPath, secrets string) error {

@@ -106,21 +106,63 @@ func LoadSecrets(cliCtx *CLIContext, configDir string) (SecretsResult, error) {
 	return result, nil
 }
 
-// ResetSecretsFiles deletes and regenerates the encryption key and secrets files.
+// ResetSecretsFiles regenerates the encryption key and deletes the old
+// secrets. The new key is generated to a temporary path before the old key is
+// touched, so a failure mid-reset (e.g. disk full) leaves the previous key
+// and secrets fully intact instead of destroying the user's stored API keys.
+// The old key is only removed after the new one is installed.
 func ResetSecretsFiles(ctx context.Context, cliCtx *CLIContext, configDir, secretsPath, keyPath string) error {
-	if err := os.Remove(keyPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	tmpKeyPath := filepath.Join(configDir, constants.KeyFileName+".new")
+
+	// Clear any stale temp key left by an interrupted previous reset.
+	if err := os.Remove(tmpKeyPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to remove old key file", err)
+			"failed to prepare new key path", err).
+			WithContext("path", tmpKeyPath)
+	}
+
+	// Generate the new key first. On failure the old key and secrets are
+	// untouched and remain usable.
+	if err := cliCtx.Crypto().GenerateKey(ctx, tmpKeyPath); err != nil {
+		return kairoerrors.WrapError(kairoerrors.CryptoError,
+			"failed to generate new encryption key", err).
+			WithContext("path", tmpKeyPath)
+	}
+
+	// Move the old key aside, then install the new one. os.Rename replaces an
+	// existing destination, so no pre-deletion is required.
+	backupKeyPath := keyPath + ".backup"
+	if err := os.Rename(keyPath, backupKeyPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		_ = os.Remove(tmpKeyPath)
+
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to move old key aside", err).
+			WithContext("path", keyPath)
+	}
+
+	if err := os.Rename(tmpKeyPath, keyPath); err != nil {
+		// Best effort: restore the old key so the config directory is not
+		// left without one. If the restore fails, the old key remains at
+		// backupKeyPath.
+		_ = os.Rename(backupKeyPath, keyPath)
+		_ = os.Remove(tmpKeyPath)
+
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to install new encryption key", err).
+			WithContext("path", keyPath)
+	}
+
+	// The old key and secrets are no longer usable with the new key.
+	if err := os.Remove(backupKeyPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return kairoerrors.WrapError(kairoerrors.FileSystemError,
+			"failed to remove old key backup", err).
+			WithContext("path", backupKeyPath)
 	}
 
 	if err := os.Remove(secretsPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return kairoerrors.WrapError(kairoerrors.FileSystemError,
-			"failed to remove old secrets file", err)
-	}
-
-	if err := cliCtx.Crypto().EnsureKeyExists(ctx, configDir); err != nil {
-		return kairoerrors.WrapError(kairoerrors.CryptoError,
-			"failed to generate new encryption key", err)
+			"failed to remove old secrets file", err).
+			WithContext("path", secretsPath)
 	}
 
 	return nil
