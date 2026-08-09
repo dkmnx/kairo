@@ -160,8 +160,6 @@ providers:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
     model: glm-5.1
-    env_vars:
-      - ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash
 ```
 
 Notes:

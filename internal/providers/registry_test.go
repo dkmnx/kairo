@@ -475,9 +475,9 @@ func TestBuiltInProviderEnvVars(t *testing.T) {
 		wantVars  int
 		hasPrefix string
 	}{
-		{"zai has env vars", "zai", 1, "ANTHROPIC_DEFAULT_HAIKU_MODEL"},
+		{"zai has env vars", "zai", 0, ""},
 		{"minimax has env vars", "minimax", 2, "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT"},
-		{"kimi has env vars", "kimi", 2, "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT"},
+		{"kimi has env vars", "kimi", 0, ""},
 		{"deepseek has env vars", "deepseek", 5, "ANTHROPIC_DEFAULT_HAIKU_MODEL"},
 		{"anthropic has no env vars", "anthropic", 0, ""},
 		{"openai has no env vars", "openai", 0, ""},

@@ -91,13 +91,13 @@ func TestValidateCrossProviderConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "malformed env var (no equals)",
+			name: "valueless env var (no equals)",
 			providers: map[string]config.Provider{
 				"provider1": {
 					EnvVars: []string{"INVALID_VAR"},
 				},
 			},
-			wantErr: false, // malformed vars are skipped
+			wantErr: false, // valueless entries bind the key; single provider -> no conflict
 		},
 		{
 			name: "malformed env var (empty key)",
@@ -106,7 +106,7 @@ func TestValidateCrossProviderConfig(t *testing.T) {
 					EnvVars: []string{"=value"},
 				},
 			},
-			wantErr: false, // malformed vars are skipped
+			wantErr: false, // empty keys are skipped
 		},
 		{
 			name: "whitespace in key and value - same after trim",
@@ -132,6 +132,80 @@ func TestValidateCrossProviderConfig(t *testing.T) {
 			},
 			wantErr: true, // Keys match after trim, but values differ -> collision
 			errMsg:  "environment variable",
+		},
+		{
+			name: "valueless env var vs valued env var",
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"SHARED"},
+				},
+				"provider2": {
+					EnvVars: []string{"SHARED=value"},
+				},
+			},
+			wantErr: true, // valueless entry binds the key with an empty value
+			errMsg:  "SHARED",
+		},
+		{
+			name: "two valueless entries same key",
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"SHARED"},
+				},
+				"provider2": {
+					EnvVars: []string{"SHARED"},
+				},
+			},
+			wantErr: false, // both empty -> no conflict
+		},
+		{
+			name: "shared api key env var",
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvKey: "CUSTOM_API_KEY",
+				},
+				"provider2": {
+					EnvKey: "CUSTOM_API_KEY",
+				},
+			},
+			wantErr: true, // two providers bound to the same key variable
+			errMsg:  "CUSTOM_API_KEY",
+		},
+		{
+			name: "api key env var vs regular env var",
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvKey: "FOO",
+				},
+				"provider2": {
+					EnvVars: []string{"FOO=value"},
+				},
+			},
+			wantErr: true, // key binding clashes with a regular env var
+			errMsg:  "FOO",
+		},
+		{
+			name: "same provider key env and regular env var",
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvKey:  "FOO",
+					EnvVars: []string{"FOO=value"},
+				},
+			},
+			wantErr: false, // single provider, no cross-provider conflict
+		},
+		{
+			name: "aggregates multiple conflicts",
+			providers: map[string]config.Provider{
+				"provider1": {
+					EnvVars: []string{"A=1", "B=1"},
+				},
+				"provider2": {
+					EnvVars: []string{"A=2", "B=2"},
+				},
+			},
+			wantErr: true,
+			errMsg:  "A, B", // both conflicts reported in one error
 		},
 	}
 
@@ -197,6 +271,36 @@ func TestValidateProviderModel(t *testing.T) {
 			model:    "model[128k]",
 			wantErr:  false,
 		},
+		{
+			name:     "valid model with org slash",
+			provider: "zai",
+			model:    "org/model",
+			wantErr:  false,
+		},
+		{
+			name:     "valid model with deployment colon",
+			provider: "zai",
+			model:    "azure-deployment:gpt-4o",
+			wantErr:  false,
+		},
+		{
+			name:     "valid model with vendor plus",
+			provider: "zai",
+			model:    "vendor+flavor",
+			wantErr:  false,
+		},
+		{
+			name:     "valid model with at-sign path",
+			provider: "zai",
+			model:    "@cf/meta/llama-3.1-8b-instruct",
+			wantErr:  false,
+		},
+		{
+			name:     "valid model with accounts path and parens",
+			provider: "zai",
+			model:    "accounts/fireworks/models/llama-v3p1-70b(gen)",
+			wantErr:  false,
+		},
 
 		// Invalid model names
 		{
@@ -207,9 +311,9 @@ func TestValidateProviderModel(t *testing.T) {
 			errContains: "too long",
 		},
 		{
-			name:        "model with invalid character @",
+			name:        "model with invalid character dollar",
 			provider:    "zai",
-			model:       "invalid@model",
+			model:       "invalid$model",
 			wantErr:     true,
 			errContains: "invalid characters",
 		},
@@ -235,32 +339,45 @@ func TestValidateProviderModel(t *testing.T) {
 			errContains: "invalid characters",
 		},
 
-		// Non-built-in providers (should skip validation)
+		// Uniform validation: every provider is held to the same charset.
 		{
-			name:     "non-built-in provider with any model",
-			provider: "custom",
-			model:    "any-model-name-@#$%",
-			wantErr:  false,
-		},
-		{
-			name:     "non-built-in provider with empty model",
-			provider: "unknown",
-			model:    "",
-			wantErr:  false,
-		},
-
-		// Built-in providers without default models
-		{
-			name:     "anthropic (no default model) valid",
+			name:     "built-in without default model valid",
 			provider: "anthropic",
-			model:    "any-model",
+			model:    "claude-3-5-sonnet-20241022",
 			wantErr:  false,
 		},
 		{
-			name:     "custom (no default model) valid",
+			name:        "built-in without default model invalid",
+			provider:    "anthropic",
+			model:       "invalid@model#name",
+			wantErr:     true,
+			errContains: "invalid characters",
+		},
+		{
+			name:     "custom catalog provider valid",
 			provider: "custom",
-			model:    "model@#$",
-			wantErr:  false, // no validation for providers without default model
+			model:    "my-custom-model",
+			wantErr:  false,
+		},
+		{
+			name:        "custom catalog provider invalid",
+			provider:    "custom",
+			model:       "model@#$",
+			wantErr:     true,
+			errContains: "invalid characters",
+		},
+		{
+			name:     "unknown provider valid",
+			provider: "nonexistent",
+			model:    "some-model",
+			wantErr:  false,
+		},
+		{
+			name:        "unknown provider invalid",
+			provider:    "nonexistent",
+			model:       "bad!model",
+			wantErr:     true,
+			errContains: "invalid characters",
 		},
 	}
 
@@ -295,12 +412,19 @@ func TestIsValidModelRune(t *testing.T) {
 		{'.', true},
 		{'[', true},
 		{']', true},
-		{'@', false},
+		{':', true},
+		{'/', true},
+		{'+', true},
+		{'@', true},
+		{'(', true},
+		{')', true},
 		{'#', false},
 		{'!', false},
+		{'$', false},
+		{'%', false},
 		{' ', false},
-		{'/', false},
-		{':', false},
+		{'\t', false},
+		{'\n', false},
 	}
 
 	for _, tt := range tests {

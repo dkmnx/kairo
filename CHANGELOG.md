@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PowerShell wrapper escaping now only single-quote-wraps and doubles embedded quotes; characters like `$`, `"`, `&`, and `|` pass through to the harness unchanged instead of being corrupted with injected backticks/backslashes
 - Fix order-dependent test pollution from a leaked `verboseFlag` package global
 - Replace fixed-sleep prompt tests with output-driven synchronization to eliminate timing-dependent flakiness
+- Model names are now validated uniformly for every provider (previously only providers with catalog default models were checked), and the allowed character set includes common identifier punctuation (`:`, `/`, `+`, `@`, parentheses)
+- Cross-provider environment-variable conflict detection now covers valueless entries and API-key env vars, and reports all conflicts in a single error
+- Remove colliding environment-variable defaults from the provider catalog (kimi, zai) so catalog data is self-consistent
 
 ## [v2.10.3] - 2026-07-18
 
