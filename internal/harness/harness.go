@@ -19,16 +19,17 @@ func IsValid(name string) bool {
 }
 
 // Resolve returns the effective harness given a flag override and config default.
+// When neither is set (or the configured value is invalid) it falls back to Pi.
 func Resolve(flagHarness, configHarness string) string {
 	h := flagHarness
 	if h == "" {
 		h = configHarness
 	}
 	if h == "" {
-		return Claude
+		return Pi
 	}
 	if !IsValid(h) {
-		return Claude
+		return Pi
 	}
 
 	return h

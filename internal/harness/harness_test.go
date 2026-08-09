@@ -36,9 +36,9 @@ func TestResolve(t *testing.T) {
 	}{
 		{"flag takes precedence", Qwen, Claude, Qwen},
 		{"config fallback", "", Qwen, Qwen},
-		{"both empty defaults to claude", "", "", Claude},
-		{"unknown flag defaults to claude", "unknown", "", Claude},
-		{"unknown config defaults to claude", "", "unknown", Claude},
+		{"both empty defaults to pi", "", "", Pi},
+		{"unknown flag defaults to pi", "unknown", "", Pi},
+		{"unknown config defaults to pi", "", "unknown", Pi},
 		{"pi over config", Pi, Claude, Pi},
 	}
 

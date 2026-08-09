@@ -57,7 +57,7 @@ Example schema:
 
 ```yaml
 default_provider: zai
-default_harness: claude
+default_harness: pi
 default_models:
   zai: glm-5.1
 providers:

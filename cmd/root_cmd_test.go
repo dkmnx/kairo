@@ -106,8 +106,8 @@ func TestRootCmd(t *testing.T) {
 		var execCalled atomic.Bool
 		d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
 			mp.LookPathFn = func(file string) (string, error) {
-				if file == "claude" {
-					return "/usr/bin/claude", nil
+				if file == "claude" || file == "pi" {
+					return "/usr/bin/" + file, nil
 				}
 				return "", fmt.Errorf("not found: %s", file)
 			}
@@ -188,8 +188,8 @@ func TestRootCmd(t *testing.T) {
 		var execCalled atomic.Bool
 		d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
 			mp.LookPathFn = func(file string) (string, error) {
-				if file == "claude" {
-					return "/usr/bin/claude", nil
+				if file == "claude" || file == "pi" {
+					return "/usr/bin/" + file, nil
 				}
 				return "", fmt.Errorf("not found: %s", file)
 			}

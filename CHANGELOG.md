@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Compare downloaded checksums in constant time (case-insensitive contract preserved)
 - PowerShell installer now stops only `kairo.exe` processes running the target binary during self-update, leaving instances from other install paths untouched
 
+### Changed
+
+- Default harness is now `pi` when neither the `--harness` flag nor `default_harness` is configured (previously `claude`)
+
 ## [v2.10.3] - 2026-07-18
 
 ### Fixed

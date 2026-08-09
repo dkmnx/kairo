@@ -243,9 +243,9 @@ func TestGetHarness(t *testing.T) {
 	}{
 		{"flag takes precedence", "qwen", "claude", "qwen"},
 		{"uses config when flag empty", "", "qwen", "qwen"},
-		{"defaults to claude when both empty", "", "", "claude"},
-		{"defaults to claude when config invalid", "", "invalid", "claude"},
-		{"defaults to claude when flag invalid", "invalid", "", "claude"},
+		{"defaults to pi when both empty", "", "", "pi"},
+		{"defaults to pi when config invalid", "", "invalid", "pi"},
+		{"defaults to pi when flag invalid", "invalid", "", "pi"},
 		{"flag pi takes precedence", "pi", "claude", "pi"},
 		{"config pi used", "", "pi", "pi"},
 		{"flag crush takes precedence", "crush", "claude", "crush"},

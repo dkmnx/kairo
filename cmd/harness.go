@@ -26,7 +26,7 @@ var harnessGetCmd = &cobra.Command{
 		}
 
 		if cfg.DefaultHarness == "" {
-			ui.PrintInfo("No default harness configured (using claude)")
+			ui.PrintInfo("No default harness configured (using pi)")
 
 			return
 		}
@@ -94,8 +94,8 @@ func init() {
 
 func resolveHarness(flagHarness, configHarness string) string {
 	h := harness.Resolve(flagHarness, configHarness)
-	if h != flagHarness && h != configHarness && h == harness.Claude && (flagHarness != "" || configHarness != "") {
-		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'claude'", flagHarness))
+	if h != flagHarness && h != configHarness && h == harness.Pi && (flagHarness != "" || configHarness != "") {
+		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'pi'", flagHarness))
 	}
 
 	return h
