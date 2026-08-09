@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -282,33 +281,4 @@ func TestHandleConfigError(t *testing.T) {
 			t.Errorf("Expected error text in output:\n%s", result)
 		}
 	})
-}
-
-func TestContainsSubstring(t *testing.T) {
-	tests := []struct {
-		name     string
-		s        string
-		substr   string
-		expected bool
-	}{
-		{"substring exists", "hello world", "world", true},
-		{"substring at start", "hello world", "hello", true},
-		{"substring at end", "hello world", "world", true},
-		{"substring in middle", "hello world test", "world", true},
-		{"exact match", "hello", "hello", true},
-		{"empty substring", "hello", "", true},
-		{"substring not found", "hello world", "goodbye", false},
-		{"case sensitive", "Hello World", "hello", false},
-		{"longer substring than string", "hi", "hello", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := strings.Contains(tt.s, tt.substr)
-			if result != tt.expected {
-				t.Errorf("strings.Contains(%q, %q) = %v, want %v",
-					tt.s, tt.substr, result, tt.expected)
-			}
-		})
-	}
 }

@@ -28,13 +28,13 @@ var hardcodedCIDRs = []string{
 
 var blockedCIDRs = mustParseCIDRs(hardcodedCIDRs)
 
+// blockedHosts holds literal hosts that are not already covered by
+// blockedCIDRs. "::" (IPv6 unspecified) is not inside ::1/128, and
+// "localhost" is a name, so both need explicit entries; all literal
+// loopback/private IPs are covered by the CIDR list.
 var blockedHosts = []string{
 	"localhost",
-	"127.0.0.1",
-	"::1",
 	"::",
-	"0.0.0.0",
-	"169.254.169.254",
 }
 
 // mustParseCIDRs parses each CIDR string and panics if any are malformed.

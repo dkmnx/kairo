@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -246,7 +247,9 @@ func VerifyChecksum(scriptPath, expectedHash string) error {
 	}
 
 	actualHash := hex.EncodeToString(hasher.Sum(nil))
-	if !strings.EqualFold(actualHash, expectedHash) {
+	// Constant-time comparison; both sides are lowercased to preserve the
+	// case-insensitive hash contract.
+	if subtle.ConstantTimeCompare([]byte(actualHash), []byte(strings.ToLower(expectedHash))) != 1 {
 		return errors.VerificationErr(
 			fmt.Sprintf("script integrity check failed (expected: %.8s..., got: %.8s...)",
 				expectedHash, actualHash),

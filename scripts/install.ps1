@@ -143,18 +143,21 @@ function Test-Checksum {
 }
 
 function Stop-KairoProcess {
+    param([string]$TargetPath)
     <#
     .SYNOPSIS
-        Stops all running kairo.exe processes to allow binary replacement.
+        Stops kairo.exe processes that lock the target binary so it can be
+        replaced.
     .DESCRIPTION
-        This function attempts to gracefully stop running kairo processes,
-        then forcefully terminates any remaining processes. This is necessary
-        during self-update scenarios where the binary cannot be replaced while
-        the process is active.
+        Only processes running from $TargetPath (including the kairo process
+        performing the self-update, which must exit so the file is released)
+        are stopped. kairo.exe instances from other install paths are left
+        untouched.
     .OUTPUTS
-        System.Boolean. Returns $true if processes were stopped, $false if none were running.
+        System.Boolean. $true if processes were stopped, $false if none were running.
     #>
-    $processes = Get-Process -Name "kairo" -ErrorAction SilentlyContinue
+    $processes = Get-Process -Name "kairo" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -eq $TargetPath }
 
     if ($null -eq $processes) {
         return $false
@@ -176,8 +179,9 @@ function Stop-KairoProcess {
     # Wait a moment for processes to fully terminate
     Start-Sleep -Milliseconds 500
 
-    # Verify all processes are stopped
-    $remaining = Get-Process -Name "kairo" -ErrorAction SilentlyContinue
+    # Verify all target processes are stopped
+    $remaining = Get-Process -Name "kairo" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -eq $TargetPath }
     if ($remaining) {
         Write-Error-Log "Some kairo processes are still running. Installation may fail."
         return $false
@@ -286,8 +290,8 @@ function Install-Binary {
 
     # Move binary (remove existing first to avoid "file already exists" error)
     if (Test-Path $destBinaryPath) {
-        # Stop any running kairo processes to release file locks
-        Stop-KairoProcess
+        # Stop kairo processes locking this binary (self-update included)
+        Stop-KairoProcess -TargetPath $destBinaryPath
 
         try {
             Remove-Item -Path $destBinaryPath -Force -ErrorAction Stop

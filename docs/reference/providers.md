@@ -8,8 +8,8 @@ Built-in and custom provider configurations.
 | ------------------------ | ---------------------- | --------------------- | ------- |
 | `zai`                    | `ZAI_API_KEY`          | `glm-5.1`             | Yes     |
 | `minimax`                | `MINIMAX_API_KEY`      | `MiniMax-M2.7`        | Yes     |
-| `kimi`                   | `KIMI_API_KEY`         | `kimi-for-coding`     | Yes     |
 | `deepseek`               | `DEEPSEEK_API_KEY`     | `deepseek-v4-pro[1m]` | Yes     |
+| `kimi`                   | `KIMI_API_KEY`         | `kimi-for-coding`     | Yes     |
 | `anthropic`              | `ANTHROPIC_API_KEY`    | (provider-managed)    | Yes     |
 | `openai`                 | `OPENAI_API_KEY`       | (provider-managed)    | Yes     |
 | `google`                 | `GEMINI_API_KEY`       | (provider-managed)    | Yes     |
@@ -49,15 +49,6 @@ kairo setup
 kairo minimax "Your query"
 ```
 
-### `kimi`
-
-Moonshot AI (Kimi).
-
-```bash
-kairo setup
-kairo kimi "Your query"
-```
-
 ### `deepseek`
 
 DeepSeek AI.
@@ -65,6 +56,15 @@ DeepSeek AI.
 ```bash
 kairo setup
 kairo deepseek "Your query"
+```
+
+### `kimi`
+
+Moonshot AI (Kimi).
+
+```bash
+kairo setup
+kairo kimi "Your query"
 ```
 
 ### `custom`

@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Model names are now validated uniformly for every provider (previously only providers with catalog default models were checked), and the allowed character set includes common identifier punctuation (`:`, `/`, `+`, `@`, parentheses)
 - Cross-provider environment-variable conflict detection now covers valueless entries and API-key env vars, and reports all conflicts in a single error
 - Remove colliding environment-variable defaults from the provider catalog (kimi, zai) so catalog data is self-consistent
+- Preserve the harness exit code when a harness run fails instead of always exiting 1 (Ctrl-C now propagates 130)
+- Compare downloaded checksums in constant time (case-insensitive contract preserved)
+- PowerShell installer now stops only `kairo.exe` processes running the target binary during self-update, leaving instances from other install paths untouched
 
 ## [v2.10.3] - 2026-07-18
 

@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"sync"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -62,10 +64,17 @@ func runHarnessExec(cfg ExecutionConfig, harnessPath string, cliArgs []string) e
 }
 
 // reportHarnessError prints a uniform harness-error line and exits the
-// process. It is the standard post-exec failure path.
+// process with the harness's exit code when available (e.g. 130 for Ctrl-C),
+// falling back to 1.
 func reportHarnessError(cfg ExecutionConfig, displayName string, err error) {
 	ui.PrintError(fmt.Sprintf("Error running %s: %v", displayName, err))
-	cfg.Deps.Process.ExitProcess(1)
+
+	exitCode := 1
+	var exitErr *exec.ExitError
+	if stderrors.As(err, &exitErr) {
+		exitCode = exitErr.ExitCode()
+	}
+	cfg.Deps.Process.ExitProcess(exitCode)
 }
 
 // lookUpHarnessBinary resolves the binary in PATH. On miss it prints an error
