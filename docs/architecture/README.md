@@ -206,6 +206,10 @@ Kairo keeps credentials out of normal child-process environments by combining en
 
 See [Wrapper Scripts](wrapper-scripts.md) for the detailed design.
 
+### Pi harness exception
+
+Claude, Qwen, and Crush use the temp-token wrapper so only the active provider key reaches the child process. Pi is different **by design**: a Pi session can switch model providers mid-run, so kairo injects API keys for **all configured providers that have stored secrets** into the Pi child environment. This is intentional multi-provider access, not a leak. Do not “fix” it down to the active key without a product decision to drop in-session provider switching.
+
 ## Cross-Platform Support
 
 | Feature           | Linux/macOS                       | Windows                                 |

@@ -98,6 +98,44 @@ func init() {
 	}
 }
 
+// apiKeyEnvVarName resolves the env var that should receive a provider's API
+// key. Catalog-defined names win, then a configured EnvKey, then the
+// conventional PROVIDER_API_KEY form.
+func apiKeyEnvVarName(providerName string, provider config.Provider) string {
+	if envVar, ok := providers.APIKeyEnvVarFor(providerName); ok {
+		return envVar
+	}
+
+	if provider.EnvKey != "" {
+		return provider.EnvKey
+	}
+
+	return harness.APIKeyEnvVar(providerName)
+}
+
+// injectPiAPIKeys appends every configured provider's available API key to
+// the child environment. Pi is designed for multi-provider sessions (switch
+// providers mid-run without relaunching), so it needs all stored keys — not
+// only the one used to start the session. Returns whether any key was found.
+func injectPiAPIKeys(envResult *EnvBuildResult, cfg *config.Config) bool {
+	hasAnyKey := false
+	for pName, p := range cfg.Providers {
+		val, found := lookupAPIKeyWithFallback(envResult.Secrets, pName)
+		if !found {
+			continue
+		}
+
+		envVar := apiKeyEnvVarName(pName, p)
+		envResult.ProviderEnv = append(envResult.ProviderEnv, fmt.Sprintf("%s=%s", envVar, val))
+		hasAnyKey = true
+	}
+
+	return hasAnyKey
+}
+
+// runPiProvider launches the Pi harness. Pi does not use the temp-token
+// wrapper path; keys for all configured providers are injected so a single
+// Pi session can switch models/providers without relaunching.
 func runPiProvider(
 	cmd *cobra.Command,
 	cliCtx *CLIContext,
@@ -113,27 +151,12 @@ func runPiProvider(
 		return
 	}
 
-	providerEnv := envResult.ProviderEnv
-	secrets := envResult.Secrets
+	hasAnyKey := injectPiAPIKeys(&envResult, cfg)
 
-	hasAnyKey := false
-	for pName, p := range cfg.Providers {
-		piEnvVar, ok := providers.APIKeyEnvVarFor(pName)
-		if !ok {
-			if p.EnvKey == "" {
-				piEnvVar = harness.APIKeyEnvVar(pName)
-			} else {
-				piEnvVar = p.EnvKey
-			}
-		}
-		val, found := lookupAPIKeyWithFallback(secrets, pName)
-		if found {
-			providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", piEnvVar, val))
-			hasAnyKey = true
-		}
-	}
-
-	execCfg := buildExecutionConfig(cmd, cliCtx, providerEnv, provider, providerName, harnessToUse, harnessArgs, "")
+	execCfg := buildExecutionConfig(
+		cmd, cliCtx, envResult.ProviderEnv, provider,
+		providerName, harnessToUse, harnessArgs, "",
+	)
 
 	if hasAnyKey {
 		executeWithAuth(execCfg)
