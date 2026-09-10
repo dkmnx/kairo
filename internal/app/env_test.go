@@ -192,6 +192,18 @@ func TestAPIKeyEnvVarNameResolution(t *testing.T) {
 			want:         "ZAI_API_KEY",
 		},
 		{
+			name:         "catalog non-conventional huggingface",
+			providerName: "huggingface",
+			provider:     config.Provider{},
+			want:         "HF_TOKEN",
+		},
+		{
+			name:         "catalog non-conventional google",
+			providerName: "google",
+			provider:     config.Provider{},
+			want:         "GEMINI_API_KEY",
+		},
+		{
 			name:         "configured env key",
 			providerName: "myproxy",
 			provider:     config.Provider{EnvKey: "MYPROXY_TOKEN"},
@@ -212,6 +224,23 @@ func TestAPIKeyEnvVarNameResolution(t *testing.T) {
 				t.Errorf("APIKeyEnvVarName(%q) = %q, want %q", tt.providerName, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSecretsKeyIsConventionalNotCatalogEnvVar(t *testing.T) {
+	// Lookup must use conventional PROVIDER_API_KEY storage keys even when
+	// the process env name is catalog-specific (HF_TOKEN).
+	secretsMap := map[string]string{
+		"HUGGINGFACE_API_KEY": "hf-test",
+	}
+
+	key, ok := LookupAPIKeyWithFallback(secretsMap, "huggingface")
+	if !ok || key != "hf-test" {
+		t.Fatalf("LookupAPIKeyWithFallback() = %q, %v", key, ok)
+	}
+
+	if APIKeyEnvVarName("huggingface", config.Provider{}) != "HF_TOKEN" {
+		t.Error("process env name should be catalog HF_TOKEN")
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/dkmnx/kairo/internal/app"
 	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/execution"
@@ -210,6 +211,13 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	cliArgs := applyYoloFlag(cfg, cfg.HarnessArgs)
 
 	displayName, envVarName, extraArgs := harness.Dispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
+	// Crush receives the provider API key via a process env var. Use the
+	// catalog/EnvKey-aware name so non-conventional keys (HF_TOKEN,
+	// GEMINI_API_KEY, etc.) match what the tool expects; secrets remain stored
+	// under the conventional PROVIDER_API_KEY form.
+	if cfg.HarnessToUse == harness.Crush {
+		envVarName = app.APIKeyEnvVarName(cfg.ProviderName, cfg.Provider)
+	}
 	cliArgs = append(extraArgs, cliArgs...)
 
 	run := HarnessRun{

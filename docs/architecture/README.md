@@ -158,6 +158,8 @@ Business logic lives under `internal/`:
 - `internal/secrets` — `Load`, `Save`, `Reset` for the encrypted store
 - `cmd.OrchestrateExecution` — thin adapter that loads config, calls `app.ResolveExecution`, and prints recovery guidance
 
+Secrets file keys always use the conventional `PROVIDER_API_KEY` form (`harness.APIKeyEnvVar`). Process environment names use `app.APIKeyEnvVarName` (catalog → `EnvKey` → conventional) so tools that expect `HF_TOKEN` or `GEMINI_API_KEY` receive the right variable.
+
 ### Key package APIs
 
 | Package | Exported surface (representative) |
