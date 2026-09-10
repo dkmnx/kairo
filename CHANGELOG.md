@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Go version requirement updated from 1.26 to 1.27
+- CI golangci-lint bumped from v2.12.2 to v2.13.2 (fixes staticcheck panic on Go 1.27)
 - Encrypted secrets load/save/reset now live in `internal/secrets` (`Load`/`Save`/`Reset`) instead of the `cmd` package
 - Harness environment assembly (`BuildProviderEnv`, Pi key injection, API-key env-var resolution) now lives in `internal/app`
 - Launch resolution (`ResolveExecution`, arg splitting, provider-from-args) now lives in `internal/app`
