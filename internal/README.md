@@ -13,6 +13,7 @@ flowchart TB
     end
 
     subgraph internal[internal]
+        App[app env assembly]
         Config[config]
         Constants[constants]
         Crypto[crypto]
@@ -27,15 +28,29 @@ flowchart TB
     end
 
     Root --> Config
+    Root --> App
     Root --> Providers
     Setup --> Crypto
     Setup --> Validate
     Exec --> Wrapper
+    App --> Secrets
     Config --> Errors
     Crypto --> Errors
 ```
 
 ## Packages
+
+### `app/`
+
+Harness environment assembly without cobra or CLIContext.
+
+Key functions:
+
+- `BuildProviderEnv(ctx, cryptoSvc, configDir, provider, providerName)` - merge process env, built-in vars, provider vars, and secrets
+- `BuiltInEnvVars(provider)` - ANTHROPIC_BASE_URL / ANTHROPIC_MODEL
+- `InjectPiAPIKeys(envResult, cfg)` - inject all configured provider keys for Pi multi-provider sessions
+- `APIKeyEnvVarName(providerName, provider)` - catalog → EnvKey → conventional name
+- `LookupAPIKeyWithFallback(secrets, providerName)` - provider key with custom-provider fallback
 
 ### `config/`
 

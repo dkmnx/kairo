@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dkmnx/kairo/internal/app"
 	"github.com/dkmnx/kairo/internal/config"
-	"github.com/dkmnx/kairo/internal/harness"
-	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -98,41 +97,6 @@ func init() {
 	}
 }
 
-// apiKeyEnvVarName resolves the env var that should receive a provider's API
-// key. Catalog-defined names win, then a configured EnvKey, then the
-// conventional PROVIDER_API_KEY form.
-func apiKeyEnvVarName(providerName string, provider config.Provider) string {
-	if envVar, ok := providers.APIKeyEnvVarFor(providerName); ok {
-		return envVar
-	}
-
-	if provider.EnvKey != "" {
-		return provider.EnvKey
-	}
-
-	return harness.APIKeyEnvVar(providerName)
-}
-
-// injectPiAPIKeys appends every configured provider's available API key to
-// the child environment. Pi is designed for multi-provider sessions (switch
-// providers mid-run without relaunching), so it needs all stored keys — not
-// only the one used to start the session. Returns whether any key was found.
-func injectPiAPIKeys(envResult *EnvBuildResult, cfg *config.Config) bool {
-	hasAnyKey := false
-	for pName, p := range cfg.Providers {
-		val, found := lookupAPIKeyWithFallback(envResult.Secrets, pName)
-		if !found {
-			continue
-		}
-
-		envVar := apiKeyEnvVarName(pName, p)
-		envResult.ProviderEnv = append(envResult.ProviderEnv, fmt.Sprintf("%s=%s", envVar, val))
-		hasAnyKey = true
-	}
-
-	return hasAnyKey
-}
-
 // runPiProvider launches the Pi harness. Pi does not use the temp-token
 // wrapper path; keys for all configured providers are injected so a single
 // Pi session can switch models/providers without relaunching.
@@ -144,14 +108,16 @@ func runPiProvider(
 	providerName, harnessToUse string,
 	harnessArgs []string,
 ) {
-	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), provider, providerName)
+	envResult, err := app.BuildProviderEnv(
+		cliCtx.RootCtx(), cliCtx.Crypto(), cliCtx.ConfigDir(), provider, providerName,
+	)
 	if err != nil {
 		handleSecretsError(err)
 
 		return
 	}
 
-	hasAnyKey := injectPiAPIKeys(&envResult, cfg)
+	hasAnyKey := app.InjectPiAPIKeys(&envResult, cfg)
 
 	execCfg := buildExecutionConfig(
 		cmd, cliCtx, envResult.ProviderEnv, provider,
@@ -172,14 +138,16 @@ func runStandardProvider(
 	providerName, harnessToUse string,
 	harnessArgs []string,
 ) {
-	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), provider, providerName)
+	envResult, err := app.BuildProviderEnv(
+		cliCtx.RootCtx(), cliCtx.Crypto(), cliCtx.ConfigDir(), provider, providerName,
+	)
 	if err != nil {
 		handleSecretsError(err)
 
 		return
 	}
 
-	apiKey, hasKey := lookupAPIKeyWithFallback(envResult.Secrets, providerName)
+	apiKey, hasKey := app.LookupAPIKeyWithFallback(envResult.Secrets, providerName)
 
 	execCfg := buildExecutionConfig(
 		cmd, cliCtx, envResult.ProviderEnv, provider,
@@ -191,20 +159,6 @@ func runStandardProvider(
 	} else {
 		executeWithoutAuth(execCfg)
 	}
-}
-
-func lookupAPIKeyWithFallback(secrets map[string]string, providerName string) (string, bool) {
-	if val, ok := secrets[harness.APIKeyEnvVar(providerName)]; ok {
-		return val, true
-	}
-
-	if providerName != customProviderName {
-		if val, ok := secrets[harness.APIKeyEnvVar(customProviderName)]; ok {
-			return val, true
-		}
-	}
-
-	return "", false
 }
 
 func buildExecutionConfig(

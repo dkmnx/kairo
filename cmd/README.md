@@ -19,11 +19,10 @@ logic lives in `internal/`.
 | `setup_provider.go`         | `ProviderDefinition`, `ResolveProviderName`, `BuildProviderConfig`                                                              |
 | `setup_prompts.go`          | Interactive prompts (`promptForAPIKey`, `promptForBaseURL`, `promptForModel`, `promptForEnvKey`, `promptForProvider`)           |
 | `execution.go`              | `ExecutionConfig`, `WrapperCmd`, `buildWrapperCommand`                                                                          |
-| `execution_env.go`          | `BuildProviderEnv`, `BuildPiEnvVars`, `BuildBuiltInEnvVars`, env-var merge logic                                                |
 | `execution_harness.go`      | `executePi`, `runHarnessExec`, `executeWithAuth`, `executeWithoutAuth`, `lookUpHarnessBinary`, `reportHarnessError`, `handlePi` |
 | `execution_error.go`        | `handleConfigError`, `isBinaryOutdatedError`, `promptUpgrade`, `handleSecretsError`                                             |
 | `execution_orchestrator.go` | `OrchestrateExecution`, `loadRootConfig`, `resolveProviderAndArgs`, `lookupProvider`                                            |
-| `util.go`                   | `requireConfigDir`, `loadConfigOrExit`, `loadConfigOrEmpty`, `mergeEnvVars`                                                     |
+| `util.go`                   | `requireConfigDir`, `loadConfigOrExit`, `loadConfigOrEmpty`                                                                     |
 | `default.go`                | `kairo default [provider]` command                                                                                              |
 | `list.go`                   | `kairo list` command                                                                                                            |
 | `delete.go`                 | `kairo delete [provider]` command, `deleteProviderSecrets`                                                                      |

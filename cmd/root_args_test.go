@@ -114,42 +114,6 @@ func TestHasLeadingArgsSeparator(t *testing.T) {
 	}
 }
 
-func TestLookupAPIKeyWithFallback(t *testing.T) {
-	t.Run("returns provider-specific key", func(t *testing.T) {
-		secrets := map[string]string{
-			"ANTHROPIC_API_KEY": "sk-ant-xxx",
-		}
-		key, ok := lookupAPIKeyWithFallback(secrets, "anthropic")
-		if !ok {
-			t.Error("Expected key to be found")
-		}
-		if key != "sk-ant-xxx" {
-			t.Errorf("Expected 'sk-ant-xxx', got %q", key)
-		}
-	})
-
-	t.Run("falls back to custom provider key", func(t *testing.T) {
-		secrets := map[string]string{
-			"CUSTOM_API_KEY": "sk-custom-xxx",
-		}
-		key, ok := lookupAPIKeyWithFallback(secrets, "anthropic")
-		if !ok {
-			t.Error("Expected key to be found via custom fallback")
-		}
-		if key != "sk-custom-xxx" {
-			t.Errorf("Expected 'sk-custom-xxx', got %q", key)
-		}
-	})
-
-	t.Run("returns false when no key found", func(t *testing.T) {
-		secrets := map[string]string{}
-		_, ok := lookupAPIKeyWithFallback(secrets, "anthropic")
-		if ok {
-			t.Error("Expected no key to be found")
-		}
-	})
-}
-
 func TestHarnessFlagUsesDefaultProvider(t *testing.T) {
 	tmpDir := t.TempDir()
 
