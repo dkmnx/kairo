@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/dkmnx/kairo/internal/app"
 	"github.com/dkmnx/kairo/internal/config"
-	"github.com/spf13/cobra"
 )
 
 func TestGetProviderFromArgs(t *testing.T) {
@@ -19,6 +19,7 @@ func TestGetProviderFromArgs(t *testing.T) {
 		defaultProvider string
 		wantProvider    string
 		wantArgs        []string
+		wantErr         bool
 	}{
 		{
 			name:            "single provider arg",
@@ -45,8 +46,7 @@ func TestGetProviderFromArgs(t *testing.T) {
 			name:            "flag-like first arg without default",
 			args:            []string{"--model", "claude-sonnet"},
 			defaultProvider: "",
-			wantProvider:    "",
-			wantArgs:        nil,
+			wantErr:         true,
 		},
 		{
 			name:            "multiple args uses first as provider",
@@ -59,28 +59,34 @@ func TestGetProviderFromArgs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := &cobra.Command{}
-			var output bytes.Buffer
-			cmd.SetOut(&output)
-
 			cfg := &config.Config{
 				DefaultProvider: tt.defaultProvider,
 			}
 
-			provider, args := providerFromArgs(cmd, cfg, tt.args)
+			provider, args, err := app.ProviderFromArgs(cfg, tt.args)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("ProviderFromArgs() expected error")
+				}
+
+				return
+			}
+			if err != nil {
+				t.Fatalf("ProviderFromArgs() error = %v", err)
+			}
 
 			if provider != tt.wantProvider {
-				t.Errorf("providerFromArgs() provider = %q, want %q", provider, tt.wantProvider)
+				t.Errorf("ProviderFromArgs() provider = %q, want %q", provider, tt.wantProvider)
 			}
 
 			if len(args) != len(tt.wantArgs) {
-				t.Errorf("providerFromArgs() args length = %d, want %d", len(args), len(tt.wantArgs))
+				t.Errorf("ProviderFromArgs() args length = %d, want %d", len(args), len(tt.wantArgs))
 				return
 			}
 
 			for i, arg := range args {
 				if arg != tt.wantArgs[i] {
-					t.Errorf("providerFromArgs() args[%d] = %q, want %q", i, arg, tt.wantArgs[i])
+					t.Errorf("ProviderFromArgs() args[%d] = %q, want %q", i, arg, tt.wantArgs[i])
 				}
 			}
 		})
@@ -106,9 +112,9 @@ func TestHasLeadingArgsSeparator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := hasLeadingArgsSeparator(tt.args)
+			got := app.HasLeadingArgsSeparator(tt.args)
 			if got != tt.want {
-				t.Errorf("hasLeadingArgsSeparator(%v) = %v, want %v", tt.args, got, tt.want)
+				t.Errorf("app.HasLeadingArgsSeparator(%v) = %v, want %v", tt.args, got, tt.want)
 			}
 		})
 	}

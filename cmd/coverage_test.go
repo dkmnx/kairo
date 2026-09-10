@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dkmnx/kairo/internal/app"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/harness"
 	"github.com/dkmnx/kairo/internal/providers"
@@ -150,7 +151,7 @@ func TestSplitArgs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotKairo, gotHarness := splitArgs(tt.input)
+			gotKairo, gotHarness := app.SplitArgs(tt.input)
 			if len(gotKairo) != len(tt.wantKairo) {
 				t.Errorf("kairo args length = %v, want %v", len(gotKairo), len(tt.wantKairo))
 			}

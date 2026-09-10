@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/dkmnx/kairo/internal/app"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -299,15 +300,15 @@ func TestIsKnownProvider(t *testing.T) {
 		},
 	}
 
-	if !isKnownProvider("my-custom", cfg) {
+	if !app.IsKnownProvider("my-custom", cfg) {
 		t.Error("Expected configured provider to be known")
 	}
 
-	if !isKnownProvider("anthropic", cfg) {
+	if !app.IsKnownProvider("anthropic", cfg) {
 		t.Error("Expected built-in provider to be known even if not configured")
 	}
 
-	if isKnownProvider("nonexistent", cfg) {
+	if app.IsKnownProvider("nonexistent", cfg) {
 		t.Error("Expected unknown provider to not be known")
 	}
 }

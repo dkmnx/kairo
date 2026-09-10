@@ -42,7 +42,7 @@ flowchart TB
 
 ### `app/`
 
-Harness environment assembly without cobra or CLIContext.
+Harness environment assembly and launch resolution without cobra or CLIContext.
 
 Key functions:
 
@@ -51,6 +51,8 @@ Key functions:
 - `InjectPiAPIKeys(envResult, cfg)` - inject all configured provider keys for Pi multi-provider sessions
 - `APIKeyEnvVarName(providerName, provider)` - catalog → EnvKey → conventional name
 - `LookupAPIKeyWithFallback(secrets, providerName)` - provider key with custom-provider fallback
+- `ResolveExecution(cfg, opts)` - pick provider entry and harness from CLI args
+- `SplitArgs` / `HasLeadingArgsSeparator` / `IsKnownProvider` / `ProviderFromArgs` - pure argument helpers
 
 ### `config/`
 

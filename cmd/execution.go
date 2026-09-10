@@ -11,6 +11,7 @@ import (
 // ExecutionConfig holds all parameters needed to execute a CLI harness.
 type ExecutionConfig struct {
 	Cmd           *cobra.Command
+	RootCtx       context.Context
 	ProviderEnv   []string
 	HarnessToUse  string
 	HarnessBinary string

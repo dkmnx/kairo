@@ -1,18 +1,18 @@
 package cmd
 
 import (
-	stderrors "errors"
+	"errors"
 	"io/fs"
-	"strings"
 
+	"github.com/dkmnx/kairo/internal/app"
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/harness"
-	"github.com/dkmnx/kairo/internal/providers"
 	"github.com/spf13/cobra"
 )
 
 // OrchestrateExecution runs the full execution pipeline: load config, resolve
-// provider/harness, and dispatch to the appropriate execution path.
+// provider/harness via app.ResolveExecution, and dispatch to the Pi or
+// standard provider path. User-facing messages stay in cmd.
 func OrchestrateExecution(cmd *cobra.Command, args []string) {
 	cliCtx := CLIContextFromCmd(cmd)
 
@@ -21,22 +21,48 @@ func OrchestrateExecution(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	harnessArgs, providerName := resolveProviderAndArgs(cmd, cliCtx, cfg, args)
-	if providerName == "" {
+	res, err := app.ResolveExecution(cfg, app.ResolveOptions{
+		Args:                    args,
+		HarnessFlag:             harnessFlag,
+		DefaultProviderExplicit: cliCtx.DefaultProviderExplicit(),
+	})
+	if err != nil {
+		printResolveError(cmd, err)
+
 		return
 	}
 
-	provider, ok := lookupProvider(cmd, cfg, providerName)
-	if !ok {
-		return
-	}
-
-	harnessToUse := resolveHarness(harnessFlag, cfg.DefaultHarness)
-
-	if harnessToUse == harness.Pi {
-		runPiProvider(cmd, cliCtx, cfg, provider, providerName, harnessToUse, harnessArgs)
+	if res.Harness == harness.Pi {
+		runPiProvider(cmd, cliCtx, cfg, res.Provider, res.ProviderName, res.Harness, res.HarnessArgs)
 	} else {
-		runStandardProvider(cmd, cliCtx, provider, providerName, harnessToUse, harnessArgs)
+		runStandardProvider(cmd, cliCtx, res.Provider, res.ProviderName, res.Harness, res.HarnessArgs)
+	}
+}
+
+// printResolveError maps app resolution errors to recovery guidance.
+func printResolveError(cmd *cobra.Command, err error) {
+	switch {
+	case errors.Is(err, app.ErrNoDefaultProvider):
+		cmd.Println("No default provider set.")
+		cmd.Println()
+		cmd.Println("Usage:")
+		cmd.Println("  kairo setup            # Configure providers")
+		cmd.Println("  kairo default <name>   # Set default provider")
+		cmd.Println("  kairo list             # List providers")
+		cmd.Println("  kairo <provider>       # Use specific provider")
+	case errors.Is(err, app.ErrFlagWithoutProvider):
+		cmd.Println("Error: No default provider set and first argument looks like a flag")
+		cmd.Println("Run 'kairo setup' to configure a provider")
+	case errors.Is(err, app.ErrProviderNotConfigured):
+		var notCfg *app.ProviderNotConfiguredError
+		if errors.As(err, &notCfg) {
+			cmd.Printf("Error: provider '%s' not configured\n", notCfg.Name)
+		} else {
+			cmd.Printf("Error: provider not configured\n")
+		}
+		cmd.Println("Run 'kairo list' to see configured providers")
+	default:
+		cmd.Printf("Error: %v\n", err)
 	}
 }
 
@@ -64,7 +90,7 @@ func loadRootConfig(cmd *cobra.Command, cliCtx *CLIContext) (*config.Config, boo
 
 	cfg, err := cliCtx.ConfigCache().Get(cliCtx.RootCtx(), configDir)
 	if err != nil {
-		if stderrors.Is(err, fs.ErrNotExist) {
+		if errors.Is(err, fs.ErrNotExist) {
 			cmd.Println("No providers configured. Run 'kairo setup' to get started.")
 
 			return nil, false
@@ -81,115 +107,4 @@ func loadRootConfig(cmd *cobra.Command, cliCtx *CLIContext) (*config.Config, boo
 	}
 
 	return cfg, true
-}
-
-// lookupProvider finds the named provider in the configuration.
-// Prints an error and returns false if not found.
-func lookupProvider(cmd *cobra.Command, cfg *config.Config, providerName string) (config.Provider, bool) {
-	provider, ok := cfg.Providers[providerName]
-	if !ok {
-		cmd.Printf("Error: provider '%s' not configured\n", providerName)
-		cmd.Println("Run 'kairo list' to see configured providers")
-
-		return config.Provider{}, false
-	}
-
-	return provider, true
-}
-
-// resolveProviderAndArgs resolves the provider name and harness arguments from
-// the command-line args and configuration.
-func resolveProviderAndArgs(cmd *cobra.Command, cliCtx *CLIContext,
-	cfg *config.Config, args []string,
-) ([]string, string) {
-	if len(args) == 0 || cliCtx.DefaultProviderExplicit() {
-		if cfg.DefaultProvider == "" {
-			cmd.Println("No default provider set.")
-			cmd.Println()
-			cmd.Println("Usage:")
-			cmd.Println("  kairo setup            # Configure providers")
-			cmd.Println("  kairo default <name>   # Set default provider")
-			cmd.Println("  kairo list             # List providers")
-			cmd.Println("  kairo <provider>       # Use specific provider")
-
-			return nil, ""
-		}
-
-		return args, cfg.DefaultProvider
-	}
-
-	providerName, harnessArgs := providerFromArgs(cmd, cfg, args)
-
-	// When --harness is set and the first arg is not a known provider,
-	// treat all args as harness args and use the default provider.
-	if harnessFlag != "" && !isKnownProvider(providerName, cfg) && cfg.DefaultProvider != "" {
-		return args, cfg.DefaultProvider
-	}
-
-	return harnessArgs, providerName
-}
-
-// isKnownProvider reports whether name matches a configured or built-in provider.
-func isKnownProvider(name string, cfg *config.Config) bool {
-	if _, ok := cfg.Providers[name]; ok {
-		return true
-	}
-
-	return providers.IsBuiltInProvider(name)
-}
-
-// providerFromArgs extracts the provider name from the first non-flag argument.
-func providerFromArgs(cmd *cobra.Command, cfg *config.Config, args []string) (string, []string) {
-	kairoArgs, harnessArgs := splitArgs(args)
-
-	if len(kairoArgs) > 0 && !strings.HasPrefix(kairoArgs[0], "-") {
-		harnessArgs = append(kairoArgs[1:], harnessArgs...)
-
-		return kairoArgs[0], harnessArgs
-	}
-
-	if cfg.DefaultProvider != "" {
-		return cfg.DefaultProvider, kairoArgs
-	}
-
-	cmd.Println("Error: No default provider set and first argument looks like a flag")
-	cmd.Println("Run 'kairo setup' to configure a provider")
-
-	return "", nil
-}
-
-// splitArgs splits args at the first "--" separator.
-func splitArgs(args []string) ([]string, []string) {
-	for i, arg := range args {
-		if arg == "--" {
-			return args[:i], args[i+1:]
-		}
-	}
-
-	return args, nil
-}
-
-// hasLeadingArgsSeparator reports whether args contain the "--" separator before
-// any non-flag argument. It walks past flags and their values (e.g. --harness pi,
-// -v value) looking for "--". Once a non-flag argument is seen, "--" is no longer
-// valid as a separator. Note: splitArgs always splits on the first "--" regardless
-// of position, so this function has different semantics — it only detects separators
-// that appear before the first positional argument.
-func hasLeadingArgsSeparator(args []string) bool {
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--" {
-			return true
-		}
-		if args[i] == "-" || !strings.HasPrefix(args[i], "-") {
-			return false
-		}
-		if strings.Contains(args[i], "=") {
-			continue
-		}
-		if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-			i++
-		}
-	}
-
-	return false
 }

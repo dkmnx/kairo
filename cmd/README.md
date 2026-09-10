@@ -21,7 +21,8 @@ logic lives in `internal/`.
 | `execution.go`              | `ExecutionConfig`, `WrapperCmd`, `buildWrapperCommand`                                                                          |
 | `execution_harness.go`      | `executePi`, `runHarnessExec`, `executeWithAuth`, `executeWithoutAuth`, `lookUpHarnessBinary`, `reportHarnessError`, `handlePi` |
 | `execution_error.go`        | `handleConfigError`, `isBinaryOutdatedError`, `promptUpgrade`, `handleSecretsError`                                             |
-| `execution_orchestrator.go` | `OrchestrateExecution`, `loadRootConfig`, `resolveProviderAndArgs`, `lookupProvider`                                            |
+| `execution_orchestrator.go` | `OrchestrateExecution` adapter, `loadRootConfig`, `printResolveError`                                                             |
+| `run_provider.go`           | `runPiProvider`, `runStandardProvider`, `buildExecutionConfig`                                                                    |
 | `util.go`                   | `requireConfigDir`, `loadConfigOrExit`, `loadConfigOrEmpty`                                                                     |
 | `default.go`                | `kairo default [provider]` command                                                                                              |
 | `list.go`                   | `kairo list` command                                                                                                            |
