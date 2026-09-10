@@ -123,20 +123,21 @@ sequenceDiagram
 
 ```text
 kairo/
-├── cmd/                 # CLI commands and execution flow
+├── cmd/                 # CLI commands, cobra wiring, prompts, harness exec
 ├── internal/
+│   ├── app/             # Env assembly and launch resolution (no cobra)
 │   ├── config/          # Config loading, caching, migration, paths
 │   ├── constants/       # Shared constants (paths, defaults)
 │   ├── crypto/          # age/X25519 key management and encryption
 │   ├── envutil/         # Environment variable merge utilities
 │   ├── errors/          # Typed errors
-│   ├── execution/        # Harness execution dispatch
+│   ├── execution/       # Harness session/signal helpers
 │   ├── fsutil/          # Atomic file write utility
 │   ├── harness/         # Harness dispatch (Claude, Qwen, Pi, Crush)
 │   ├── httpfetch/       # HTTP fetching with size limits and cosign verify
 │   ├── integrity/       # Verified catalog downloads (cosign + checksum)
-│   ├── providers/       # Built-in provider registry
-│   ├── secrets/         # Secrets parse/format utilities (load/save in cmd/)
+│   ├── providers/       # Built-in provider registry (catalog.json)
+│   ├── secrets/         # Secrets parse/format + encrypted store Load/Save/Reset
 │   ├── ui/              # Terminal output and prompts
 │   ├── update/          # Self-update logic
 │   ├── validate/        # Validation helpers
@@ -147,6 +148,28 @@ kairo/
 ├── main.go              # Entry point
 └── justfile             # Development commands
 ```
+
+### Layering after cmd digest
+
+`cmd/` is cobra-only: flag parsing, interactive prompts, and process exec.
+Business logic lives under `internal/`:
+
+- `internal/app` — `BuildProviderEnv`, `InjectPiAPIKeys`, `ResolveExecution`, `SplitArgs`
+- `internal/secrets` — `Load`, `Save`, `Reset` for the encrypted store
+- `cmd.OrchestrateExecution` — thin adapter that loads config, calls `app.ResolveExecution`, and prints recovery guidance
+
+### Key package APIs
+
+| Package | Exported surface (representative) |
+| ------- | --------------------------------- |
+| `constants` | `KeyFileName`, `SecretsFileName`, `WindowsGOOS`, `RawGitHubFileURL`, `GitHubBlobURL`, `CatalogDownloadURL`, `CatalogBundleDownloadURL`, `CatalogChecksumURL` |
+| `execution` | `StartSession` |
+| `fsutil` | `WriteAtomic` |
+| `httpfetch` | `DoHTTPRequest`, `DoHTTPGet`, `WriteStreamToTemp`, `DataToTempFile`, `CosignVerifyBlob` |
+| `integrity` | `FetchVerified` |
+| `providers` | `ProviderDefinition`, `ProviderOrder`, `CustomProviderDefinition`, `KeyFormat`, `ProviderTableMarkdown` |
+| `update` | `NewClient`, `Client`, `Release`, `VersionGreaterThan`, `VerifyChecksum`, `InstallScriptURL`, `ChecksumsURL`, `ParseChecksumLine` |
+| `validate` | `ValidateAPIKey`, `ValidateURL`, `ValidateProviderModel`, `ValidateCrossProviderConfig` |
 
 ## Configuration Schema
 

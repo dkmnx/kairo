@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Encrypted secrets load/save/reset now live in `internal/secrets` (`Load`/`Save`/`Reset`) instead of the `cmd` package
 - Harness environment assembly (`BuildProviderEnv`, Pi key injection, API-key env-var resolution) now lives in `internal/app`
 - Launch resolution (`ResolveExecution`, arg splitting, provider-from-args) now lives in `internal/app`
+- Architecture docs-drift test now fails when an `internal/` package has no exported symbols in `docs/architecture/`
 - Default harness is now `pi` when neither the `--harness` flag nor `default_harness` is configured (previously `claude`)
 
 ## [v2.10.3] - 2026-07-18
