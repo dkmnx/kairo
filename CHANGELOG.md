@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Crush harness now receives catalog-specific API-key env vars (`HF_TOKEN`, `GEMINI_API_KEY`, etc.) instead of always using the conventional `PROVIDER_API_KEY` name
+- Session context is cancelled when the harness session stops, so stop no longer leaves a dangling cancel path
 - `--reset-secrets` now generates the new encryption key before removing the old key and secrets, so an interrupted or failed reset no longer destroys stored API keys
 - Standalone install scripts (`install.sh`, `install.ps1`) now abort when the checksum file is unavailable or the binary checksum does not match, instead of installing an unverified binary
 - Fix PowerShell installer silently skipping cosign signature verification due to an undefined `$versionNoPrefix` variable
@@ -17,8 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `KAIRO_REQUIRE_COSIGN=1` now aborts the update when the `cosign` binary is missing, not only when bundle verification fails
 - Save encrypted secrets before `config.yaml` during setup so a failure cannot leave a configured provider without its stored key
 - PowerShell wrapper escaping now only single-quote-wraps and doubles embedded quotes; characters like `$`, `"`, `&`, and `|` pass through to the harness unchanged instead of being corrupted with injected backticks/backslashes
-- Fix order-dependent test pollution from a leaked `verboseFlag` package global
-- Replace fixed-sleep prompt tests with output-driven synchronization to eliminate timing-dependent flakiness
 - Model names are now validated uniformly for every provider (previously only providers with catalog default models were checked), and the allowed character set includes common identifier punctuation (`:`, `/`, `+`, `@`, parentheses)
 - Cross-provider environment-variable conflict detection now covers valueless entries and API-key env vars, and reports all conflicts in a single error
 - Remove colliding environment-variable defaults from the provider catalog (kimi, zai) so catalog data is self-consistent
@@ -28,12 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Go version requirement updated from 1.26 to 1.27
-- CI golangci-lint bumped from v2.12.2 to v2.13.2 (fixes staticcheck panic on Go 1.27)
-- Encrypted secrets load/save/reset now live in `internal/secrets` (`Load`/`Save`/`Reset`) instead of the `cmd` package
-- Harness environment assembly (`BuildProviderEnv`, Pi key injection, API-key env-var resolution) now lives in `internal/app`
-- Launch resolution (`ResolveExecution`, arg splitting, provider-from-args) now lives in `internal/app`
-- Architecture docs-drift test now fails when an `internal/` package has no exported symbols in `docs/architecture/`
 - Default harness is now `pi` when neither the `--harness` flag nor `default_harness` is configured (previously `claude`)
 
 ## [v2.10.3] - 2026-07-18
