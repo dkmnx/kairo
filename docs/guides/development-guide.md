@@ -4,7 +4,7 @@ Setup, testing, and contribution workflow for Kairo.
 
 ## Prerequisites
 
-- Go 1.26+
+- Go 1.27+
 - Git
 - [just](https://github.com/casey/just)
 
