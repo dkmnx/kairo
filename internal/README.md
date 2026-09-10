@@ -17,7 +17,7 @@ flowchart TB
         Constants[constants]
         Crypto[crypto]
         Providers[providers]
-        Secrets[secrets]
+        Secrets[secrets Parse/Format/Load/Save/Reset]
         UI[ui]
         Update[update]
         Validate[validate]
@@ -227,13 +227,17 @@ Key functions:
 
 ### `secrets/`
 
-Secrets parsing and formatting for encrypted API key storage.
+Secrets parsing, formatting, and encrypted store persistence.
 
 Key functions:
 
 - `Parse(content)` - parses key=value pairs from secrets content
 - `ParseWithStats(content)` - returns parse results with warnings and skipped count
 - `Format(secrets)` - formats a secrets map into key=value string lines
+- `Paths(configDir)` - secrets and key file paths for a config directory
+- `Load(ctx, cryptoSvc, configDir)` - decrypt and parse the store
+- `Save(ctx, cryptoSvc, secretsPath, keyPath, secretsMap)` - encrypt and write
+- `Reset(ctx, cryptoSvc, configDir, secretsPath, keyPath)` - rotate key and clear secrets
 
 ### `update/`
 

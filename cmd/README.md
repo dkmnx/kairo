@@ -14,7 +14,7 @@ logic lives in `internal/`.
 | `deps.go`                   | Production adapters that satisfy the interfaces                                                                                 |
 | `context.go`                | `CLIContext`, `CLIContextFromCmd`, `MustCLIContextFromCmd`, `WithCLIContext`                                                    |
 | `setup.go`                  | Interactive setup wizard entry point                                                                                            |
-| `setup_config.go`           | `EnsureConfigDir`, `LoadConfig`, `AddAndSaveProvider`, `LoadSecrets`, `SaveSecrets`, `ResetSecretsFiles`                        |
+| `setup_config.go`           | `EnsureConfigDir`, `LoadConfig`, `AddAndSaveProvider`                                                                           |
 | `setup_configdir_test.go`   | Tests for config-dir resolution                                                                                                 |
 | `setup_provider.go`         | `ProviderDefinition`, `ResolveProviderName`, `BuildProviderConfig`                                                              |
 | `setup_prompts.go`          | Interactive prompts (`promptForAPIKey`, `promptForBaseURL`, `promptForModel`, `promptForEnvKey`, `promptForProvider`)           |

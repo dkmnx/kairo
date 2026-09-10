@@ -7,6 +7,7 @@ import (
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
 	"github.com/dkmnx/kairo/internal/providers"
+	"github.com/dkmnx/kairo/internal/secrets"
 )
 
 // BuildBuiltInEnvVars constructs the standard Anthropic environment variables for a provider.
@@ -34,7 +35,7 @@ func BuildProviderEnv(
 ) (EnvBuildResult, error) {
 	builtIn := BuildBuiltInEnvVars(provider)
 
-	secretsResult, err := LoadSecrets(cliCtx, configDir)
+	secretsResult, err := secrets.Load(cliCtx.RootCtx(), cliCtx.Crypto(), configDir)
 	if err != nil {
 		if providers.RequiresAPIKey(providerName) {
 			return EnvBuildResult{}, err

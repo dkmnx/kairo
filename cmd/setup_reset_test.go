@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/secrets"
 )
 
 // TestRunResetSecrets_UserCancels verifies that runResetSecrets returns
@@ -19,7 +20,7 @@ func TestRunResetSecrets_UserCancels(t *testing.T) {
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(configDir)
 
-	err := runResetSecrets(cliCtx, configDir, SecretsResult{})
+	err := runResetSecrets(cliCtx, configDir, secrets.LoadResult{})
 	if !errors.Is(err, kairoerrors.ErrUserCancelled) {
 		t.Errorf("expected ErrUserCancelled, got: %v", err)
 	}
@@ -35,7 +36,7 @@ func TestRunResetSecrets_Confirmed(t *testing.T) {
 	cliCtx.SetConfigDir(configDir)
 	cliCtx.SetDeps(resetDeps(nil))
 
-	err := runResetSecrets(cliCtx, configDir, SecretsResult{
+	err := runResetSecrets(cliCtx, configDir, secrets.LoadResult{
 		Secrets:     map[string]string{},
 		SecretsPath: filepath.Join(configDir, "secrets.age"),
 		KeyPath:     filepath.Join(configDir, "key.age"),
@@ -59,7 +60,7 @@ func TestRunResetSecrets_ResetFails(t *testing.T) {
 		return wantErr
 	}))
 
-	err := runResetSecrets(cliCtx, configDir, SecretsResult{
+	err := runResetSecrets(cliCtx, configDir, secrets.LoadResult{
 		Secrets:     map[string]string{},
 		SecretsPath: filepath.Join(configDir, "secrets.age"),
 		KeyPath:     filepath.Join(configDir, "key.age"),

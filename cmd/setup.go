@@ -5,6 +5,7 @@ import (
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/harness"
+	"github.com/dkmnx/kairo/internal/secrets"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/dkmnx/kairo/internal/validate"
 	"github.com/spf13/cobra"
@@ -70,7 +71,8 @@ func configureProvider(params ProviderSetup) (string, error) {
 	// never leaves a configured provider without its stored key. A key for a
 	// provider not yet in the config is an inert orphan entry.
 	params.Secrets[harness.APIKeyEnvVar(validatedName)] = apiKey
-	if err := SaveSecrets(params.CLIContext, params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
+	if err := secrets.Save(params.CLIContext.RootCtx(), params.CLIContext.Crypto(),
+		params.SecretsPath, params.KeyPath, params.Secrets); err != nil {
 		return "", err
 	}
 
@@ -93,7 +95,7 @@ func configureProvider(params ProviderSetup) (string, error) {
 	return validatedName, nil
 }
 
-func runResetSecrets(cliCtx *CLIContext, configDir string, secretsResult SecretsResult) error {
+func runResetSecrets(cliCtx *CLIContext, configDir string, secretsResult secrets.LoadResult) error {
 	ui.PrintWarn("This will delete your current encryption key and encrypted secrets.")
 	ui.PrintInfo("You will need to re-enter all API keys.")
 	ui.PrintInfo("")
@@ -103,8 +105,8 @@ func runResetSecrets(cliCtx *CLIContext, configDir string, secretsResult Secrets
 		return kairoerrors.ErrUserCancelled
 	}
 
-	if err := ResetSecretsFiles(
-		cliCtx.RootCtx(), cliCtx, configDir, secretsResult.SecretsPath, secretsResult.KeyPath,
+	if err := secrets.Reset(
+		cliCtx.RootCtx(), cliCtx.Crypto(), configDir, secretsResult.SecretsPath, secretsResult.KeyPath,
 	); err != nil {
 		return err
 	}
@@ -141,7 +143,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		secretsResult, err := LoadSecrets(cliCtx, configDir)
+		secretsResult, err := secrets.Load(cliCtx.RootCtx(), cliCtx.Crypto(), configDir)
 		if err != nil {
 			if setupResetSecrets {
 				if err := runResetSecrets(cliCtx, configDir, secretsResult); err != nil {

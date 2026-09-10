@@ -112,9 +112,9 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
 
-	result, err := LoadSecrets(NewCLIContext(), tmpDir)
+	result, err := secretspkg.Load(context.Background(), crypto.DefaultService{}, tmpDir)
 	if err != nil {
-		t.Fatalf("LoadSecrets() error = %v", err)
+		t.Fatalf("secrets.Load() error = %v", err)
 	}
 	loadedSecrets := result.Secrets
 
@@ -134,7 +134,7 @@ func TestDeleteCmdDeletesProviderSecrets(t *testing.T) {
 		t.Fatalf("EncryptSecrets() error = %v", err)
 	}
 
-	result, err = LoadSecrets(NewCLIContext(), tmpDir)
+	result, err = secretspkg.Load(context.Background(), crypto.DefaultService{}, tmpDir)
 	if err != nil {
 		t.Fatalf("LoadSecrets() error = %v", err)
 	}
