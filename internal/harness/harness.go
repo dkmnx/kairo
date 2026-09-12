@@ -13,26 +13,45 @@ const (
 	Crush  = "crush"
 )
 
+// Supported returns harness names in PATH-detection priority order.
+// Used when no harness is configured: the first installed CLI wins.
+func Supported() []string {
+	return []string{Pi, Claude, Qwen, Crush}
+}
+
 // IsValid reports whether name is one of the supported harnesses.
 func IsValid(name string) bool {
 	return name == Claude || name == Qwen || name == Pi || name == Crush
 }
 
-// Resolve returns the effective harness given a flag override and config default.
-// When neither is set (or the configured value is invalid) it falls back to Pi.
+// Resolve returns the first valid harness among flag then config.
+// Empty string means neither is a valid configured value; callers should
+// then DetectInstalled and, if that is also empty, prompt the user to
+// install a supported harness.
 func Resolve(flagHarness, configHarness string) string {
-	h := flagHarness
-	if h == "" {
-		h = configHarness
+	if IsValid(flagHarness) {
+		return flagHarness
 	}
-	if h == "" {
-		return Pi
-	}
-	if !IsValid(h) {
-		return Pi
+	if IsValid(configHarness) {
+		return configHarness
 	}
 
-	return h
+	return ""
+}
+
+// DetectInstalled returns the first supported harness found on PATH
+// (in Supported order), or "" when none are installed.
+func DetectInstalled(lookPath func(file string) (string, error)) string {
+	if lookPath == nil {
+		return ""
+	}
+	for _, name := range Supported() {
+		if _, err := lookPath(name); err == nil {
+			return name
+		}
+	}
+
+	return ""
 }
 
 // Dispatch returns the display name, environment variable name, and any extra

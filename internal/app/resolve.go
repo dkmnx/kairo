@@ -15,6 +15,9 @@ type ResolveOptions struct {
 	Args                    []string
 	HarnessFlag             string
 	DefaultProviderExplicit bool
+	// LookPath locates executables on PATH. Used to auto-detect an installed
+	// harness when neither the flag nor config names one.
+	LookPath func(file string) (string, error)
 }
 
 // ResolveResult is the resolved launch target for a harness session.
@@ -30,6 +33,7 @@ var (
 	ErrNoDefaultProvider     = errors.New("no default provider set")
 	ErrProviderNotConfigured = errors.New("provider not configured")
 	ErrFlagWithoutProvider   = errors.New("no default provider and first argument looks like a flag")
+	ErrNoHarnessInstalled    = errors.New("no supported harness found on PATH")
 )
 
 // ProviderNotConfiguredError names the provider missing from the config.
@@ -133,6 +137,7 @@ func ResolveProviderAndArgs(cfg *config.Config, opts ResolveOptions) ([]string, 
 }
 
 // ResolveExecution picks the provider entry and harness for a launch.
+// When no harness is configured, the first installed supported CLI is used.
 func ResolveExecution(cfg *config.Config, opts ResolveOptions) (ResolveResult, error) {
 	harnessArgs, providerName, err := ResolveProviderAndArgs(cfg, opts)
 	if err != nil {
@@ -144,10 +149,18 @@ func ResolveExecution(cfg *config.Config, opts ResolveOptions) (ResolveResult, e
 		return ResolveResult{}, &ProviderNotConfiguredError{Name: providerName}
 	}
 
+	h := harness.Resolve(opts.HarnessFlag, cfg.DefaultHarness)
+	if h == "" {
+		h = harness.DetectInstalled(opts.LookPath)
+	}
+	if h == "" {
+		return ResolveResult{}, ErrNoHarnessInstalled
+	}
+
 	return ResolveResult{
 		ProviderName: providerName,
 		Provider:     provider,
-		Harness:      harness.Resolve(opts.HarnessFlag, cfg.DefaultHarness),
+		Harness:      h,
 		HarnessArgs:  harnessArgs,
 	}, nil
 }

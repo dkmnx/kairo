@@ -26,7 +26,8 @@ var harnessGetCmd = &cobra.Command{
 		}
 
 		if cfg.DefaultHarness == "" {
-			ui.PrintInfo("No default harness configured (using pi)")
+			ui.PrintInfo("No default harness configured (auto-detects an installed CLI)")
+			ui.PrintInfo("Pin one with: kairo harness set <claude|qwen|pi|crush>")
 
 			return
 		}
@@ -90,13 +91,4 @@ func init() {
 	harnessCmd.AddCommand(harnessGetCmd)
 	harnessCmd.AddCommand(harnessSetCmd)
 	rootCmd.AddCommand(harnessCmd)
-}
-
-func resolveHarness(flagHarness, configHarness string) string {
-	h := harness.Resolve(flagHarness, configHarness)
-	if h != flagHarness && h != configHarness && h == harness.Pi && (flagHarness != "" || configHarness != "") {
-		ui.PrintWarn(fmt.Sprintf("Unknown harness '%s', using 'pi'", flagHarness))
-	}
-
-	return h
 }

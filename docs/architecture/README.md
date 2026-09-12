@@ -190,7 +190,7 @@ providers:
 Notes:
 
 - API keys are stored in `secrets.age`, not `config.yaml`
-- `default_harness` is optional and defaults to `pi`. Valid values: `claude`, `qwen`, `pi`, `crush`.
+- `default_harness` is optional. When unset, kairo detects the first installed supported CLI on PATH (`pi`, `claude`, `qwen`, `crush` in that order). Valid explicit values: `claude`, `qwen`, `pi`, `crush`.
 - `default_models` is migration metadata for built-in providers
 
 ## Provider Registry

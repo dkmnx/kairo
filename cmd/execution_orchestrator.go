@@ -25,6 +25,7 @@ func OrchestrateExecution(cmd *cobra.Command, args []string) {
 		Args:                    args,
 		HarnessFlag:             harnessFlag,
 		DefaultProviderExplicit: cliCtx.DefaultProviderExplicit(),
+		LookPath:                cliCtx.Deps().Process.LookPath,
 	})
 	if err != nil {
 		printResolveError(cmd, err)
@@ -61,6 +62,15 @@ func printResolveError(cmd *cobra.Command, err error) {
 			cmd.Printf("Error: provider not configured\n")
 		}
 		cmd.Println("Run 'kairo list' to see configured providers")
+	case errors.Is(err, app.ErrNoHarnessInstalled):
+		cmd.Println("Error: no supported CLI harness found on your PATH.")
+		cmd.Println()
+		cmd.Println("Install one of these, then run kairo again:")
+		for _, name := range harness.Supported() {
+			cmd.Printf("  - %s\n", name)
+		}
+		cmd.Println()
+		cmd.Println("Or pin one explicitly with: kairo harness set <name>")
 	default:
 		cmd.Printf("Error: %v\n", err)
 	}

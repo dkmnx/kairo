@@ -54,7 +54,7 @@ custom_providers:
 
 Notes:
 
-- `default_harness` is optional. If omitted, Kairo uses `pi`. Valid values: `claude`, `qwen`, `pi`, `crush`.
+- `default_harness` is optional. If omitted, Kairo auto-detects the first installed supported CLI on PATH (`pi`, then `claude`, `qwen`, `crush`). Valid values: `claude`, `qwen`, `pi`, `crush`.
 - `env_key` is optional. When set, it overrides the auto-derived `<PROVIDER>_API_KEY` environment variable name used to pass the API key to the harness.
 - `default_models` is optional migration metadata maintained for built-in providers.
 - `custom_providers` is optional. Custom provider definitions are validated at startup and merged into the provider registry. Custom entries with the same key as a built-in provider override the built-in definition.

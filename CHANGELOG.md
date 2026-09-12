@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Default harness is now `pi` when neither the `--harness` flag nor `default_harness` is configured (previously `claude`)
+- **[BREAKING]:** When no harness is configured, kairo auto-detects the first installed supported CLI on PATH (`pi`, then `claude`, `qwen`, `crush`) instead of always defaulting to `pi`. If none are installed, it lists the supported harnesses and suggests `kairo harness set`
 
 ## [v2.10.3] - 2026-07-18
 

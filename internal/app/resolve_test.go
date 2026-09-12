@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/dkmnx/kairo/internal/config"
@@ -160,6 +161,47 @@ func TestResolveExecution(t *testing.T) {
 		_, err := ResolveExecution(&config.Config{}, ResolveOptions{})
 		if !errors.Is(err, ErrNoDefaultProvider) {
 			t.Errorf("ResolveExecution() err = %v, want ErrNoDefaultProvider", err)
+		}
+	})
+
+	t.Run("detects installed harness when none configured", func(t *testing.T) {
+		cfg := &config.Config{
+			DefaultProvider: "zai",
+			Providers: map[string]config.Provider{
+				"zai": {Name: "Z.AI"},
+			},
+		}
+		res, err := ResolveExecution(cfg, ResolveOptions{
+			LookPath: func(file string) (string, error) {
+				if file == "claude" {
+					return "/usr/bin/claude", nil
+				}
+
+				return "", os.ErrNotExist
+			},
+		})
+		if err != nil {
+			t.Fatalf("ResolveExecution() error = %v", err)
+		}
+		if res.Harness != harness.Claude {
+			t.Errorf("Harness = %q, want claude", res.Harness)
+		}
+	})
+
+	t.Run("error when no harness installed", func(t *testing.T) {
+		cfg := &config.Config{
+			DefaultProvider: "zai",
+			Providers: map[string]config.Provider{
+				"zai": {Name: "Z.AI"},
+			},
+		}
+		_, err := ResolveExecution(cfg, ResolveOptions{
+			LookPath: func(string) (string, error) {
+				return "", os.ErrNotExist
+			},
+		})
+		if !errors.Is(err, ErrNoHarnessInstalled) {
+			t.Errorf("ResolveExecution() err = %v, want ErrNoHarnessInstalled", err)
 		}
 	})
 }

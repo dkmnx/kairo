@@ -167,28 +167,6 @@ func TestHarnessSetCrush(t *testing.T) {
 	}
 }
 
-func TestGetHarnessWithPi(t *testing.T) {
-	tests := []struct {
-		name          string
-		flagHarness   string
-		configHarness string
-		expected      string
-	}{
-		{"flag pi takes precedence over config claude", "pi", "claude", "pi"},
-		{"config pi used when flag empty", "", "pi", "pi"},
-		{"flag pi takes precedence over config qwen", "pi", "qwen", "pi"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := resolveHarness(tt.flagHarness, tt.configHarness)
-			if result != tt.expected {
-				t.Errorf("resolveHarness() = %q, want %q", result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestHarnessSetCaseInsensitive(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -231,61 +209,5 @@ func TestHarnessSetCaseInsensitive(t *testing.T) {
 				t.Errorf("DefaultHarness = %q, want %q", cfg.DefaultHarness, tt.expected)
 			}
 		})
-	}
-}
-
-func TestGetHarness(t *testing.T) {
-	tests := []struct {
-		name          string
-		flagHarness   string
-		configHarness string
-		expected      string
-	}{
-		{"flag takes precedence", "qwen", "claude", "qwen"},
-		{"uses config when flag empty", "", "qwen", "qwen"},
-		{"defaults to pi when both empty", "", "", "pi"},
-		{"defaults to pi when config invalid", "", "invalid", "pi"},
-		{"defaults to pi when flag invalid", "invalid", "", "pi"},
-		{"flag pi takes precedence", "pi", "claude", "pi"},
-		{"config pi used", "", "pi", "pi"},
-		{"flag crush takes precedence", "crush", "claude", "crush"},
-		{"config crush used", "", "crush", "crush"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := resolveHarness(tt.flagHarness, tt.configHarness)
-			if result != tt.expected {
-				t.Errorf("resolveHarness() = %q, want %q", result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestGetHarnessWithExistingConfig(t *testing.T) {
-	originalConfigDir := testCLI.ConfigDir()
-	defer func() { testCLI.SetConfigDir(originalConfigDir) }()
-
-	tmpDir := t.TempDir()
-	testCLI.SetConfigDir(tmpDir)
-
-	cfg := &config.Config{
-		Providers:      make(map[string]config.Provider),
-		DefaultModels:  make(map[string]string),
-		DefaultHarness: "qwen",
-	}
-	err := config.SaveConfig(context.Background(), tmpDir, cfg)
-	if err != nil {
-		t.Fatalf("SaveConfig(context.Background(), ) error = %v", err)
-	}
-
-	loadedCfg, err := config.LoadConfig(context.Background(), tmpDir)
-	if err != nil {
-		t.Fatalf("LoadConfig(context.Background(), ) error = %v", err)
-	}
-
-	result := resolveHarness("", loadedCfg.DefaultHarness)
-	if result != "qwen" {
-		t.Errorf("resolveHarness() = %q, want %q", result, "qwen")
 	}
 }

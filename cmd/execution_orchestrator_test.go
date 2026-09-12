@@ -27,6 +27,25 @@ func TestPrintResolveError_NoDefaultProvider(t *testing.T) {
 	}
 }
 
+func TestPrintResolveError_NoHarnessInstalled(t *testing.T) {
+	cmd := testCmd()
+	output := &bytes.Buffer{}
+	cmd.SetOut(output)
+
+	printResolveError(cmd, app.ErrNoHarnessInstalled)
+
+	result := output.String()
+	if !containsString(result, "no supported CLI harness found") {
+		t.Errorf("expected missing-harness message, got: %s", result)
+	}
+	if !containsString(result, "claude") || !containsString(result, "pi") {
+		t.Errorf("expected supported harness list, got: %s", result)
+	}
+	if !containsString(result, "kairo harness set") {
+		t.Errorf("expected pin hint, got: %s", result)
+	}
+}
+
 func TestPrintResolveError_ProviderNotConfigured(t *testing.T) {
 	cmd := testCmd()
 	output := &bytes.Buffer{}
