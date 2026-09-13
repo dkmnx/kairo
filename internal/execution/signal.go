@@ -19,6 +19,7 @@ func StartSession(parent context.Context) (ctx context.Context, cancel context.C
 
 	stop = func() {
 		signal.Stop(ch)
+		cancel()
 		once.Do(func() { close(done) })
 	}
 

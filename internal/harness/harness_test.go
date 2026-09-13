@@ -1,6 +1,9 @@
 package harness
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestIsValid(t *testing.T) {
 	tests := []struct {
@@ -36,9 +39,10 @@ func TestResolve(t *testing.T) {
 	}{
 		{"flag takes precedence", Qwen, Claude, Qwen},
 		{"config fallback", "", Qwen, Qwen},
-		{"both empty defaults to claude", "", "", Claude},
-		{"unknown flag defaults to claude", "unknown", "", Claude},
-		{"unknown config defaults to claude", "", "unknown", Claude},
+		{"both empty means detect", "", "", ""},
+		{"unknown flag falls back to config", "unknown", Claude, Claude},
+		{"unknown flag and config empty", "unknown", "", ""},
+		{"unknown config with empty flag", "", "unknown", ""},
 		{"pi over config", Pi, Claude, Pi},
 	}
 
@@ -50,6 +54,59 @@ func TestResolve(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSupportedOrder(t *testing.T) {
+	got := Supported()
+	want := []string{Pi, Claude, Qwen, Crush}
+	if len(got) != len(want) {
+		t.Fatalf("Supported() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("Supported()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestDetectInstalled(t *testing.T) {
+	t.Run("first installed in priority order", func(t *testing.T) {
+		installed := map[string]bool{Claude: true, Crush: true}
+		got := DetectInstalled(func(file string) (string, error) {
+			if installed[file] {
+				return "/usr/bin/" + file, nil
+			}
+
+			return "", os.ErrNotExist
+		})
+		if got != Claude {
+			t.Errorf("DetectInstalled() = %q, want %q (before crush)", got, Claude)
+		}
+	})
+
+	t.Run("prefers pi when present", func(t *testing.T) {
+		got := DetectInstalled(func(file string) (string, error) {
+			return "/usr/bin/" + file, nil
+		})
+		if got != Pi {
+			t.Errorf("DetectInstalled() = %q, want %q", got, Pi)
+		}
+	})
+
+	t.Run("empty when none installed", func(t *testing.T) {
+		got := DetectInstalled(func(string) (string, error) {
+			return "", os.ErrNotExist
+		})
+		if got != "" {
+			t.Errorf("DetectInstalled() = %q, want empty", got)
+		}
+	})
+
+	t.Run("nil lookPath", func(t *testing.T) {
+		if got := DetectInstalled(nil); got != "" {
+			t.Errorf("DetectInstalled(nil) = %q, want empty", got)
+		}
+	})
 }
 
 func TestDispatch(t *testing.T) {

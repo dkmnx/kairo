@@ -87,8 +87,8 @@ function Get-Checksum {
         return $response
     }
     catch {
-        Write-Log "Warning: Checksum file not found, skipping verification"
-        return $null
+        Write-Error-Log "Failed to download checksum file: $_"
+        exit 1
     }
 }
 
@@ -111,16 +111,17 @@ function Test-Checksum {
     param([string]$FilePath, [string]$ChecksumData, [string]$BinaryName, [string]$Arch)
 
     if (-not $ChecksumData) {
-        return $true
+        Write-Error-Log "Checksum data is missing, aborting installation"
+        return $false
     }
 
     Write-Log "Verifying checksum..."
     $hash = Get-FileHashCompat -Path $FilePath
 
-    # Parse checksums.txt to find the matching hash
+    # Parse checksums.txt to find the hash for this exact binary+arch.
     $lines = $ChecksumData -split "`n"
     foreach ($line in $lines) {
-        if ($line -match "^([a-f0-9]+)\s+($($BinaryName)_windows_\S+)") {
+        if ($line -match "^([a-fA-F0-9]+)\s+($($BinaryName)_windows_$($Arch)\.zip)\s*$") {
             $expectedHash = $matches[1].ToLower()
             $actualHash = $hash.Hash.ToLower()
 
@@ -137,23 +138,26 @@ function Test-Checksum {
         }
     }
 
-    Write-Log "Warning: Could not find checksum for this binary"
-    return $true # Continue anyway
+    Write-Error-Log "Could not find checksum entry for ${BinaryName}_windows_$Arch.zip"
+    return $false
 }
 
 function Stop-KairoProcess {
+    param([string]$TargetPath)
     <#
     .SYNOPSIS
-        Stops all running kairo.exe processes to allow binary replacement.
+        Stops kairo.exe processes that lock the target binary so it can be
+        replaced.
     .DESCRIPTION
-        This function attempts to gracefully stop running kairo processes,
-        then forcefully terminates any remaining processes. This is necessary
-        during self-update scenarios where the binary cannot be replaced while
-        the process is active.
+        Only processes running from $TargetPath (including the kairo process
+        performing the self-update, which must exit so the file is released)
+        are stopped. kairo.exe instances from other install paths are left
+        untouched.
     .OUTPUTS
-        System.Boolean. Returns $true if processes were stopped, $false if none were running.
+        System.Boolean. $true if processes were stopped, $false if none were running.
     #>
-    $processes = Get-Process -Name "kairo" -ErrorAction SilentlyContinue
+    $processes = Get-Process -Name "kairo" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -eq $TargetPath }
 
     if ($null -eq $processes) {
         return $false
@@ -175,8 +179,9 @@ function Stop-KairoProcess {
     # Wait a moment for processes to fully terminate
     Start-Sleep -Milliseconds 500
 
-    # Verify all processes are stopped
-    $remaining = Get-Process -Name "kairo" -ErrorAction SilentlyContinue
+    # Verify all target processes are stopped
+    $remaining = Get-Process -Name "kairo" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -eq $TargetPath }
     if ($remaining) {
         Write-Error-Log "Some kairo processes are still running. Installation may fail."
         return $false
@@ -197,6 +202,10 @@ function Install-Binary {
     $os = "windows"
     $filename = "${BinaryName}_${os}_${Arch}.zip"
     $url = "https://github.com/$Repo/releases/download/$Version/$filename"
+
+    # Defined here (not inside Get-Checksum, whose scope dies on return) so the
+    # cosign bundle/checksum downloads below use the correct artifact names.
+    $versionNoPrefix = $Version -replace '^v', ''
 
     Write-Log "Downloading $url..."
 
@@ -281,8 +290,8 @@ function Install-Binary {
 
     # Move binary (remove existing first to avoid "file already exists" error)
     if (Test-Path $destBinaryPath) {
-        # Stop any running kairo processes to release file locks
-        Stop-KairoProcess
+        # Stop kairo processes locking this binary (self-update included)
+        Stop-KairoProcess -TargetPath $destBinaryPath
 
         try {
             Remove-Item -Path $destBinaryPath -Force -ErrorAction Stop

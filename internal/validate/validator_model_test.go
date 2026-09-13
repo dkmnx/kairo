@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
-	"github.com/dkmnx/kairo/internal/providers"
 )
 
 func TestValidationError(t *testing.T) {
@@ -27,18 +26,20 @@ func TestValidationError(t *testing.T) {
 }
 
 func TestValidateProviderModel_DefaultModelEmpty(t *testing.T) {
-	// custom provider with no default model should skip validation
+	// The catalog "custom" entry is validated like any other provider;
+	// "my-model" is a valid model identifier.
 	err := ValidateProviderModel("custom", "my-model")
 	if err != nil {
-		t.Errorf("ValidateProviderModel() should skip for custom provider, got: %v", err)
+		t.Errorf("ValidateProviderModel() should accept a valid model for custom, got: %v", err)
 	}
 }
 
 func TestValidateProviderModel_NonBuiltInProvider(t *testing.T) {
-	// Non-built-in provider with non-empty model should skip
+	// Model validation is uniform for every provider name; "some-model"
+	// passes the charset regardless of whether the provider is known.
 	err := ValidateProviderModel("nonexistent", "some-model")
 	if err != nil {
-		t.Errorf("ValidateProviderModel() should skip for unknown provider, got: %v", err)
+		t.Errorf("ValidateProviderModel() should accept a valid model for unknown provider, got: %v", err)
 	}
 }
 
@@ -58,27 +59,17 @@ func FuzzValidateProviderModel(f *testing.F) {
 			t.Errorf("ValidateProviderModel() should allow empty model names, got error: %v", err)
 		}
 
-		// Note: ValidateProviderModel only validates model names for built-in providers
-		// that have a default model set. For custom providers or built-in providers
-		// without default models, it returns nil. This is by design.
-
-		if len(modelName) > MaxModelNameLength {
-			// For built-in providers with default models, this should fail
-			if def, ok := providers.BuiltInProvider(providerName); ok && def.Model != "" {
-				if err == nil {
-					t.Errorf("ValidateProviderModel() should fail for model name exceeding max length (%d)", MaxModelNameLength)
-				}
-			}
+		// Validation is uniform: the same charset and length limits apply to
+		// every provider.
+		if len(modelName) > MaxModelNameLength && err == nil {
+			t.Errorf("ValidateProviderModel() should fail for model name exceeding max length (%d)", MaxModelNameLength)
 		}
 
-		// For built-in providers with default models, verify invalid characters fail
+		// If validation passed, every character must be in the allowed set.
 		if modelName != "" && err == nil {
-			if def, ok := providers.BuiltInProvider(providerName); ok && def.Model != "" {
-				// If validation passed for a built-in provider, verify all characters are valid
-				for _, r := range modelName {
-					if !isValidModelRune(r) {
-						t.Errorf("ValidateProviderModel() should fail for model with invalid character %q in %q", r, modelName)
-					}
+			for _, r := range modelName {
+				if !isValidModelRune(r) {
+					t.Errorf("ValidateProviderModel() should fail for model with invalid character %q in %q", r, modelName)
 				}
 			}
 		}

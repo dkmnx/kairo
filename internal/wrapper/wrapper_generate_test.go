@@ -72,14 +72,9 @@ func TestGenerateWrapperScript_WindowsPath(t *testing.T) {
 		t.Error("Wrapper script should not be empty")
 	}
 
-	// The script uses %q formatting which escapes backslashes on Windows
-	expectedPath := tokenPath
-	if runtime.GOOS == "windows" {
-		// On Windows, the script will have escaped backslashes
-		expectedPath = strings.ReplaceAll(tokenPath, `\`, `\\`)
-	}
-	if !contains(string(content), expectedPath) {
-		t.Errorf("Wrapper script should contain token path\nscript:\n%s\n\nexpected path: %s", string(content), expectedPath)
+	// Paths are single-quoted with no backslash escaping.
+	if !contains(string(content), "'"+tokenPath+"'") {
+		t.Errorf("Wrapper script should contain quoted token path\nscript:\n%s\n\nexpected path: '%s'", string(content), tokenPath)
 	}
 }
 
@@ -209,8 +204,11 @@ func TestGenerateWrapperScript_WindowsWithSpecialArgs(t *testing.T) {
 	if !strings.Contains(scriptStr, "Remove-Item") {
 		t.Error("PowerShell script should use Remove-Item")
 	}
-	if !strings.Contains(scriptStr, "`$total") || !strings.Contains(scriptStr, "`$price") || !strings.Contains(scriptStr, "`$quantity") {
-		t.Error("PowerShell script should escape dollar signs in prompt")
+	if !strings.Contains(scriptStr, "$total") || !strings.Contains(scriptStr, "$price") || !strings.Contains(scriptStr, "$quantity") {
+		t.Error("PowerShell script should keep dollar signs literal in prompt")
+	}
+	if strings.Contains(scriptStr, "`$total") {
+		t.Error("PowerShell script must not inject backticks before dollar signs")
 	}
 	if !strings.Contains(scriptStr, "Program Files") {
 		t.Error("PowerShell script should handle paths with spaces")

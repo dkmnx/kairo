@@ -248,6 +248,60 @@ func TestExecuteWrapperWithAuth_QwenPassesAuthArgs(t *testing.T) {
 	}
 }
 
+func TestExecuteWrapperWithAuth_CrushCatalogEnvVar(t *testing.T) {
+	tests := []struct {
+		providerName string
+		wantEnvVar   string
+	}{
+		{"huggingface", "HF_TOKEN"},
+		{"google", "GEMINI_API_KEY"},
+		{"zai", "ZAI_API_KEY"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.providerName, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			var captured wrapper.ScriptConfig
+			d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
+				mw.CreateTempAuthDirFn = func() (string, error) {
+					return tmpDir, nil
+				}
+				mw.WriteTempTokenFileFn = func(authDir, token string) (string, error) {
+					return filepath.Join(authDir, "token"), nil
+				}
+				mp.LookPathFn = func(file string) (string, error) {
+					return "/usr/bin/" + file, nil
+				}
+				mw.GenerateWrapperScriptFn = func(cfg wrapper.ScriptConfig) (string, bool, error) {
+					captured = cfg
+					return filepath.Join(tmpDir, "wrapper.sh"), false, nil
+				}
+				mp.ExecCommandContextFn = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+					return testEchoCmd()
+				}
+				mp.ExitProcessFn = func(int) {}
+			})
+
+			executeWrapperWithAuth(ExecutionConfig{
+				Cmd:           testCmd(),
+				HarnessToUse:  harness.Crush,
+				HarnessBinary: "crush",
+				Provider: config.Provider{
+					Name:  tt.providerName,
+					Model: "test-model",
+				},
+				ProviderName: tt.providerName,
+				APIKey:       "test-key",
+				Deps:         d,
+			})
+
+			if captured.EnvVarName != tt.wantEnvVar {
+				t.Errorf("Crush wrapper EnvVarName = %q, want %q", captured.EnvVarName, tt.wantEnvVar)
+			}
+		})
+	}
+}
+
 func TestExecuteWithAuth_PiExecutionError(t *testing.T) {
 	d := testDeps(func(mp *mockProcess, mw *mockWrapper, mu *mockUpdate) {
 		mp.LookPathFn = func(file string) (string, error) {

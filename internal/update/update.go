@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -246,7 +247,9 @@ func VerifyChecksum(scriptPath, expectedHash string) error {
 	}
 
 	actualHash := hex.EncodeToString(hasher.Sum(nil))
-	if !strings.EqualFold(actualHash, expectedHash) {
+	// Constant-time comparison; both sides are lowercased to preserve the
+	// case-insensitive hash contract.
+	if subtle.ConstantTimeCompare([]byte(actualHash), []byte(strings.ToLower(expectedHash))) != 1 {
 		return errors.VerificationErr(
 			fmt.Sprintf("script integrity check failed (expected: %.8s..., got: %.8s...)",
 				expectedHash, actualHash),
@@ -265,10 +268,18 @@ func ChecksumsBundleURL(tag string) string {
 
 // VerifyCosignBundle downloads the sigstore bundle for the checksums file and verifies
 // it using cosign. Verification is silently skipped (returns nil) when cosign is not
-// found on PATH, making this a best-effort check.
+// found on PATH — unless KAIRO_REQUIRE_COSIGN=1 is set, in which case a missing cosign
+// binary is an error so strict mode can actually enforce signature verification.
 func (c *Client) VerifyCosignBundle(ctx context.Context, tag string) error {
 	cosignPath, err := c.LookPathFunc("cosign")
 	if err != nil {
+		if c.EnvFunc != nil {
+			if strict, _ := c.EnvFunc("KAIRO_REQUIRE_COSIGN"); strict == "1" {
+				return errors.WrapError(errors.VerificationError,
+					"KAIRO_REQUIRE_COSIGN=1 requires cosign signature verification, but cosign was not found on PATH", err)
+			}
+		}
+
 		return nil
 	}
 

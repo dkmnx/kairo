@@ -87,32 +87,41 @@ download_and_install() {
     curl -fsSL -o "$archive_path" "$url" || error "Failed to download $url"
 
     log "Verifying checksum..."
-    curl -fsSL -o "$checksum_path" "https://github.com/$REPO/releases/download/$version/${BINARY_NAME}_${version_no_prefix}_checksums.txt" || true
+    # Fail closed: a missing or undownloadable checksum file aborts the
+    # install instead of proceeding with an unverified binary.
+    curl -fsSL -o "$checksum_path" "https://github.com/$REPO/releases/download/$version/${BINARY_NAME}_${version_no_prefix}_checksums.txt" || error "Failed to download checksum file"
 
-    if [ -f "$checksum_path" ]; then
-        # Verify cosign signature if cosign is available
-        bundle_path="$checksum_path.sigstore.json"
-        if command -v cosign >/dev/null 2>&1; then
-            if curl -fsSL -o "$bundle_path" "https://github.com/$REPO/releases/download/$version/${BINARY_NAME}_${version_no_prefix}_checksums.txt.sigstore.json" 2>/dev/null; then
-                log "Verifying cosign signature..."
-                cosign verify-blob \
-                    --bundle="$bundle_path" \
-                    --certificate-identity-regexp="^https://github\.com/$REPO/\.github/workflows/release\.yml" \
-                    --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-                    "$checksum_path" || {
-                    error "Cosign signature verification failed"
-                }
-                log "Cosign signature verified"
-            fi
-        else
-            log "Warning: cosign not found, skipping signature verification"
+    # Verify cosign signature if cosign is available (best-effort; the
+    # SHA256 check below is the hard integrity gate).
+    bundle_path="$checksum_path.sigstore.json"
+    if command -v cosign >/dev/null 2>&1; then
+        if curl -fsSL -o "$bundle_path" "https://github.com/$REPO/releases/download/$version/${BINARY_NAME}_${version_no_prefix}_checksums.txt.sigstore.json" 2>/dev/null; then
+            log "Verifying cosign signature..."
+            cosign verify-blob \
+                --bundle="$bundle_path" \
+                --certificate-identity-regexp="^https://github\.com/$REPO/\.github/workflows/release\.yml" \
+                --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+                "$checksum_path" || {
+                error "Cosign signature verification failed"
+            }
+            log "Cosign signature verified"
         fi
-
-        cd "$tmpdir"
-        sha256sum -c "$checksum_path" --ignore-missing || error "Checksum verification failed"
     else
-        log "Warning: Checksum file not found, skipping verification"
+        log "Warning: cosign not found, skipping signature verification"
     fi
+
+    cd "$tmpdir"
+    expected_hash=$(awk -v f="$filename" '$2 == f {print $1}' "$checksum_path")
+    if [ -z "$expected_hash" ]; then
+        error "Checksum entry for $filename not found in checksum file"
+    fi
+    # Hash the relative filename (we are inside tmpdir): portable on POSIX
+    # and avoids msys-style path mangling on Windows git-bash.
+    actual_hash=$(sha256sum "$filename" | awk '{print $1}')
+    if [ "$expected_hash" != "$actual_hash" ]; then
+        error "Checksum verification failed for $filename"
+    fi
+    log "Checksum verified"
 
     log "Extracting archive..."
     if [ "$archive_ext" = ".zip" ]; then

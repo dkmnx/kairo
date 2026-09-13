@@ -32,9 +32,9 @@ func TestProviderEnvVarSetup(t *testing.T) {
 		provider     string
 		wantEnvCount int
 	}{
-		{"zai has env vars", "zai", 1},
+		{"zai has env vars", "zai", 0},
 		{"minimax has env vars", "minimax", 2},
-		{"kimi has env vars", "kimi", 2},
+		{"kimi has env vars", "kimi", 0},
 		{"deepseek has env vars", "deepseek", 2},
 		{"custom has no env vars", "custom", 0},
 	}

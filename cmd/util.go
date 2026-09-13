@@ -7,7 +7,6 @@ import (
 
 	"github.com/dkmnx/kairo/internal/config"
 	"github.com/dkmnx/kairo/internal/constants"
-	"github.com/dkmnx/kairo/internal/envutil"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/ui"
 	"github.com/spf13/cobra"
@@ -111,10 +110,4 @@ func printSecretsRecoveryHelp() {
 
 func runningWithRaceDetector() bool {
 	return strings.Contains(os.Getenv("GOFLAGS"), "-race")
-}
-
-// mergeEnvVars combines multiple environment variable slices, deduplicating
-// by key name. When duplicates exist, the value from the later slice wins.
-func mergeEnvVars(envs ...[]string) []string {
-	return envutil.Merge(envs...)
 }

@@ -147,21 +147,19 @@ func TestLoadSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := LoadSecrets(NewCLIContext(), tmpDir)
+	cliCtx := NewCLIContext()
+	result, err := secretspkg.Load(cliCtx.RootCtx(), cliCtx.Crypto(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadSecrets() error = %v", err)
+		t.Fatalf("secrets.Load() error = %v", err)
 	}
-	secretsOut := result.SecretsPath
-	keyOut := result.KeyPath
-	secrets := result.Secrets
-	if secretsOut != secretsPath {
-		t.Errorf("secretsPath = %q, want %q", secretsOut, secretsPath)
+	if result.SecretsPath != secretsPath {
+		t.Errorf("secretsPath = %q, want %q", result.SecretsPath, secretsPath)
 	}
-	if keyOut != keyPath {
-		t.Errorf("keyPath = %q, want %q", keyOut, keyPath)
+	if result.KeyPath != keyPath {
+		t.Errorf("keyPath = %q, want %q", result.KeyPath, keyPath)
 	}
-	if secrets["ZAI_API_KEY"] != "test-key" {
-		t.Errorf("ZAI_API_KEY = %q, want %q", secrets["ZAI_API_KEY"], "test-key")
+	if result.Secrets["ZAI_API_KEY"] != "test-key" {
+		t.Errorf("ZAI_API_KEY = %q, want %q", result.Secrets["ZAI_API_KEY"], "test-key")
 	}
 }
 
@@ -173,21 +171,19 @@ func TestLoadSecretsNoSecretsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := LoadSecrets(NewCLIContext(), tmpDir)
+	cliCtx := NewCLIContext()
+	result, err := secretspkg.Load(cliCtx.RootCtx(), cliCtx.Crypto(), tmpDir)
 	if err != nil {
-		t.Fatalf("LoadSecrets() error = %v", err)
+		t.Fatalf("secrets.Load() error = %v", err)
 	}
-	secretsPath := result.SecretsPath
-	keyPath := result.KeyPath
-	secrets := result.Secrets
-	if len(secrets) != 0 {
-		t.Errorf("got %d secrets, want 0", len(secrets))
+	if len(result.Secrets) != 0 {
+		t.Errorf("got %d secrets, want 0", len(result.Secrets))
 	}
-	if !strings.HasSuffix(secretsPath, "secrets.age") {
-		t.Errorf("secretsPath = %q, expected to end with secrets.age", secretsPath)
+	if !strings.HasSuffix(result.SecretsPath, "secrets.age") {
+		t.Errorf("secretsPath = %q, expected to end with secrets.age", result.SecretsPath)
 	}
-	if !strings.HasSuffix(keyPath, "age.key") {
-		t.Errorf("keyPath = %q, expected to end with age.key", keyPath)
+	if !strings.HasSuffix(result.KeyPath, "age.key") {
+		t.Errorf("keyPath = %q, expected to end with age.key", result.KeyPath)
 	}
 }
 
@@ -205,7 +201,8 @@ func TestLoadSecretsWithCorruptedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := LoadSecrets(NewCLIContext(), tmpDir)
+	cliCtx := NewCLIContext()
+	_, err := secretspkg.Load(cliCtx.RootCtx(), cliCtx.Crypto(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted secrets file, got nil")
 	}
@@ -229,7 +226,8 @@ func TestLoadSecretsWithCorruptedKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := LoadSecrets(NewCLIContext(), tmpDir)
+	cliCtx := NewCLIContext()
+	_, err := secretspkg.Load(cliCtx.RootCtx(), cliCtx.Crypto(), tmpDir)
 	if err == nil {
 		t.Fatal("Expected error for corrupted key file, got nil")
 	}

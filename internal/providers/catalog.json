@@ -4,7 +4,6 @@
     "base_url": "https://api.z.ai/api/anthropic",
     "model": "glm-5.1",
     "requires_api_key": true,
-    "env_vars": ["ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash"],
     "api_key_env_var": "ZAI_API_KEY",
     "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
   },
@@ -25,10 +24,6 @@
     "base_url": "https://api.kimi.com/coding/",
     "model": "kimi-for-coding",
     "requires_api_key": true,
-    "env_vars": [
-      "ANTHROPIC_SMALL_FAST_MODEL_TIMEOUT=240",
-      "ANTHROPIC_SMALL_FAST_MAX_TOKENS=200000"
-    ],
     "api_key_env_var": "KIMI_API_KEY",
     "key_format": {"min_length": 32, "prefix": "", "pattern": ""}
   },

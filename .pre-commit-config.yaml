@@ -3,7 +3,10 @@ repos:
     hooks:
       - id: update-checksums
         name: Update install script checksums
-        entry: bash -c 'for f in "$@"; do dir=$(dirname "$f"); printf "# Kairo release checksums\n# DO NOT EDIT - This file is auto-generated during release\n\n" > "$dir/checksums.txt"; for s in "$dir"/install.{sh,ps1}; do [ -f "$s" ] && sha256sum "$s" >> "$dir/checksums.txt"; done; git add "$dir/checksums.txt"; done'
+        # cut -d" " -f1 extracts just the hash, discarding MSYS's "*" binary
+        # marker on Windows so the written "hash  file" lines match Linux
+        # sha256sum output (the CI checksum comparison would otherwise fail).
+        entry: bash -c 'for f in "$@"; do dir=$(dirname "$f"); printf "# Kairo release checksums\n# DO NOT EDIT - This file is auto-generated during release\n\n" > "$dir/checksums.txt"; for s in "$dir"/install.{sh,ps1}; do [ -f "$s" ] && printf "%s  %s\n" "$(sha256sum "$s" | cut -d" " -f1)" "$s" >> "$dir/checksums.txt"; done; git add "$dir/checksums.txt"; done'
         language: system
         files: (scripts/install\.(sh|ps1)$|\.gitattributes$)
         pass_filenames: true
@@ -18,7 +21,10 @@ repos:
 
       - id: go-test
         name: Run Go tests
-        entry: go test -race ./...
+        # -timeout bounds each package so a hung test fails the hook instead of
+        # hanging it; a hung pre-commit run on interruption reverts the working
+        # tree, so failing fast is the safe behavior.
+        entry: go test -race -timeout 10m ./...
         language: system
         files: \.go$
         pass_filenames: false

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
+	"github.com/dkmnx/kairo/internal/secrets"
 )
 
 // TestRunResetSecrets_UserCancels verifies that runResetSecrets returns
@@ -19,7 +20,7 @@ func TestRunResetSecrets_UserCancels(t *testing.T) {
 	cliCtx := NewCLIContext()
 	cliCtx.SetConfigDir(configDir)
 
-	err := runResetSecrets(cliCtx, configDir, SecretsResult{})
+	err := runResetSecrets(cliCtx, configDir, secrets.LoadResult{})
 	if !errors.Is(err, kairoerrors.ErrUserCancelled) {
 		t.Errorf("expected ErrUserCancelled, got: %v", err)
 	}
@@ -35,7 +36,7 @@ func TestRunResetSecrets_Confirmed(t *testing.T) {
 	cliCtx.SetConfigDir(configDir)
 	cliCtx.SetDeps(resetDeps(nil))
 
-	err := runResetSecrets(cliCtx, configDir, SecretsResult{
+	err := runResetSecrets(cliCtx, configDir, secrets.LoadResult{
 		Secrets:     map[string]string{},
 		SecretsPath: filepath.Join(configDir, "secrets.age"),
 		KeyPath:     filepath.Join(configDir, "key.age"),
@@ -45,7 +46,7 @@ func TestRunResetSecrets_Confirmed(t *testing.T) {
 	}
 }
 
-// TestRunResetSecrets_ResetFails verifies that an error from EnsureKeyExists
+// TestRunResetSecrets_ResetFails verifies that an error from key generation
 // is propagated to the caller.
 func TestRunResetSecrets_ResetFails(t *testing.T) {
 	feedStdin(t, "y\n")
@@ -55,11 +56,11 @@ func TestRunResetSecrets_ResetFails(t *testing.T) {
 	cliCtx.SetConfigDir(configDir)
 
 	wantErr := errors.New("key generation failed")
-	cliCtx.SetDeps(resetDeps(func(ctx context.Context, configDir string) error {
+	cliCtx.SetDeps(resetDeps(func(ctx context.Context, keyPath string) error {
 		return wantErr
 	}))
 
-	err := runResetSecrets(cliCtx, configDir, SecretsResult{
+	err := runResetSecrets(cliCtx, configDir, secrets.LoadResult{
 		Secrets:     map[string]string{},
 		SecretsPath: filepath.Join(configDir, "secrets.age"),
 		KeyPath:     filepath.Join(configDir, "key.age"),
@@ -70,11 +71,11 @@ func TestRunResetSecrets_ResetFails(t *testing.T) {
 }
 
 // resetDeps builds a Deps for the reset flow with a mockCrypto whose
-// EnsureKeyExists returns ensureErr (nil → no override).
-func resetDeps(ensureErr func(ctx context.Context, configDir string) error) *Deps {
+// GenerateKey returns genErr (nil → real key generation).
+func resetDeps(genErr func(ctx context.Context, keyPath string) error) *Deps {
 	mc := &mockCrypto{}
-	if ensureErr != nil {
-		mc.EnsureKeyExistsFn = ensureErr
+	if genErr != nil {
+		mc.GenerateKeyFn = genErr
 	}
 	return &Deps{
 		Process: &mockProcess{

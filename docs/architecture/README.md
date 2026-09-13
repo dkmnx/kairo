@@ -123,18 +123,21 @@ sequenceDiagram
 
 ```text
 kairo/
-├── cmd/                 # CLI commands and execution flow
+├── cmd/                 # CLI commands, cobra wiring, prompts, harness exec
 ├── internal/
+│   ├── app/             # Env assembly and launch resolution (no cobra)
 │   ├── config/          # Config loading, caching, migration, paths
 │   ├── constants/       # Shared constants (paths, defaults)
 │   ├── crypto/          # age/X25519 key management and encryption
 │   ├── envutil/         # Environment variable merge utilities
 │   ├── errors/          # Typed errors
-│   ├── execution/        # Harness execution dispatch
+│   ├── execution/       # Harness session/signal helpers
 │   ├── fsutil/          # Atomic file write utility
 │   ├── harness/         # Harness dispatch (Claude, Qwen, Pi, Crush)
-│   ├── providers/       # Built-in provider registry
-│   ├── secrets/          # Secrets loading and saving
+│   ├── httpfetch/       # HTTP fetching with size limits and cosign verify
+│   ├── integrity/       # Verified catalog downloads (cosign + checksum)
+│   ├── providers/       # Built-in provider registry (catalog.json)
+│   ├── secrets/         # Secrets parse/format + encrypted store Load/Save/Reset
 │   ├── ui/              # Terminal output and prompts
 │   ├── update/          # Self-update logic
 │   ├── validate/        # Validation helpers
@@ -146,11 +149,35 @@ kairo/
 └── justfile             # Development commands
 ```
 
+### Layering after cmd digest
+
+`cmd/` is cobra-only: flag parsing, interactive prompts, and process exec.
+Business logic lives under `internal/`:
+
+- `internal/app` — `BuildProviderEnv`, `InjectPiAPIKeys`, `ResolveExecution`, `SplitArgs`
+- `internal/secrets` — `Load`, `Save`, `Reset` for the encrypted store
+- `cmd.OrchestrateExecution` — thin adapter that loads config, calls `app.ResolveExecution`, and prints recovery guidance
+
+Secrets file keys always use the conventional `PROVIDER_API_KEY` form (`harness.APIKeyEnvVar`). Process environment names use `app.APIKeyEnvVarName` (catalog → `EnvKey` → conventional) so tools that expect `HF_TOKEN` or `GEMINI_API_KEY` receive the right variable.
+
+### Key package APIs
+
+| Package | Exported surface (representative) |
+| ------- | --------------------------------- |
+| `constants` | `KeyFileName`, `SecretsFileName`, `WindowsGOOS`, `RawGitHubFileURL`, `GitHubBlobURL`, `CatalogDownloadURL`, `CatalogBundleDownloadURL`, `CatalogChecksumURL` |
+| `execution` | `StartSession` |
+| `fsutil` | `WriteAtomic` |
+| `httpfetch` | `DoHTTPRequest`, `DoHTTPGet`, `WriteStreamToTemp`, `DataToTempFile`, `CosignVerifyBlob` |
+| `integrity` | `FetchVerified` |
+| `providers` | `ProviderDefinition`, `ProviderOrder`, `CustomProviderDefinition`, `KeyFormat`, `ProviderTableMarkdown` |
+| `update` | `NewClient`, `Client`, `Release`, `VersionGreaterThan`, `VerifyChecksum`, `InstallScriptURL`, `ChecksumsURL`, `ParseChecksumLine` |
+| `validate` | `ValidateAPIKey`, `ValidateURL`, `ValidateProviderModel`, `ValidateCrossProviderConfig` |
+
 ## Configuration Schema
 
 ```yaml
 default_provider: zai
-default_harness: claude
+default_harness: pi
 default_models:
   zai: glm-5.1
 providers:
@@ -158,14 +185,12 @@ providers:
     name: Z.AI
     base_url: https://api.z.ai/api/anthropic
     model: glm-5.1
-    env_vars:
-      - ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-flash
 ```
 
 Notes:
 
 - API keys are stored in `secrets.age`, not `config.yaml`
-- `default_harness` is optional and defaults to `claude`. Valid values: `claude`, `qwen`, `pi`, `crush`.
+- `default_harness` is optional. When unset, kairo detects the first installed supported CLI on PATH (`pi`, `claude`, `qwen`, `crush` in that order). Valid explicit values: `claude`, `qwen`, `pi`, `crush`.
 - `default_models` is migration metadata for built-in providers
 
 ## Provider Registry
@@ -205,6 +230,10 @@ Kairo keeps credentials out of normal child-process environments by combining en
 - Windows wrapper: PowerShell `.ps1` script
 
 See [Wrapper Scripts](wrapper-scripts.md) for the detailed design.
+
+### Pi harness exception
+
+Claude, Qwen, and Crush use the temp-token wrapper so only the active provider key reaches the child process. Pi is different **by design**: a Pi session can switch model providers mid-run, so kairo injects API keys for **all configured providers that have stored secrets** into the Pi child environment. This is intentional multi-provider access, not a leak. Do not “fix” it down to the active key without a product decision to drop in-session provider switching.
 
 ## Cross-Platform Support
 

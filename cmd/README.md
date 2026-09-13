@@ -14,16 +14,16 @@ logic lives in `internal/`.
 | `deps.go`                   | Production adapters that satisfy the interfaces                                                                                 |
 | `context.go`                | `CLIContext`, `CLIContextFromCmd`, `MustCLIContextFromCmd`, `WithCLIContext`                                                    |
 | `setup.go`                  | Interactive setup wizard entry point                                                                                            |
-| `setup_config.go`           | `EnsureConfigDir`, `LoadConfig`, `AddAndSaveProvider`, `LoadSecrets`, `SaveSecrets`, `ResetSecretsFiles`                        |
+| `setup_config.go`           | `EnsureConfigDir`, `LoadConfig`, `AddAndSaveProvider`                                                                           |
 | `setup_configdir_test.go`   | Tests for config-dir resolution                                                                                                 |
 | `setup_provider.go`         | `ProviderDefinition`, `ResolveProviderName`, `BuildProviderConfig`                                                              |
 | `setup_prompts.go`          | Interactive prompts (`promptForAPIKey`, `promptForBaseURL`, `promptForModel`, `promptForEnvKey`, `promptForProvider`)           |
 | `execution.go`              | `ExecutionConfig`, `WrapperCmd`, `buildWrapperCommand`                                                                          |
-| `execution_env.go`          | `BuildProviderEnv`, `BuildPiEnvVars`, `BuildBuiltInEnvVars`, env-var merge logic                                                |
 | `execution_harness.go`      | `executePi`, `runHarnessExec`, `executeWithAuth`, `executeWithoutAuth`, `lookUpHarnessBinary`, `reportHarnessError`, `handlePi` |
 | `execution_error.go`        | `handleConfigError`, `isBinaryOutdatedError`, `promptUpgrade`, `handleSecretsError`                                             |
-| `execution_orchestrator.go` | `OrchestrateExecution`, `loadRootConfig`, `resolveProviderAndArgs`, `lookupProvider`                                            |
-| `util.go`                   | `requireConfigDir`, `loadConfigOrExit`, `loadConfigOrEmpty`, `mergeEnvVars`                                                     |
+| `execution_orchestrator.go` | `OrchestrateExecution` adapter, `loadRootConfig`, `printResolveError`                                                             |
+| `run_provider.go`           | `runPiProvider`, `runStandardProvider`, `buildExecutionConfig`                                                                    |
+| `util.go`                   | `requireConfigDir`, `loadConfigOrExit`, `loadConfigOrEmpty`                                                                     |
 | `default.go`                | `kairo default [provider]` command                                                                                              |
 | `list.go`                   | `kairo list` command                                                                                                            |
 | `delete.go`                 | `kairo delete [provider]` command, `deleteProviderSecrets`                                                                      |

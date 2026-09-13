@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -160,14 +161,16 @@ func CosignVerifyBlob(
 }
 
 // VerifySHA256 computes the SHA256 hash of data and compares it to expectedHex.
-// The comparison is case-insensitive. Returns a VerificationError on mismatch.
+// The comparison is constant-time. Returns a VerificationError on mismatch.
 func VerifySHA256(data []byte, expectedHex string) error {
 	expectedHex = strings.TrimSpace(expectedHex)
 	hasher := sha256.New()
 	hasher.Write(data)
 	actualHex := hex.EncodeToString(hasher.Sum(nil))
 
-	if !strings.EqualFold(actualHex, expectedHex) {
+	// Constant-time comparison; both sides are lowercased to preserve the
+	// case-insensitive hash contract.
+	if subtle.ConstantTimeCompare([]byte(actualHex), []byte(strings.ToLower(expectedHex))) != 1 {
 		return errors.VerificationErr(
 			fmt.Sprintf("SHA256 integrity check failed (expected: %.8s..., got: %.8s...)",
 				expectedHex, actualHex),

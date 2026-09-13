@@ -12,9 +12,9 @@ import (
 
 // TestDocsCoverPublicSymbols scans each public package under internal/ and
 // verifies that its exported declarations are at least mentioned in the
-// matching `docs/architecture/` Markdown files. This is a coarse drift
-// check: it fails only if a package has *no* exported symbols referenced
-// from the docs at all, which would indicate a new package with no docs.
+// matching `docs/architecture/` Markdown files. A package with exported
+// symbols that appear nowhere in the architecture docs fails the test so
+// new packages cannot land without a docs update.
 func TestDocsCoverPublicSymbols(t *testing.T) {
 	root, err := os.Getwd()
 	if err != nil {
@@ -73,7 +73,7 @@ func TestDocsCoverPublicSymbols(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Logf("package %q has no exported symbols in docs/architecture/ — consider adding docs", name)
+			t.Errorf("package %q has no exported symbols in docs/architecture/ — add the package and key APIs to the architecture docs", name)
 		}
 	}
 }
@@ -104,7 +104,9 @@ func readAllDocs(t *testing.T, root string) string {
 func collectExported(t *testing.T, dir string) []string {
 	t.Helper()
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, func(os.FileInfo) bool { return true }, parser.ParseComments)
+	pkgs, err := parser.ParseDir(fset, dir, func(fi os.FileInfo) bool {
+		return !strings.HasSuffix(fi.Name(), "_test.go")
+	}, parser.ParseComments)
 	if err != nil {
 		return nil
 	}

@@ -77,15 +77,13 @@ func TestRunStandardProviderBuildEnvError(t *testing.T) {
 func TestRunPiProviderWithAuth(t *testing.T) {
 	tmpDir := t.TempDir()
 
+	provider := config.Provider{Name: "Z.AI", BaseURL: "https://api.z.ai", Model: "glm-5"}
 	cfg := &config.Config{
 		DefaultProvider: "zai",
-		Providers: map[string]config.Provider{
-			"zai": {Name: "Z.AI", BaseURL: "https://api.z.ai", Model: "glm-5"},
-		},
+		Providers:       map[string]config.Provider{"zai": provider},
 	}
 	createConfigFile(t, tmpDir, cfg)
 
-	// Set up real crypto keys and encrypted secrets
 	keyPath := filepath.Join(tmpDir, "age.key")
 	secretsPath := filepath.Join(tmpDir, "secrets.age")
 	if err := crypto.GenerateKey(context.Background(), keyPath); err != nil {
@@ -116,7 +114,7 @@ func TestRunPiProviderWithAuth(t *testing.T) {
 	skipPermissionsFlag = false
 	harnessFlag = ""
 
-	runPiProvider(rootCmd, cliCtx, cfg, cfg.Providers["zai"], "zai", "pi", []string{"hello"})
+	runPiProvider(rootCmd, cliCtx, cfg, provider, "zai", "pi", []string{"hello"})
 
 	if !execCalled {
 		t.Error("Expected executeWithAuth to be called for Pi harness with API key")

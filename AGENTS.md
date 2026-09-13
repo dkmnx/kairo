@@ -4,7 +4,7 @@
 
 Go CLI wrapper for Claude/Qwen Code API providers with X25519 encryption.
 
-**Tech Stack:** Go 1.26+, Cobra, age (filippo.io/age), YAML, Go testing
+**Tech Stack:** Go 1.27+, Cobra, age (filippo.io/age), YAML, Go testing
 
 **Key Directories:**
 
@@ -59,6 +59,6 @@ Table-driven, `t.TempDir()` for filesystem isolation. CI enforces 70% coverage. 
 
 ## Patterns
 
-- **Add a provider**: register in `internal/providers/registry.go` + `providerOrder`, add key validation in `internal/validate/api_key.go` if needed
+- **Add a provider**: register in `internal/providers/catalog.json` + `providerPriority` in `internal/providers/registry.go`, add key validation in `internal/validate/api_key.go` if needed
 - **Releases**: goreleaser (`CGO_ENABLED=0`, `trimpath`, version vars from `internal/version/`)
 - **Config migration**: `internal/config/migration.go` handles provider default model updates across versions

@@ -116,7 +116,7 @@ clean:
 # Install binary to GOBIN or GOPATH/bin
 install: build
     @echo "Installing {{BINARY_NAME}}..."
-    {{GO}} install {{DIST_DIR}}/{{BINARY_NAME}}
+    {{GO}} install .
 
 # Uninstall binary
 [unix]
@@ -139,8 +139,8 @@ run args="": build
 # Download and tidy dependencies + install dev tools
 deps:
     @echo "Installing dependencies..."
-    {{GO}} mod download
     {{GO}} mod tidy
+    {{GO}} mod download
     @echo ""
     @echo "Installing development tools..."
     {{GO}} install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest

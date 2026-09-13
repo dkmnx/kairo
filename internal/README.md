@@ -13,11 +13,12 @@ flowchart TB
     end
 
     subgraph internal[internal]
+        App[app env assembly]
         Config[config]
         Constants[constants]
         Crypto[crypto]
         Providers[providers]
-        Secrets[secrets]
+        Secrets[secrets Parse/Format/Load/Save/Reset]
         UI[ui]
         Update[update]
         Validate[validate]
@@ -27,15 +28,31 @@ flowchart TB
     end
 
     Root --> Config
+    Root --> App
     Root --> Providers
     Setup --> Crypto
     Setup --> Validate
     Exec --> Wrapper
+    App --> Secrets
     Config --> Errors
     Crypto --> Errors
 ```
 
 ## Packages
+
+### `app/`
+
+Harness environment assembly and launch resolution without cobra or CLIContext.
+
+Key functions:
+
+- `BuildProviderEnv(ctx, cryptoSvc, configDir, provider, providerName)` - merge process env, built-in vars, provider vars, and secrets
+- `BuiltInEnvVars(provider)` - ANTHROPIC_BASE_URL / ANTHROPIC_MODEL
+- `InjectPiAPIKeys(envResult, cfg)` - inject all configured provider keys for Pi multi-provider sessions
+- `APIKeyEnvVarName(providerName, provider)` - catalog → EnvKey → conventional name
+- `LookupAPIKeyWithFallback(secrets, providerName)` - provider key with custom-provider fallback
+- `ResolveExecution(cfg, opts)` - pick provider entry and harness from CLI args
+- `SplitArgs` / `HasLeadingArgsSeparator` / `IsKnownProvider` / `ProviderFromArgs` - pure argument helpers
 
 ### `config/`
 
@@ -57,7 +74,7 @@ Example schema:
 
 ```yaml
 default_provider: zai
-default_harness: claude
+default_harness: pi
 default_models:
   zai: glm-5.1
 providers:
@@ -227,13 +244,17 @@ Key functions:
 
 ### `secrets/`
 
-Secrets parsing and formatting for encrypted API key storage.
+Secrets parsing, formatting, and encrypted store persistence.
 
 Key functions:
 
 - `Parse(content)` - parses key=value pairs from secrets content
 - `ParseWithStats(content)` - returns parse results with warnings and skipped count
 - `Format(secrets)` - formats a secrets map into key=value string lines
+- `Paths(configDir)` - secrets and key file paths for a config directory
+- `Load(ctx, cryptoSvc, configDir)` - decrypt and parse the store
+- `Save(ctx, cryptoSvc, secretsPath, keyPath, secretsMap)` - encrypt and write
+- `Reset(ctx, cryptoSvc, configDir, secretsPath, keyPath)` - rotate key and clear secrets
 
 ### `update/`
 
@@ -297,10 +318,10 @@ flowchart LR
     Cmd --> Config[config.LoadConfig]
     Cmd --> Validate[validate]
     Cmd --> Crypto[crypto.EncryptSecrets / DecryptSecrets]
-    Cmd --> Secrets[secrets.LoadSecrets / SaveSecrets]
+    Cmd --> Secrets[secrets.Parse / Format]
     Cmd --> Providers[providers registry]
     Cmd --> Wrapper[wrapper.GenerateWrapperScript]
-    Cmd --> Update[update.CheckAndUpdate]
+    Cmd --> Update[update.Client.FetchLatestRelease / RunInstallScript]
     Config --> YAML[config.yaml]
     Crypto --> Key[age.key]
     Crypto --> SecretsFile[secrets.age]

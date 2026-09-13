@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"sync"
 
+	"github.com/dkmnx/kairo/internal/app"
 	"github.com/dkmnx/kairo/internal/config"
 	kairoerrors "github.com/dkmnx/kairo/internal/errors"
 	"github.com/dkmnx/kairo/internal/execution"
@@ -43,9 +46,9 @@ func runHarnessExec(cfg ExecutionConfig, harnessPath string, cliArgs []string) e
 		})
 	}
 
-	rootCtx := context.Background()
-	if cliCtx := CLIContextFromCmd(cfg.Cmd); cliCtx != nil {
-		rootCtx = cliCtx.RootCtx()
+	rootCtx := cfg.RootCtx
+	if rootCtx == nil {
+		rootCtx = context.Background()
 	}
 
 	ctx, cancel, stopSig := execution.StartSession(rootCtx)
@@ -62,10 +65,17 @@ func runHarnessExec(cfg ExecutionConfig, harnessPath string, cliArgs []string) e
 }
 
 // reportHarnessError prints a uniform harness-error line and exits the
-// process. It is the standard post-exec failure path.
+// process with the harness's exit code when available (e.g. 130 for Ctrl-C),
+// falling back to 1.
 func reportHarnessError(cfg ExecutionConfig, displayName string, err error) {
-	cfg.Cmd.Printf("Error running %s: %v\n", displayName, err)
-	cfg.Deps.Process.ExitProcess(1)
+	ui.PrintError(fmt.Sprintf("Error running %s: %v", displayName, err))
+
+	exitCode := 1
+	var exitErr *exec.ExitError
+	if stderrors.As(err, &exitErr) {
+		exitCode = exitErr.ExitCode()
+	}
+	cfg.Deps.Process.ExitProcess(exitCode)
 }
 
 // lookUpHarnessBinary resolves the binary in PATH. On miss it prints an error
@@ -166,9 +176,9 @@ func executeWithAuth(cfg ExecutionConfig) {
 }
 
 func executeWrapperWithAuth(cfg ExecutionConfig) {
-	rootCtx := context.Background()
-	if cliCtx := CLIContextFromCmd(cfg.Cmd); cliCtx != nil {
-		rootCtx = cliCtx.RootCtx()
+	rootCtx := cfg.RootCtx
+	if rootCtx == nil {
+		rootCtx = context.Background()
 	}
 	ctx, cancel, stopSig := execution.StartSession(rootCtx)
 	defer cancel()
@@ -201,6 +211,13 @@ func executeWrapperWithAuth(cfg ExecutionConfig) {
 	cliArgs := applyYoloFlag(cfg, cfg.HarnessArgs)
 
 	displayName, envVarName, extraArgs := harness.Dispatch(cfg.HarnessToUse, cfg.ProviderName, cfg.Provider.Model)
+	// Crush receives the provider API key via a process env var. Use the
+	// catalog/EnvKey-aware name so non-conventional keys (HF_TOKEN,
+	// GEMINI_API_KEY, etc.) match what the tool expects; secrets remain stored
+	// under the conventional PROVIDER_API_KEY form.
+	if cfg.HarnessToUse == harness.Crush {
+		envVarName = app.APIKeyEnvVarName(cfg.ProviderName, cfg.Provider)
+	}
 	cliArgs = append(extraArgs, cliArgs...)
 
 	run := HarnessRun{

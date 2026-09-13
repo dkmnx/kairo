@@ -1,25 +1,80 @@
 package cmd
 
 import (
+	"context"
+	stderrors "errors"
+	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/dkmnx/kairo/internal/config"
+	"github.com/dkmnx/kairo/internal/crypto"
 )
 
+// failingEncryptService injects an EncryptSecrets failure to verify that a
+// secrets-save failure prevents the provider from being committed to config.
+type failingEncryptService struct {
+	crypto.DefaultService
+}
+
+func (failingEncryptService) EncryptSecrets(context.Context, string, string, string) error {
+	return stderrors.New("injected encrypt failure")
+}
+
+// TestConfigureProvider_SecretFailurePreventsConfigWrite verifies the
+// persistence order: secrets are written before config.yaml, so a failure
+// saving secrets leaves the config untouched (no half-configured provider).
+func TestConfigureProvider_SecretFailurePreventsConfigWrite(t *testing.T) {
+	in, out := setupTapTest(t)
+	configDir := t.TempDir()
+	cliCtx := NewCLIContext()
+	cliCtx.SetConfigDir(configDir)
+	cliCtx.SetDeps(&Deps{Crypto: &failingEncryptService{}})
+
+	cfg := &config.Config{
+		Providers: map[string]config.Provider{},
+	}
+	secretsPath := filepath.Join(configDir, "secrets.age")
+	keyPath := filepath.Join(configDir, "key.age")
+
+	resultCh := make(chan string)
+	go func() {
+		result, err := configureProvider(ProviderSetup{
+			CLIContext:   cliCtx,
+			ConfigDir:    configDir,
+			Cfg:          cfg,
+			ProviderName: "zai",
+			Secrets:      map[string]string{},
+			SecretsPath:  secretsPath,
+			KeyPath:      keyPath,
+		})
+		if err != nil {
+			resultCh <- "error:" + err.Error()
+
+			return
+		}
+		resultCh <- result
+	}()
+
+	typeText(t, in, out, "API Key", "sk-zai-test-key-abcdefghijklmnopqrst")
+	pressEnter(t, in, out, "Base URL")
+	pressEnter(t, in, out, "Model")
+
+	if result := <-resultCh; !strings.HasPrefix(result, "error:") {
+		t.Fatalf("expected error from failing EncryptSecrets, got: %q", result)
+	}
+
+	if _, exists := cfg.Providers["zai"]; exists {
+		t.Error("provider must not be committed to config when secrets save fails")
+	}
+}
+
 func TestConfigureProvider_NewProvider(t *testing.T) {
-	in, cfg, resultCh := startConfigureProvider(t, "zai", nil)
+	in, out, cfg, resultCh := startConfigureProvider(t, "zai", nil)
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "sk-zai-test-key-abcdefghijklmnopqrst")
-	emitReturn(in)
-
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
-
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
+	typeText(t, in, out, "API Key", "sk-zai-test-key-abcdefghijklmnopqrst")
+	pressEnter(t, in, out, "Base URL")
+	pressEnter(t, in, out, "Model")
 
 	if result := <-resultCh; result != "zai" {
 		t.Fatalf("configureProvider() = %q, want 'zai'", result)
@@ -38,18 +93,11 @@ func TestConfigureProvider_NewProvider(t *testing.T) {
 }
 
 func TestConfigureProvider_NewProviderCustomModel(t *testing.T) {
-	in, cfg, resultCh := startConfigureProvider(t, "zai", nil)
+	in, out, cfg, resultCh := startConfigureProvider(t, "zai", nil)
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "sk-zai-custom-key-abcdefghijklmnopqr")
-	emitReturn(in)
-
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
-
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "my-custom-model-v2")
-	emitReturn(in)
+	typeText(t, in, out, "API Key", "sk-zai-custom-key-abcdefghijklmnopqr")
+	pressEnter(t, in, out, "Base URL")
+	typeText(t, in, out, "Model", "my-custom-model-v2")
 
 	if result := <-resultCh; result != "zai" {
 		t.Fatalf("configureProvider() = %q, want 'zai'", result)
@@ -63,17 +111,11 @@ func TestConfigureProvider_NewProviderCustomModel(t *testing.T) {
 }
 
 func TestConfigureProvider_FirstProviderBecomesDefault(t *testing.T) {
-	in, cfg, resultCh := startConfigureProvider(t, "zai", nil)
+	in, out, cfg, resultCh := startConfigureProvider(t, "zai", nil)
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "sk-zai-default-key-abcdefghijklmnop")
-	emitReturn(in)
-
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
-
-	time.Sleep(50 * time.Millisecond)
-	emitReturn(in)
+	typeText(t, in, out, "API Key", "sk-zai-default-key-abcdefghijklmnop")
+	pressEnter(t, in, out, "Base URL")
+	pressEnter(t, in, out, "Model")
 
 	if result := <-resultCh; result != "zai" {
 		t.Fatalf("configureProvider() = %q, want 'zai'", result)
@@ -98,19 +140,11 @@ func TestConfigureProvider_EditExisting(t *testing.T) {
 	// Seed before launching: configureProvider holds the map reference across
 	// the goroutine boundary, so post-launch writes would race.
 	secrets := map[string]string{"ZAI_API_KEY": "sk-existing-key-abcdefghijklmnopqr"}
-	in, cfg, resultCh := startConfigureProviderWithSecrets(t, "zai", cfg, secrets)
+	in, out, cfg, resultCh := startConfigureProviderWithSecrets(t, "zai", cfg, secrets)
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "n")
-	emitReturn(in)
-
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "n")
-	emitReturn(in)
-
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "n")
-	emitReturn(in)
+	answerConfirm(t, in, out, "Modify API key?", "n")
+	answerConfirm(t, in, out, "Modify Base URL?", "n")
+	answerConfirm(t, in, out, "Modify Model?", "n")
 
 	if result := <-resultCh; result != "zai" {
 		t.Fatalf("configureProvider() = %q, want 'zai'", result)
@@ -122,11 +156,9 @@ func TestConfigureProvider_EditExisting(t *testing.T) {
 }
 
 func TestConfigureProvider_InvalidAPIKey(t *testing.T) {
-	in, cfg, resultCh := startConfigureProvider(t, "anthropic", nil)
+	in, out, cfg, resultCh := startConfigureProvider(t, "anthropic", nil)
 
-	time.Sleep(50 * time.Millisecond)
-	emitText(in, "invalid-key")
-	emitReturn(in)
+	typeText(t, in, out, "API Key", "invalid-key")
 
 	result := <-resultCh
 	if !strings.HasPrefix(result, "error:") {

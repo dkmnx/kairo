@@ -320,18 +320,18 @@ func TestSaveProviderConfiguration(t *testing.T) {
 
 		secrets := make(map[string]string)
 		secrets["TESTPROVIDER_API_KEY"] = "test-api-key"
-		err = SaveSecrets(cliCtx, secretsPath, keyPath, secrets)
+		err = secretspkg.Save(cliCtx.RootCtx(), cliCtx.Crypto(), secretsPath, keyPath, secrets)
 		if err != nil {
-			t.Fatalf("SaveSecrets() error = %v", err)
+			t.Fatalf("secrets.Save() error = %v", err)
 		}
 
 		if cfg.DefaultProvider != "testprovider" {
 			t.Errorf("DefaultProvider = %q, want %q", cfg.DefaultProvider, "testprovider")
 		}
 
-		result, err := LoadSecrets(cliCtx, tmpDir)
+		result, err := secretspkg.Load(cliCtx.RootCtx(), cliCtx.Crypto(), tmpDir)
 		if err != nil {
-			t.Fatalf("LoadSecrets() error = %v", err)
+			t.Fatalf("secrets.Load() error = %v", err)
 		}
 		loadedSecrets := result.Secrets
 		if loadedSecrets["TESTPROVIDER_API_KEY"] != "test-api-key" {
@@ -375,9 +375,9 @@ func TestSaveProviderConfiguration(t *testing.T) {
 
 		secrets := make(map[string]string)
 		secrets["NEWPROVIDER_API_KEY"] = "new-api-key"
-		err = SaveSecrets(cliCtx, secretsPath, keyPath, secrets)
+		err = secretspkg.Save(cliCtx.RootCtx(), cliCtx.Crypto(), secretsPath, keyPath, secrets)
 		if err != nil {
-			t.Fatalf("SaveSecrets() error = %v", err)
+			t.Fatalf("secrets.Save() error = %v", err)
 		}
 
 		if cfg.DefaultProvider != "existing" {

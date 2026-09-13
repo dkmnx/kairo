@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/dkmnx/kairo/internal/update"
 	"github.com/dkmnx/kairo/internal/version"
@@ -14,35 +13,32 @@ import (
 )
 
 func TestVersionCommand(t *testing.T) {
+	originalVersion := version.Version
+	originalCommit := version.Commit
+	originalDate := version.Date
+	version.Version = "v1.0.0"
+	version.Commit = "abc123"
+	version.Date = "2025-12-26T09:15:46Z"
+	defer func() {
+		version.Version = originalVersion
+		version.Commit = originalCommit
+		version.Date = originalDate
+	}()
+
+	d := testDeps(func(_ *mockProcess, _ *mockWrapper, mu *mockUpdate) {
+		mu.FetchLatestReleaseFn = func(ctx context.Context) (*update.Release, error) {
+			return &update.Release{TagName: "v1.0.0"}, nil
+		}
+	})
+	cliCtx := NewCLIContext()
+	cliCtx.SetDeps(d)
+
 	buf := new(bytes.Buffer)
+	versionCmd.SetOut(buf)
+	versionCmd.SetErr(buf)
+	versionCmd.SetContext(WithCLIContext(context.Background(), cliCtx))
 
-	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "Show version",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.SetOut(buf)
-			cmd.SetErr(buf)
-			version.Version = "v1.0.0"
-			version.Commit = "abc123"
-			version.Date = "2025-12-26T09:15:46Z"
-			cmd.Printf("Kairo version: %s\n", version.Version)
-			if version.Commit != "unknown" && version.Commit != "" {
-				cmd.Printf("Commit: %s\n", version.Commit)
-			}
-			if version.Date != "" && version.Date != "unknown" {
-				if t, err := time.Parse(time.RFC3339, version.Date); err == nil {
-					cmd.Printf("Date: %s\n", t.Format("2006-01-02"))
-				} else {
-					cmd.Printf("Date: %s\n", version.Date)
-				}
-			}
-		},
-	}
-
-	err := cmd.Execute()
-	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
-	}
+	versionCmd.Run(versionCmd, nil)
 
 	output := buf.String()
 	if output == "" {

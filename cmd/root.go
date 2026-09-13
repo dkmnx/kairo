@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dkmnx/kairo/internal/config"
-	"github.com/dkmnx/kairo/internal/harness"
-	"github.com/dkmnx/kairo/internal/providers"
+	"github.com/dkmnx/kairo/internal/app"
 	"github.com/dkmnx/kairo/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -50,7 +48,7 @@ func Execute() error {
 	promptRootCtx = cliCtx.RootCtx()
 
 	args := os.Args[1:]
-	cliCtx.SetDefaultProviderExplicit(hasLeadingArgsSeparator(args))
+	cliCtx.SetDefaultProviderExplicit(app.HasLeadingArgsSeparator(args))
 
 	rootCmd.SetArgs(args)
 
@@ -95,114 +93,5 @@ func init() {
 			cliCtx.SetConfigDir(configFlag)
 		}
 		cliCtx.SetVerbose(verboseFlag)
-	}
-}
-
-func runPiProvider(
-	cmd *cobra.Command,
-	cliCtx *CLIContext,
-	cfg *config.Config,
-	provider config.Provider,
-	providerName, harnessToUse string,
-	harnessArgs []string,
-) {
-	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), provider, providerName)
-	if err != nil {
-		handleSecretsError(err)
-
-		return
-	}
-
-	providerEnv := envResult.ProviderEnv
-	secrets := envResult.Secrets
-
-	hasAnyKey := false
-	for pName, p := range cfg.Providers {
-		piEnvVar, ok := providers.APIKeyEnvVarFor(pName)
-		if !ok {
-			if p.EnvKey == "" {
-				piEnvVar = harness.APIKeyEnvVar(pName)
-			} else {
-				piEnvVar = p.EnvKey
-			}
-		}
-		val, found := lookupAPIKeyWithFallback(secrets, pName)
-		if found {
-			providerEnv = append(providerEnv, fmt.Sprintf("%s=%s", piEnvVar, val))
-			hasAnyKey = true
-		}
-	}
-
-	execCfg := buildExecutionConfig(cmd, cliCtx, providerEnv, provider, providerName, harnessToUse, harnessArgs, "")
-
-	if hasAnyKey {
-		executeWithAuth(execCfg)
-	} else {
-		executeWithoutAuth(execCfg)
-	}
-}
-
-func runStandardProvider(
-	cmd *cobra.Command,
-	cliCtx *CLIContext,
-	provider config.Provider,
-	providerName, harnessToUse string,
-	harnessArgs []string,
-) {
-	envResult, err := BuildProviderEnv(cliCtx, cliCtx.ConfigDir(), provider, providerName)
-	if err != nil {
-		handleSecretsError(err)
-
-		return
-	}
-
-	apiKey, hasKey := lookupAPIKeyWithFallback(envResult.Secrets, providerName)
-
-	execCfg := buildExecutionConfig(
-		cmd, cliCtx, envResult.ProviderEnv, provider,
-		providerName, harnessToUse, harnessArgs, apiKey,
-	)
-
-	if hasKey {
-		executeWithAuth(execCfg)
-	} else {
-		executeWithoutAuth(execCfg)
-	}
-}
-
-func lookupAPIKeyWithFallback(secrets map[string]string, providerName string) (string, bool) {
-	if val, ok := secrets[harness.APIKeyEnvVar(providerName)]; ok {
-		return val, true
-	}
-
-	if providerName != customProviderName {
-		if val, ok := secrets[harness.APIKeyEnvVar(customProviderName)]; ok {
-			return val, true
-		}
-	}
-
-	return "", false
-}
-
-func buildExecutionConfig(
-	cmd *cobra.Command,
-	cliCtx *CLIContext,
-	providerEnv []string,
-	provider config.Provider,
-	providerName, harnessToUse string,
-	harnessArgs []string,
-	apiKey string,
-) ExecutionConfig {
-	return ExecutionConfig{
-		Cmd:           cmd,
-		ProviderEnv:   providerEnv,
-		HarnessToUse:  harnessToUse,
-		HarnessBinary: harnessToUse,
-		Provider:      provider,
-		ProviderName:  providerName,
-		HarnessArgs:   harnessArgs,
-		APIKey:        apiKey,
-		Yolo:          skipPermissionsFlag,
-		Deps:          cliCtx.Deps(),
 	}
 }
