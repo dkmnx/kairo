@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.11.0] - 2026-09-13
+
 ### Fixed
 
 - Crush now receives catalog-specific API-key env vars (`HF_TOKEN`, `GEMINI_API_KEY`, etc.) so tools that expect those names get the key
@@ -27,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **[BREAKING]:** With no harness configured, kairo no longer defaults to `claude`. It scans PATH in order (`pi`, `claude`, `qwen`, `crush`) and uses the first installed CLI. If none are installed, it lists the supported harnesses and suggests `kairo harness set`. Pin a fixed choice with `--harness` or `kairo harness set`
+- **[BREAKING]:** With no harness configured, kairo no longer defaults to `claude`. It uses the first installed supported CLI on PATH (see Added). Pin a fixed choice with `--harness` or `kairo harness set`
 
 ## [v2.10.3] - 2026-07-18
 
@@ -1451,7 +1453,8 @@ This ensures secrets are stored as `PROVIDER_API_KEY` (e.g., `ZAI_API_KEY`) inst
 - goreleaser.yaml configuration
 - Install script for cross-platform installation
 
-[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.10.3...HEAD
+[Unreleased]: https://github.com/dkmnx/kairo/compare/v2.11.0...HEAD
+[v2.11.0]: https://github.com/dkmnx/kairo/compare/v2.10.3...v2.11.0
 [v2.10.3]: https://github.com/dkmnx/kairo/compare/v2.10.2...v2.10.3
 [v2.10.2]: https://github.com/dkmnx/kairo/compare/v2.10.1...v2.10.2
 [v2.10.1]: https://github.com/dkmnx/kairo/compare/v2.10.0...v2.10.1
