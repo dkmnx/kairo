@@ -9,25 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Crush harness now receives catalog-specific API-key env vars (`HF_TOKEN`, `GEMINI_API_KEY`, etc.) instead of always using the conventional `PROVIDER_API_KEY` name
-- Session context is cancelled when the harness session stops, so stop no longer leaves a dangling cancel path
-- `--reset-secrets` now generates the new encryption key before removing the old key and secrets, so an interrupted or failed reset no longer destroys stored API keys
-- Standalone install scripts (`install.sh`, `install.ps1`) now abort when the checksum file is unavailable or the binary checksum does not match, instead of installing an unverified binary
-- Fix PowerShell installer silently skipping cosign signature verification due to an undefined `$versionNoPrefix` variable
-- Block non-canonical IP encodings (`127.1`, `2130706433`, `0x7f000001`, octal forms, trailing-dot hosts) and hostnames resolving to private/link-local addresses in base-URL validation
-- `KAIRO_REQUIRE_COSIGN=1` now aborts the update when the `cosign` binary is missing, not only when bundle verification fails
-- Save encrypted secrets before `config.yaml` during setup so a failure cannot leave a configured provider without its stored key
-- PowerShell wrapper escaping now only single-quote-wraps and doubles embedded quotes; characters like `$`, `"`, `&`, and `|` pass through to the harness unchanged instead of being corrupted with injected backticks/backslashes
-- Model names are now validated uniformly for every provider (previously only providers with catalog default models were checked), and the allowed character set includes common identifier punctuation (`:`, `/`, `+`, `@`, parentheses)
-- Cross-provider environment-variable conflict detection now covers valueless entries and API-key env vars, and reports all conflicts in a single error
-- Remove colliding environment-variable defaults from the provider catalog (kimi, zai) so catalog data is self-consistent
-- Preserve the harness exit code when a harness run fails instead of always exiting 1 (Ctrl-C now propagates 130)
-- Compare downloaded checksums in constant time (case-insensitive contract preserved)
-- PowerShell installer now stops only `kairo.exe` processes running the target binary during self-update, leaving instances from other install paths untouched
+- Crush now receives catalog-specific API-key env vars (`HF_TOKEN`, `GEMINI_API_KEY`, etc.) so tools that expect those names get the key
+- Session context is cancelled when the harness session stops
+- `--reset-secrets` generates the new encryption key before removing the old key and secrets, so an interrupted reset no longer destroys stored API keys
+- Install scripts abort when the checksum file is missing or the binary hash does not match
+- PowerShell installer no longer skips cosign verification due to an undefined `$versionNoPrefix` variable
+- Base-URL validation blocks non-canonical IP encodings (`127.1`, `2130706433`, octal forms, trailing-dot hosts) and hostnames that resolve to private/link-local addresses
+- `KAIRO_REQUIRE_COSIGN=1` aborts the update when the `cosign` binary is missing, not only when bundle verification fails
+- Setup saves encrypted secrets before `config.yaml` so a failure cannot leave a configured provider without its key
+- PowerShell wrapper escaping only single-quote-wraps and doubles embedded quotes; `$`, `"`, `&`, and `|` reach the harness unchanged
+- Model names are validated for every provider (not only those with catalog defaults), including common identifier punctuation (`:`, `/`, `+`, `@`, parentheses)
+- Cross-provider environment-variable conflicts cover valueless entries and API-key env vars, and report all conflicts together
+- Provider catalog no longer ships colliding env-var defaults for kimi and zai
+- Harness exit codes are preserved on failure (Ctrl-C propagates 130)
+- Downloaded checksums are compared in constant time
+- PowerShell installer stops only `kairo.exe` processes running the target binary during self-update
 
 ### Changed
 
-- **[BREAKING]:** When no harness is configured, kairo auto-detects the first installed supported CLI on PATH (`pi`, then `claude`, `qwen`, `crush`) instead of always defaulting to `pi`. If none are installed, it lists the supported harnesses and suggests `kairo harness set`
+- **[BREAKING]:** With no harness configured, kairo no longer defaults to `claude`. It scans PATH in order (`pi`, `claude`, `qwen`, `crush`) and uses the first installed CLI. If none are installed, it lists the supported harnesses and suggests `kairo harness set`. Pin a fixed choice with `--harness` or `kairo harness set`
 
 ## [v2.10.3] - 2026-07-18
 
